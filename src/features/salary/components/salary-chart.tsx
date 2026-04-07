@@ -1,0 +1,167 @@
+'use client';
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { format, parse } from 'date-fns';
+import dynamic from 'next/dynamic';
+import type { SalaryData } from '../types';
+
+const LineChart = dynamic(
+  () => import('recharts').then((m) => m.LineChart),
+  { ssr: false }
+);
+const Line = dynamic(
+  () => import('recharts').then((m) => m.Line),
+  { ssr: false }
+);
+const XAxis = dynamic(
+  () => import('recharts').then((m) => m.XAxis),
+  { ssr: false }
+);
+const YAxis = dynamic(
+  () => import('recharts').then((m) => m.YAxis),
+  { ssr: false }
+);
+const Tooltip = dynamic(
+  () => import('recharts').then((m) => m.Tooltip),
+  { ssr: false }
+);
+const Legend = dynamic(
+  () => import('recharts').then((m) => m.Legend),
+  { ssr: false }
+);
+const ResponsiveContainer = dynamic(
+  () => import('recharts').then((m) => m.ResponsiveContainer),
+  { ssr: false }
+);
+
+interface SalaryChartProps {
+  records: SalaryData[];
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('en-SG', {
+    style: 'currency',
+    currency: 'SGD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+const ALL_LABELS: Record<string, string> = {
+  salary: 'Gross Salary',
+  bonus: 'Bonus',
+  cumulative: 'Cumulative Total',
+};
+
+export function SalaryChart({ records }: SalaryChartProps) {
+  if (!records.length) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Salary Growth</CardTitle>
+          <CardDescription>No salary records yet</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex-center h-[300px] text-muted-foreground text-sm">
+            Add salary records to see your growth chart
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  let runningTotal = 0;
+  const chartData = records.map((r) => {
+    runningTotal += r.salary + r.bonus;
+    return {
+      month: format(parse(r.id, 'yyyy-MM', new Date()), 'MMM yyyy'),
+      salary: r.salary,
+      bonus: r.bonus,
+      cumulative: runningTotal,
+    };
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Salary Growth</CardTitle>
+        <CardDescription>Monthly salary, bonus, and cumulative earnings</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[350px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <XAxis
+                dataKey="month"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                yAxisId="left"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v: number) => formatCurrency(v)}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v: number) => formatCurrency(v)}
+              />
+              <Tooltip
+                formatter={(value: unknown, name: unknown) => [
+                  formatCurrency(Number(value)),
+                  ALL_LABELS[String(name)] ?? String(name),
+                ]}
+                labelStyle={{ fontWeight: 'bold' }}
+              />
+              <Legend
+                formatter={(value: string) =>
+                  ALL_LABELS[value] ?? value
+                }
+              />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="salary"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="bonus"
+                stroke="#f59e0b"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="cumulative"
+                stroke="#10b981"
+                strokeWidth={2.5}
+                strokeDasharray="6 3"
+                dot={false}
+                activeDot={{ r: 4 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
