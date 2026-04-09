@@ -10,8 +10,8 @@ export function LoginCard() {
     <CustomCard
       header={
         <>
-          <span className="text-brand-gradient">Wealth</span>
-          <span>Pulse</span>
+          <span className="text-brand-gradient">Fyn</span>
+          <span>fo</span>
         </>
       }
       description="Sign in to access your dashboard"

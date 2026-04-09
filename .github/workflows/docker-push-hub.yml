@@ -1,0 +1,75 @@
+name: Push to Docker Hub
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: "Docker image name without tag (e.g. username/fynfo)"
+        required: true
+        type: string
+      image-tag:
+        description: "Tag to push (e.g. latest, sha-abc1234)"
+        required: true
+        type: string
+      platform:
+        description: "Target build platform (e.g. linux/arm64)"
+        required: false
+        type: string
+        default: "linux/arm64"
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
+
+jobs:
+  push:
+    name: Push Docker Image to Hub
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Resolve prod base image
+        id: resolve-base
+        run: |
+          NODE_IMAGE=$(grep -m1 'ARG NODE=' Dockerfile | sed 's/ARG NODE=//' | tr -d '[:space:]')
+          HARDENED_IMAGE="dhi.io/${NODE_IMAGE}"
+          echo "Attempting to pull hardened image: ${HARDENED_IMAGE}"
+          if docker pull "${HARDENED_IMAGE}" 2>/dev/null; then
+            echo "build-args=NODE=${HARDENED_IMAGE}" >> "$GITHUB_OUTPUT"
+            echo "Using hardened image: ${HARDENED_IMAGE}"
+          else
+            echo "build-args=" >> "$GITHUB_OUTPUT"
+            echo "Hardened image not available, falling back to default"
+          fi
+
+      - name: Build and Push to Docker Hub
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: prod
+          platforms: ${{ inputs.platform }}
+          push: true
+          tags: |
+            ${{ inputs.image-name }}:${{ inputs.image-tag }}
+            ${{ inputs.image-name }}:latest
+          build-args: ${{ steps.resolve-base.outputs.build-args }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Cleanup local images
+        if: always()
+        run: |
+          docker rmi "${{ inputs.image-name }}:${{ inputs.image-tag }}" || true
+          docker image prune -f

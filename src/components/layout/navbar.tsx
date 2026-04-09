@@ -115,15 +115,19 @@ export function Navbar({ userMenu }: { userMenu?: React.ReactNode }) {
           {userMenu}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="size-9 border-0 shadow-none">
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-9 border-0 shadow-none"
+              >
                 <Menu className="size-5" />
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-64">
               <SheetHeader>
                 <SheetTitle>
-                  <span className="text-brand-gradient">Wealth</span>
-                  <span>Pulse</span>
+                  <span className="text-brand-gradient">Fyn</span>
+                  <span>fo</span>
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-1 pt-4">
