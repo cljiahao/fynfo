@@ -25,7 +25,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Loader2, Pencil, Trash2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useDeleteSalary, useSalaryRecords } from '../hooks/use-salary';
@@ -61,11 +67,7 @@ export function SalaryTable({ onEdit }: SalaryTableProps) {
 
     return (
       <div className="flex justify-center gap-1">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onEdit?.(id)}
-        >
+        <Button variant="outline" size="sm" onClick={() => onEdit?.(id)}>
           <Pencil className="size-4" />
         </Button>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -79,8 +81,8 @@ export function SalaryTable({ onEdit }: SalaryTableProps) {
               <DialogTitle>Delete Salary Record</DialogTitle>
               <DialogDescription>
                 Are you sure you want to delete the record for{' '}
-                <span className="font-semibold">{id}</span>? This action
-                cannot be undone.
+                <span className="font-semibold">{id}</span>? This action cannot
+                be undone.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -170,20 +172,26 @@ export function SalaryTable({ onEdit }: SalaryTableProps) {
             {reversed.length > 0 && (
               <div className="flex-between mt-4 text-sm">
                 <span className="text-muted-foreground text-xs">
-                  Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, reversed.length)} of{' '}
+                  Showing {page * pageSize + 1}–
+                  {Math.min((page + 1) * pageSize, reversed.length)} of{' '}
                   {reversed.length} record{reversed.length !== 1 ? 's' : ''}
                 </span>
                 <div className="flex items-center gap-2">
                   <Select
                     value={String(pageSize)}
-                    onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}
+                    onValueChange={(v) => {
+                      setPageSize(Number(v));
+                      setPage(0);
+                    }}
                   >
                     <SelectTrigger className="h-8 w-[70px] text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {PAGE_SIZES.map((s) => (
-                        <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+                        <SelectItem key={s} value={String(s)}>
+                          {s}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -198,16 +206,20 @@ export function SalaryTable({ onEdit }: SalaryTableProps) {
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           const n = parseInt(e.currentTarget.value, 10);
-                          if (!isNaN(n)) setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
+                          if (!isNaN(n))
+                            setPage(
+                              Math.max(0, Math.min(n - 1, totalPages - 1))
+                            );
                           e.currentTarget.blur();
                         }
                       }}
                       onBlur={(e) => {
                         const n = parseInt(e.currentTarget.value, 10);
-                        if (!isNaN(n)) setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
+                        if (!isNaN(n))
+                          setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
                       }}
                       onFocus={(e) => e.target.select()}
-                      className="h-8 w-12 rounded-md border text-center text-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="h-8 w-12 [appearance:textfield] rounded-md border text-center text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <span>of {totalPages}</span>
                   </div>

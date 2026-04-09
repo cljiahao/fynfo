@@ -87,12 +87,8 @@ export function SummaryCards({ snapshots }: SummaryCardsProps) {
         .reduce((sum, e) => sum + e.amount, 0)
     : 0;
 
-  const currentSavings = latest
-    ? sumByCategories(latest, ['savings'])
-    : 0;
-  const previousSavings = previous
-    ? sumByCategories(previous, ['savings'])
-    : 0;
+  const currentSavings = latest ? sumByCategories(latest, ['savings']) : 0;
+  const previousSavings = previous ? sumByCategories(previous, ['savings']) : 0;
 
   const currentInvestment = latest
     ? sumByCategories(latest, INVESTMENT_CATEGORIES)

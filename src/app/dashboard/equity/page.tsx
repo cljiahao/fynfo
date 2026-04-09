@@ -39,9 +39,7 @@ export default function EquityPage() {
     <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
       <div className="flex-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Equity Tracker
-          </h1>
+          <h1 className="text-3xl font-bold tracking-tight">Equity Tracker</h1>
           <p className="text-muted-foreground mt-1">
             Record and track your stock trades
           </p>

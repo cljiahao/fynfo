@@ -12,38 +12,31 @@ import { CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants';
 import { calculateTotal } from '../lib/calculations';
 import type { AssetCategory, SnapshotData } from '../types';
 
-const BarChart = dynamic(
-  () => import('recharts').then((m) => m.BarChart),
-  { ssr: false }
-);
-const Bar = dynamic(
-  () => import('recharts').then((m) => m.Bar),
-  { ssr: false }
-);
-const XAxis = dynamic(
-  () => import('recharts').then((m) => m.XAxis),
-  { ssr: false }
-);
-const YAxis = dynamic(
-  () => import('recharts').then((m) => m.YAxis),
-  { ssr: false }
-);
-const Tooltip = dynamic(
-  () => import('recharts').then((m) => m.Tooltip),
-  { ssr: false }
-);
+const BarChart = dynamic(() => import('recharts').then((m) => m.BarChart), {
+  ssr: false,
+});
+const Bar = dynamic(() => import('recharts').then((m) => m.Bar), {
+  ssr: false,
+});
+const XAxis = dynamic(() => import('recharts').then((m) => m.XAxis), {
+  ssr: false,
+});
+const YAxis = dynamic(() => import('recharts').then((m) => m.YAxis), {
+  ssr: false,
+});
+const Tooltip = dynamic(() => import('recharts').then((m) => m.Tooltip), {
+  ssr: false,
+});
 const ResponsiveContainer = dynamic(
   () => import('recharts').then((m) => m.ResponsiveContainer),
   { ssr: false }
 );
-const Cell = dynamic(
-  () => import('recharts').then((m) => m.Cell),
-  { ssr: false }
-);
-const LabelList = dynamic(
-  () => import('recharts').then((m) => m.LabelList),
-  { ssr: false }
-);
+const Cell = dynamic(() => import('recharts').then((m) => m.Cell), {
+  ssr: false,
+});
+const LabelList = dynamic(() => import('recharts').then((m) => m.LabelList), {
+  ssr: false,
+});
 
 interface CategoryBreakdownProps {
   snapshot: SnapshotData | undefined;
@@ -92,9 +85,7 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
     (e) => e.category === 'pension'
   );
   const cpfData = CPF_ACCOUNTS.map((acc) => {
-    const entry = pensionEntries.find(
-      (e) => e.account.toUpperCase() === acc
-    );
+    const entry = pensionEntries.find((e) => e.account.toUpperCase() === acc);
     return { name: acc, amount: entry?.amount ?? 0 };
   }).filter((d) => d.amount > 0);
 
@@ -141,7 +132,11 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
             </p>
             <div className="h-[120px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={cpfData} layout="vertical" margin={{ right: 80 }}>
+                <BarChart
+                  data={cpfData}
+                  layout="vertical"
+                  margin={{ right: 80 }}
+                >
                   <XAxis type="number" hide />
                   <YAxis
                     type="category"
@@ -152,7 +147,9 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
                     width={30}
                   />
                   <Tooltip
-                    formatter={(value: unknown) => formatCurrency(Number(value))}
+                    formatter={(value: unknown) =>
+                      formatCurrency(Number(value))
+                    }
                   />
                   <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={16}>
                     {cpfData.map((entry) => (

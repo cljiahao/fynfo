@@ -58,14 +58,22 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
       }
       return entries;
     }
-    return CATEGORIES.map((cat) => ({ category: cat, account: '', amount: emptyAmount }));
+    return CATEGORIES.map((cat) => ({
+      category: cat,
+      account: '',
+      amount: emptyAmount,
+    }));
   }
 
   const form = useForm<SnapshotFormValues>({
     resolver: zodResolver(snapshotFormSchema),
     defaultValues: {
       id: editId ?? defaultMonth,
-      entries: CATEGORIES.map((cat) => ({ category: cat, account: '', amount: emptyAmount })),
+      entries: CATEGORIES.map((cat) => ({
+        category: cat,
+        account: '',
+        amount: emptyAmount,
+      })),
     },
   });
 
@@ -95,7 +103,11 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
       }));
       for (const cat of CATEGORIES) {
         if (!existingEntries.some((e) => e.category === cat)) {
-          existingEntries.push({ category: cat, account: '', amount: emptyAmount });
+          existingEntries.push({
+            category: cat,
+            account: '',
+            amount: emptyAmount,
+          });
         }
       }
       form.reset({
@@ -112,7 +124,9 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
   function getRowsForCategory(category: AssetCategory) {
     return fields
       .map((field, idx) => ({ field, idx }))
-      .filter(({ idx }) => form.getValues(`entries.${idx}.category`) === category);
+      .filter(
+        ({ idx }) => form.getValues(`entries.${idx}.category`) === category
+      );
   }
 
   function getCategoryTotal(category: AssetCategory) {
@@ -157,7 +171,10 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
           <div className="flex items-center justify-between gap-4">
             <CardTitle>{editId ? 'Edit' : 'New'} Monthly Snapshot</CardTitle>
             <div className="flex shrink-0 items-center gap-2">
-              <Label htmlFor="month" className="text-muted-foreground text-sm whitespace-nowrap">
+              <Label
+                htmlFor="month"
+                className="text-muted-foreground text-sm whitespace-nowrap"
+              >
                 Select Month
               </Label>
               <Input
@@ -180,7 +197,6 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-
           {CATEGORIES.map((cat) => {
             const rows = getRowsForCategory(cat);
             const catTotal = getCategoryTotal(cat);
@@ -196,7 +212,11 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
                     {CATEGORY_LABELS[cat]}
                     {rows.length > 0 && (
                       <span className="text-muted-foreground text-sm font-normal">
-                        (${catTotal.toLocaleString('en-SG', { minimumFractionDigits: 2 })})
+                        ($
+                        {catTotal.toLocaleString('en-SG', {
+                          minimumFractionDigits: 2,
+                        })}
+                        )
                       </span>
                     )}
                   </Label>
@@ -213,7 +233,7 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
 
                 {rows.length > 0 && (
                   <div className="space-y-2">
-                    <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs font-medium text-muted-foreground">
+                    <div className="text-muted-foreground grid grid-cols-[1fr_1fr_auto] gap-2 text-xs font-medium">
                       <span>Account</span>
                       <span>Amount</span>
                       <span className="w-9" />
@@ -233,7 +253,8 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
                           min="0"
                           placeholder="0.00"
                           {...form.register(`entries.${idx}.amount`, {
-                            setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
+                            setValueAs: (v: string) =>
+                              v === '' ? 0 : parseFloat(v),
                           })}
                         />
                         <Button
@@ -246,7 +267,10 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
                         </Button>
                         {form.formState.errors.entries?.[idx]?.account && (
                           <p className="text-destructive col-span-3 text-sm">
-                            {form.formState.errors.entries[idx].account?.message}
+                            {
+                              form.formState.errors.entries[idx].account
+                                ?.message
+                            }
                           </p>
                         )}
                         {form.formState.errors.entries?.[idx]?.amount && (

@@ -1,9 +1,9 @@
-import { PrismaAdapter } from '@auth/prisma-adapter';
 import { isDev } from '@/lib/constants/env';
+import { prisma } from '@/lib/prisma';
+import { PrismaAdapter } from '@auth/prisma-adapter';
 import NextAuth, { type NextAuthConfig } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import Google from 'next-auth/providers/google';
-import { prisma } from '@/lib/prisma';
 
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60;
 

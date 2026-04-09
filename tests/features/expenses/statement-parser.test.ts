@@ -16,15 +16,15 @@ beforeEach(() => {
 
 describe('parseStatement — unsupported file types', () => {
   it('throws for .txt files', async () => {
-    await expect(parseStatement(Buffer.from('data'), 'file.txt')).rejects.toThrow(
-      'Unsupported file type'
-    );
+    await expect(
+      parseStatement(Buffer.from('data'), 'file.txt')
+    ).rejects.toThrow('Unsupported file type');
   });
 
   it('throws for .xlsx files', async () => {
-    await expect(parseStatement(Buffer.from('data'), 'report.xlsx')).rejects.toThrow(
-      'Unsupported file type'
-    );
+    await expect(
+      parseStatement(Buffer.from('data'), 'report.xlsx')
+    ).rejects.toThrow('Unsupported file type');
   });
 });
 

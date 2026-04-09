@@ -24,6 +24,7 @@ import {
   CalendarIcon,
   ChevronLeft,
   ChevronRight,
+  Plus,
   Search,
   Trash2,
   Users,
@@ -133,7 +134,8 @@ function EditableRow({
       setTypeQuery('');
     } else if (e.key === 'Tab') {
       if (typeEditing && typeQuery && filteredTypes.length > 0) {
-        const selected = typeIndex >= 0 ? filteredTypes[typeIndex] : filteredTypes[0];
+        const selected =
+          typeIndex >= 0 ? filteredTypes[typeIndex] : filteredTypes[0];
         update({ type: selected });
         setTypeQuery('');
       }
@@ -187,13 +189,19 @@ function EditableRow({
     onSave({ ...data, id: data.id || generateId() });
   };
 
-  const splitSummary = data.splits.length > 0
-    ? data.splits.map((s) => s.person).join(', ')
-    : null;
+  const splitSummary =
+    data.splits.length > 0 ? data.splits.map((s) => s.person).join(', ') : null;
 
   return (
     <>
-      <tr className={cn('border-b transition-colors hover:bg-muted/40', isNew && 'bg-accent/30')} onKeyDown={handleRowKeyDown} onBlur={handleRowBlur}>
+      <tr
+        className={cn(
+          'hover:bg-muted/40 border-b transition-colors',
+          isNew && 'bg-accent/30'
+        )}
+        onKeyDown={handleRowKeyDown}
+        onBlur={handleRowBlur}
+      >
         <td className="px-2 py-2">
           <Popover open={dateOpen} onOpenChange={setDateOpen}>
             <PopoverTrigger asChild>
@@ -316,9 +324,7 @@ function EditableRow({
         <td className="px-2 py-2">
           <Select
             value={data.splitType}
-            onValueChange={(v) =>
-              handleSplitTypeChange(v as 'self' | 'shared')
-            }
+            onValueChange={(v) => handleSplitTypeChange(v as 'self' | 'shared')}
           >
             <SelectTrigger className="h-9 w-full px-2 text-xs">
               <SelectValue />
@@ -337,9 +343,7 @@ function EditableRow({
               onClick={() => setSplitDialogOpen(true)}
             >
               <Users className="text-muted-foreground size-3.5 shrink-0" />
-              <span className="truncate">
-                {splitSummary || 'Add...'}
-              </span>
+              <span className="truncate">{splitSummary || 'Add...'}</span>
             </button>
           ) : (
             <span className="text-muted-foreground block text-center text-xs">
@@ -404,7 +408,7 @@ function SortableHeader({
   const active = currentKey === col;
   return (
     <th
-      className="px-2 py-3 text-center cursor-pointer select-none hover:text-foreground"
+      className="hover:text-foreground cursor-pointer px-2 py-3 text-center select-none"
       onClick={() => onSort(col)}
     >
       <span className="inline-flex items-center justify-center gap-1">
@@ -477,7 +481,9 @@ export function ExpenseTable() {
         cmp = a.date.localeCompare(b.date);
         break;
       case 'type':
-        cmp = EXPENSE_TYPE_LABELS[a.type].localeCompare(EXPENSE_TYPE_LABELS[b.type]);
+        cmp = EXPENSE_TYPE_LABELS[a.type].localeCompare(
+          EXPENSE_TYPE_LABELS[b.type]
+        );
         break;
       case 'item':
         cmp = a.item.localeCompare(b.item);
@@ -530,18 +536,27 @@ export function ExpenseTable() {
     <div className="space-y-3">
       {/* Toolbar: filters + add button */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[180px] max-w-xs">
+        <div className="relative max-w-xs min-w-[180px] flex-1">
           <div className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center">
             <Search className="text-muted-foreground size-4" />
           </div>
           <Input
             value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(0);
+            }}
             placeholder="Search item, info, type..."
             className="h-9 pl-8 text-sm"
           />
         </div>
-        <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(0); }}>
+        <Select
+          value={typeFilter}
+          onValueChange={(v) => {
+            setTypeFilter(v);
+            setPage(0);
+          }}
+        >
           <SelectTrigger className="h-9 w-[150px] text-xs">
             <SelectValue placeholder="All types" />
           </SelectTrigger>
@@ -554,7 +569,13 @@ export function ExpenseTable() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={splitFilter} onValueChange={(v) => { setSplitFilter(v); setPage(0); }}>
+        <Select
+          value={splitFilter}
+          onValueChange={(v) => {
+            setSplitFilter(v);
+            setPage(0);
+          }}
+        >
           <SelectTrigger className="h-9 w-[120px] text-xs">
             <SelectValue placeholder="All" />
           </SelectTrigger>
@@ -564,11 +585,15 @@ export function ExpenseTable() {
             <SelectItem value="shared">Shared</SelectItem>
           </SelectContent>
         </Select>
+        <Button size="sm" onClick={addRow}>
+          <Plus className="mr-1 size-4" />
+          Add Row
+        </Button>
       </div>
 
       {/* Table */}
       <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full table-fixed min-w-[1040px]">
+        <table className="w-full min-w-[1040px] table-fixed">
           <colgroup>
             <col className="w-[155px]" />
             <col className="w-[140px]" />
@@ -581,12 +606,42 @@ export function ExpenseTable() {
           </colgroup>
           <thead>
             <tr className="bg-muted/50 border-b text-xs font-semibold tracking-wide">
-              <SortableHeader label="Date" sortKey="date" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHeader label="Type" sortKey="type" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHeader label="Item" sortKey="item" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHeader
+                label="Date"
+                sortKey="date"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHeader
+                label="Type"
+                sortKey="type"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHeader
+                label="Item"
+                sortKey="item"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
               <th className="px-2 py-3 text-center">Info</th>
-              <SortableHeader label="Amount" sortKey="amount" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
-              <SortableHeader label="Split" sortKey="splitType" currentKey={sortKey} currentDir={sortDir} onSort={toggleSort} />
+              <SortableHeader
+                label="Amount"
+                sortKey="amount"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
+              <SortableHeader
+                label="Split"
+                sortKey="splitType"
+                currentKey={sortKey}
+                currentDir={sortDir}
+                onSort={toggleSort}
+              />
               <th className="px-2 py-3 text-center">Who?</th>
               <th className="px-2 py-3 text-center">Actions</th>
             </tr>
@@ -637,13 +692,17 @@ export function ExpenseTable() {
       {filtered.length > 0 && (
         <div className="flex-between text-sm">
           <span className="text-muted-foreground text-xs">
-            Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, sorted.length)} of{' '}
-            {sorted.length} expense{sorted.length !== 1 ? 's' : ''}
+            Showing {page * pageSize + 1}–
+            {Math.min((page + 1) * pageSize, sorted.length)} of {sorted.length}{' '}
+            expense{sorted.length !== 1 ? 's' : ''}
           </span>
           <div className="flex items-center gap-2">
             <Select
               value={String(pageSize)}
-              onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}
+              onValueChange={(v) => {
+                setPageSize(Number(v));
+                setPage(0);
+              }}
             >
               <SelectTrigger className="h-8 w-[70px] text-xs">
                 <SelectValue />
@@ -667,16 +726,18 @@ export function ExpenseTable() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     const n = parseInt(e.currentTarget.value, 10);
-                    if (!isNaN(n)) setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
+                    if (!isNaN(n))
+                      setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
                     e.currentTarget.blur();
                   }
                 }}
                 onBlur={(e) => {
                   const n = parseInt(e.currentTarget.value, 10);
-                  if (!isNaN(n)) setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
+                  if (!isNaN(n))
+                    setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
                 }}
                 onFocus={(e) => e.target.select()}
-                className="h-8 w-12 rounded-md border text-center text-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="h-8 w-12 [appearance:textfield] rounded-md border text-center text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
               <span>of {totalPages}</span>
             </div>

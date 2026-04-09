@@ -4,18 +4,18 @@ on:
   workflow_call:
     inputs:
       image-name:
-        description: "Docker image name without tag (e.g. username/fynfo)"
+        description: 'Docker image name without tag (e.g. username/fynfo)'
         required: true
         type: string
       image-tag:
-        description: "Tag to push (e.g. latest, sha-abc1234)"
+        description: 'Tag to push (e.g. latest, sha-abc1234)'
         required: true
         type: string
       platform:
-        description: "Target build platform (e.g. linux/arm64)"
+        description: 'Target build platform (e.g. linux/arm64)'
         required: false
         type: string
-        default: "linux/arm64"
+        default: 'linux/arm64'
     secrets:
       DOCKERHUB_USERNAME:
         required: true

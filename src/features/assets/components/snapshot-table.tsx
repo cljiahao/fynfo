@@ -25,7 +25,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Loader2, Pencil, Trash2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -69,15 +75,30 @@ function sumCategories(
 }
 
 const COMPACT_COLUMNS = [
-  { label: 'Savings', getValue: (e: SnapshotData['entries']) => sumCategory(e, 'savings') },
-  { label: 'Bonds', getValue: (e: SnapshotData['entries']) => sumCategory(e, 'bonds') },
-  { label: 'Investment', getValue: (e: SnapshotData['entries']) => sumCategories(e, INVESTMENT_CATEGORIES) },
-  { label: 'Pension', getValue: (e: SnapshotData['entries']) => sumCategory(e, 'pension') },
+  {
+    label: 'Savings',
+    getValue: (e: SnapshotData['entries']) => sumCategory(e, 'savings'),
+  },
+  {
+    label: 'Bonds',
+    getValue: (e: SnapshotData['entries']) => sumCategory(e, 'bonds'),
+  },
+  {
+    label: 'Investment',
+    getValue: (e: SnapshotData['entries']) =>
+      sumCategories(e, INVESTMENT_CATEGORIES),
+  },
+  {
+    label: 'Pension',
+    getValue: (e: SnapshotData['entries']) => sumCategory(e, 'pension'),
+  },
 ] as const;
 
 export function SnapshotTable({ snapshots }: SnapshotTableProps) {
   const router = useRouter();
   const deleteMutation = useDeleteSnapshot();
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   if (!snapshots.length) {
     return (
@@ -92,8 +113,6 @@ export function SnapshotTable({ snapshots }: SnapshotTableProps) {
 
   const PAGE_SIZES = [10, 25, 50] as const;
   const reversed = [...snapshots].reverse();
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState<number>(10);
   const totalPages = Math.max(Math.ceil(reversed.length / pageSize), 1);
   const paged = reversed.slice(page * pageSize, (page + 1) * pageSize);
 
@@ -130,8 +149,8 @@ export function SnapshotTable({ snapshots }: SnapshotTableProps) {
               <DialogTitle>Delete Snapshot</DialogTitle>
               <DialogDescription>
                 Are you sure you want to delete the snapshot for{' '}
-                <span className="font-semibold">{id}</span>? This action
-                cannot be undone.
+                <span className="font-semibold">{id}</span>? This action cannot
+                be undone.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -249,20 +268,26 @@ export function SnapshotTable({ snapshots }: SnapshotTableProps) {
         {reversed.length > 0 && (
           <div className="flex-between mt-4 text-sm">
             <span className="text-muted-foreground text-xs">
-              Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, reversed.length)} of{' '}
+              Showing {page * pageSize + 1}–
+              {Math.min((page + 1) * pageSize, reversed.length)} of{' '}
               {reversed.length} snapshot{reversed.length !== 1 ? 's' : ''}
             </span>
             <div className="flex items-center gap-2">
               <Select
                 value={String(pageSize)}
-                onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}
+                onValueChange={(v) => {
+                  setPageSize(Number(v));
+                  setPage(0);
+                }}
               >
                 <SelectTrigger className="h-8 w-[70px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {PAGE_SIZES.map((s) => (
-                    <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+                    <SelectItem key={s} value={String(s)}>
+                      {s}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -277,16 +302,18 @@ export function SnapshotTable({ snapshots }: SnapshotTableProps) {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       const n = parseInt(e.currentTarget.value, 10);
-                      if (!isNaN(n)) setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
+                      if (!isNaN(n))
+                        setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
                       e.currentTarget.blur();
                     }
                   }}
                   onBlur={(e) => {
                     const n = parseInt(e.currentTarget.value, 10);
-                    if (!isNaN(n)) setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
+                    if (!isNaN(n))
+                      setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
                   }}
                   onFocus={(e) => e.target.select()}
-                  className="h-8 w-12 rounded-md border text-center text-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  className="h-8 w-12 [appearance:textfield] rounded-md border text-center text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
                 <span>of {totalPages}</span>
               </div>

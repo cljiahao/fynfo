@@ -76,11 +76,7 @@ export function TradeTable({ trades, onEdit }: TradeTableProps) {
 
     return (
       <div className="flex justify-center gap-1">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onEdit?.(trade)}
-        >
+        <Button variant="outline" size="sm" onClick={() => onEdit?.(trade)}>
           <Pencil className="size-4" />
         </Button>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -198,20 +194,26 @@ export function TradeTable({ trades, onEdit }: TradeTableProps) {
         {trades.length > 0 && (
           <div className="flex-between mt-4 text-sm">
             <span className="text-muted-foreground text-xs">
-              Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, trades.length)} of{' '}
+              Showing {page * pageSize + 1}–
+              {Math.min((page + 1) * pageSize, trades.length)} of{' '}
               {trades.length} trade{trades.length !== 1 ? 's' : ''}
             </span>
             <div className="flex items-center gap-2">
               <Select
                 value={String(pageSize)}
-                onValueChange={(v) => { setPageSize(Number(v)); setPage(0); }}
+                onValueChange={(v) => {
+                  setPageSize(Number(v));
+                  setPage(0);
+                }}
               >
                 <SelectTrigger className="h-8 w-[70px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {PAGE_SIZES.map((s) => (
-                    <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+                    <SelectItem key={s} value={String(s)}>
+                      {s}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -226,16 +228,18 @@ export function TradeTable({ trades, onEdit }: TradeTableProps) {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       const n = parseInt(e.currentTarget.value, 10);
-                      if (!isNaN(n)) setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
+                      if (!isNaN(n))
+                        setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
                       e.currentTarget.blur();
                     }
                   }}
                   onBlur={(e) => {
                     const n = parseInt(e.currentTarget.value, 10);
-                    if (!isNaN(n)) setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
+                    if (!isNaN(n))
+                      setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
                   }}
                   onFocus={(e) => e.target.select()}
-                  className="h-8 w-12 rounded-md border text-center text-xs [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  className="h-8 w-12 [appearance:textfield] rounded-md border text-center text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
                 <span>of {totalPages}</span>
               </div>

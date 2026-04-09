@@ -35,7 +35,10 @@ describe('getEarnedIncomeRelief', () => {
 describe('computeAutoReliefs', () => {
   it('returns zero reliefs for non-resident regardless of age or nsman status', () => {
     expect(
-      computeAutoReliefs({ birthYear: 1990, isNsman: true, residencyStatus: 'non_resident' }, 2026)
+      computeAutoReliefs(
+        { birthYear: 1990, isNsman: true, residencyStatus: 'non_resident' },
+        2026
+      )
     ).toEqual({ earnedIncomeRelief: 0, nsmanRelief: 0 });
   });
 
@@ -258,11 +261,17 @@ describe('calculateTaxSummary', () => {
 
   it('computes effectiveRate as taxPayable divided by grossAnnual', () => {
     const result = calculateTaxSummary(72000, 0, 2026);
-    expect(result.effectiveRate).toBeCloseTo(result.taxPayable / result.grossAnnual);
+    expect(result.effectiveRate).toBeCloseTo(
+      result.taxPayable / result.grossAnnual
+    );
   });
 
   it('uses age-60 relief tier when birthYear indicates 60+', () => {
-    const profile = { birthYear: 1960, isNsman: false, residencyStatus: 'resident' as const };
+    const profile = {
+      birthYear: 1960,
+      isNsman: false,
+      residencyStatus: 'resident' as const,
+    };
     const result = calculateTaxSummary(72000, 0, 2026, profile);
     expect(result.earnedIncomeRelief).toBe(8000);
   });

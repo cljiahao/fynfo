@@ -114,7 +114,13 @@ const computeTotal = (state: ReliefStateMap) => {
   return total;
 };
 
-function ReliefLabel({ label, description }: { label: string; description: string }) {
+function ReliefLabel({
+  label,
+  description,
+}: {
+  label: string;
+  description: string;
+}) {
   return (
     <span className="inline-flex items-center gap-1.5">
       {label}
@@ -159,7 +165,12 @@ function TaxReliefsDialogInner({
   const updateRelief = (key: string, update: Partial<ReliefState>) => {
     setReliefState((prev) => {
       const next = new Map(prev);
-      const current = next.get(key) ?? { enabled: false, amount: 0, count: 1, variant: '' };
+      const current = next.get(key) ?? {
+        enabled: false,
+        amount: 0,
+        count: 1,
+        variant: '',
+      };
       next.set(key, { ...current, ...update });
       return next;
     });
@@ -205,7 +216,7 @@ function TaxReliefsDialogInner({
             <div className="space-y-4">
               {/* Auto-computed reliefs */}
               <div>
-                <p className="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wide">
+                <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
                   Auto-computed (from profile)
                 </p>
                 <div className="space-y-2">
@@ -234,7 +245,7 @@ function TaxReliefsDialogInner({
 
               {/* Additional reliefs */}
               <div>
-                <p className="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wide">
+                <p className="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
                   Additional Reliefs
                 </p>
                 <div className="space-y-3">
@@ -255,7 +266,9 @@ function TaxReliefsDialogInner({
                             checked={state.enabled}
                             onCheckedChange={(v) => {
                               const enabled = v === true;
-                              const count = enabled ? Math.max(state.count, 1) : state.count;
+                              const count = enabled
+                                ? Math.max(state.count, 1)
+                                : state.count;
                               updateRelief(def.key, {
                                 enabled,
                                 count,
@@ -267,7 +280,10 @@ function TaxReliefsDialogInner({
                             htmlFor={`relief-${def.key}`}
                             className="min-w-0 flex-1 cursor-pointer text-sm"
                           >
-                            <ReliefLabel label={def.label} description={def.description} />
+                            <ReliefLabel
+                              label={def.label}
+                              description={def.description}
+                            />
                           </Label>
                           <Select
                             value={String(state.count)}
@@ -307,12 +323,17 @@ function TaxReliefsDialogInner({
                             checked={state.enabled}
                             onCheckedChange={(v) => {
                               const enabled = v === true;
-                              const variant = state.variant || def.variants![0].value;
-                              const matched = def.variants!.find((vr) => vr.value === variant);
+                              const variant =
+                                state.variant || def.variants![0].value;
+                              const matched = def.variants!.find(
+                                (vr) => vr.value === variant
+                              );
                               updateRelief(def.key, {
                                 enabled,
                                 variant,
-                                amount: enabled ? (matched?.amount ?? def.defaultAmount) : 0,
+                                amount: enabled
+                                  ? (matched?.amount ?? def.defaultAmount)
+                                  : 0,
                               });
                             }}
                           />
@@ -320,13 +341,18 @@ function TaxReliefsDialogInner({
                             htmlFor={`relief-${def.key}`}
                             className="min-w-0 flex-1 cursor-pointer text-sm"
                           >
-                            <ReliefLabel label={def.label} description={def.description} />
+                            <ReliefLabel
+                              label={def.label}
+                              description={def.description}
+                            />
                           </Label>
                           <Select
                             value={state.variant}
                             disabled={!state.enabled}
                             onValueChange={(v) => {
-                              const matched = def.variants!.find((vr) => vr.value === v);
+                              const matched = def.variants!.find(
+                                (vr) => vr.value === v
+                              );
                               updateRelief(def.key, {
                                 variant: v,
                                 amount: matched?.amount ?? def.defaultAmount,
@@ -366,7 +392,10 @@ function TaxReliefsDialogInner({
                             htmlFor={`relief-${def.key}`}
                             className="min-w-0 flex-1 cursor-pointer text-sm"
                           >
-                            <ReliefLabel label={def.label} description={def.description} />
+                            <ReliefLabel
+                              label={def.label}
+                              description={def.description}
+                            />
                           </Label>
                           <Input
                             type="number"
@@ -397,7 +426,10 @@ function TaxReliefsDialogInner({
 
               {/* Confirm */}
               <div className="flex justify-end">
-                <Button onClick={handleConfirm} disabled={upsertReliefs.isPending}>
+                <Button
+                  onClick={handleConfirm}
+                  disabled={upsertReliefs.isPending}
+                >
                   {upsertReliefs.isPending && (
                     <Loader2 className="mr-2 size-4 animate-spin" />
                   )}

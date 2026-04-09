@@ -58,9 +58,7 @@ function Row({
 
   return (
     <div className="flex-between py-1">
-      <span
-        className={`${indent ? 'text-muted-foreground pl-3' : ''} text-sm`}
-      >
+      <span className={`${indent ? 'text-muted-foreground pl-3' : ''} text-sm`}>
         {label}
       </span>
       <span className={`text-sm ${valueClass}`}>{value}</span>
@@ -89,7 +87,7 @@ function SummaryColumn({
       </CardHeader>
       <CardContent className="space-y-1">
         {/* Income */}
-        <p className="text-muted-foreground pb-1 text-xs font-semibold uppercase tracking-wide">
+        <p className="text-muted-foreground pb-1 text-xs font-semibold tracking-wide uppercase">
           Income
         </p>
         <Row
@@ -102,7 +100,7 @@ function SummaryColumn({
         <Separator className="my-2" />
 
         {/* Deductions (CPF only) */}
-        <p className="text-muted-foreground pb-1 text-xs font-semibold uppercase tracking-wide">
+        <p className="text-muted-foreground pb-1 text-xs font-semibold tracking-wide uppercase">
           Deductions
         </p>
         <Row
@@ -116,7 +114,7 @@ function SummaryColumn({
 
         {/* Tax */}
         <div className="flex items-center gap-2">
-          <p className="text-muted-foreground pb-1 text-xs font-semibold uppercase tracking-wide">
+          <p className="text-muted-foreground pb-1 text-xs font-semibold tracking-wide uppercase">
             Tax
           </p>
           {!summary.isNonResident && (
@@ -137,7 +135,7 @@ function SummaryColumn({
                 Relief breakdown
               </span>
             </AccordionTrigger>
-            <AccordionContent className="!px-0 pb-0 pt-1">
+            <AccordionContent className="!px-0 pt-1 pb-0">
               {summary.isNonResident ? (
                 <Row
                   label="Non-resident (flat 22%)"
@@ -218,7 +216,10 @@ export function SalarySummary({ records }: SalarySummaryProps) {
   const [reliefDialogOpen, setReliefDialogOpen] = useState(false);
   const [reliefItems, setReliefItems] = useState<ReliefItem[]>([]);
 
-  const additionalReliefsTotal = reliefItems.reduce((sum, r) => sum + r.amount, 0);
+  const additionalReliefsTotal = reliefItems.reduce(
+    (sum, r) => sum + r.amount,
+    0
+  );
 
   const taxProfile: TaxProfileContext = {
     birthYear: profile?.birthYear ?? null,
@@ -231,14 +232,8 @@ export function SalarySummary({ records }: SalarySummaryProps) {
   );
   const monthsRecorded = currentYearRecords.length;
 
-  const ytdSalary = currentYearRecords.reduce(
-    (sum, r) => sum + r.salary,
-    0
-  );
-  const ytdBonus = currentYearRecords.reduce(
-    (sum, r) => sum + r.bonus,
-    0
-  );
+  const ytdSalary = currentYearRecords.reduce((sum, r) => sum + r.salary, 0);
+  const ytdBonus = currentYearRecords.reduce((sum, r) => sum + r.bonus, 0);
   const estAnnualSalary =
     monthsRecorded > 0 ? (ytdSalary / monthsRecorded) * 12 : 0;
   const estAnnualBonus =

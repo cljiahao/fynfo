@@ -10,8 +10,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
-import { signOut } from 'next-auth/react';
 import { CircleHelp, LogOut, UserRound } from 'lucide-react';
+import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 
 interface UserMenuDropdownProps {
@@ -20,12 +20,20 @@ interface UserMenuDropdownProps {
   image?: string;
 }
 
-export function UserMenuDropdown({ name, email, image }: UserMenuDropdownProps) {
+export function UserMenuDropdown({
+  name,
+  email,
+  image,
+}: UserMenuDropdownProps) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <DropdownMenuTrigger className="focus-visible:ring-ring flex items-center gap-2 rounded-full outline-none focus-visible:ring-2">
         <Avatar className="transition-opacity hover:opacity-75">
-          <AvatarImage src={image} alt={name ?? ''} referrerPolicy="no-referrer" />
+          <AvatarImage
+            src={image}
+            alt={name ?? ''}
+            referrerPolicy="no-referrer"
+          />
           <AvatarFallback>
             <UserRound className="size-4" />
           </AvatarFallback>
@@ -35,9 +43,7 @@ export function UserMenuDropdown({ name, email, image }: UserMenuDropdownProps) 
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col gap-1">
-            {name && (
-              <p className="text-sm font-medium leading-none">{name}</p>
-            )}
+            {name && <p className="text-sm leading-none font-medium">{name}</p>}
             {email && (
               <p className="text-muted-foreground text-xs leading-none">
                 {email}

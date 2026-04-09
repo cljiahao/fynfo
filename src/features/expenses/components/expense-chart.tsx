@@ -16,30 +16,24 @@ import {
 } from '../constants';
 import type { ExpenseData, ExpenseType } from '../types';
 
-const BarChart = dynamic(
-  () => import('recharts').then((m) => m.BarChart),
-  { ssr: false }
-);
-const Bar = dynamic(
-  () => import('recharts').then((m) => m.Bar),
-  { ssr: false }
-);
-const XAxis = dynamic(
-  () => import('recharts').then((m) => m.XAxis),
-  { ssr: false }
-);
-const YAxis = dynamic(
-  () => import('recharts').then((m) => m.YAxis),
-  { ssr: false }
-);
-const Tooltip = dynamic(
-  () => import('recharts').then((m) => m.Tooltip),
-  { ssr: false }
-);
-const Legend = dynamic(
-  () => import('recharts').then((m) => m.Legend),
-  { ssr: false }
-);
+const BarChart = dynamic(() => import('recharts').then((m) => m.BarChart), {
+  ssr: false,
+});
+const Bar = dynamic(() => import('recharts').then((m) => m.Bar), {
+  ssr: false,
+});
+const XAxis = dynamic(() => import('recharts').then((m) => m.XAxis), {
+  ssr: false,
+});
+const YAxis = dynamic(() => import('recharts').then((m) => m.YAxis), {
+  ssr: false,
+});
+const Tooltip = dynamic(() => import('recharts').then((m) => m.Tooltip), {
+  ssr: false,
+});
+const Legend = dynamic(() => import('recharts').then((m) => m.Legend), {
+  ssr: false,
+});
 const ReferenceLine = dynamic(
   () => import('recharts').then((m) => m.ReferenceLine),
   { ssr: false }
@@ -101,9 +95,7 @@ function buildChartData(expenses: ExpenseData[]): ChartDataPoint[] {
 }
 
 function getActiveTypes(data: ChartDataPoint[]): ExpenseType[] {
-  return EXPENSE_TYPES.filter((t) =>
-    data.some((d) => (d[t] as number) > 0)
-  );
+  return EXPENSE_TYPES.filter((t) => data.some((d) => (d[t] as number) > 0));
 }
 
 interface ExpenseChartProps {
@@ -117,7 +109,8 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
   const monthsWithData = chartData.filter((d) => d.total > 0);
   const avgExpense =
     monthsWithData.length > 0
-      ? monthsWithData.reduce((sum, d) => sum + d.total, 0) / monthsWithData.length
+      ? monthsWithData.reduce((sum, d) => sum + d.total, 0) /
+        monthsWithData.length
       : 0;
 
   const totalExpense = chartData.reduce((sum, d) => sum + d.total, 0);
@@ -130,11 +123,15 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
     if (e.splitType === 'shared' && e.splits.length > 0) {
       userAmount = e.amount - e.splits.reduce((sum, s) => sum + s.amount, 0);
     }
-    allTimeMonthTotals.set(key, (allTimeMonthTotals.get(key) ?? 0) + userAmount);
+    allTimeMonthTotals.set(
+      key,
+      (allTimeMonthTotals.get(key) ?? 0) + userAmount
+    );
   }
   const allTimeAvg =
     allTimeMonthTotals.size > 0
-      ? Array.from(allTimeMonthTotals.values()).reduce((sum, v) => sum + v, 0) / allTimeMonthTotals.size
+      ? Array.from(allTimeMonthTotals.values()).reduce((sum, v) => sum + v, 0) /
+        allTimeMonthTotals.size
       : 0;
   const maxTotal = Math.max(...chartData.map((d) => d.total), 0);
   const yMax = Math.ceil(maxTotal / 500) * 500 || 500;
@@ -150,7 +147,9 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
             <CardDescription>Breakdown by category</CardDescription>
           </div>
           <div className="text-right">
-            <p className="text-muted-foreground mb-0.5 text-xs tracking-wide uppercase">12-month total</p>
+            <p className="text-muted-foreground mb-0.5 text-xs tracking-wide uppercase">
+              12-month total
+            </p>
             <p className="text-2xl font-bold">{formatCurrency(totalExpense)}</p>
             <p className="text-muted-foreground text-xs">
               All-time avg {formatCurrency(allTimeAvg)} / mo
@@ -183,19 +182,32 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
                   if (!active || !payload?.length) return null;
                   const items = payload.filter((p) => Number(p.value) > 0);
                   if (!items.length) return null;
-                  const total = items.reduce((sum, p) => sum + Number(p.value), 0);
+                  const total = items.reduce(
+                    (sum, p) => sum + Number(p.value),
+                    0
+                  );
                   return (
                     <div className="bg-background rounded-md border px-3 py-2 shadow-md">
                       <div className="mb-1.5 flex items-center justify-between gap-4">
                         <p className="text-xs font-semibold">{label}</p>
-                        <p className="text-xs font-bold">{formatCurrency(total)}</p>
+                        <p className="text-xs font-bold">
+                          {formatCurrency(total)}
+                        </p>
                       </div>
                       <div className="space-y-1">
                         {items.map((item) => (
-                          <div key={String(item.dataKey)} className="flex items-center gap-2 text-xs">
-                            <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                          <div
+                            key={String(item.dataKey)}
+                            className="flex items-center gap-2 text-xs"
+                          >
+                            <span
+                              className="size-2 shrink-0 rounded-full"
+                              style={{ backgroundColor: item.color }}
+                            />
                             <span className="text-muted-foreground">
-                              {EXPENSE_TYPE_LABELS[String(item.dataKey) as ExpenseType] ?? String(item.dataKey)}
+                              {EXPENSE_TYPE_LABELS[
+                                String(item.dataKey) as ExpenseType
+                              ] ?? String(item.dataKey)}
                             </span>
                             <span className="ml-auto pl-4 font-medium tabular-nums">
                               {formatCurrency(Number(item.value))}

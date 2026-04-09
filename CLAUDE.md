@@ -34,12 +34,14 @@ src/
 ## Fynfo-Specific Rules
 
 **Architecture:**
+
 - Route groups: `(public)/` for public, `dashboard/` for authenticated
 - Server actions in `features/<name>/actions/` for mutations (NOT API routes)
 - React Query hooks in `features/<name>/hooks/` for data fetching
 - Barrel exports (`index.ts`) — prefer `import { Foo } from '@/features/assets'` over deep imports
 
 **Security & Quality:**
+
 - NEVER create client components unless interactivity requires it — prefer server components
 - NEVER put data-fetching in page components — pages compose from features
 - NEVER use inline styles — use Tailwind classes
@@ -49,6 +51,7 @@ src/
 - Delegate logic to hooks and services — keep components thin
 
 **Naming (project-wide):**
+
 - Files: kebab-case (except Next.js specials)
 - Components/types: PascalCase
 - Functions/hooks/vars: camelCase
@@ -58,6 +61,7 @@ src/
 ## Environment & Key Files
 
 **Required `.env.local`** (see `.env.example`):
+
 - `DATABASE_URL` — PostgreSQL connection string
 - `NEXTAUTH_SECRET` — Session encryption key
 - `NEXTAUTH_URL` — Base URL (http://localhost:3000 for dev)
@@ -73,6 +77,7 @@ src/
 ## Domain Context
 
 **Features:**
+
 - **Assets**: snapshot tracking (savings, bonds, stocks, ETF, non-equity, crypto, pension)
 - **Equity**: stock trading with P&L tracking
 - **Salary**: income tracking with Singapore tax/CPF calculations
@@ -84,6 +89,7 @@ src/
 ## For Patterns & Standards
 
 Reference **templateCentral** for:
+
 - **Code standards & naming**: `templateCentral/claude-skills/nextjs/code-standards/SKILL.md`
 - **Adding pages**: `templateCentral/claude-skills/nextjs/add-page/SKILL.md`
 - **Adding components**: `templateCentral/claude-skills/nextjs/add-component/SKILL.md`
@@ -104,12 +110,14 @@ For tasks touching 3+ files or involving architectural decisions:
 ## Project Notes
 
 **Initial scaffold (2026-03-16):**
+
 - Domain-specific routes (assets, equity, salary, entry, expenses) instead of generic `[id]`
 - Prisma + PostgreSQL for persistence
 - Server actions pattern for mutations
 - recharts for visualizations, date-fns for formatting
 
 **Auth alignment (2026-03-21):**
+
 - Single `src/auth.ts` (templateCentral pattern)
 - Dev credentials provider for local dev
 - `features/auth/` module with LoginCard, LoginButton, SignOutButton

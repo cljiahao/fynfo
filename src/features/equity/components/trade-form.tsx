@@ -21,7 +21,7 @@ import {
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useCreateTrade, useUpdateTrade } from '../hooks/use-equity';
 import { BROKERS, calculateFees, type Broker } from '../lib/broker-fees';
@@ -107,14 +107,19 @@ export function TradeFormDialog({
     }
   }, [open, editTrade, form]);
 
-  const broker = form.watch('broker');
-  const ticker = form.watch('ticker');
-  const action = form.watch('action');
-  const shares = Number(form.watch('shares')) || 0;
-  const price = Number(form.watch('price')) || 0;
-  const fees = Number(form.watch('fees')) || 0;
-  const isCdp = form.watch('isCdp');
-  const isPO = form.watch('isPO');
+  const {
+    broker,
+    ticker,
+    action,
+    shares: sharesRaw,
+    price: priceRaw,
+    fees: feesRaw,
+    isCdp,
+    isPO,
+  } = useWatch({ control: form.control });
+  const shares = Number(sharesRaw) || 0;
+  const price = Number(priceRaw) || 0;
+  const fees = Number(feesRaw) || 0;
 
   const market = ticker ? getMarket(ticker.toUpperCase()) : null;
   const isSg = market === 'SG';
@@ -125,15 +130,24 @@ export function TradeFormDialog({
 
   // Compute fees as derived state (no useMemo needed per templateCentral standards)
   const calculatedFees = (() => {
-    if (!ticker || tradeValue <= 0) return null;
+    if (!ticker || !action || tradeValue <= 0) return null;
     if (!isPO && (!broker || !BROKERS.includes(broker as Broker))) return null;
-    return calculateFees(broker as Broker, ticker, action, tradeValue, isCdp, isPO);
+    return calculateFees(
+      broker as Broker,
+      ticker,
+      action,
+      tradeValue,
+      isCdp ?? false,
+      isPO
+    );
   })();
 
   // Auto-populate fees when calculation inputs change (via event handlers below)
   const autoFillFees = () => {
     const fees = (() => {
-      const tv = (Number(form.getValues('shares')) || 0) * (Number(form.getValues('price')) || 0);
+      const tv =
+        (Number(form.getValues('shares')) || 0) *
+        (Number(form.getValues('price')) || 0);
       const t = form.getValues('ticker');
       const b = form.getValues('broker') as Broker;
       const a = form.getValues('action');
@@ -170,7 +184,12 @@ export function TradeFormDialog({
       fees: Number(values.fees) || 0,
     };
 
-    if ((!data.broker && !isPO) || !data.ticker || data.shares <= 0 || data.price <= 0) {
+    if (
+      (!data.broker && !isPO) ||
+      !data.ticker ||
+      data.shares <= 0 ||
+      data.price <= 0
+    ) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -204,7 +223,9 @@ export function TradeFormDialog({
               <Label>Ticker</Label>
               <Input
                 placeholder="e.g. AAPL, DBS"
-                {...form.register('ticker', { onChange: () => setTimeout(autoFillFees, 0) })}
+                {...form.register('ticker', {
+                  onChange: () => setTimeout(autoFillFees, 0),
+                })}
               />
             </div>
             <div className="space-y-2">
@@ -218,7 +239,10 @@ export function TradeFormDialog({
                       ? 'flex-1 bg-emerald-600 hover:bg-emerald-700'
                       : 'flex-1'
                   }
-                  onClick={() => { form.setValue('action', 'buy'); autoFillFees(); }}
+                  onClick={() => {
+                    form.setValue('action', 'buy');
+                    autoFillFees();
+                  }}
                 >
                   Buy
                 </Button>
@@ -230,7 +254,10 @@ export function TradeFormDialog({
                       ? 'flex-1 bg-red-600 hover:bg-red-700'
                       : 'flex-1'
                   }
-                  onClick={() => { form.setValue('action', 'sell'); autoFillFees(); }}
+                  onClick={() => {
+                    form.setValue('action', 'sell');
+                    autoFillFees();
+                  }}
                 >
                   Sell
                 </Button>
@@ -353,13 +380,17 @@ export function TradeFormDialog({
               {calculatedFees.commission > 0 && (
                 <div className="flex-between">
                   <span className="text-muted-foreground">Commission</span>
-                  <span>{formatCurrency(calculatedFees.commission, currency)}</span>
+                  <span>
+                    {formatCurrency(calculatedFees.commission, currency)}
+                  </span>
                 </div>
               )}
               {calculatedFees.platformFee > 0 && (
                 <div className="flex-between">
                   <span className="text-muted-foreground">Platform Fee</span>
-                  <span>{formatCurrency(calculatedFees.platformFee, currency)}</span>
+                  <span>
+                    {formatCurrency(calculatedFees.platformFee, currency)}
+                  </span>
                 </div>
               )}
               {calculatedFees.clearingFee > 0 && (
@@ -367,7 +398,9 @@ export function TradeFormDialog({
                   <span className="text-muted-foreground">
                     Clearing / SGX Fees
                   </span>
-                  <span>{formatCurrency(calculatedFees.clearingFee, currency)}</span>
+                  <span>
+                    {formatCurrency(calculatedFees.clearingFee, currency)}
+                  </span>
                 </div>
               )}
               <div className="flex-between border-t pt-1 font-medium">
@@ -411,9 +444,7 @@ export function TradeFormDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending && (
-                <Loader2 className="mr-2 size-4 animate-spin" />
-              )}
+              {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               {editTrade ? 'Update' : 'Add'} Trade
             </Button>
           </div>

@@ -15,15 +15,18 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useTrades } from '@/features/equity/hooks/use-equity';
-import { useExchangeRate, useStockPrices } from '@/features/equity/hooks/use-prices';
+import {
+  useExchangeRate,
+  useStockPrices,
+} from '@/features/equity/hooks/use-prices';
 import { getMarket } from '@/features/equity/lib/ticker-map';
 import type { EquityTradeData } from '@/features/equity/types';
 import { ArrowDown, ArrowUp, ArrowUpDown, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import type { MarketBudgets } from './investment-breakdown';
 
 type SortKey = 'ticker' | 'current' | 'alloc' | 'target' | 'lacking' | 'shares';
 type SortDir = 'asc' | 'desc';
-import type { MarketBudgets } from './investment-breakdown';
 
 interface Holding {
   ticker: string;
@@ -39,7 +42,10 @@ function computeHoldings(trades: EquityTradeData[]): Holding[] {
   const map = new Map<string, { shares: number; market: 'SG' | 'US' }>();
   for (const t of trades) {
     const ticker = t.ticker.toUpperCase();
-    const existing = map.get(ticker) ?? { shares: 0, market: getMarket(ticker) };
+    const existing = map.get(ticker) ?? {
+      shares: 0,
+      market: getMarket(ticker),
+    };
     existing.shares += t.action === 'buy' ? t.shares : -t.shares;
     map.set(ticker, existing);
   }
@@ -48,7 +54,10 @@ function computeHoldings(trades: EquityTradeData[]): Holding[] {
     .map(([ticker, v]) => ({ ticker, market: v.market, shares: v.shares }));
 }
 
-function formatCurrency(value: number, currency: 'SGD' | 'USD' = 'SGD'): string {
+function formatCurrency(
+  value: number,
+  currency: 'SGD' | 'USD' = 'SGD'
+): string {
   return new Intl.NumberFormat('en-SG', {
     style: 'currency',
     currency,
@@ -60,8 +69,11 @@ const STORAGE_KEY = 'fynfo-allocations';
 
 function loadAllocations(): Record<string, number> {
   if (typeof window === 'undefined') return {};
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}'); }
-  catch { return {}; }
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
+  } catch {
+    return {};
+  }
 }
 
 function saveAllocations(allocs: Record<string, number>) {
@@ -92,7 +104,7 @@ function MarketAllocationTable({
   const isSg = currency === 'SGD';
 
   // Target is in SGD from the breakdown. Convert to USD for US stocks.
-  const targetInCurrency = isSg ? target : (usdToSgd > 0 ? target / usdToSgd : 0);
+  const targetInCurrency = isSg ? target : usdToSgd > 0 ? target / usdToSgd : 0;
 
   const totalPortfolioValue = holdings.reduce((s, h) => {
     const p = prices?.[h.ticker]?.price ?? 0;
@@ -124,7 +136,15 @@ function MarketAllocationTable({
         const raw = lacking / price;
         sharesToBuy = isSg ? Math.floor(raw / 100) * 100 : Math.floor(raw);
       }
-      return { ticker: h.ticker, price, currentValue, alloc, tickerTarget, lacking, sharesToBuy };
+      return {
+        ticker: h.ticker,
+        price,
+        currentValue,
+        alloc,
+        tickerTarget,
+        lacking,
+        sharesToBuy,
+      };
     });
   }, [holdings, prices, allocations, targetInCurrency, isSg]);
 
@@ -132,36 +152,53 @@ function MarketAllocationTable({
   const sorted = useMemo(() => {
     const getValue = (r: (typeof rows)[number]) => {
       switch (sortKey) {
-        case 'ticker': return r.ticker;
-        case 'current': return r.currentValue;
-        case 'alloc': return r.alloc;
-        case 'target': return r.tickerTarget;
-        case 'lacking': return r.lacking;
-        case 'shares': return r.sharesToBuy;
+        case 'ticker':
+          return r.ticker;
+        case 'current':
+          return r.currentValue;
+        case 'alloc':
+          return r.alloc;
+        case 'target':
+          return r.tickerTarget;
+        case 'lacking':
+          return r.lacking;
+        case 'shares':
+          return r.sharesToBuy;
       }
     };
     return [...rows].sort((a, b) => {
       const va = getValue(a);
       const vb = getValue(b);
-      const cmp = typeof va === 'string' ? va.localeCompare(vb as string) : (va as number) - (vb as number);
+      const cmp =
+        typeof va === 'string'
+          ? va.localeCompare(vb as string)
+          : (va as number) - (vb as number);
       return sortDir === 'asc' ? cmp : -cmp;
     });
   }, [rows, sortKey, sortDir]);
 
   const totalAllocPct = rows.reduce((s, r) => s + r.alloc, 0);
 
-  const renderSortHeader = (label: string, col: SortKey, align: 'left' | 'center' = 'center') => {
+  const renderSortHeader = (
+    label: string,
+    col: SortKey,
+    align: 'left' | 'center' = 'center'
+  ) => {
     const active = sortKey === col;
     return (
       <th
         key={col}
-        className={`py-2 font-medium cursor-pointer select-none hover:text-foreground ${align === 'left' ? 'text-left' : 'text-center'}`}
+        className={`hover:text-foreground cursor-pointer py-2 font-medium select-none ${align === 'left' ? 'text-left' : 'text-center'}`}
         onClick={() => toggleSort(col)}
       >
         <span className="inline-flex items-center gap-0.5">
           {label}
           {active ? (
-            sortDir === 'asc' ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+            sortDir === 'asc' ? (
+              <ArrowUp className="size-3" />
+            ) : (
+              <ArrowDown className="size-3" />
+            )
           ) : (
             <ArrowUpDown className="size-3 opacity-30" />
           )}
@@ -184,12 +221,16 @@ function MarketAllocationTable({
             <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
               <span>
                 <span className="text-muted-foreground">Holdings: </span>
-                <span className="font-semibold">{formatCurrency(totalPortfolioValue, currency)}</span>
+                <span className="font-semibold">
+                  {formatCurrency(totalPortfolioValue, currency)}
+                </span>
               </span>
               {targetInCurrency > 0 && (
                 <span>
                   <span className="text-muted-foreground">Target: </span>
-                  <span className="font-semibold text-blue-500">{formatCurrency(targetInCurrency, currency)}</span>
+                  <span className="font-semibold text-blue-500">
+                    {formatCurrency(targetInCurrency, currency)}
+                  </span>
                 </span>
               )}
             </div>
@@ -209,32 +250,49 @@ function MarketAllocationTable({
                   <tr key={r.ticker} className="border-b last:border-0">
                     <td className="py-2 font-mono font-medium">{r.ticker}</td>
                     <td className="py-2 text-center">
-                      {r.price > 0 ? formatCurrency(r.currentValue, currency) : '-'}
+                      {r.price > 0
+                        ? formatCurrency(r.currentValue, currency)
+                        : '-'}
                     </td>
                     <td className="py-2 text-center">
                       <Input
-                        type="number" min="0" max="100" step="1"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
                         className="mx-auto h-7 w-16 text-center text-xs"
-                        value={r.alloc || ''} placeholder="0"
-                        onChange={(e) => onAllocationChange(r.ticker, Number(e.target.value) || 0)}
+                        value={r.alloc || ''}
+                        placeholder="0"
+                        onChange={(e) =>
+                          onAllocationChange(
+                            r.ticker,
+                            Number(e.target.value) || 0
+                          )
+                        }
                       />
                     </td>
                     <td className="py-2 text-center">
-                      {r.alloc > 0 ? formatCurrency(r.tickerTarget, currency) : '-'}
+                      {r.alloc > 0
+                        ? formatCurrency(r.tickerTarget, currency)
+                        : '-'}
                     </td>
-                    <td className={`py-2 text-center ${
-                      r.alloc > 0 && r.tickerTarget > 0
-                        ? r.lacking <= 0
-                          ? 'text-emerald-600'
-                          : r.lacking / r.tickerTarget > 0.2
-                            ? 'bg-red-50 text-red-600 dark:bg-red-950'
-                            : 'bg-amber-50 text-amber-600 dark:bg-amber-950'
-                        : ''
-                    }`}>
+                    <td
+                      className={`py-2 text-center ${
+                        r.alloc > 0 && r.tickerTarget > 0
+                          ? r.lacking <= 0
+                            ? 'text-emerald-600'
+                            : r.lacking / r.tickerTarget > 0.2
+                              ? 'bg-red-50 text-red-600 dark:bg-red-950'
+                              : 'bg-amber-50 text-amber-600 dark:bg-amber-950'
+                          : ''
+                      }`}
+                    >
                       {r.alloc > 0 ? formatCurrency(r.lacking, currency) : '-'}
                     </td>
                     <td className="py-2 text-center font-mono">
-                      {r.alloc > 0 && r.sharesToBuy > 0 ? r.sharesToBuy.toLocaleString() : '-'}
+                      {r.alloc > 0 && r.sharesToBuy > 0
+                        ? r.sharesToBuy.toLocaleString()
+                        : '-'}
                     </td>
                   </tr>
                 ))}
@@ -242,8 +300,12 @@ function MarketAllocationTable({
               {totalAllocPct > 0 && (
                 <tfoot>
                   <tr className="border-t">
-                    <td className="py-2 font-medium" colSpan={2}>Total</td>
-                    <td className={`py-2 text-center font-medium ${totalAllocPct !== 100 ? 'text-red-500' : ''}`}>
+                    <td className="py-2 font-medium" colSpan={2}>
+                      Total
+                    </td>
+                    <td
+                      className={`py-2 text-center font-medium ${totalAllocPct !== 100 ? 'text-red-500' : ''}`}
+                    >
                       {totalAllocPct}%
                     </td>
                     <td colSpan={3} />
@@ -263,10 +325,12 @@ export function InvestmentAllocation({ budgets }: InvestmentAllocationProps) {
   // useMemo justified: iterates all trades to aggregate net holdings per ticker
   const holdings = useMemo(() => computeHoldings(trades ?? []), [trades]);
   const heldTickers = holdings.map((h) => h.ticker);
-  const { data: prices, isLoading: pricesLoading } = useStockPrices(heldTickers);
+  const { data: prices, isLoading: pricesLoading } =
+    useStockPrices(heldTickers);
   const { data: usdToSgd } = useExchangeRate('USD', 'SGD');
 
-  const [allocations, setAllocations] = useState<Record<string, number>>(loadAllocations);
+  const [allocations, setAllocations] =
+    useState<Record<string, number>>(loadAllocations);
 
   const handleAllocationChange = (ticker: string, pct: number) => {
     setAllocations((prev) => {

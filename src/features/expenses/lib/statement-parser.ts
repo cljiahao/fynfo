@@ -42,10 +42,7 @@ function parseJsonFromResponse(response: string): ParsedExpenseRow[] {
     const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>[];
     return parsed
       .filter(
-        (row) =>
-          row.date &&
-          typeof row.amount === 'number' &&
-          row.amount > 0
+        (row) => row.date && typeof row.amount === 'number' && row.amount > 0
       )
       .map((row) => ({
         date: String(row.date),
@@ -131,8 +128,18 @@ function normalizeDate(dateStr: string): string {
 
   // DD MMM YYYY or DD-MMM-YYYY
   const monthNames: Record<string, string> = {
-    jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
-    jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+    jan: '01',
+    feb: '02',
+    mar: '03',
+    apr: '04',
+    may: '05',
+    jun: '06',
+    jul: '07',
+    aug: '08',
+    sep: '09',
+    oct: '10',
+    nov: '11',
+    dec: '12',
   };
   const namedMatch = trimmed.match(/^(\d{1,2})[\s-](\w{3})[\s-](\d{4})$/i);
   if (namedMatch) {
@@ -173,7 +180,9 @@ export async function parseStatement(
       const aiAvailable = await isOllamaAvailable();
       if (aiAvailable) {
         try {
-          const response = await queryOllama(EXTRACTION_PROMPT + rawText.slice(0, 8000));
+          const response = await queryOllama(
+            EXTRACTION_PROMPT + rawText.slice(0, 8000)
+          );
           const aiRows = parseJsonFromResponse(response);
           if (aiRows.length > 0) return { rows: aiRows, usedAi: true };
         } catch {

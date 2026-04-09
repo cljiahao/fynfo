@@ -22,30 +22,24 @@ import { useState } from 'react';
 import { CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants';
 import type { AssetCategory, ChartDataPoint } from '../types';
 
-const LineChart = dynamic(
-  () => import('recharts').then((m) => m.LineChart),
-  { ssr: false }
-);
-const Line = dynamic(
-  () => import('recharts').then((m) => m.Line),
-  { ssr: false }
-);
-const XAxis = dynamic(
-  () => import('recharts').then((m) => m.XAxis),
-  { ssr: false }
-);
-const YAxis = dynamic(
-  () => import('recharts').then((m) => m.YAxis),
-  { ssr: false }
-);
-const Tooltip = dynamic(
-  () => import('recharts').then((m) => m.Tooltip),
-  { ssr: false }
-);
-const Legend = dynamic(
-  () => import('recharts').then((m) => m.Legend),
-  { ssr: false }
-);
+const LineChart = dynamic(() => import('recharts').then((m) => m.LineChart), {
+  ssr: false,
+});
+const Line = dynamic(() => import('recharts').then((m) => m.Line), {
+  ssr: false,
+});
+const XAxis = dynamic(() => import('recharts').then((m) => m.XAxis), {
+  ssr: false,
+});
+const YAxis = dynamic(() => import('recharts').then((m) => m.YAxis), {
+  ssr: false,
+});
+const Tooltip = dynamic(() => import('recharts').then((m) => m.Tooltip), {
+  ssr: false,
+});
+const Legend = dynamic(() => import('recharts').then((m) => m.Legend), {
+  ssr: false,
+});
 const ResponsiveContainer = dynamic(
   () => import('recharts').then((m) => m.ResponsiveContainer),
   { ssr: false }
@@ -131,7 +125,7 @@ export function AssetLineChart({ data }: AssetLineChartProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex-center h-[300px] text-muted-foreground">
+          <div className="flex-center text-muted-foreground h-[300px]">
             Add entries to see your asset chart
           </div>
         </CardContent>
@@ -218,9 +212,7 @@ export function AssetLineChart({ data }: AssetLineChartProps) {
                 offset={20}
               />
               <Legend
-                formatter={(value: string) =>
-                  ALL_LABELS[value] ?? value
-                }
+                formatter={(value: string) => ALL_LABELS[value] ?? value}
               />
               {/* Aggregate lines */}
               {AGGREGATE_LINES.map((line) =>

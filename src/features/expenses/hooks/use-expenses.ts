@@ -5,8 +5,8 @@ import {
   deleteExpense,
   getDistinctPeople,
   getExpenses,
-  settleSplit,
   settleMonthSplits,
+  settleSplit,
   upsertExpense,
 } from '../actions/expense-actions';
 import type { ExpenseData } from '../types';
@@ -45,8 +45,11 @@ export const useDeleteExpense = () => {
 export const useSettleSplit = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { expenseId: string; person: string; settled: boolean }) =>
-      settleSplit(data.expenseId, data.person, data.settled),
+    mutationFn: (data: {
+      expenseId: string;
+      person: string;
+      settled: boolean;
+    }) => settleSplit(data.expenseId, data.person, data.settled),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: EXPENSE_KEY });
     },
@@ -56,8 +59,11 @@ export const useSettleSplit = () => {
 export const useSettleMonthSplits = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { expenseIds: string[]; person: string; settled: boolean }) =>
-      settleMonthSplits(data.expenseIds, data.person, data.settled),
+    mutationFn: (data: {
+      expenseIds: string[];
+      person: string;
+      settled: boolean;
+    }) => settleMonthSplits(data.expenseIds, data.person, data.settled),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: EXPENSE_KEY });
     },

@@ -58,10 +58,10 @@ export function createAxiosClient(options: AxiosClientOptions): AxiosInstance {
       }
 
       if (enableLogging) {
-        console.log(
-          `[Request] ${config.method?.toUpperCase()} ${config.url}`,
-          { params: config.params, data: config.data }
-        );
+        console.log(`[Request] ${config.method?.toUpperCase()} ${config.url}`, {
+          params: config.params,
+          data: config.data,
+        });
       }
 
       return config;

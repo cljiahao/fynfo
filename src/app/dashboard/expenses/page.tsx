@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import {
   ExpenseChart,
   ExpenseQuickAdd,
@@ -9,7 +10,6 @@ import {
   useExpenses,
 } from '@/features/expenses';
 import { FileUp, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 
 export default function ExpensesPage() {
@@ -47,10 +47,7 @@ export default function ExpensesPage() {
       <ExpenseQuickAdd />
       <ExpenseTable />
 
-      <StatementDialog
-        open={statementOpen}
-        onOpenChange={setStatementOpen}
-      />
+      <StatementDialog open={statementOpen} onOpenChange={setStatementOpen} />
     </div>
   );
 }

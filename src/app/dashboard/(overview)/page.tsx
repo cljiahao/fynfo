@@ -1,15 +1,15 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import type { MarketBudgets, PlannerValues } from '@/features/assets';
 import {
+  calculateTotal,
   InvestmentAllocation,
   InvestmentBreakdown,
   SalaryPlanner,
   SummaryCards,
   useSnapshots,
-  calculateTotal,
 } from '@/features/assets';
-import type { MarketBudgets, PlannerValues } from '@/features/assets';
 import { SalarySummaryCards, useSalaryRecords } from '@/features/salary';
 import { Loader2, Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -25,7 +25,9 @@ export default function DashboardOverviewPage() {
     warChestGoal: 0,
     expenses: 0,
   });
-  const [marketBudgets, setMarketBudgets] = useState<MarketBudgets | null>(null);
+  const [marketBudgets, setMarketBudgets] = useState<MarketBudgets | null>(
+    null
+  );
 
   // useCallback justified: stabilizes references passed to child useEffects that notify parent of derived state
   const handlePlannerValuesChange = useCallback((values: PlannerValues) => {

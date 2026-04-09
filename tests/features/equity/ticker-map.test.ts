@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { getCurrency, getMarket, getYahooSymbol } from '@/features/equity/lib/ticker-map';
+import {
+  getCurrency,
+  getMarket,
+  getYahooSymbol,
+} from '@/features/equity/lib/ticker-map';
 
 describe('getYahooSymbol', () => {
   it('maps known SG tickers to their Yahoo Finance symbols', () => {

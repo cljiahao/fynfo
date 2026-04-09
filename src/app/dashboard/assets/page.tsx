@@ -3,11 +3,11 @@
 import { Button } from '@/components/ui/button';
 import {
   AssetLineChart,
+  calculateTotal,
   CategoryBreakdown,
   SnapshotTable,
   useChartData,
   useSnapshots,
-  calculateTotal,
 } from '@/features/assets';
 import { Loader2, Plus } from 'lucide-react';
 import Link from 'next/link';

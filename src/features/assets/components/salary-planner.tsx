@@ -15,25 +15,28 @@ import { useSalaryRecords } from '@/features/salary/hooks/use-salary';
 import { Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePlannerSettings, useUpsertPlannerSettings } from '../hooks/use-planner-settings';
-import type { AssetCategory, PlannerSettingsData, SnapshotData } from '../types';
+import {
+  usePlannerSettings,
+  useUpsertPlannerSettings,
+} from '../hooks/use-planner-settings';
+import type {
+  AssetCategory,
+  PlannerSettingsData,
+  SnapshotData,
+} from '../types';
 
-const PieChart = dynamic(
-  () => import('recharts').then((m) => m.PieChart),
-  { ssr: false }
-);
-const Pie = dynamic(
-  () => import('recharts').then((m) => m.Pie),
-  { ssr: false }
-);
-const Tooltip = dynamic(
-  () => import('recharts').then((m) => m.Tooltip),
-  { ssr: false }
-);
-const Legend = dynamic(
-  () => import('recharts').then((m) => m.Legend),
-  { ssr: false }
-);
+const PieChart = dynamic(() => import('recharts').then((m) => m.PieChart), {
+  ssr: false,
+});
+const Pie = dynamic(() => import('recharts').then((m) => m.Pie), {
+  ssr: false,
+});
+const Tooltip = dynamic(() => import('recharts').then((m) => m.Tooltip), {
+  ssr: false,
+});
+const Legend = dynamic(() => import('recharts').then((m) => m.Legend), {
+  ssr: false,
+});
 const ResponsiveContainer = dynamic(
   () => import('recharts').then((m) => m.ResponsiveContainer),
   { ssr: false }
@@ -82,7 +85,9 @@ const DEFAULT_SETTINGS: PlannerSettingsData = {
   allowancePct: 5,
 };
 
-function calcAllTimeAvgExpense(expenses: ReturnType<typeof useExpenses>['data']): number {
+function calcAllTimeAvgExpense(
+  expenses: ReturnType<typeof useExpenses>['data']
+): number {
   if (!expenses?.length) return 0;
   const monthTotals = new Map<string, number>();
   for (const e of expenses) {
@@ -99,7 +104,8 @@ function calcAllTimeAvgExpense(expenses: ReturnType<typeof useExpenses>['data'])
 
 export function SalaryPlanner(props: SalaryPlannerProps) {
   const { data: salaryRecords, isLoading: salaryLoading } = useSalaryRecords();
-  const { data: savedSettings, isLoading: settingsLoading } = usePlannerSettings();
+  const { data: savedSettings, isLoading: settingsLoading } =
+    usePlannerSettings();
   const { data: expenses, isLoading: expensesLoading } = useExpenses();
 
   if (salaryLoading || settingsLoading || expensesLoading) {
@@ -138,30 +144,39 @@ function SalaryPlannerInner({
 }) {
   const upsertSettings = useUpsertPlannerSettings();
   const mutateRef = useRef(upsertSettings.mutate);
-  useEffect(() => { mutateRef.current = upsertSettings.mutate; });
+  useEffect(() => {
+    mutateRef.current = upsertSettings.mutate;
+  });
 
   const [salary, setSalary] = useState(initialSalary);
   const [expenses, setExpenses] = useState(Math.round(avgExpenses));
 
-  const [emergencyMonths, setEmergencyMonths] = useState(initialSettings.emergencyMonths);
-  const [warChestMonths, setWarChestMonths] = useState(initialSettings.warChestMonths);
-  const [titheEnabled, setTitheEnabled] = useState(initialSettings.titheEnabled);
+  const [emergencyMonths, setEmergencyMonths] = useState(
+    initialSettings.emergencyMonths
+  );
+  const [warChestMonths, setWarChestMonths] = useState(
+    initialSettings.warChestMonths
+  );
+  const [titheEnabled, setTitheEnabled] = useState(
+    initialSettings.titheEnabled
+  );
   const [tithePctInput, setTithePctInput] = useState(initialSettings.tithePct);
-  const [allowanceEnabled, setAllowanceEnabled] = useState(initialSettings.allowanceEnabled);
-  const [allowancePctInput, setAllowancePctInput] = useState(initialSettings.allowancePct);
+  const [allowanceEnabled, setAllowanceEnabled] = useState(
+    initialSettings.allowanceEnabled
+  );
+  const [allowancePctInput, setAllowancePctInput] = useState(
+    initialSettings.allowancePct
+  );
 
   // Debounced auto-save using ref to avoid unstable dependency
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
-  const debouncedSave = useCallback(
-    (data: PlannerSettingsData) => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        mutateRef.current(data);
-      }, 800);
-    },
-    []
-  );
+  const debouncedSave = useCallback((data: PlannerSettingsData) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      mutateRef.current(data);
+    }, 800);
+  }, []);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -202,9 +217,7 @@ function SalaryPlannerInner({
   const currentSavings = snapshot
     ? sumByCategory(snapshot.entries, 'savings')
     : 0;
-  const currentBonds = snapshot
-    ? sumByCategory(snapshot.entries, 'bonds')
-    : 0;
+  const currentBonds = snapshot ? sumByCategory(snapshot.entries, 'bonds') : 0;
 
   // Determine savings % dynamically
   const usedPct = expensesPct + insurancePct + tithePct + allowancePct;
@@ -246,16 +259,31 @@ function SalaryPlannerInner({
   const allowanceAmt = netAfterCpf * allowancePct;
 
   useEffect(() => {
-    onPlannerValuesChange?.({ investmentAmount: investmentAmt, emergencyFundGoal, warChestGoal, expenses });
-  }, [investmentAmt, emergencyFundGoal, warChestGoal, expenses, onPlannerValuesChange]);
+    onPlannerValuesChange?.({
+      investmentAmount: investmentAmt,
+      emergencyFundGoal,
+      warChestGoal,
+      expenses,
+    });
+  }, [
+    investmentAmt,
+    emergencyFundGoal,
+    warChestGoal,
+    expenses,
+    onPlannerValuesChange,
+  ]);
 
   const pieData = [
     { name: 'Savings', value: Math.max(savingsAmt, 0), fill: '#3b82f6' },
     { name: 'Expenses', value: expensesAmt, fill: '#ef4444' },
     { name: 'Insurance', value: insuranceAmt, fill: '#eab308' },
     { name: 'Investment', value: Math.max(investmentAmt, 0), fill: '#22c55e' },
-    ...(titheEnabled ? [{ name: 'Tithe', value: titheAmt, fill: '#8b5cf6' }] : []),
-    ...(allowanceEnabled ? [{ name: 'Allowance', value: allowanceAmt, fill: '#92400e' }] : []),
+    ...(titheEnabled
+      ? [{ name: 'Tithe', value: titheAmt, fill: '#8b5cf6' }]
+      : []),
+    ...(allowanceEnabled
+      ? [{ name: 'Allowance', value: allowanceAmt, fill: '#92400e' }]
+      : []),
   ];
 
   const breakdownItems = [
@@ -280,18 +308,22 @@ function SalaryPlannerInner({
       color: '#22c55e',
     },
     ...(titheEnabled
-      ? [{
-          label: `Tithe (${(tithePct * 100).toFixed(0)}%)`,
-          value: titheAmt,
-          color: '#8b5cf6',
-        }]
+      ? [
+          {
+            label: `Tithe (${(tithePct * 100).toFixed(0)}%)`,
+            value: titheAmt,
+            color: '#8b5cf6',
+          },
+        ]
       : []),
     ...(allowanceEnabled
-      ? [{
-          label: `Allowance (${(allowancePct * 100).toFixed(0)}%)`,
-          value: allowanceAmt,
-          color: '#92400e',
-        }]
+      ? [
+          {
+            label: `Allowance (${(allowancePct * 100).toFixed(0)}%)`,
+            value: allowanceAmt,
+            color: '#92400e',
+          },
+        ]
       : []),
   ];
 
@@ -376,7 +408,8 @@ function SalaryPlannerInner({
                   <Tooltip
                     formatter={(value: unknown) => {
                       const amt = Number(value);
-                      const pct = netAfterCpf > 0 ? (amt / netAfterCpf) * 100 : 0;
+                      const pct =
+                        netAfterCpf > 0 ? (amt / netAfterCpf) * 100 : 0;
                       return `${formatCurrency(amt)} (${pct.toFixed(1)}%)`;
                     }}
                   />
@@ -399,7 +432,9 @@ function SalaryPlannerInner({
                     checked={titheEnabled}
                     onCheckedChange={(v) => setTitheEnabled(v === true)}
                   />
-                  <Label htmlFor="tithe" className="text-xs">Tithe</Label>
+                  <Label htmlFor="tithe" className="text-xs">
+                    Tithe
+                  </Label>
                   <Input
                     type="number"
                     min="0"
@@ -407,9 +442,11 @@ function SalaryPlannerInner({
                     className="h-6 w-14 text-xs"
                     disabled={!titheEnabled}
                     value={tithePctInput || ''}
-                    onChange={(e) => setTithePctInput(Number(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setTithePctInput(Number(e.target.value) || 0)
+                    }
                   />
-                  <span className="text-xs text-muted-foreground">%</span>
+                  <span className="text-muted-foreground text-xs">%</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Checkbox
@@ -417,7 +454,9 @@ function SalaryPlannerInner({
                     checked={allowanceEnabled}
                     onCheckedChange={(v) => setAllowanceEnabled(v === true)}
                   />
-                  <Label htmlFor="allowance" className="text-xs">Allowance</Label>
+                  <Label htmlFor="allowance" className="text-xs">
+                    Allowance
+                  </Label>
                   <Input
                     type="number"
                     min="0"
@@ -425,9 +464,11 @@ function SalaryPlannerInner({
                     className="h-6 w-14 text-xs"
                     disabled={!allowanceEnabled}
                     value={allowancePctInput || ''}
-                    onChange={(e) => setAllowancePctInput(Number(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setAllowancePctInput(Number(e.target.value) || 0)
+                    }
                   />
-                  <span className="text-xs text-muted-foreground">%</span>
+                  <span className="text-muted-foreground text-xs">%</span>
                 </div>
               </div>
 
@@ -479,7 +520,9 @@ function SalaryPlannerInner({
                       className={`text-xs ${currentSavings >= emergencyFundGoal ? 'text-emerald-500' : 'text-amber-500'}`}
                     >
                       {formatCurrency(currentSavings)}{' '}
-                      {currentSavings >= emergencyFundGoal ? '✓' : `(need ${formatCurrency(emergencyFundGoal - currentSavings)})`}
+                      {currentSavings >= emergencyFundGoal
+                        ? '✓'
+                        : `(need ${formatCurrency(emergencyFundGoal - currentSavings)})`}
                     </span>
                   </div>
                   <div className="flex-between text-sm">
@@ -496,11 +539,13 @@ function SalaryPlannerInner({
                       className={`text-xs ${currentBonds >= warChestGoal ? 'text-emerald-500' : 'text-amber-500'}`}
                     >
                       {formatCurrency(currentBonds)}{' '}
-                      {currentBonds >= warChestGoal ? '✓' : `(need ${formatCurrency(warChestGoal - currentBonds)})`}
+                      {currentBonds >= warChestGoal
+                        ? '✓'
+                        : `(need ${formatCurrency(warChestGoal - currentBonds)})`}
                     </span>
                   </div>
                   {goalsFulfilled && (
-                    <p className="text-xs text-emerald-500 font-medium">
+                    <p className="text-xs font-medium text-emerald-500">
                       All goals fulfilled — surplus goes to investment
                     </p>
                   )}
@@ -511,7 +556,7 @@ function SalaryPlannerInner({
         )}
 
         {salary === 0 && (
-          <div className="flex-center py-8 text-muted-foreground text-sm">
+          <div className="flex-center text-muted-foreground py-8 text-sm">
             Enter salary to see allocation
           </div>
         )}

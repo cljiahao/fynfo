@@ -29,7 +29,12 @@ interface Holding {
 function computeHoldings(trades: EquityTradeData[]): Holding[] {
   const map = new Map<
     string,
-    { shares: number; totalBuyCost: number; totalBuyShares: number; market: 'SG' | 'US' }
+    {
+      shares: number;
+      totalBuyCost: number;
+      totalBuyShares: number;
+      market: 'SG' | 'US';
+    }
   >();
 
   for (const t of trades) {
@@ -63,7 +68,10 @@ function computeHoldings(trades: EquityTradeData[]): Holding[] {
     }));
 }
 
-function formatCurrency(value: number, currency: 'SGD' | 'USD' = 'SGD'): string {
+function formatCurrency(
+  value: number,
+  currency: 'SGD' | 'USD' = 'SGD'
+): string {
   return new Intl.NumberFormat('en-SG', {
     style: 'currency',
     currency,
@@ -103,9 +111,7 @@ function MarketTable({
         {sorted.map((h) => {
           const price = prices?.[h.ticker]?.price ?? 0;
           const winLose =
-            h.avgCost > 0
-              ? ((price - h.avgCost) / h.avgCost) * 100
-              : 0;
+            h.avgCost > 0 ? ((price - h.avgCost) / h.avgCost) * 100 : 0;
 
           return (
             <tr key={h.ticker} className="border-b last:border-0">
@@ -115,9 +121,7 @@ function MarketTable({
                   ? formatCurrency(price * rate, displayCurrency)
                   : '-'}
               </td>
-              <td className="py-2 text-center">
-                {h.shares.toLocaleString()}
-              </td>
+              <td className="py-2 text-center">{h.shares.toLocaleString()}</td>
               <td className="py-2 text-center">
                 {formatCurrency(h.avgCost * rate, displayCurrency)}
               </td>
@@ -166,7 +170,7 @@ function MarketCard({
       type="single"
       collapsible
       value={accordionValue}
-      onValueChange={(v) => onToggle()}
+      onValueChange={() => onToggle()}
     >
       <AccordionItem value={title} className="rounded-lg border">
         <AccordionTrigger className="px-6 hover:no-underline">

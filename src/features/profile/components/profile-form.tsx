@@ -1,7 +1,13 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -76,14 +82,18 @@ function ProfileFormInner({ initial }: { initial: ProfileData }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="resident">Tax Resident (SC / PR / Foreigner ≥183 days)</SelectItem>
-                <SelectItem value="non_resident">Non-Resident (Foreigner &lt;183 days)</SelectItem>
+                <SelectItem value="resident">
+                  Tax Resident (SC / PR / Foreigner ≥183 days)
+                </SelectItem>
+                <SelectItem value="non_resident">
+                  Non-Resident (Foreigner &lt;183 days)
+                </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-muted-foreground text-xs">
               Based on days in Singapore, not pass type. Any foreigner staying
-              ≥183 days qualifies as a tax resident and is eligible for
-              personal reliefs.
+              ≥183 days qualifies as a tax resident and is eligible for personal
+              reliefs.
             </p>
           </div>
         </div>

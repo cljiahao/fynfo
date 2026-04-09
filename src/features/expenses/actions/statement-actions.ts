@@ -15,7 +15,11 @@ export async function processStatement(
 
   const ext = file.name.toLowerCase().split('.').pop();
   if (ext !== 'pdf' && ext !== 'csv') {
-    return { rows: [], usedAi: false, error: 'Only PDF and CSV files are supported' };
+    return {
+      rows: [],
+      usedAi: false,
+      error: 'Only PDF and CSV files are supported',
+    };
   }
 
   try {

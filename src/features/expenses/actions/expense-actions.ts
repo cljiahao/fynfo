@@ -29,9 +29,7 @@ export async function getExpenses(): Promise<ExpenseData[]> {
   }));
 }
 
-export async function upsertExpense(
-  data: ExpenseData
-): Promise<void> {
+export async function upsertExpense(data: ExpenseData): Promise<void> {
   const userId = await requireUserId();
 
   await prisma.$transaction(async (tx) => {

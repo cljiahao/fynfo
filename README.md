@@ -159,11 +159,11 @@ docker run -d \
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `AUTH_SECRET` | Yes | NextAuth secret (generate with `npx auth secret`) |
-| `AUTH_URL` | Yes | App URL (e.g., `https://your-domain.com`) |
-| `AUTH_GOOGLE_ID` | No | Google OAuth client ID |
-| `AUTH_GOOGLE_SECRET` | No | Google OAuth client secret |
-| `NEXT_PUBLIC_BASE_URL` | No | Public app URL (defaults to `http://localhost:3000`) |
+| Variable               | Required | Description                                          |
+| ---------------------- | -------- | ---------------------------------------------------- |
+| `DATABASE_URL`         | Yes      | PostgreSQL connection string                         |
+| `AUTH_SECRET`          | Yes      | NextAuth secret (generate with `npx auth secret`)    |
+| `AUTH_URL`             | Yes      | App URL (e.g., `https://your-domain.com`)            |
+| `AUTH_GOOGLE_ID`       | No       | Google OAuth client ID                               |
+| `AUTH_GOOGLE_SECRET`   | No       | Google OAuth client secret                           |
+| `NEXT_PUBLIC_BASE_URL` | No       | Public app URL (defaults to `http://localhost:3000`) |

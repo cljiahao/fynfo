@@ -19,9 +19,7 @@ export async function getSalaryRecords(): Promise<SalaryData[]> {
   }));
 }
 
-export async function getSalaryRecord(
-  id: string
-): Promise<SalaryData | null> {
+export async function getSalaryRecord(id: string): Promise<SalaryData | null> {
   const userId = await requireUserId();
 
   const record = await prisma.salaryRecord.findUnique({

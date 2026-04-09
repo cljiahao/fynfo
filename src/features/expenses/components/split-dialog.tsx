@@ -54,12 +54,19 @@ export function SplitDialog({
   );
 
   const totalPeople = paidFor ? splits.length : splits.length + 1;
-  const evenShare = totalPeople > 0 && totalAmount > 0 ? totalAmount / totalPeople : 0;
+  const evenShare =
+    totalPeople > 0 && totalAmount > 0 ? totalAmount / totalPeople : 0;
   const roundedShare = Math.round(evenShare * 100) / 100;
 
-  const computeEvenSplitsFor = (list: ExpenseSplitData[], isPaidFor: boolean) => {
+  const computeEvenSplitsFor = (
+    list: ExpenseSplitData[],
+    isPaidFor: boolean
+  ) => {
     const count = isPaidFor ? list.length : list.length + 1;
-    const perPerson = totalAmount > 0 && count > 0 ? Math.round((totalAmount / count) * 100) / 100 : 0;
+    const perPerson =
+      totalAmount > 0 && count > 0
+        ? Math.round((totalAmount / count) * 100) / 100
+        : 0;
     return list.map((s) => ({ ...s, amount: perPerson }));
   };
 
@@ -70,7 +77,10 @@ export function SplitDialog({
     const trimmed = name.trim();
     if (!trimmed || existingNames.includes(trimmed)) return;
 
-    const newSplits = [...splits, { person: trimmed, amount: 0, settled: false }];
+    const newSplits = [
+      ...splits,
+      { person: trimmed, amount: 0, settled: false },
+    ];
     setSplits(computeEvenSplits(newSplits));
     setNewName('');
     setShowSuggestions(false);
@@ -93,9 +103,7 @@ export function SplitDialog({
 
   const toggleSettled = (person: string) => {
     setSplits((prev) =>
-      prev.map((s) =>
-        s.person === person ? { ...s, settled: !s.settled } : s
-      )
+      prev.map((s) => (s.person === person ? { ...s, settled: !s.settled } : s))
     );
   };
 
@@ -108,7 +116,7 @@ export function SplitDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md top-8 translate-y-0 max-h-[calc(100vh-4rem)] overflow-y-auto">
+      <DialogContent className="top-8 max-h-[calc(100vh-4rem)] translate-y-0 overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Split Expense</DialogTitle>
           <DialogDescription>
@@ -121,14 +129,20 @@ export function SplitDialog({
           <div className="grid grid-cols-2 rounded-lg border p-1 text-xs font-medium">
             <button
               type="button"
-              onClick={() => { setPaidFor(false); setSplits((prev) => computeEvenSplitsFor(prev, false)); }}
+              onClick={() => {
+                setPaidFor(false);
+                setSplits((prev) => computeEvenSplitsFor(prev, false));
+              }}
               className={`rounded-md px-3 py-1.5 transition-colors ${!paidFor ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
             >
               Splitting with
             </button>
             <button
               type="button"
-              onClick={() => { setPaidFor(true); setSplits((prev) => computeEvenSplitsFor(prev, true)); }}
+              onClick={() => {
+                setPaidFor(true);
+                setSplits((prev) => computeEvenSplitsFor(prev, true));
+              }}
               className={`rounded-md px-3 py-1.5 transition-colors ${paidFor ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
             >
               Paid for
@@ -137,7 +151,7 @@ export function SplitDialog({
           <p className="text-muted-foreground -mt-2 text-xs">
             {paidFor
               ? 'You fronted the full amount — others owe you their share, your cut is $0.'
-              : 'You\'re in on the bill — the cost is divided between you and the others.'}
+              : "You're in on the bill — the cost is divided between you and the others."}
           </p>
 
           {/* Add person input */}
@@ -193,9 +207,7 @@ export function SplitDialog({
                   <thead>
                     <tr className="bg-muted/50 border-b text-xs font-medium">
                       <th className="px-3 py-2 text-left">Person</th>
-                      <th className="w-[120px] px-3 py-2 text-right">
-                        Owes
-                      </th>
+                      <th className="w-[120px] px-3 py-2 text-right">Owes</th>
                       <th className="w-[60px] px-3 py-2 text-center">
                         Settled
                       </th>
@@ -205,9 +217,7 @@ export function SplitDialog({
                   <tbody>
                     {splits.map((s) => (
                       <tr key={s.person} className="border-b last:border-0">
-                        <td className="px-3 py-1.5 font-medium">
-                          {s.person}
-                        </td>
+                        <td className="px-3 py-1.5 font-medium">{s.person}</td>
                         <td className="px-3 py-1.5">
                           <Input
                             type="number"
@@ -233,7 +243,7 @@ export function SplitDialog({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-red-500 hover:text-red-600 size-6"
+                            className="size-6 text-red-500 hover:text-red-600"
                             onClick={() => removePerson(s.person)}
                           >
                             <Trash2 className="size-3" />
@@ -255,7 +265,9 @@ export function SplitDialog({
                   Split evenly
                 </Button>
                 <span className="text-muted-foreground text-xs">
-                  {formatCurrency(totalAmount)} ÷ {totalPeople} {totalPeople === 1 ? 'person' : 'people'} = {formatCurrency(roundedShare)} each
+                  {formatCurrency(totalAmount)} ÷ {totalPeople}{' '}
+                  {totalPeople === 1 ? 'person' : 'people'} ={' '}
+                  {formatCurrency(roundedShare)} each
                 </span>
               </div>
 
@@ -264,18 +276,24 @@ export function SplitDialog({
               <div className="space-y-1 text-sm">
                 <div className="flex-between">
                   <span className="text-muted-foreground">They owe you</span>
-                  <span className="font-medium">{formatCurrency(othersTotal)}</span>
+                  <span className="font-medium">
+                    {formatCurrency(othersTotal)}
+                  </span>
                 </div>
                 {!paidFor && (
                   <div className="flex-between">
                     <span className="font-medium">Your share</span>
-                    <span className="font-semibold">{formatCurrency(yourShare)}</span>
+                    <span className="font-semibold">
+                      {formatCurrency(yourShare)}
+                    </span>
                   </div>
                 )}
                 {paidFor && (
                   <div className="flex-between">
                     <span className="text-muted-foreground">Your share</span>
-                    <span className="text-muted-foreground">$0 — you get it all back</span>
+                    <span className="text-muted-foreground">
+                      $0 — you get it all back
+                    </span>
                   </div>
                 )}
               </div>
@@ -290,13 +308,15 @@ export function SplitDialog({
 
           {/* Confirm */}
           <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={() => { onConfirm(splits); onOpenChange(false); }}>
+            <Button
+              onClick={() => {
+                onConfirm(splits);
+                onOpenChange(false);
+              }}
+            >
               Confirm
             </Button>
           </div>

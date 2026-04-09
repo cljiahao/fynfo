@@ -16,12 +16,6 @@ const SG_TICKER_MAP: Record<string, string> = {
   NETLINK: 'CJLU.SI',
 };
 
-// US tickers are used as-is on Yahoo Finance
-const US_TICKERS = new Set([
-  'AAPL', 'META', 'MSFT', 'GOOGL', 'AMZN', 'NVDA',
-  'V', 'BAC', 'BABA', 'NOK',
-]);
-
 export function getYahooSymbol(ticker: string): string {
   const upper = ticker.toUpperCase();
   if (SG_TICKER_MAP[upper]) return SG_TICKER_MAP[upper];

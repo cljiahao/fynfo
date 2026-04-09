@@ -10,7 +10,10 @@ function isApiRoute(pathname: string): boolean {
 }
 
 function isPublicRoute(pathname: string): boolean {
-  return PUBLIC_PATHS.has(pathname) || PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p));
+  return (
+    PUBLIC_PATHS.has(pathname) ||
+    PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p))
+  );
 }
 
 export const proxy = auth((req) => {

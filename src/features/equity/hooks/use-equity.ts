@@ -31,8 +31,13 @@ export function useCreateTrade() {
 export function useUpdateTrade() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Omit<EquityTradeData, 'id'> }) =>
-      updateTrade(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Omit<EquityTradeData, 'id'>;
+    }) => updateTrade(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TRADES_KEY });
     },

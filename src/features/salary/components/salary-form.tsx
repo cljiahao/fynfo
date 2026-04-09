@@ -87,9 +87,7 @@ export function SalaryFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>
-            {editId ? 'Edit' : 'New'} Salary Record
-          </DialogTitle>
+          <DialogTitle>{editId ? 'Edit' : 'New'} Salary Record</DialogTitle>
           <DialogDescription>
             Record your monthly salary and bonus
           </DialogDescription>
@@ -100,10 +98,7 @@ export function SalaryFormDialog({
             <Loader2 className="size-6 animate-spin" />
           </div>
         ) : (
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4"
-          >
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="salary-month">Month</Label>
               <Input
@@ -112,9 +107,7 @@ export function SalaryFormDialog({
                 className="relative cursor-pointer pr-4 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
                 {...form.register('id')}
                 disabled={!!editId}
-                onClick={(e) =>
-                  (e.target as HTMLInputElement).showPicker?.()
-                }
+                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               />
             </div>
 
@@ -127,8 +120,7 @@ export function SalaryFormDialog({
                   min="0"
                   placeholder="0.00"
                   {...form.register('salary', {
-                    setValueAs: (v: string) =>
-                      v === '' ? 0 : parseFloat(v),
+                    setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
                   })}
                 />
               </div>
@@ -140,8 +132,7 @@ export function SalaryFormDialog({
                   min="0"
                   placeholder="0.00"
                   {...form.register('bonus', {
-                    setValueAs: (v: string) =>
-                      v === '' ? 0 : parseFloat(v),
+                    setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
                   })}
                 />
               </div>

@@ -11,30 +11,24 @@ import { format, parse } from 'date-fns';
 import dynamic from 'next/dynamic';
 import type { SalaryData } from '../types';
 
-const LineChart = dynamic(
-  () => import('recharts').then((m) => m.LineChart),
-  { ssr: false }
-);
-const Line = dynamic(
-  () => import('recharts').then((m) => m.Line),
-  { ssr: false }
-);
-const XAxis = dynamic(
-  () => import('recharts').then((m) => m.XAxis),
-  { ssr: false }
-);
-const YAxis = dynamic(
-  () => import('recharts').then((m) => m.YAxis),
-  { ssr: false }
-);
-const Tooltip = dynamic(
-  () => import('recharts').then((m) => m.Tooltip),
-  { ssr: false }
-);
-const Legend = dynamic(
-  () => import('recharts').then((m) => m.Legend),
-  { ssr: false }
-);
+const LineChart = dynamic(() => import('recharts').then((m) => m.LineChart), {
+  ssr: false,
+});
+const Line = dynamic(() => import('recharts').then((m) => m.Line), {
+  ssr: false,
+});
+const XAxis = dynamic(() => import('recharts').then((m) => m.XAxis), {
+  ssr: false,
+});
+const YAxis = dynamic(() => import('recharts').then((m) => m.YAxis), {
+  ssr: false,
+});
+const Tooltip = dynamic(() => import('recharts').then((m) => m.Tooltip), {
+  ssr: false,
+});
+const Legend = dynamic(() => import('recharts').then((m) => m.Legend), {
+  ssr: false,
+});
 const ResponsiveContainer = dynamic(
   () => import('recharts').then((m) => m.ResponsiveContainer),
   { ssr: false }
@@ -68,7 +62,7 @@ export function SalaryChart({ records }: SalaryChartProps) {
           <CardDescription>No salary records yet</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex-center h-[300px] text-muted-foreground text-sm">
+          <div className="flex-center text-muted-foreground h-[300px] text-sm">
             Add salary records to see your growth chart
           </div>
         </CardContent>
@@ -76,22 +70,26 @@ export function SalaryChart({ records }: SalaryChartProps) {
     );
   }
 
-  let runningTotal = 0;
-  const chartData = records.map((r) => {
-    runningTotal += r.salary + r.bonus;
-    return {
+  const chartData = records.reduce<
+    { month: string; salary: number; bonus: number; cumulative: number }[]
+  >((acc, r) => {
+    const prev = acc.length > 0 ? acc[acc.length - 1].cumulative : 0;
+    acc.push({
       month: format(parse(r.id, 'yyyy-MM', new Date()), 'MMM yyyy'),
       salary: r.salary,
       bonus: r.bonus,
-      cumulative: runningTotal,
-    };
-  });
+      cumulative: prev + r.salary + r.bonus,
+    });
+    return acc;
+  }, []);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Salary Growth</CardTitle>
-        <CardDescription>Monthly salary, bonus, and cumulative earnings</CardDescription>
+        <CardDescription>
+          Monthly salary, bonus, and cumulative earnings
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[350px] w-full">
@@ -126,9 +124,7 @@ export function SalaryChart({ records }: SalaryChartProps) {
                 labelStyle={{ fontWeight: 'bold' }}
               />
               <Legend
-                formatter={(value: string) =>
-                  ALL_LABELS[value] ?? value
-                }
+                formatter={(value: string) => ALL_LABELS[value] ?? value}
               />
               <Line
                 yAxisId="left"

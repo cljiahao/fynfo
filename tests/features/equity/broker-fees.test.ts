@@ -140,7 +140,14 @@ describe('calculateFees — Moomoo, US market', () => {
 
 describe('calculateFees — Preferential Offering (isPO)', () => {
   it('PO SG: no commission or platform fee, only SGX clearing fees', () => {
-    const result = calculateFees('DBS Vickers', 'DBS', 'buy', 10000, false, true);
+    const result = calculateFees(
+      'DBS Vickers',
+      'DBS',
+      'buy',
+      10000,
+      false,
+      true
+    );
     expect(result.commission).toBe(0);
     expect(result.platformFee).toBe(0);
     expect(result.clearingFee).toBeCloseTo(expectedSgxFees(10000));
@@ -156,7 +163,14 @@ describe('calculateFees — Preferential Offering (isPO)', () => {
 
   it('isPO is ignored for US market (no SGX fees to apply)', () => {
     // isPO on US market: the condition only triggers for SG market
-    const result = calculateFees('DBS Vickers', 'AAPL', 'buy', 10000, false, true);
+    const result = calculateFees(
+      'DBS Vickers',
+      'AAPL',
+      'buy',
+      10000,
+      false,
+      true
+    );
     // Falls through to DBS US buy logic
     expect(result.commission).toBeCloseTo(19.62);
     expect(result.clearingFee).toBe(0);

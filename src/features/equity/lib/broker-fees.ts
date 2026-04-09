@@ -28,14 +28,24 @@ function dbsSgBuy(tradeValue: number): FeeResult {
   // Cash Upfront: 0.12%, min SGD 10.90
   const commission = Math.max(tradeValue * 0.0012, 10.9);
   const clearing = sgxFees(tradeValue);
-  return { commission, platformFee: 0, clearingFee: clearing, total: commission + clearing };
+  return {
+    commission,
+    platformFee: 0,
+    clearingFee: clearing,
+    total: commission + clearing,
+  };
 }
 
 function dbsSgSell(tradeValue: number): FeeResult {
   // Standard: 0.28%, min SGD 27.25
   const commission = Math.max(tradeValue * 0.0028, 27.25);
   const clearing = sgxFees(tradeValue);
-  return { commission, platformFee: 0, clearingFee: clearing, total: commission + clearing };
+  return {
+    commission,
+    platformFee: 0,
+    clearingFee: clearing,
+    total: commission + clearing,
+  };
 }
 
 function dbsUsBuy(tradeValue: number): FeeResult {
@@ -57,7 +67,12 @@ function moomooSgCdpBuySell(tradeValue: number): FeeResult {
   const commission = Math.max(tradeValue * 0.001, 4.99);
   const platformFee = Math.max(tradeValue * 0.0012, 4.99);
   const clearing = sgxFees(tradeValue);
-  return { commission, platformFee, clearingFee: clearing, total: commission + platformFee + clearing };
+  return {
+    commission,
+    platformFee,
+    clearingFee: clearing,
+    total: commission + platformFee + clearing,
+  };
 }
 
 function moomooSgCustodianBuySell(tradeValue: number): FeeResult {
@@ -65,10 +80,16 @@ function moomooSgCustodianBuySell(tradeValue: number): FeeResult {
   const commission = Math.max(tradeValue * 0.0003, 0.99);
   const platformFee = Math.max(tradeValue * 0.0003, 0.99);
   const clearing = sgxFees(tradeValue);
-  return { commission, platformFee, clearingFee: clearing, total: commission + platformFee + clearing };
+  return {
+    commission,
+    platformFee,
+    clearingFee: clearing,
+    total: commission + platformFee + clearing,
+  };
 }
 
-function moomooUsBuySell(tradeValue: number): FeeResult {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function moomooUsBuySell(_tradeValue: number): FeeResult {
   // US: $0 commission, USD 0.99 platform fee per order
   return { commission: 0, platformFee: 0.99, clearingFee: 0, total: 0.99 };
 }
@@ -91,7 +112,12 @@ export function calculateFees(
   // Preferential Offering: no broker commission, only SGX clearing fees
   if (isPO && market === 'SG') {
     const clearing = sgxFees(tradeValue);
-    return { commission: 0, platformFee: 0, clearingFee: clearing, total: clearing };
+    return {
+      commission: 0,
+      platformFee: 0,
+      clearingFee: clearing,
+      total: clearing,
+    };
   }
 
   if (broker === 'DBS Vickers') {

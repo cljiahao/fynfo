@@ -7,7 +7,10 @@ import {
   getPreviousSnapshot,
 } from '@/features/assets/lib/calculations';
 
-import type { AssetEntryData, SnapshotWithTotals } from '@/features/assets/types';
+import type {
+  AssetEntryData,
+  SnapshotWithTotals,
+} from '@/features/assets/types';
 
 function makeSnapshot(id: string, total: number): SnapshotWithTotals {
   return { id, entries: [], total };
@@ -28,7 +31,9 @@ describe('calculateTotal', () => {
   });
 
   it('handles a single entry', () => {
-    const entries: AssetEntryData[] = [{ category: 'savings', account: 'DBS', amount: 3000 }];
+    const entries: AssetEntryData[] = [
+      { category: 'savings', account: 'DBS', amount: 3000 },
+    ];
     expect(calculateTotal(entries)).toBe(3000);
   });
 
@@ -80,12 +85,16 @@ describe('getLatestSnapshot', () => {
       makeSnapshot('2026-02', 12000),
       makeSnapshot('2026-03', 15000),
     ];
-    expect(getLatestSnapshot(snapshots)).toEqual(makeSnapshot('2026-03', 15000));
+    expect(getLatestSnapshot(snapshots)).toEqual(
+      makeSnapshot('2026-03', 15000)
+    );
   });
 
   it('returns the only element when there is one snapshot', () => {
     const snapshots = [makeSnapshot('2026-01', 10000)];
-    expect(getLatestSnapshot(snapshots)).toEqual(makeSnapshot('2026-01', 10000));
+    expect(getLatestSnapshot(snapshots)).toEqual(
+      makeSnapshot('2026-01', 10000)
+    );
   });
 
   it('returns undefined for an empty array', () => {
@@ -101,8 +110,12 @@ describe('getPreviousSnapshot', () => {
   ];
 
   it('returns the snapshot immediately before the given id', () => {
-    expect(getPreviousSnapshot(snapshots, '2026-03')).toEqual(makeSnapshot('2026-02', 12000));
-    expect(getPreviousSnapshot(snapshots, '2026-02')).toEqual(makeSnapshot('2026-01', 10000));
+    expect(getPreviousSnapshot(snapshots, '2026-03')).toEqual(
+      makeSnapshot('2026-02', 12000)
+    );
+    expect(getPreviousSnapshot(snapshots, '2026-02')).toEqual(
+      makeSnapshot('2026-01', 10000)
+    );
   });
 
   it('returns undefined when given the first snapshot id', () => {

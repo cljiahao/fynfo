@@ -1,7 +1,14 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowDown, ArrowUp, DollarSign, Loader2, Percent, TrendingUp } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  DollarSign,
+  Loader2,
+  Percent,
+  TrendingUp,
+} from 'lucide-react';
 import { useMemo } from 'react';
 import { useStockPrices } from '../hooks/use-prices';
 import { getMarket } from '../lib/ticker-map';
@@ -139,7 +146,6 @@ function buildCashFlows(
   return flows;
 }
 
-
 export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
   // useMemo justified: iterates all trades to compute holdings on every render
   const holdings = useMemo(() => computeHoldings(trades), [trades]);
@@ -174,24 +180,17 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
 
   // Money-Weighted Return (IRR): annualised return accounting for cash flow timing
   const mwrPct = useMemo(
-    () =>
-      prices
-        ? computeIRR(buildCashFlows(trades, holdings, prices))
-        : 0,
+    () => (prices ? computeIRR(buildCashFlows(trades, holdings, prices)) : 0),
     [trades, holdings, prices]
   );
   const sgMwrPct = useMemo(
     () =>
-      prices
-        ? computeIRR(buildCashFlows(trades, holdings, prices, 'SG'))
-        : 0,
+      prices ? computeIRR(buildCashFlows(trades, holdings, prices, 'SG')) : 0,
     [trades, holdings, prices]
   );
   const usMwrPct = useMemo(
     () =>
-      prices
-        ? computeIRR(buildCashFlows(trades, holdings, prices, 'US'))
-        : 0,
+      prices ? computeIRR(buildCashFlows(trades, holdings, prices, 'US')) : 0,
     [trades, holdings, prices]
   );
 
@@ -270,9 +269,7 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
               <div className="flex-between">
                 <span>SG</span>
                 <span
-                  className={
-                    sgPnl >= 0 ? 'text-emerald-500' : 'text-red-500'
-                  }
+                  className={sgPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}
                 >
                   {sgPnl >= 0 ? '+' : ''}
                   {formatSGD(sgPnl)}
@@ -281,9 +278,7 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
               <div className="flex-between">
                 <span>US</span>
                 <span
-                  className={
-                    usPnl >= 0 ? 'text-emerald-500' : 'text-red-500'
-                  }
+                  className={usPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}
                 >
                   {usPnl >= 0 ? '+' : ''}
                   {formatUSD(usPnl)}

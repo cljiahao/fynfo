@@ -36,10 +36,7 @@ export function useChartData(
 
     return recent.map((snapshot) => {
       const point: ChartDataPoint = {
-        month: format(
-          parse(snapshot.id, 'yyyy-MM', new Date()),
-          'MMM yyyy'
-        ),
+        month: format(parse(snapshot.id, 'yyyy-MM', new Date()), 'MMM yyyy'),
         id: snapshot.id,
         savings: 0,
         bonds: 0,
@@ -49,7 +46,10 @@ export function useChartData(
         crypto: 0,
         pension: 0,
         total: calculateTotal(snapshot.entries),
-        total_investment: sumByCategories(snapshot.entries, INVESTMENT_CATEGORIES),
+        total_investment: sumByCategories(
+          snapshot.entries,
+          INVESTMENT_CATEGORIES
+        ),
         excl_pension: sumByCategories(
           snapshot.entries,
           CATEGORIES.filter((c) => c !== 'pension')

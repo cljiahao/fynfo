@@ -44,7 +44,8 @@ export async function fetchStockPrices(
         if (!meta) return null;
 
         const price = meta.regularMarketPrice ?? 0;
-        const prevClose = meta.previousClose ?? meta.chartPreviousClose ?? price;
+        const prevClose =
+          meta.previousClose ?? meta.chartPreviousClose ?? price;
         const change = price - prevClose;
         const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0;
         const ticker = symbolToTicker[symbol] ?? symbol;

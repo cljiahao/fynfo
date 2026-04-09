@@ -29,8 +29,8 @@ import { toast } from 'sonner';
 import { processStatement } from '../actions/statement-actions';
 import { EXPENSE_TYPES, EXPENSE_TYPE_LABELS } from '../constants';
 import { useUpsertExpense } from '../hooks/use-expenses';
-import type { ExpenseData, ExpenseType } from '../types';
 import type { ParsedExpenseRow } from '../lib/statement-parser';
+import type { ExpenseData, ExpenseType } from '../types';
 
 interface StatementDialogProps {
   open: boolean;
@@ -122,7 +122,9 @@ export function StatementDialog({ open, onOpenChange }: StatementDialogProps) {
       for (const row of valid) {
         await upsert.mutateAsync(row);
       }
-      toast.success(`${valid.length} expense${valid.length > 1 ? 's' : ''} saved`);
+      toast.success(
+        `${valid.length} expense${valid.length > 1 ? 's' : ''} saved`
+      );
       reset();
       onOpenChange(false);
     } catch {
@@ -202,7 +204,7 @@ export function StatementDialog({ open, onOpenChange }: StatementDialogProps) {
           {rows.length > 0 && (
             <>
               <div className="overflow-x-auto rounded-lg border">
-                <table className="w-full table-fixed min-w-[750px]">
+                <table className="w-full min-w-[750px] table-fixed">
                   <colgroup>
                     <col className="w-[110px]" />
                     <col className="w-[140px]" />
@@ -225,7 +227,7 @@ export function StatementDialog({ open, onOpenChange }: StatementDialogProps) {
                     {rows.map((row, i) => (
                       <tr
                         key={row.id}
-                        className="border-b text-sm transition-colors hover:bg-muted/40"
+                        className="hover:bg-muted/40 border-b text-sm transition-colors"
                       >
                         <td className="px-2 py-1.5">
                           <Input
@@ -307,8 +309,7 @@ export function StatementDialog({ open, onOpenChange }: StatementDialogProps) {
               {/* Summary + Save */}
               <div className="flex-between">
                 <p className="text-muted-foreground text-xs">
-                  {rows.length} transaction{rows.length > 1 ? 's' : ''} —
-                  Total:{' '}
+                  {rows.length} transaction{rows.length > 1 ? 's' : ''} — Total:{' '}
                   {new Intl.NumberFormat('en-SG', {
                     style: 'currency',
                     currency: 'SGD',

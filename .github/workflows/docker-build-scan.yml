@@ -4,28 +4,28 @@ on:
   workflow_call:
     inputs:
       image-name:
-        description: "Docker image name (e.g. username/fynfo)"
+        description: 'Docker image name (e.g. username/fynfo)'
         required: true
         type: string
       image-tag:
-        description: "Tag to apply to the built image"
+        description: 'Tag to apply to the built image'
         required: true
         type: string
       platform:
-        description: "Target build platform (e.g. linux/arm64)"
+        description: 'Target build platform (e.g. linux/arm64)'
         required: false
         type: string
-        default: "linux/arm64"
+        default: 'linux/arm64'
       fail-on-vulnerabilities:
-        description: "Exit with error if CRITICAL/HIGH vulnerabilities are found"
+        description: 'Exit with error if CRITICAL/HIGH vulnerabilities are found'
         required: false
         type: boolean
         default: false
       trivy-ignorefile:
-        description: "Path to a .trivyignore file (leave blank to skip)"
+        description: 'Path to a .trivyignore file (leave blank to skip)'
         required: false
         type: string
-        default: ".trivyignore.yaml"
+        default: '.trivyignore.yaml'
 
 jobs:
   build-scan:
@@ -70,8 +70,8 @@ jobs:
         uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: ${{ inputs.image-name }}:${{ inputs.image-tag }}
-          severity: "CRITICAL,HIGH"
-          scanners: "vuln,misconfig,secret"
+          severity: 'CRITICAL,HIGH'
+          scanners: 'vuln,misconfig,secret'
           ignore-unfixed: true
           format: table
           output: trivy-results.txt

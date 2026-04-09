@@ -1,4 +1,3 @@
-import type { ComponentProps, ReactNode } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,6 +7,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import type { ComponentProps, ReactNode } from 'react';
 
 interface CustomDialogProps extends Omit<
   ComponentProps<typeof Dialog>,

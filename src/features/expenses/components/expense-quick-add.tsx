@@ -90,12 +90,18 @@ function parsePastedRow(text: string): {
 
     if (!result.date) {
       const d = tryParseDate(col);
-      if (d) { result.date = d; continue; }
+      if (d) {
+        result.date = d;
+        continue;
+      }
     }
 
     if (!result.type) {
       const t = tryParseCategory(col);
-      if (t) { result.type = t; continue; }
+      if (t) {
+        result.type = t;
+        continue;
+      }
     }
 
     if (!result.amount) {
@@ -188,22 +194,25 @@ export function ExpenseQuickAdd() {
 
       const amountNum = parseFloat(nextAmount);
       if (nextDate && amountNum > 0) {
-        upsert.mutateAsync({
-          id: generateId(),
-          date: nextDate,
-          type: nextType,
-          item: nextItem,
-          info: nextInfo,
-          amount: amountNum,
-          splitType: 'self',
-          splits: [],
-        }).then(() => {
-          toast.success('Expense added from paste');
-          resetForm();
-        }).catch(() => {
-          toast.error('Failed to add expense');
-          setPasted(true);
-        });
+        upsert
+          .mutateAsync({
+            id: generateId(),
+            date: nextDate,
+            type: nextType,
+            item: nextItem,
+            info: nextInfo,
+            amount: amountNum,
+            splitType: 'self',
+            splits: [],
+          })
+          .then(() => {
+            toast.success('Expense added from paste');
+            resetForm();
+          })
+          .catch(() => {
+            toast.error('Failed to add expense');
+            setPasted(true);
+          });
       } else {
         setPasted(true);
         toast.info('Pasted — fill in the missing fields and press Enter');
@@ -213,7 +222,9 @@ export function ExpenseQuickAdd() {
 
     // Multiple rows — parse all, submit valid ones, report skipped
     const parsed = rows.map(parsePastedRow);
-    const valid = parsed.filter((p) => p.date && p.amount && parseFloat(p.amount) > 0);
+    const valid = parsed.filter(
+      (p) => p.date && p.amount && parseFloat(p.amount) > 0
+    );
     const skipped = parsed.length - valid.length;
 
     if (valid.length === 0) {
@@ -234,15 +245,18 @@ export function ExpenseQuickAdd() {
           splits: [],
         })
       )
-    ).then(() => {
-      const msg = skipped > 0
-        ? `${valid.length} expense${valid.length > 1 ? 's' : ''} added, ${skipped} skipped (missing date or amount)`
-        : `${valid.length} expense${valid.length > 1 ? 's' : ''} added`;
-      toast.success(msg);
-      resetForm();
-    }).catch(() => {
-      toast.error('Some expenses failed to save');
-    });
+    )
+      .then(() => {
+        const msg =
+          skipped > 0
+            ? `${valid.length} expense${valid.length > 1 ? 's' : ''} added, ${skipped} skipped (missing date or amount)`
+            : `${valid.length} expense${valid.length > 1 ? 's' : ''} added`;
+        toast.success(msg);
+        resetForm();
+      })
+      .catch(() => {
+        toast.error('Some expenses failed to save');
+      });
   };
 
   const handleSubmit = async () => {
@@ -317,12 +331,15 @@ export function ExpenseQuickAdd() {
   };
 
   return (
-    <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-4" onPaste={handleContainerPaste}>
+    <div
+      className="border-primary/20 bg-primary/5 rounded-xl border-2 p-4"
+      onPaste={handleContainerPaste}
+    >
       {/* Header */}
       <div className="flex-between mb-3">
         <div className="flex items-center gap-2">
           <div className="flex-center bg-primary size-7 rounded-lg">
-            <Zap className="size-3.5 text-primary-foreground" />
+            <Zap className="text-primary-foreground size-3.5" />
           </div>
           <span className="text-sm font-semibold">Quick Add Expense</span>
           {pasted && (
@@ -333,12 +350,18 @@ export function ExpenseQuickAdd() {
           )}
         </div>
         <span className="text-muted-foreground hidden text-xs sm:block">
-          <kbd className="bg-background rounded border px-1.5 py-0.5 font-mono text-[11px]">↵ Enter</kbd>
-          {' '}to add &middot;{' '}
-          <kbd className="bg-background rounded border px-1.5 py-0.5 font-mono text-[11px]">Tab</kbd>
-          {' '}to advance &middot;{' '}
-          <kbd className="bg-background rounded border px-1.5 py-0.5 font-mono text-[11px]">⌘V</kbd>
-          {' '}to paste row
+          <kbd className="bg-background rounded border px-1.5 py-0.5 font-mono text-[11px]">
+            ↵ Enter
+          </kbd>{' '}
+          to add &middot;{' '}
+          <kbd className="bg-background rounded border px-1.5 py-0.5 font-mono text-[11px]">
+            Tab
+          </kbd>{' '}
+          to advance &middot;{' '}
+          <kbd className="bg-background rounded border px-1.5 py-0.5 font-mono text-[11px]">
+            ⌘V
+          </kbd>{' '}
+          to paste row
         </span>
       </div>
 
@@ -346,7 +369,9 @@ export function ExpenseQuickAdd() {
       <div className="flex flex-wrap items-end gap-3">
         {/* Date */}
         <div className="space-y-1">
-          <label className="block text-muted-foreground text-xs font-medium">Date</label>
+          <label className="text-muted-foreground block text-xs font-medium">
+            Date
+          </label>
           <Popover open={dateOpen} onOpenChange={setDateOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -378,7 +403,9 @@ export function ExpenseQuickAdd() {
 
         {/* Category combobox */}
         <div className="space-y-1">
-          <label className="text-muted-foreground text-xs font-medium">Category</label>
+          <label className="text-muted-foreground text-xs font-medium">
+            Category
+          </label>
           <div className="relative w-[155px]">
             <Input
               ref={typeRef}
@@ -442,7 +469,9 @@ export function ExpenseQuickAdd() {
 
         {/* Item */}
         <div className="space-y-1">
-          <label className="text-muted-foreground text-xs font-medium">Item / Brand</label>
+          <label className="text-muted-foreground text-xs font-medium">
+            Item / Brand
+          </label>
           <Input
             ref={itemRef}
             value={item}
@@ -455,7 +484,9 @@ export function ExpenseQuickAdd() {
 
         {/* Info */}
         <div className="min-w-[120px] flex-1 space-y-1">
-          <label className="text-muted-foreground text-xs font-medium">Notes</label>
+          <label className="text-muted-foreground text-xs font-medium">
+            Notes
+          </label>
           <Input
             value={info}
             onChange={(e) => setInfo(e.target.value)}
@@ -467,7 +498,9 @@ export function ExpenseQuickAdd() {
 
         {/* Amount */}
         <div className="space-y-1">
-          <label className="text-muted-foreground text-xs font-medium">Amount (SGD)</label>
+          <label className="text-muted-foreground text-xs font-medium">
+            Amount (SGD)
+          </label>
           <Input
             type="number"
             step="0.01"

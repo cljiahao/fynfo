@@ -5,9 +5,7 @@ interface SiteFooterProps {
   links?: LinkItem[];
 }
 
-const defaultLinks: LinkItem[] = [
-  { label: 'Contact Us', href: '#' },
-];
+const defaultLinks: LinkItem[] = [{ label: 'Contact Us', href: '#' }];
 
 export function SiteFooter({
   creditText = 'Fynfo - Personal Finance Tracker',
