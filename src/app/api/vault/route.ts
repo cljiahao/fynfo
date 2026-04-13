@@ -1,8 +1,11 @@
 import { createSupabaseServerClient } from '@/integrations/services/supabase';
+import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { deriveKeyFromPin, getSessionSecret } from '@/lib/keystore';
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+
+const VAULT_CANARY = 'fynfo_vault_ok';
 
 /**
  * Encrypts the raw DEK so it is safe to be stored inside a browser cookie.
@@ -44,16 +47,39 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid PIN' }, { status: 400 });
     }
 
-    // 1. Derive the 256-bit DEK using PBKDF2 from the PIN.
-    const masterKeyBuffer = deriveKeyFromPin(pin);
-    const masterKeyBase64 = masterKeyBuffer.toString('base64');
+    const dek = deriveKeyFromPin(pin);
 
-    // 2. Encrypt the DEK with the server-side SESSION_SECRET before storing in cookie.
+    // Fetch the stored vault_check canary for this user (may be null on first unlock)
+    const { data: profile } = await supabase
+      .from('users_profile')
+      .select('vault_check')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.vault_check) {
+      // Verify PIN: try to decrypt the canary — wrong PIN produces "" due to AES-GCM auth failure
+      const decrypted = await decryptPayload(profile.vault_check, dek);
+      if (decrypted !== VAULT_CANARY) {
+        return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
+      }
+    } else {
+      // First unlock: encrypt and store the canary
+      const encryptedCanary = await encryptPayload(VAULT_CANARY, dek);
+      await supabase
+        .from('users_profile')
+        .upsert({
+          id: user.id,
+          email: user.email ?? '',
+          vault_check: encryptedCanary,
+        });
+    }
+
+    // PIN is correct — encrypt the DEK and store in HttpOnly cookie
+    const masterKeyBase64 = dek.toString('base64');
     const secureCookieBlob = Buffer.from(
       encryptCookiePayload(masterKeyBase64)
     ).toString('base64');
 
-    // 3. Store in a strictly locked-down HttpOnly cookie.
     const cookieStore = await cookies();
     cookieStore.set('fynfo_vault_dek', secureCookieBlob, {
       httpOnly: true,

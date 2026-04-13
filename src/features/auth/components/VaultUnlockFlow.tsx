@@ -30,8 +30,11 @@ export function VaultUnlockFlow() {
         body: JSON.stringify({ pin }),
       });
 
+      if (res.status === 401) {
+        throw new Error('Incorrect PIN. Please try again.');
+      }
       if (!res.ok) {
-        throw new Error('Incorrect PIN or failed to unlock vault.');
+        throw new Error('Failed to unlock vault. Please try again.');
       }
 
       router.refresh();
