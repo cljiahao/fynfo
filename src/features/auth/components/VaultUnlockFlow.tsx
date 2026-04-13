@@ -5,23 +5,40 @@ import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
 import { Loader2, Lock, Unlock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 export function VaultUnlockFlow() {
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [shake, setShake] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  // Prevent background scroll and interaction while overlay is shown
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.body.inert = true;
+    return () => {
+      document.body.style.overflow = '';
+      document.body.inert = false;
+    };
+  }, []);
+
+  const triggerShake = () => {
+    setShake(true);
+    setTimeout(() => setShake(false), 500);
+  };
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (pin.length < 6) {
-      setError('PIN must be at least 6 digits');
+      toast.error('PIN must be at least 6 digits');
+      triggerShake();
       return;
     }
 
     setLoading(true);
-    setError('');
 
     try {
       const res = await fetch('/api/vault', {
@@ -31,26 +48,36 @@ export function VaultUnlockFlow() {
       });
 
       if (res.status === 401) {
-        throw new Error('Incorrect PIN. Please try again.');
+        setPin('');
+        triggerShake();
+        toast.error('Incorrect PIN. Please try again.');
+        inputRef.current?.focus();
+        return;
       }
       if (!res.ok) {
-        throw new Error('Failed to unlock vault. Please try again.');
+        toast.error('Failed to unlock vault. Please try again.');
+        return;
       }
 
       router.refresh();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unlock failed');
+    } catch {
+      toast.error('Failed to reach server. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md"
+      // Prevent clicks on the backdrop from propagating to content below
+      onClick={(e) => e.stopPropagation()}
+    >
       <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
+        animate={shake ? { x: [-8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
+        transition={{ duration: 0.4 }}
         className="flex w-full max-w-md flex-col items-center rounded-2xl border border-zinc-800 bg-zinc-950 p-8 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/10 text-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
           {loading ? (
@@ -68,6 +95,7 @@ export function VaultUnlockFlow() {
 
         <form onSubmit={handleUnlock} className="flex w-full flex-col gap-4">
           <Input
+            ref={inputRef}
             type="password"
             maxLength={6}
             value={pin}
@@ -75,13 +103,8 @@ export function VaultUnlockFlow() {
             placeholder="••••••"
             className="border-zinc-800 bg-zinc-900 py-4 text-center font-mono text-3xl tracking-[1em] text-white focus-visible:ring-blue-500"
             autoFocus
+            disabled={loading}
           />
-
-          {error && (
-            <p className="text-center text-sm font-medium text-red-400">
-              {error}
-            </p>
-          )}
 
           <Button
             type="submit"
