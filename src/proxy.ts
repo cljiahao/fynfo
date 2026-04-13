@@ -1,9 +1,13 @@
-import { auth } from '@/auth';
 import { API_ROUTES, PAGE_ROUTES } from '@/lib/constants/routes';
-import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = new Set<string>([PAGE_ROUTES.HOME, PAGE_ROUTES.LOGIN]);
-const PUBLIC_API_PREFIXES = ['/api/auth', API_ROUTES.HEALTH];
+const PUBLIC_PATHS = new Set<string>([
+  PAGE_ROUTES.HOME,
+  PAGE_ROUTES.LOGIN,
+  PAGE_ROUTES.AUTH_CALLBACK,
+]);
+const PUBLIC_API_PREFIXES = [API_ROUTES.HEALTH];
 
 function isApiRoute(pathname: string): boolean {
   return pathname.startsWith('/api/');
@@ -16,9 +20,39 @@ function isPublicRoute(pathname: string): boolean {
   );
 }
 
-export const proxy = auth((req) => {
+export async function proxy(req: NextRequest) {
+  let supabaseResponse = NextResponse.next({
+    request: req,
+  });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            req.cookies.set(name, value)
+          );
+          supabaseResponse = NextResponse.next({
+            request: req,
+          });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isAuthenticated = !!user;
   const { pathname } = req.nextUrl;
-  const isAuthenticated = !!req.auth;
 
   if (!isAuthenticated && !isPublicRoute(pathname)) {
     if (isApiRoute(pathname)) {
@@ -27,12 +61,13 @@ export const proxy = auth((req) => {
     return NextResponse.redirect(new URL(PAGE_ROUTES.LOGIN, req.url));
   }
 
+  // Prevent logged-in users from hitting the login page
   if (isAuthenticated && pathname === PAGE_ROUTES.LOGIN) {
     return NextResponse.redirect(new URL(PAGE_ROUTES.DASHBOARD, req.url));
   }
 
-  return NextResponse.next();
-});
+  return supabaseResponse;
+}
 
 export const config = {
   matcher: [

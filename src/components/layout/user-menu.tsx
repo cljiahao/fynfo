@@ -1,21 +1,23 @@
-import { auth } from '@/auth';
+import { createSupabaseServerClient } from '@/integrations/services/supabase';
 import { UserMenuDropdown } from './user-menu-dropdown';
 
 export async function UserMenu() {
-  let session;
+  let user;
   try {
-    session = await auth();
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
   } catch {
     return null;
   }
 
-  if (!session?.user) return null;
+  if (!user) return null;
 
   return (
     <UserMenuDropdown
-      name={session.user.name ?? undefined}
-      email={session.user.email ?? undefined}
-      image={session.user.image ?? undefined}
+      name={user.user_metadata?.full_name ?? user.email?.split('@')[0]}
+      email={user.email ?? undefined}
+      image={user.user_metadata?.avatar_url ?? undefined}
     />
   );
 }

@@ -1,6 +1,6 @@
 # Fynfo — Claude Code Guide
 
-Personal wealth management dashboard (Singapore). Built with Next.js 16, React 19, Prisma, PostgreSQL, shadcn/ui.
+Personal wealth management dashboard (Singapore). Built with Next.js 16, React 19, Supabase, shadcn/ui.
 
 ## Quick Start
 
@@ -10,35 +10,37 @@ pnpm dev           # http://localhost:3000
 pnpm build && pnpm lint && pnpm test
 ```
 
-**Local dev auth**: username `dev`, password `dev`
-
 ## Project Structure
 
 ```
 src/
 ├── app/                    # App Router (pages & routes)
 │   ├── (public)/          # Login (no auth required)
-│   └── dashboard/         # Protected pages (assets, equity, salary, expenses, profile, entry)
+│   ├── dashboard/         # Protected pages (assets, equity, salary, expenses, profile, entry)
+│   └── api/               # API routes (health, vault)
 ├── features/<name>/       # Feature modules (actions, components, hooks, lib, types, schemas, constants, index.ts)
 ├── components/
 │   ├── layout/           # App shell (Navbar, Providers, ThemeProvider)
 │   ├── ui/               # shadcn/ui primitives (managed by CLI)
 │   └── widgets/          # Reusable composed components
 ├── integrations/         # Third-party API clients & services
-├── lib/                  # Shared (prisma, constants, errors, utils)
-└── auth.ts               # NextAuth config + dev credentials provider
+│   ├── clients/          # Browser-side clients (supabase.ts, base/)
+│   └── services/         # Server-side clients (supabase.ts)
+├── lib/                  # Shared (auth-guard, crypto, keystore, constants, errors, utils)
+└── proxy.ts              # Middleware — Supabase session refresh + route protection
 ```
 
-**Key routing**: `src/proxy.ts` wraps `auth()` to protect dashboard routes.
+**Key routing**: `src/proxy.ts` validates the Supabase session and redirects unauthenticated users to `/login`.
 
 ## Fynfo-Specific Rules
 
 **Architecture:**
 
 - Route groups: `(public)/` for public, `dashboard/` for authenticated
-- Server actions in `features/<name>/actions/` for mutations (NOT API routes)
+- Server actions in `features/<name>/actions/` for data mutations — NOT API routes
 - React Query hooks in `features/<name>/hooks/` for data fetching
 - Barrel exports (`index.ts`) — prefer `import { Foo } from '@/features/assets'` over deep imports
+- All server actions must call `requireUserId()` from `@/lib/auth-guard` then `getVaultDekSession()` from `@/lib/keystore` before any DB access
 
 **Security & Quality:**
 
@@ -62,16 +64,21 @@ src/
 
 **Required `.env.local`** (see `.env.example`):
 
-- `DATABASE_URL` — PostgreSQL connection string
-- `NEXTAUTH_SECRET` — Session encryption key
-- `NEXTAUTH_URL` — Base URL (http://localhost:3000 for dev)
+- `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — Supabase anon/publishable key
+- `SESSION_SECRET` — 32-byte secret for encrypting the vault DEK cookie (generate: `openssl rand -base64 32`)
 
 **Key files to know:**
 | File | Purpose |
 |------|---------|
-| `src/auth.ts` | NextAuth config, providers, JWT, PrismaAdapter |
-| `src/proxy.ts` | Route protection (auth() wrapper) |
-| `prisma/schema.prisma` | Database schema (MonthlySnapshot, AssetEntry, SalaryRecord, EquityTrade, etc.) |
+| `src/proxy.ts` | Middleware: Supabase session refresh + route protection |
+| `src/lib/auth-guard.ts` | `requireUserId()` — Supabase auth check for server actions |
+| `src/lib/crypto.ts` | `encryptPayload` / `decryptPayload` — AES-256-GCM field encryption |
+| `src/lib/keystore.ts` | `getVaultDekSession()` — reads DEK from HttpOnly cookie; `deriveKeyFromPin()` — PBKDF2 |
+| `src/app/api/vault/route.ts` | PIN → DEK derivation; sets `fynfo_vault_dek` HttpOnly cookie |
+| `src/integrations/clients/supabase.ts` | Browser-side Supabase client |
+| `src/integrations/services/supabase.ts` | Server-side Supabase client (uses cookies) |
+| `supabase/migrations/` | SQL schema + RLS policies |
 | `src/features/salary/lib/tax-cpf.ts` | Singapore tax/CPF calculation logic |
 
 ## Domain Context
@@ -97,6 +104,13 @@ Reference **templateCentral** for:
 - **Adding integrations**: `templateCentral/claude-skills/nextjs/add-integration/SKILL.md`
 - **General Next.js patterns**: See `templateCentral/README.md` for skill index
 
+**Fynfo deviates from templateCentral in these intentional ways:**
+
+- **Auth**: Supabase (`@supabase/ssr`) replaces NextAuth — no `src/auth.ts`, no `SessionProvider`
+- **Database**: Supabase + raw SQL migrations replace Prisma — no `prisma/schema.prisma`, no `integrations/database/`
+- **Feature data layer**: `actions/` server actions replace templateCentral's `api/` service + route handler pattern
+- **Integrations**: `integrations/clients/supabase.ts` (browser) and `integrations/services/supabase.ts` (server) are Fynfo-specific; the base axios/fetch clients remain from the template
+
 ## Complex Work Protocol
 
 For tasks touching 3+ files or involving architectural decisions:
@@ -112,16 +126,14 @@ For tasks touching 3+ files or involving architectural decisions:
 **Initial scaffold (2026-03-16):**
 
 - Domain-specific routes (assets, equity, salary, entry, expenses) instead of generic `[id]`
-- Prisma + PostgreSQL for persistence
 - Server actions pattern for mutations
 - recharts for visualizations, date-fns for formatting
 
-**Auth alignment (2026-03-21):**
+**Supabase & E2E Encryption Migration (2026-04-11):**
 
-- Single `src/auth.ts` (templateCentral pattern)
-- Dev credentials provider for local dev
-- `features/auth/` module with LoginCard, LoginButton, SignOutButton
-- Login under `(public)/` route group
-- SessionProvider + QueryClientProvider at root layout
-
-**When adding features**, follow: create feature folder → add Prisma models → create server actions → create hooks → create UI components → add dashboard page → add route to constants.
+- Migrated from Prisma + NextAuth to Supabase.
+- Supabase handles auth (OAuth) and database with Row Level Security (RLS).
+- **True Zero-Knowledge Encryption**: Financial payloads (amounts, tickers, salaries) are AES-256-GCM encrypted _before_ hitting Supabase.
+- The Data Encryption Key (DEK) is derived from a 6-digit user PIN via PBKDF2 (salt = Supabase user ID), locked in a secure HttpOnly session cookie (`fynfo_vault_dek`), never stored on disk.
+- The dashboard layout checks for the vault cookie; if absent, `VaultUnlockFlow` overlay is shown.
+- All server actions inside `features/` must call `requireUserId()` then `getVaultDekSession()` and use `encryptPayload`/`decryptPayload` to interact with the database.

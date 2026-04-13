@@ -1,13 +1,14 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { createSupabaseBrowserClient } from '@/integrations/clients/supabase';
 import { cn } from '@/lib/utils';
-import { signIn } from 'next-auth/react';
+import type { Provider } from '@supabase/supabase-js';
 
 interface LoginButtonProps {
   className?: string;
   label?: string;
-  provider: string;
+  provider: Provider;
   redirectTo: string;
 }
 
@@ -17,17 +18,27 @@ export function LoginButton({
   provider,
   redirectTo,
 }: LoginButtonProps) {
+  const supabase = createSupabaseBrowserClient();
+
+  const handleLogin = async () => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${baseUrl}${redirectTo}`,
+      },
+    });
+  };
+
   return (
-    <form action={() => signIn(provider, { redirectTo })}>
-      <Button
-        type="submit"
-        className={cn(
-          'bg-primary hover:bg-primary-hover w-full rounded-md font-bold',
-          className
-        )}
-      >
-        {label}
-      </Button>
-    </form>
+    <Button
+      onClick={handleLogin}
+      className={cn(
+        'bg-primary hover:bg-primary-hover w-full rounded-md font-bold',
+        className
+      )}
+    >
+      {label}
+    </Button>
   );
 }

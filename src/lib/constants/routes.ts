@@ -2,6 +2,7 @@ export const PAGE_ROUTES = {
   HOME: '/',
   DASHBOARD: '/dashboard',
   LOGIN: '/login',
+  AUTH_CALLBACK: '/auth/callback',
   ENTRY: '/dashboard/entry',
   ASSETS: '/dashboard/assets',
   SALARY: '/dashboard/salary',
@@ -12,4 +13,5 @@ export const PAGE_ROUTES = {
 
 export const API_ROUTES = {
   HEALTH: '/api/health',
+  VAULT: '/api/vault',
 } as const;

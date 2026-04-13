@@ -1,1 +1,6 @@
-export { LoginButton, LoginCard, SignOutButton } from './components';
+export {
+  LoginButton,
+  LoginCard,
+  SignOutButton,
+  VaultUnlockFlow,
+} from './components';
