@@ -15,13 +15,11 @@ export function VaultUnlockFlow() {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  // Prevent background scroll and interaction while overlay is shown
+  // Prevent background scroll while overlay is shown
   useEffect(() => {
     document.body.style.overflow = 'hidden';
-    document.body.inert = true;
     return () => {
       document.body.style.overflow = '';
-      document.body.inert = false;
     };
   }, []);
 
