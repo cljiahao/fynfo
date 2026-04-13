@@ -65,13 +65,21 @@ export async function POST(req: Request) {
     } else {
       // First unlock: encrypt and store the canary
       const encryptedCanary = await encryptPayload(VAULT_CANARY, dek);
-      await supabase
+      const { error: upsertError } = await supabase
         .from('users_profile')
         .upsert({
           id: user.id,
           email: user.email ?? '',
           vault_check: encryptedCanary,
         });
+
+      if (upsertError) {
+        console.error('Failed to store vault canary:', upsertError);
+        return NextResponse.json(
+          { error: 'Failed to initialize vault' },
+          { status: 500 }
+        );
+      }
     }
 
     // PIN is correct — encrypt the DEK and store in HttpOnly cookie
