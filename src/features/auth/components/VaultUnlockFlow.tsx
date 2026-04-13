@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
 import { Loader2, Lock, Unlock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 export function VaultUnlockFlow() {
@@ -15,14 +15,6 @@ export function VaultUnlockFlow() {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  // Prevent background scroll while overlay is shown
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, []);
-
   const triggerShake = () => {
     setShake(true);
     setTimeout(() => setShake(false), 500);
@@ -30,9 +22,10 @@ export function VaultUnlockFlow() {
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (pin.length < 6) {
-      toast.error('PIN must be at least 6 digits');
       triggerShake();
+      toast.error('PIN must be at least 6 digits');
       return;
     }
 
@@ -52,6 +45,7 @@ export function VaultUnlockFlow() {
         inputRef.current?.focus();
         return;
       }
+
       if (!res.ok) {
         toast.error('Failed to unlock vault. Please try again.');
         return;
@@ -66,16 +60,11 @@ export function VaultUnlockFlow() {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md"
-      // Prevent clicks on the backdrop from propagating to content below
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
       <motion.div
         animate={shake ? { x: [-8, 8, -6, 6, -4, 4, 0] } : { x: 0 }}
         transition={{ duration: 0.4 }}
         className="flex w-full max-w-md flex-col items-center rounded-2xl border border-zinc-800 bg-zinc-950 p-8 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/10 text-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
           {loading ? (
