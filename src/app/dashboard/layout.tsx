@@ -1,15 +1,15 @@
 import { Navbar, SiteFooter } from '@/components/layout';
 import { UserMenu } from '@/components/layout/user-menu';
 import { VaultUnlockFlow } from '@/features/auth';
-import { cookies } from 'next/headers';
+import { getVaultDekSession } from '@/lib/keystore';
 
 export default async function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const isVaultLocked = !cookieStore.has('fynfo_vault_dek');
+  const dek = await getVaultDekSession();
+  const isVaultLocked = !dek;
 
   return (
     <div className="flex min-h-screen flex-col">

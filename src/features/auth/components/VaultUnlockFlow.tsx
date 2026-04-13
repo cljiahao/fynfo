@@ -6,16 +6,17 @@ import { motion } from 'framer-motion';
 import { Loader2, Lock, Unlock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
-import { toast } from 'sonner';
 
 export function VaultUnlockFlow() {
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [shake, setShake] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  const triggerShake = () => {
+  const triggerShake = (message: string) => {
+    setError(message);
     setShake(true);
     setTimeout(() => setShake(false), 500);
   };
@@ -24,12 +25,12 @@ export function VaultUnlockFlow() {
     e.preventDefault();
 
     if (pin.length < 6) {
-      triggerShake();
-      toast.error('PIN must be at least 6 digits');
+      triggerShake('PIN must be at least 6 digits');
       return;
     }
 
     setLoading(true);
+    setError('');
 
     try {
       const res = await fetch('/api/vault', {
@@ -40,20 +41,19 @@ export function VaultUnlockFlow() {
 
       if (res.status === 401) {
         setPin('');
-        triggerShake();
-        toast.error('Incorrect PIN. Please try again.');
+        triggerShake('Incorrect PIN. Please try again.');
         inputRef.current?.focus();
         return;
       }
 
       if (!res.ok) {
-        toast.error('Failed to unlock vault. Please try again.');
+        triggerShake('Failed to unlock vault. Please try again.');
         return;
       }
 
       router.refresh();
     } catch {
-      toast.error('Failed to reach server. Please try again.');
+      triggerShake('Failed to reach server. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -86,12 +86,21 @@ export function VaultUnlockFlow() {
             type="password"
             maxLength={6}
             value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+            onChange={(e) => {
+              setPin(e.target.value.replace(/\D/g, ''));
+              setError('');
+            }}
             placeholder="••••••"
             className="border-zinc-800 bg-zinc-900 py-4 text-center font-mono text-3xl tracking-[1em] text-white focus-visible:ring-blue-500"
             autoFocus
             disabled={loading}
           />
+
+          {error && (
+            <p className="text-center text-sm font-medium text-red-400">
+              {error}
+            </p>
+          )}
 
           <Button
             type="submit"
