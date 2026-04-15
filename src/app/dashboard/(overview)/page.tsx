@@ -8,16 +8,22 @@ import {
   InvestmentBreakdown,
   SalaryPlanner,
   SummaryCards,
+  usePlannerSettings,
   useSnapshots,
 } from '@/features/assets';
+import { useExpenses } from '@/features/expenses';
 import { SalarySummaryCards, useSalaryRecords } from '@/features/salary';
-import { Loader2, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
 
 export default function DashboardOverviewPage() {
-  const { data: snapshots, isLoading } = useSnapshots();
-  const { data: salaryRecords, isLoading: salaryLoading } = useSalaryRecords();
+  const { data: snapshots } = useSnapshots();
+  const { data: salaryRecords } = useSalaryRecords();
+  // Prefetch planner data in parallel with snapshots/salary so SalaryPlanner
+  // finds it in cache when it mounts, eliminating the two-phase waterfall.
+  usePlannerSettings();
+  useExpenses();
 
   const [plannerValues, setPlannerValues] = useState<PlannerValues>({
     investmentAmount: 0,
@@ -44,14 +50,6 @@ export default function DashboardOverviewPage() {
   }));
 
   const latest = snapshotsWithTotals[snapshotsWithTotals.length - 1];
-
-  if (isLoading || salaryLoading) {
-    return (
-      <div className="flex-center min-h-[60vh]">
-        <Loader2 className="size-8 animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
