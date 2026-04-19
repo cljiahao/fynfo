@@ -1,22 +1,12 @@
 'use server';
 
-import { createSupabaseServerClient } from '@/integrations/services/supabase';
-import { requireUserId } from '@/lib/auth-guard';
+import { requireActionContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
-import { getVaultDekSession } from '@/lib/keystore';
 import { randomUUID } from 'crypto';
 import type { TaxReliefData } from '../types';
 
-async function getDekOrThrow() {
-  const dek = await getVaultDekSession();
-  if (!dek) throw new Error('Vault is locked. Please unlock your vault.');
-  return dek;
-}
-
 export async function getTaxReliefs(year: number): Promise<TaxReliefData[]> {
-  const userId = await requireUserId();
-  const dek = await getDekOrThrow();
-  const supabase = await createSupabaseServerClient();
+  const { userId, dek, supabase } = await requireActionContext();
 
   const { data, error } = await supabase
     .from('tax_relief_entries')
@@ -38,12 +28,7 @@ export async function upsertTaxReliefs(
   year: number,
   reliefs: TaxReliefData[]
 ): Promise<void> {
-  const userId = await requireUserId();
-  const dek = await getDekOrThrow();
-  const supabase = await createSupabaseServerClient();
-
-  // Supabase RPC or batch transaction is tough via JS client natively without functions.
-  // Instead, delete all for this year and insert sequentially.
+  const { userId, dek, supabase } = await requireActionContext();
 
   const { error: delErr } = await supabase
     .from('tax_relief_entries')

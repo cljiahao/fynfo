@@ -1,13 +1,11 @@
 'use server';
 
-import { createSupabaseServerClient } from '@/integrations/services/supabase';
-import { requireUserId } from '@/lib/auth-guard';
+import { requireDbContext } from '@/lib/action-guard';
 import { randomUUID } from 'crypto';
 import type { PlannerSettingsData } from '../types';
 
 export async function getPlannerSettings(): Promise<PlannerSettingsData | null> {
-  const userId = await requireUserId();
-  const supabase = await createSupabaseServerClient();
+  const { userId, supabase } = await requireDbContext();
 
   const { data, error } = await supabase
     .from('planner_settings')
@@ -30,8 +28,7 @@ export async function getPlannerSettings(): Promise<PlannerSettingsData | null> 
 export async function upsertPlannerSettings(
   data: PlannerSettingsData
 ): Promise<void> {
-  const userId = await requireUserId();
-  const supabase = await createSupabaseServerClient();
+  const { userId, supabase } = await requireDbContext();
 
   const { error } = await supabase.from('planner_settings').upsert(
     {

@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { EXPENSE_TYPES, EXPENSE_TYPE_LABELS } from '../constants';
 import { useUpsertExpense } from '../hooks/use-expenses';
 import type { ExpenseType } from '../types';
+import { ExpenseTypeSelect } from './expense-type-select';
 
 const generateId = () =>
   `exp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -127,32 +128,20 @@ export function ExpenseQuickAdd() {
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateOpen, setDateOpen] = useState(false);
   const [type, setType] = useState<ExpenseType>('food_drink');
-  const [typeQuery, setTypeQuery] = useState('');
-  const [typeEditing, setTypeEditing] = useState(false);
-  const [typeOpen, setTypeOpen] = useState(false);
-  const [typeIndex, setTypeIndex] = useState(-1);
   const [item, setItem] = useState('');
   const [info, setInfo] = useState('');
   const [amount, setAmount] = useState('');
   const [pasted, setPasted] = useState(false);
 
   const typeRef = useRef<HTMLInputElement>(null);
+  const typeOpenRef = useRef(false);
   const itemRef = useRef<HTMLInputElement>(null);
 
-  const filtered = typeQuery
-    ? EXPENSE_TYPES.filter((t) =>
-        EXPENSE_TYPE_LABELS[t].toLowerCase().includes(typeQuery.toLowerCase())
-      )
-    : EXPENSE_TYPES;
-
   const resetForm = () => {
-    setTypeQuery('');
-    setTypeEditing(false);
     setItem('');
     setInfo('');
     setAmount('');
     setPasted(false);
-    setTypeOpen(false);
     typeRef.current?.focus();
   };
 
@@ -285,48 +274,9 @@ export function ExpenseQuickAdd() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !typeOpen && !dateOpen) {
+    if (e.key === 'Enter' && !typeOpenRef.current && !dateOpen) {
       e.preventDefault();
       handleSubmit();
-    }
-  };
-
-  const selectType = (t: ExpenseType) => {
-    setType(t);
-    setTypeQuery('');
-    setTypeEditing(false);
-    setTypeOpen(false);
-    itemRef.current?.focus();
-  };
-
-  const handleTypeKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setTypeIndex((i) => Math.min(i + 1, filtered.length - 1));
-      setTypeOpen(true);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setTypeIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (typeOpen && typeIndex >= 0 && filtered[typeIndex]) {
-        selectType(filtered[typeIndex]);
-      } else if (filtered.length === 1) {
-        selectType(filtered[0]);
-      } else {
-        handleSubmit();
-      }
-    } else if (e.key === 'Escape') {
-      setTypeOpen(false);
-      setTypeQuery('');
-    } else if (e.key === 'Tab') {
-      if (typeEditing && typeQuery && filtered.length > 0) {
-        const selected = typeIndex >= 0 ? filtered[typeIndex] : filtered[0];
-        setType(selected);
-        setTypeQuery('');
-      }
-      setTypeEditing(false);
-      setTypeOpen(false);
     }
   };
 
@@ -406,65 +356,18 @@ export function ExpenseQuickAdd() {
           <label className="text-muted-foreground text-xs font-medium">
             Category
           </label>
-          <div className="relative w-[155px]">
-            <Input
-              ref={typeRef}
-              value={typeEditing ? typeQuery : EXPENSE_TYPE_LABELS[type]}
-              onChange={(e) => {
-                setTypeEditing(true);
-                setTypeQuery(e.target.value);
-                setTypeOpen(true);
-                setTypeIndex(0);
-              }}
-              onFocus={(e) => {
-                setTypeEditing(false);
-                setTypeQuery('');
-                setTypeOpen(true);
-                setTypeIndex(EXPENSE_TYPES.indexOf(type));
-                e.target.select();
-              }}
-              onBlur={() => {
-                setTimeout(() => {
-                  setTypeOpen(false);
-                  setTypeQuery('');
-                  setTypeEditing(false);
-                }, 150);
-              }}
-              onKeyDown={handleTypeKeyDown}
-              placeholder="Category"
-              className="bg-background h-9 text-sm"
-            />
-            {typeOpen && (
-              <div className="bg-popover absolute top-full z-50 mt-1 w-full overflow-hidden rounded-md border shadow-md">
-                <div className="max-h-48 overflow-y-auto py-1">
-                  {filtered.map((t, i) => (
-                    <button
-                      key={t}
-                      type="button"
-                      className={cn(
-                        'flex w-full items-center px-3 py-1.5 text-sm transition-colors',
-                        i === typeIndex
-                          ? 'bg-accent text-accent-foreground'
-                          : 'hover:bg-accent/50'
-                      )}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        selectType(t);
-                      }}
-                      onMouseEnter={() => setTypeIndex(i)}
-                    >
-                      {EXPENSE_TYPE_LABELS[t]}
-                    </button>
-                  ))}
-                  {filtered.length === 0 && (
-                    <span className="text-muted-foreground block px-3 py-1.5 text-sm">
-                      No match
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          <ExpenseTypeSelect
+            value={type}
+            onChange={setType}
+            onSubmit={handleSubmit}
+            onAfterSelect={() => itemRef.current?.focus()}
+            onOpenChange={(open) => {
+              typeOpenRef.current = open;
+            }}
+            className="w-[155px]"
+            inputClassName="bg-background text-sm"
+            inputRef={typeRef}
+          />
         </div>
 
         {/* Item */}

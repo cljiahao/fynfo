@@ -1,25 +1,15 @@
 'use server';
 
-import { createSupabaseServerClient } from '@/integrations/services/supabase';
-import { requireUserId } from '@/lib/auth-guard';
+import { requireActionContext, requireDbContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
-import { getVaultDekSession } from '@/lib/keystore';
 import { randomUUID } from 'crypto';
 import type { ExpenseData } from '../types';
 
 type ExpenseSplitRow = { person: string; amount: string; settled: boolean };
 type ExpenseWithSplitsRow = { splits: Array<{ person: string }> };
 
-async function getDekOrThrow() {
-  const dek = await getVaultDekSession();
-  if (!dek) throw new Error('Vault is locked. Please unlock your vault.');
-  return dek;
-}
-
 export async function getExpenses(): Promise<ExpenseData[]> {
-  const userId = await requireUserId();
-  const dek = await getDekOrThrow();
-  const supabase = await createSupabaseServerClient();
+  const { userId, dek, supabase } = await requireActionContext();
 
   const { data, error } = await supabase
     .from('expense_records')
@@ -54,29 +44,31 @@ export async function getExpenses(): Promise<ExpenseData[]> {
 }
 
 export async function upsertExpense(data: ExpenseData): Promise<void> {
-  const userId = await requireUserId();
-  const dek = await getDekOrThrow();
-  const supabase = await createSupabaseServerClient();
+  const { userId, dek, supabase } = await requireActionContext();
 
-  const encItem = await encryptPayload(data.item, dek);
-  const encInfo = await encryptPayload(data.info || '', dek);
-  const encAmount = await encryptPayload(data.amount.toString(), dek);
+  const [encItem, encInfo, encAmount] = await Promise.all([
+    encryptPayload(data.item, dek),
+    encryptPayload(data.info || '', dek),
+    encryptPayload(data.amount.toString(), dek),
+  ]);
 
-  const { error: expErr } = await supabase.from('expense_records').upsert({
-    id: data.id,
-    user_id: userId,
-    date: new Date(data.date).toISOString(),
-    type: data.type,
-    item: encItem,
-    info: encInfo,
-    amount: encAmount,
-    split_type: data.splitType,
-    updated_at: new Date().toISOString(),
-  });
+  // Upsert the expense record and clear stale splits in parallel
+  const [{ error: expErr }] = await Promise.all([
+    supabase.from('expense_records').upsert({
+      id: data.id,
+      user_id: userId,
+      date: new Date(data.date).toISOString(),
+      type: data.type,
+      item: encItem,
+      info: encInfo,
+      amount: encAmount,
+      split_type: data.splitType,
+      updated_at: new Date().toISOString(),
+    }),
+    supabase.from('expense_splits').delete().eq('expense_id', data.id),
+  ]);
 
   if (expErr) throw new Error('Failed to save expense');
-
-  await supabase.from('expense_splits').delete().eq('expense_id', data.id);
 
   if (data.splitType === 'shared' && data.splits.length > 0) {
     const encSplits = await Promise.all(
@@ -97,8 +89,7 @@ export async function upsertExpense(data: ExpenseData): Promise<void> {
 }
 
 export async function deleteExpense(id: string): Promise<void> {
-  const userId = await requireUserId();
-  const supabase = await createSupabaseServerClient();
+  const { userId, supabase } = await requireDbContext();
 
   const { error } = await supabase
     .from('expense_records')
@@ -114,8 +105,7 @@ export async function settleSplit(
   person: string,
   settled: boolean
 ): Promise<void> {
-  await requireUserId();
-  const supabase = await createSupabaseServerClient();
+  const { supabase } = await requireDbContext();
 
   // RLS limits our mutations automatically to expenses we own.
   const { error } = await supabase
@@ -132,8 +122,7 @@ export async function settleMonthSplits(
   person: string,
   settled: boolean
 ): Promise<void> {
-  await requireUserId();
-  const supabase = await createSupabaseServerClient();
+  const { supabase } = await requireDbContext();
 
   const { error } = await supabase
     .from('expense_splits')
@@ -145,8 +134,7 @@ export async function settleMonthSplits(
 }
 
 export async function getDistinctPeople(): Promise<string[]> {
-  const userId = await requireUserId();
-  const supabase = await createSupabaseServerClient();
+  const { userId, supabase } = await requireDbContext();
 
   const { data, error } = await supabase
     .from('expense_records')

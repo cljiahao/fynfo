@@ -1,12 +1,10 @@
 'use server';
 
-import { createSupabaseServerClient } from '@/integrations/services/supabase';
-import { requireUserId } from '@/lib/auth-guard';
+import { requireDbContext } from '@/lib/action-guard';
 import type { ProfileData } from '../types';
 
 export async function getProfile(): Promise<ProfileData | null> {
-  const userId = await requireUserId();
-  const supabase = await createSupabaseServerClient();
+  const { userId, supabase } = await requireDbContext();
 
   const { data, error } = await supabase
     .from('users_profile')
@@ -24,8 +22,7 @@ export async function getProfile(): Promise<ProfileData | null> {
 }
 
 export async function upsertProfile(data: ProfileData): Promise<void> {
-  const userId = await requireUserId();
-  const supabase = await createSupabaseServerClient();
+  const { userId, supabase } = await requireDbContext();
 
   const { error } = await supabase
     .from('users_profile')

@@ -1,22 +1,12 @@
 'use server';
 
-import { createSupabaseServerClient } from '@/integrations/services/supabase';
-import { requireUserId } from '@/lib/auth-guard';
+import { requireActionContext, requireDbContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
-import { getVaultDekSession } from '@/lib/keystore';
 import { randomUUID } from 'crypto';
 import type { EquityTradeData } from '../types';
 
-async function getDekOrThrow() {
-  const dek = await getVaultDekSession();
-  if (!dek) throw new Error('Vault is locked. Please unlock your vault.');
-  return dek;
-}
-
 export async function getTrades(): Promise<EquityTradeData[]> {
-  const userId = await requireUserId();
-  const dek = await getDekOrThrow();
-  const supabase = await createSupabaseServerClient();
+  const { userId, dek, supabase } = await requireActionContext();
 
   const { data, error } = await supabase
     .from('equity_trades')
@@ -43,9 +33,7 @@ export async function getTrades(): Promise<EquityTradeData[]> {
 export async function createTrade(
   data: Omit<EquityTradeData, 'id'>
 ): Promise<void> {
-  const userId = await requireUserId();
-  const dek = await getDekOrThrow();
-  const supabase = await createSupabaseServerClient();
+  const { userId, dek, supabase } = await requireActionContext();
 
   const { error } = await supabase.from('equity_trades').insert({
     id: randomUUID(),
@@ -66,9 +54,7 @@ export async function updateTrade(
   id: string,
   data: Omit<EquityTradeData, 'id'>
 ): Promise<void> {
-  const userId = await requireUserId();
-  const dek = await getDekOrThrow();
-  const supabase = await createSupabaseServerClient();
+  const { userId, dek, supabase } = await requireActionContext();
 
   const { error } = await supabase
     .from('equity_trades')
@@ -89,8 +75,7 @@ export async function updateTrade(
 }
 
 export async function deleteTrade(id: string): Promise<void> {
-  const userId = await requireUserId();
-  const supabase = await createSupabaseServerClient();
+  const { userId, supabase } = await requireDbContext();
 
   const { error } = await supabase
     .from('equity_trades')

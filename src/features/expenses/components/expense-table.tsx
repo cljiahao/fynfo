@@ -39,7 +39,8 @@ import {
   useExpenses,
   useUpsertExpense,
 } from '../hooks/use-expenses';
-import type { ExpenseData, ExpenseSplitData, ExpenseType } from '../types';
+import type { ExpenseData, ExpenseSplitData } from '../types';
+import { ExpenseTypeSelect } from './expense-type-select';
 import { SplitDialog } from './split-dialog';
 
 const generateId = () =>
@@ -93,65 +94,21 @@ function EditableRow({
     dateOpenRef.current = open;
     setDateOpenState(open);
   };
-  const [typeQuery, setTypeQuery] = useState('');
-  const [typeEditing, setTypeEditing] = useState(false);
-  const [typeOpen, setTypeOpen] = useState(false);
-  const [typeIndex, setTypeIndex] = useState(-1);
-  const typeRef = useRef<HTMLInputElement>(null);
+  const typeOpenRef = useRef(false);
   const skipNextBlurRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const filteredTypes = typeQuery
-    ? EXPENSE_TYPES.filter((t) =>
-        EXPENSE_TYPE_LABELS[t].toLowerCase().includes(typeQuery.toLowerCase())
-      )
-    : EXPENSE_TYPES;
-
-  const selectType = (t: ExpenseType) => {
-    update({ type: t });
-    setTypeQuery('');
-    setTypeEditing(false);
-    setTypeOpen(false);
-  };
-
-  const handleTypeKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setTypeIndex((i) => Math.min(i + 1, filteredTypes.length - 1));
-      setTypeOpen(true);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setTypeIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (typeOpen && typeIndex >= 0 && filteredTypes[typeIndex]) {
-        selectType(filteredTypes[typeIndex]);
-      } else if (filteredTypes.length === 1) {
-        selectType(filteredTypes[0]);
-      } else {
-        handleSave();
-      }
-    } else if (e.key === 'Escape') {
-      setTypeOpen(false);
-      setTypeQuery('');
-    } else if (e.key === 'Tab') {
-      if (typeEditing && typeQuery && filteredTypes.length > 0) {
-        const selected =
-          typeIndex >= 0 ? filteredTypes[typeIndex] : filteredTypes[0];
-        update({ type: selected });
-        setTypeQuery('');
-      }
-      setTypeEditing(false);
-      setTypeOpen(false);
-    }
-  };
 
   const update = (patch: Partial<ExpenseData>) => {
     setData((prev) => ({ ...prev, ...patch }));
   };
 
   const handleRowKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !dateOpen && !typeOpen && !splitDialogOpen) {
+    if (
+      e.key === 'Enter' &&
+      !dateOpen &&
+      !typeOpenRef.current &&
+      !splitDialogOpen
+    ) {
       e.preventDefault();
       handleSave();
     } else if (e.key === 'Escape' && isNew && onCancel) {
@@ -249,65 +206,16 @@ function EditableRow({
           </Popover>
         </td>
         <td className="px-2 py-2">
-          <div className="relative w-full">
-            <Input
-              ref={typeRef}
-              value={typeEditing ? typeQuery : EXPENSE_TYPE_LABELS[data.type]}
-              onChange={(e) => {
-                setTypeEditing(true);
-                setTypeQuery(e.target.value);
-                setTypeOpen(true);
-                setTypeIndex(0);
-              }}
-              onFocus={(e) => {
-                setTypeEditing(false);
-                setTypeQuery('');
-                setTypeOpen(true);
-                setTypeIndex(EXPENSE_TYPES.indexOf(data.type));
-                e.target.select();
-              }}
-              onBlur={() => {
-                setTimeout(() => {
-                  setTypeOpen(false);
-                  setTypeQuery('');
-                  setTypeEditing(false);
-                }, 150);
-              }}
-              onKeyDown={handleTypeKeyDown}
-              placeholder="Category"
-              className="h-9 w-full text-xs"
-            />
-            {typeOpen && (
-              <div className="bg-popover absolute top-full z-50 mt-1 w-full overflow-hidden rounded-md border shadow-md">
-                <div className="max-h-48 overflow-y-auto py-1">
-                  {filteredTypes.map((t, i) => (
-                    <button
-                      key={t}
-                      type="button"
-                      className={cn(
-                        'flex w-full items-center px-3 py-1.5 text-xs transition-colors',
-                        i === typeIndex
-                          ? 'bg-accent text-accent-foreground'
-                          : 'hover:bg-accent/50'
-                      )}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        selectType(t);
-                      }}
-                      onMouseEnter={() => setTypeIndex(i)}
-                    >
-                      {EXPENSE_TYPE_LABELS[t]}
-                    </button>
-                  ))}
-                  {filteredTypes.length === 0 && (
-                    <span className="text-muted-foreground block px-3 py-1.5 text-xs">
-                      No match
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          <ExpenseTypeSelect
+            value={data.type}
+            onChange={(t) => update({ type: t })}
+            onSubmit={handleSave}
+            onOpenChange={(open) => {
+              typeOpenRef.current = open;
+            }}
+            className="w-full"
+            inputClassName="text-xs"
+          />
         </td>
         <td className="px-2 py-2">
           <Input

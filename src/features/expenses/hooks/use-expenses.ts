@@ -25,7 +25,27 @@ export const useUpsertExpense = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: ExpenseData) => upsertExpense(data),
-    onSuccess: () => {
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: EXPENSE_KEY });
+      const previous = queryClient.getQueryData<ExpenseData[]>(EXPENSE_KEY);
+      queryClient.setQueryData<ExpenseData[]>(EXPENSE_KEY, (old) => {
+        const list = old ?? [];
+        const idx = list.findIndex((e) => e.id === data.id);
+        if (idx !== -1) {
+          const next = [...list];
+          next[idx] = data;
+          return next;
+        }
+        return [data, ...list];
+      });
+      return { previous };
+    },
+    onError: (_err, _data, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(EXPENSE_KEY, context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: EXPENSE_KEY });
       queryClient.invalidateQueries({ queryKey: PEOPLE_KEY });
     },

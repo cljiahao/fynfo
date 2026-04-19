@@ -1,9 +1,7 @@
 'use server';
 
-import { createSupabaseServerClient } from '@/integrations/services/supabase';
-import { requireUserId } from '@/lib/auth-guard';
+import { requireActionContext, requireDbContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
-import { getVaultDekSession } from '@/lib/keystore';
 import { randomUUID } from 'crypto';
 import type { ExportData, SnapshotData } from '../types';
 
@@ -13,16 +11,8 @@ type AssetEntryRow = {
   amount: string;
 };
 
-async function getDekOrThrow() {
-  const dek = await getVaultDekSession();
-  if (!dek) throw new Error('Vault is locked. Please unlock your vault.');
-  return dek;
-}
-
 export async function getSnapshots(): Promise<SnapshotData[]> {
-  const userId = await requireUserId();
-  const dek = await getDekOrThrow();
-  const supabase = await createSupabaseServerClient();
+  const { userId, dek, supabase } = await requireActionContext();
 
   const { data, error } = await supabase
     .from('monthly_snapshots')
@@ -51,9 +41,7 @@ export async function getSnapshots(): Promise<SnapshotData[]> {
 }
 
 export async function getSnapshot(id: string): Promise<SnapshotData | null> {
-  const userId = await requireUserId();
-  const dek = await getDekOrThrow();
-  const supabase = await createSupabaseServerClient();
+  const { userId, dek, supabase } = await requireActionContext();
 
   const { data, error } = await supabase
     .from('monthly_snapshots')
@@ -79,11 +67,8 @@ export async function getSnapshot(id: string): Promise<SnapshotData | null> {
 }
 
 export async function upsertSnapshot(data: SnapshotData): Promise<void> {
-  const userId = await requireUserId();
-  const dek = await getDekOrThrow();
-  const supabase = await createSupabaseServerClient();
+  const { userId, dek, supabase } = await requireActionContext();
 
-  // 1. Upsert snapshot
   const { error: snapErr, data: snapData } = await supabase
     .from('monthly_snapshots')
     .upsert(
@@ -104,10 +89,8 @@ export async function upsertSnapshot(data: SnapshotData): Promise<void> {
 
   const snapshotId = snapData.id;
 
-  // 2. Delete old entries
   await supabase.from('asset_entries').delete().eq('snapshot_id', snapshotId);
 
-  // 3. Encrypt & Insert new entries
   const validEntries = data.entries.filter((e) => e.amount > 0);
   if (validEntries.length > 0) {
     const encEntries = await Promise.all(
@@ -128,8 +111,7 @@ export async function upsertSnapshot(data: SnapshotData): Promise<void> {
 }
 
 export async function deleteSnapshot(id: string): Promise<void> {
-  const userId = await requireUserId();
-  const supabase = await createSupabaseServerClient();
+  const { userId, supabase } = await requireDbContext();
 
   const { error } = await supabase
     .from('monthly_snapshots')
