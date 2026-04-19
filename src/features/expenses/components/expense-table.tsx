@@ -98,6 +98,8 @@ function EditableRow({
   const [typeOpen, setTypeOpen] = useState(false);
   const [typeIndex, setTypeIndex] = useState(-1);
   const typeRef = useRef<HTMLInputElement>(null);
+  const skipNextBlurRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filteredTypes = typeQuery
     ? EXPENSE_TYPES.filter((t) =>
@@ -172,6 +174,10 @@ function EditableRow({
   };
 
   const handleSave = () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
     if (!data.date || data.amount <= 0) {
       toast.error('Date and amount are required');
       return;
@@ -181,12 +187,21 @@ function EditableRow({
 
   const handleRowBlur = (e: React.FocusEvent<HTMLTableRowElement>) => {
     if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    if (skipNextBlurRef.current) {
+      skipNextBlurRef.current = false;
+      return;
+    }
     if (dateOpenRef.current || splitDialogOpenRef.current) return;
     if (!data.date || data.amount <= 0) {
       if (isNew && onCancel) onCancel();
       return;
     }
-    onSave({ ...data, id: data.id || generateId() });
+    const snapshot = { ...data };
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      onSave({ ...snapshot, id: snapshot.id || generateId() });
+    }, 400);
   };
 
   const splitSummary =
@@ -368,6 +383,13 @@ function EditableRow({
                 variant="outline"
                 size="icon"
                 className="size-8 text-red-500 hover:bg-red-50 hover:text-red-600"
+                onMouseDown={() => {
+                  skipNextBlurRef.current = true;
+                  if (saveTimerRef.current) {
+                    clearTimeout(saveTimerRef.current);
+                    saveTimerRef.current = null;
+                  }
+                }}
                 onClick={() => onDelete(data.id)}
                 title="Delete"
               >

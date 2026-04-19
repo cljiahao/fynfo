@@ -36,7 +36,20 @@ export const useDeleteExpense = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteExpense(id),
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: EXPENSE_KEY });
+      const previous = queryClient.getQueryData<ExpenseData[]>(EXPENSE_KEY);
+      queryClient.setQueryData<ExpenseData[]>(EXPENSE_KEY, (old) =>
+        (old ?? []).filter((e) => e.id !== id)
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(EXPENSE_KEY, context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: EXPENSE_KEY });
     },
   });
