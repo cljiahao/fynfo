@@ -1,9 +1,13 @@
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
+import { promisify } from 'util';
 
 const ITERATIONS = 100000;
 const KEY_LEN = 32; // 256 bits for AES-256
 const DIGEST = 'sha256';
+const PBKDF2_SALT = 'fynfo_v1_salt';
+
+const pbkdf2Async = promisify(crypto.pbkdf2);
 
 export function getSessionSecret(): string {
   const secret = process.env.SESSION_SECRET;
@@ -12,14 +16,13 @@ export function getSessionSecret(): string {
   return secret;
 }
 
-const PBKDF2_SALT = 'fynfo_v1_salt';
-
 /**
  * Derives a strong 256-bit Key Encryption Key (KEK) from a short numeric PIN.
- * Uses PBKDF2 to slow down brute-force guessing.
+ * Uses PBKDF2 to slow down brute-force guessing. Runs off the main event loop
+ * via the async variant so concurrent requests are not blocked.
  */
-export function deriveKeyFromPin(pin: string): Buffer {
-  return crypto.pbkdf2Sync(pin, PBKDF2_SALT, ITERATIONS, KEY_LEN, DIGEST);
+export async function deriveKeyFromPin(pin: string): Promise<Buffer> {
+  return pbkdf2Async(pin, PBKDF2_SALT, ITERATIONS, KEY_LEN, DIGEST);
 }
 
 /**

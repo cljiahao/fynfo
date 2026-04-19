@@ -33,21 +33,26 @@ function encryptCookiePayload(data: string): string {
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const [supabase, { pin }] = await Promise.all([
+      createSupabaseServerClient(),
+      req.json() as Promise<{ pin?: string }>,
+    ]);
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { pin } = (await req.json()) as { pin?: string };
     if (!pin || pin.length < 6) {
       return NextResponse.json({ error: 'Invalid PIN' }, { status: 400 });
     }
 
-    const dek = deriveKeyFromPin(pin);
+    // Auth check and PBKDF2 key derivation are independent — run in parallel
+    const [
+      {
+        data: { user },
+      },
+      dek,
+    ] = await Promise.all([supabase.auth.getUser(), deriveKeyFromPin(pin)]);
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     // Fetch the stored vault_check canary for this user (may be null on first unlock)
     const { data: profile } = await supabase
