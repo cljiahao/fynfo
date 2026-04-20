@@ -57,7 +57,7 @@ function buildPersonGroups(expenses: ExpenseData[]): PersonGroup[] {
     for (const s of e.splits) {
       if (!map.has(s.person)) map.set(s.person, new Map());
       const monthMap = map.get(s.person)!;
-      const monthKey = e.date.slice(0, 7);
+      const monthKey = format(new Date(e.date), 'yyyy-MM');
       if (!monthMap.has(monthKey)) {
         monthMap.set(monthKey, {
           month: format(new Date(e.date), 'MMM yyyy'),
