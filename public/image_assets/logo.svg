@@ -1,6 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50" fill="none">
-  <text x="10" y="38" font-family="system-ui, sans-serif" font-size="32" font-weight="700">
-    <tspan fill="#101010">template</tspan>
-    <tspan fill="#101010">Central</tspan>
-  </text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 168 40" fill="none">
+  <!-- Icon mark (scaled up from favicon) -->
+  <rect width="40" height="40" rx="9" fill="#101010"/>
+  <!-- Vertical stem -->
+  <rect x="10" y="8.75" width="4.375" height="22.5" fill="#f9f9f9"/>
+  <!-- Top crossbar -->
+  <rect x="14.375" y="8.75" width="15.625" height="4.375" fill="#f9f9f9"/>
+  <!-- Mid crossbar -->
+  <rect x="14.375" y="18.125" width="10" height="4.375" fill="#f9f9f9"/>
+
+  <!-- Wordmark: "Fyn" bold + "fo" regular, matching BrandText component -->
+  <text
+    x="52"
+    y="27"
+    font-family="system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+    font-size="22"
+    fill="#101010"
+  ><tspan font-weight="800">Fyn</tspan><tspan font-weight="400">fo</tspan></text>
 </svg>
