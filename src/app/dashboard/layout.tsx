@@ -1,6 +1,6 @@
 import { Navbar, SiteFooter } from '@/components/layout';
 import { UserMenu } from '@/components/layout/user-menu';
-import { VaultUnlockFlow } from '@/features/auth';
+import { VaultGate } from '@/components/layout/vault-gate';
 import { getVaultDekSession } from '@/lib/keystore';
 
 // The proxy middleware already verified the Supabase session. The DEK cookie is
@@ -20,7 +20,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen flex-col">
-      {!isVaultUnlocked && <VaultUnlockFlow />}
+      <VaultGate initiallyUnlocked={isVaultUnlocked} />
       <Navbar userMenu={<UserMenu />} />
       <main className="flex flex-1 flex-col">{children}</main>
       <SiteFooter />

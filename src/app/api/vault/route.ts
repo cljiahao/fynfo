@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from '@/integrations/services/supabase';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
-import { deriveKeyFromPin, getSessionSecret } from '@/lib/keystore';
+import { getSessionSecret } from '@/lib/keystore';
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -33,22 +33,23 @@ function encryptCookiePayload(data: string): string {
 
 export async function POST(req: Request) {
   try {
-    const [supabase, { pin }] = await Promise.all([
+    const [supabase, { derivedKey }] = await Promise.all([
       createSupabaseServerClient(),
-      req.json() as Promise<{ pin?: string }>,
+      req.json() as Promise<{ derivedKey?: string }>,
     ]);
 
-    if (!pin || pin.length < 6) {
-      return NextResponse.json({ error: 'Invalid PIN' }, { status: 400 });
+    if (!derivedKey) {
+      return NextResponse.json({ error: 'Missing key' }, { status: 400 });
     }
 
-    // Auth check and PBKDF2 key derivation are independent — run in parallel
-    const [
-      {
-        data: { user },
-      },
-      dek,
-    ] = await Promise.all([supabase.auth.getUser(), deriveKeyFromPin(pin)]);
+    const dek = Buffer.from(derivedKey, 'base64');
+    if (dek.length !== 32) {
+      return NextResponse.json({ error: 'Invalid key' }, { status: 400 });
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

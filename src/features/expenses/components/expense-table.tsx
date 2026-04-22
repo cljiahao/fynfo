@@ -95,6 +95,7 @@ function EditableRow({
     setDateOpenState(open);
   };
   const typeOpenRef = useRef(false);
+  const splitSelectOpenRef = useRef(false);
   const skipNextBlurRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -148,7 +149,17 @@ function EditableRow({
       skipNextBlurRef.current = false;
       return;
     }
-    if (dateOpenRef.current || splitDialogOpenRef.current) return;
+    if (
+      dateOpenRef.current ||
+      splitDialogOpenRef.current ||
+      splitSelectOpenRef.current
+    ) {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      return;
+    }
     if (!data.date || data.amount <= 0) {
       if (isNew && onCancel) onCancel();
       return;
@@ -248,6 +259,9 @@ function EditableRow({
           <Select
             value={data.splitType}
             onValueChange={(v) => handleSplitTypeChange(v as 'self' | 'shared')}
+            onOpenChange={(open) => {
+              splitSelectOpenRef.current = open;
+            }}
           >
             <SelectTrigger className="h-9 w-full px-2 text-xs">
               <SelectValue />

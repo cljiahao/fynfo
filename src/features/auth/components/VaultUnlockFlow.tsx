@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Lock, Unlock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useCallback, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -11,6 +12,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { deriveKeyClient } from '@/lib/client-crypto';
 
 const pinSchema = z.object({
   pin: z
@@ -22,9 +24,17 @@ const pinSchema = z.object({
 
 type PinFormValues = z.infer<typeof pinSchema>;
 
-export function VaultUnlockFlow() {
+interface VaultUnlockFlowProps {
+  onUnlocked?: () => void;
+}
+
+export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const formRef = useRef<HTMLFormElement>(null);
+  // Pre-started derivation promise — kicked off on the 6th keystroke, before submit.
+  const derivingRef = useRef<Promise<string> | null>(null);
+
   const {
     control,
     handleSubmit,
@@ -36,36 +46,46 @@ export function VaultUnlockFlow() {
     defaultValues: { pin: '' },
   });
 
-  const onSubmit = async (values: PinFormValues) => {
-    try {
-      const res = await fetch('/api/vault', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: values.pin }),
-      });
+  const onSubmit = useCallback(
+    async (values: PinFormValues) => {
+      try {
+        // Await the pre-started derivation if available; otherwise derive now.
+        const derivedKey = await (derivingRef.current ??
+          deriveKeyClient(values.pin));
+        derivingRef.current = null;
 
-      if (res.status === 401) {
-        resetField('pin');
-        setError('pin', { message: 'Incorrect PIN. Please try again.' });
-        toast.error('Incorrect PIN. Please try again.');
-        return;
-      }
+        const res = await fetch('/api/vault', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ derivedKey }),
+        });
 
-      if (!res.ok) {
-        const message = 'Failed to unlock vault. Please try again.';
+        if (res.status === 401) {
+          resetField('pin');
+          setError('pin', { message: 'Incorrect PIN. Please try again.' });
+          toast.error('Incorrect PIN. Please try again.');
+          return;
+        }
+
+        if (!res.ok) {
+          const message = 'Failed to unlock vault. Please try again.';
+          setError('pin', { message });
+          toast.error(message);
+          return;
+        }
+
+        // Hide overlay immediately, then refresh data in background.
+        onUnlocked?.();
+        queryClient.invalidateQueries();
+        router.refresh();
+      } catch {
+        const message = 'Failed to reach server. Please try again.';
         setError('pin', { message });
         toast.error(message);
-        return;
       }
-
-      await queryClient.invalidateQueries();
-      router.refresh();
-    } catch {
-      const message = 'Failed to reach server. Please try again.';
-      setError('pin', { message });
-      toast.error(message);
-    }
-  };
+    },
+    [queryClient, onUnlocked, resetField, router, setError]
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
@@ -85,7 +105,10 @@ export function VaultUnlockFlow() {
         </p>
 
         <form
-          onSubmit={handleSubmit(onSubmit)}
+          ref={formRef}
+          onSubmit={(e) => {
+            void handleSubmit(onSubmit)(e);
+          }}
           className="flex w-full flex-col gap-4"
         >
           <Controller
@@ -99,7 +122,17 @@ export function VaultUnlockFlow() {
                   inputMode="numeric"
                   maxLength={6}
                   value={value}
-                  onChange={(e) => onChange(e.target.value.replace(/\D/g, ''))}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '');
+                    onChange(clean);
+                    if (clean.length === 6) {
+                      // Start derivation immediately on the 6th digit — before submit overhead.
+                      derivingRef.current = deriveKeyClient(clean);
+                      setTimeout(() => formRef.current?.requestSubmit(), 0);
+                    } else {
+                      derivingRef.current = null;
+                    }
+                  }}
                   placeholder="••••••"
                   aria-invalid={fieldState.invalid}
                   className="border-zinc-800 bg-zinc-900 py-4 text-center font-mono text-3xl tracking-[1em] text-white focus-visible:ring-blue-500"
