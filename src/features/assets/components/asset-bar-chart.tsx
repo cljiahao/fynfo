@@ -16,46 +16,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from '@/lib/recharts';
+import { formatSGDWhole } from '@/lib/utils/currency';
 import { Filter } from 'lucide-react';
-import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants';
 import type { AssetCategory, ChartDataPoint } from '../types';
 
-const LineChart = dynamic(() => import('recharts').then((m) => m.LineChart), {
-  ssr: false,
-});
-const Line = dynamic(() => import('recharts').then((m) => m.Line), {
-  ssr: false,
-});
-const XAxis = dynamic(() => import('recharts').then((m) => m.XAxis), {
-  ssr: false,
-});
-const YAxis = dynamic(() => import('recharts').then((m) => m.YAxis), {
-  ssr: false,
-});
-const Tooltip = dynamic(() => import('recharts').then((m) => m.Tooltip), {
-  ssr: false,
-});
-const Legend = dynamic(() => import('recharts').then((m) => m.Legend), {
-  ssr: false,
-});
-const ResponsiveContainer = dynamic(
-  () => import('recharts').then((m) => m.ResponsiveContainer),
-  { ssr: false }
-);
-
 interface AssetLineChartProps {
   data: ChartDataPoint[];
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency: 'SGD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 type LineKey = AssetCategory | 'total' | 'excl_pension' | 'total_investment';
@@ -200,11 +177,11 @@ export function AssetLineChart({ data }: AssetLineChartProps) {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v: number) => formatCurrency(v)}
+                tickFormatter={(v: number) => formatSGDWhole(v)}
               />
               <Tooltip
                 formatter={(value: unknown, name: unknown) => [
-                  formatCurrency(Number(value)),
+                  formatSGDWhole(Number(value)),
                   ALL_LABELS[String(name)] ?? String(name),
                 ]}
                 labelStyle={{ fontWeight: 'bold' }}

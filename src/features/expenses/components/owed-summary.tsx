@@ -8,18 +8,12 @@ import {
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatSGD } from '@/lib/utils/currency';
 import { format, subYears } from 'date-fns';
 import { Check, CircleDollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettleMonthSplits } from '../hooks/use-expenses';
 import type { ExpenseData } from '../types';
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency: 'SGD',
-    minimumFractionDigits: 2,
-  }).format(value);
 
 interface MonthGroup {
   monthKey: string; // "2026-03" for sorting
@@ -138,7 +132,7 @@ export function OwedSummary({ expenses }: OwedSummaryProps) {
           </CardTitle>
           {totalUnsettled > 0 && (
             <span className="text-lg font-bold text-emerald-600">
-              {formatCurrency(totalUnsettled)}
+              {formatSGD(totalUnsettled)}
             </span>
           )}
         </div>
@@ -156,7 +150,7 @@ export function OwedSummary({ expenses }: OwedSummaryProps) {
                   <span className="text-sm font-medium">{group.person}</span>
                   {group.totalOwed > 0 ? (
                     <span className="text-sm font-semibold text-emerald-600">
-                      {formatCurrency(group.totalOwed)}
+                      {formatSGD(group.totalOwed)}
                     </span>
                   ) : (
                     <span className="text-muted-foreground text-xs">
@@ -191,7 +185,7 @@ export function OwedSummary({ expenses }: OwedSummaryProps) {
                       <span
                         className={`w-20 shrink-0 text-right font-medium tabular-nums ${m.settled ? 'text-muted-foreground line-through' : ''}`}
                       >
-                        {formatCurrency(m.total)}
+                        {formatSGD(m.total)}
                       </span>
                     </div>
                   ))}

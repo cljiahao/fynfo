@@ -7,36 +7,20 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import dynamic from 'next/dynamic';
+import {
+  Bar,
+  BarChart,
+  Cell,
+  LabelList,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from '@/lib/recharts';
+import { formatSGDWhole } from '@/lib/utils/currency';
 import { CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants';
 import { calculateTotal } from '../lib/calculations';
 import type { AssetCategory, SnapshotData } from '../types';
-
-const BarChart = dynamic(() => import('recharts').then((m) => m.BarChart), {
-  ssr: false,
-});
-const Bar = dynamic(() => import('recharts').then((m) => m.Bar), {
-  ssr: false,
-});
-const XAxis = dynamic(() => import('recharts').then((m) => m.XAxis), {
-  ssr: false,
-});
-const YAxis = dynamic(() => import('recharts').then((m) => m.YAxis), {
-  ssr: false,
-});
-const Tooltip = dynamic(() => import('recharts').then((m) => m.Tooltip), {
-  ssr: false,
-});
-const ResponsiveContainer = dynamic(
-  () => import('recharts').then((m) => m.ResponsiveContainer),
-  { ssr: false }
-);
-const Cell = dynamic(() => import('recharts').then((m) => m.Cell), {
-  ssr: false,
-});
-const LabelList = dynamic(() => import('recharts').then((m) => m.LabelList), {
-  ssr: false,
-});
 
 interface CategoryBreakdownProps {
   snapshot: SnapshotData | undefined;
@@ -49,14 +33,6 @@ function sumCategory(
   return entries
     .filter((e) => e.category === category)
     .reduce((sum, e) => sum + e.amount, 0);
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency: 'SGD',
-    minimumFractionDigits: 0,
-  }).format(value);
 }
 
 const CPF_ACCOUNTS = ['OA', 'SA', 'MA', 'SRS'] as const;
@@ -110,7 +86,7 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
                   />
                   {CATEGORY_LABELS[cat]}
                 </span>
-                <span className="font-medium">{formatCurrency(amount)}</span>
+                <span className="font-medium">{formatSGDWhole(amount)}</span>
               </div>
               <div className="bg-muted h-2 rounded-full">
                 <div
@@ -148,7 +124,7 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
                   />
                   <Tooltip
                     formatter={(value: unknown) =>
-                      formatCurrency(Number(value))
+                      formatSGDWhole(Number(value))
                     }
                   />
                   <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={16}>
@@ -162,7 +138,7 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
                       dataKey="amount"
                       position="right"
                       fontSize={10}
-                      formatter={(v: unknown) => formatCurrency(Number(v))}
+                      formatter={(v: unknown) => formatSGDWhole(Number(v))}
                     />
                   </Bar>
                 </BarChart>

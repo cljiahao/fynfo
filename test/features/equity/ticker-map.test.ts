@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  getCurrency,
-  getMarket,
-  getYahooSymbol,
-} from '@/features/equity/lib/ticker-map';
+import { getMarket, getYahooSymbol } from '@/features/equity/lib/ticker-map';
 
 describe('getYahooSymbol', () => {
   it('maps known SG tickers to their Yahoo Finance symbols', () => {
@@ -56,24 +52,5 @@ describe('getMarket', () => {
   it('is case-insensitive', () => {
     expect(getMarket('dbs')).toBe('SG');
     expect(getMarket('aapl')).toBe('US');
-  });
-});
-
-describe('getCurrency', () => {
-  it('returns SGD for SG-market tickers', () => {
-    expect(getCurrency('DBS')).toBe('SGD');
-    expect(getCurrency('NETLINK')).toBe('SGD');
-    expect(getCurrency('FCT')).toBe('SGD');
-  });
-
-  it('returns USD for US-market tickers', () => {
-    expect(getCurrency('AAPL')).toBe('USD');
-    expect(getCurrency('AMZN')).toBe('USD');
-    expect(getCurrency('V')).toBe('USD');
-  });
-
-  it('is case-insensitive', () => {
-    expect(getCurrency('dbs')).toBe('SGD');
-    expect(getCurrency('nvda')).toBe('USD');
   });
 });

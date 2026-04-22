@@ -25,6 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { formatSGD } from '@/lib/utils/currency';
 import { Info, Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { RELIEF_CATALOG } from '../constants';
@@ -49,13 +50,6 @@ interface TaxReliefsDialogProps {
   isNonResident: boolean;
   onConfirm?: (items: ReliefItem[]) => void;
 }
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency: 'SGD',
-    minimumFractionDigits: 2,
-  }).format(value);
 
 const buildInitialState = (saved: TaxReliefData[] | null): ReliefStateMap => {
   const map = new Map<string, ReliefState>();
@@ -226,7 +220,7 @@ function TaxReliefsDialogInner({
                       description="Based on your age from profile. Below 55: SGD 1,000 / 55–59: SGD 6,000 / 60+: SGD 8,000."
                     />
                     <span className="font-medium">
-                      {formatCurrency(earnedIncomeRelief)}
+                      {formatSGD(earnedIncomeRelief)}
                     </span>
                   </div>
                   <div className="flex-between text-sm">
@@ -235,7 +229,7 @@ function TaxReliefsDialogInner({
                       description="SGD 1,500 for operationally ready NSmen. Enable in your profile if you completed National Service."
                     />
                     <span className="font-medium">
-                      {nsmanRelief > 0 ? formatCurrency(nsmanRelief) : '—'}
+                      {nsmanRelief > 0 ? formatSGD(nsmanRelief) : '—'}
                     </span>
                   </div>
                 </div>
@@ -308,7 +302,7 @@ function TaxReliefsDialogInner({
                             </SelectContent>
                           </Select>
                           <span className="text-muted-foreground w-24 text-right text-sm tabular-nums">
-                            {state.enabled ? formatCurrency(state.amount) : '—'}
+                            {state.enabled ? formatSGD(state.amount) : '—'}
                           </span>
                         </div>
                       );
@@ -371,7 +365,7 @@ function TaxReliefsDialogInner({
                             </SelectContent>
                           </Select>
                           <span className="text-muted-foreground w-24 text-right text-sm tabular-nums">
-                            {state.enabled ? formatCurrency(state.amount) : '—'}
+                            {state.enabled ? formatSGD(state.amount) : '—'}
                           </span>
                         </div>
                       );
@@ -421,7 +415,7 @@ function TaxReliefsDialogInner({
               {/* Total */}
               <div className="flex-between text-sm font-semibold">
                 <span>Total Tax Reliefs</span>
-                <span>{formatCurrency(grandTotal)}</span>
+                <span>{formatSGD(grandTotal)}</span>
               </div>
 
               {/* Confirm */}

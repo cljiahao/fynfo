@@ -30,15 +30,13 @@ import { processStatement } from '../actions/statement-actions';
 import { EXPENSE_TYPES, EXPENSE_TYPE_LABELS } from '../constants';
 import { useUpsertExpense } from '../hooks/use-expenses';
 import type { ParsedExpenseRow } from '../lib/statement-parser';
+import { generateId } from '../lib/utils';
 import type { ExpenseData, ExpenseType } from '../types';
 
 interface StatementDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const generateId = () =>
-  `exp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 function rowToExpense(row: ParsedExpenseRow): ExpenseData {
   return {

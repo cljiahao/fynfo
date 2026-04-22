@@ -19,8 +19,8 @@ import {
   useExchangeRate,
   useStockPrices,
 } from '@/features/equity/hooks/use-prices';
-import { getMarket } from '@/features/equity/lib/ticker-map';
-import type { EquityTradeData } from '@/features/equity/types';
+import { computeHoldings, type Holding } from '@/features/equity/lib/holdings';
+import { formatCurrency } from '@/lib/utils/currency';
 import { ArrowDown, ArrowUp, ArrowUpDown, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { MarketBudgets } from './investment-breakdown';
@@ -28,41 +28,8 @@ import type { MarketBudgets } from './investment-breakdown';
 type SortKey = 'ticker' | 'current' | 'alloc' | 'target' | 'lacking' | 'shares';
 type SortDir = 'asc' | 'desc';
 
-interface Holding {
-  ticker: string;
-  market: 'SG' | 'US';
-  shares: number;
-}
-
 interface InvestmentAllocationProps {
   budgets?: MarketBudgets | null;
-}
-
-function computeHoldings(trades: EquityTradeData[]): Holding[] {
-  const map = new Map<string, { shares: number; market: 'SG' | 'US' }>();
-  for (const t of trades) {
-    const ticker = t.ticker.toUpperCase();
-    const existing = map.get(ticker) ?? {
-      shares: 0,
-      market: getMarket(ticker),
-    };
-    existing.shares += t.action === 'buy' ? t.shares : -t.shares;
-    map.set(ticker, existing);
-  }
-  return Array.from(map.entries())
-    .filter(([, v]) => v.shares > 0)
-    .map(([ticker, v]) => ({ ticker, market: v.market, shares: v.shares }));
-}
-
-function formatCurrency(
-  value: number,
-  currency: 'SGD' | 'USD' = 'SGD'
-): string {
-  return new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-  }).format(value);
 }
 
 const STORAGE_KEY = 'fynfo-allocations';

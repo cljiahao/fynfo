@@ -22,7 +22,9 @@ import {
 } from '@/components/ui/tooltip';
 import { useTrades } from '@/features/equity/hooks/use-equity';
 import { useStockPrices } from '@/features/equity/hooks/use-prices';
+import { computeHoldings } from '@/features/equity/lib/holdings';
 import { getMarket } from '@/features/equity/lib/ticker-map';
+import { formatSGD } from '@/lib/utils/currency';
 import { AlertCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { AssetCategory, SnapshotData } from '../types';
@@ -50,14 +52,6 @@ interface InvestmentBreakdownProps {
   warChestGoal: number;
   snapshot?: SnapshotData;
   onBudgetsChange?: (budgets: MarketBudgets) => void;
-}
-
-function fmt(value: number): string {
-  return new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency: 'SGD',
-    minimumFractionDigits: 2,
-  }).format(value);
 }
 
 function floorH(v: number): number {
@@ -118,21 +112,7 @@ export function InvestmentBreakdown({
   const { data: trades } = useTrades();
 
   // useMemo justified: iterates all trades to aggregate holdings by market
-  const holdings = useMemo(() => {
-    const map = new Map<string, { shares: number; market: 'SG' | 'US' }>();
-    for (const t of trades ?? []) {
-      const ticker = t.ticker.toUpperCase();
-      const existing = map.get(ticker) ?? {
-        shares: 0,
-        market: getMarket(ticker),
-      };
-      existing.shares += t.action === 'buy' ? t.shares : -t.shares;
-      map.set(ticker, existing);
-    }
-    return Array.from(map.entries())
-      .filter(([, v]) => v.shares > 0)
-      .map(([ticker, v]) => ({ ticker, ...v }));
-  }, [trades]);
+  const holdings = useMemo(() => computeHoldings(trades ?? []), [trades]);
 
   const heldTickers = holdings.map((h) => h.ticker);
   const { data: prices } = useStockPrices(heldTickers);
@@ -273,7 +253,7 @@ export function InvestmentBreakdown({
         <CardHeader>
           <CardTitle>Investment Breakdown</CardTitle>
           <CardDescription>
-            How your monthly {fmt(investmentAmount)} is split and tracked
+            How your monthly {formatSGD(investmentAmount)} is split and tracked
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -284,8 +264,9 @@ export function InvestmentBreakdown({
                 {qDaysLeft} days left in {qLabel}
               </p>
               <p className="mt-0.5">
-                {sgAvailable > 0 && `SG: ${fmt(sgAvailable)} undeployed. `}
-                {usAvailable > 0 && `US: ${fmt(usAvailable)} undeployed.`}
+                {sgAvailable > 0 &&
+                  `SG: ${formatSGD(sgAvailable)} undeployed. `}
+                {usAvailable > 0 && `US: ${formatSGD(usAvailable)} undeployed.`}
               </p>
             </div>
           )}
@@ -348,13 +329,13 @@ export function InvestmentBreakdown({
                             Assumes continued income for the quarter.
                           </p>
                           <p className="text-primary-foreground/60 leading-relaxed">
-                            Spent {fmt(m.spent)} of {fmt(m.quarterly)} this
-                            quarter.
+                            Spent {formatSGD(m.spent)} of{' '}
+                            {formatSGD(m.quarterly)} this quarter.
                           </p>
                         </TooltipContent>
                       </Tooltip>
                       <span>
-                        {fmt(m.spent)} / {fmt(m.quarterly)}
+                        {formatSGD(m.spent)} / {formatSGD(m.quarterly)}
                       </span>
                     </div>
                     <div className="bg-muted h-1.5 overflow-hidden rounded-full">
@@ -381,12 +362,13 @@ export function InvestmentBreakdown({
                             equity vs your allocation target.
                           </p>
                           <p className="text-primary-foreground/60 leading-relaxed">
-                            Holding {fmt(m.equity)} of {fmt(m.target)} target.
+                            Holding {formatSGD(m.equity)} of{' '}
+                            {formatSGD(m.target)} target.
                           </p>
                         </TooltipContent>
                       </Tooltip>
                       <span>
-                        {fmt(m.equity)} / {fmt(m.target)}
+                        {formatSGD(m.equity)} / {formatSGD(m.target)}
                       </span>
                     </div>
                     <div className="bg-muted h-1.5 overflow-hidden rounded-full">
@@ -403,25 +385,25 @@ export function InvestmentBreakdown({
                         Target ({m.label === 'SG' ? cashAlloc.sg : cashAlloc.us}
                         %)
                       </span>
-                      <span className="font-medium">{fmt(m.target)}</span>
+                      <span className="font-medium">{formatSGD(m.target)}</span>
                     </div>
                     <div className="flex-between">
                       <span className="text-muted-foreground">
                         Current equity
                       </span>
-                      <span>{fmt(m.equity)}</span>
+                      <span>{formatSGD(m.equity)}</span>
                     </div>
                     <div className="flex-between">
                       <span className="text-muted-foreground">
                         Quarterly budget
                       </span>
-                      <span>{fmt(m.quarterly)}</span>
+                      <span>{formatSGD(m.quarterly)}</span>
                     </div>
                     <div className="flex-between">
                       <span className="text-muted-foreground">
                         Spent this quarter
                       </span>
-                      <span>{fmt(m.spent)}</span>
+                      <span>{formatSGD(m.spent)}</span>
                     </div>
                     <div className="flex-between border-t pt-1 font-semibold">
                       <span className="flex items-center gap-1.5">
@@ -444,8 +426,8 @@ export function InvestmentBreakdown({
                                   : 'Well deployed — most of your cash is invested.'}
                             </p>
                             <p className="text-primary-foreground/60 leading-relaxed">
-                              {fmt(m.available)} of {fmt(m.target)} still
-                              available.
+                              {formatSGD(m.available)} of {formatSGD(m.target)}{' '}
+                              still available.
                             </p>
                           </TooltipContent>
                         </Tooltip>
@@ -457,7 +439,7 @@ export function InvestmentBreakdown({
                             : 'text-muted-foreground'
                         }
                       >
-                        {fmt(m.available)}
+                        {formatSGD(m.available)}
                       </span>
                     </div>
                   </div>
@@ -473,7 +455,7 @@ export function InvestmentBreakdown({
               <Accordion type="single" collapsible>
                 <AccordionItem value="monthly" className="border-none">
                   <AccordionTrigger className="text-muted-foreground p-0 text-xs font-medium">
-                    Monthly Investment — {fmt(investmentAmount)}
+                    Monthly Investment — {formatSGD(investmentAmount)}
                   </AccordionTrigger>
                   <AccordionContent className="px-0 pt-2 pb-0">
                     <table className="w-full text-sm">
@@ -528,7 +510,7 @@ export function InvestmentBreakdown({
                               />
                             </td>
                             <td className="py-2 text-right">
-                              {fmt(row.monthly)}
+                              {formatSGD(row.monthly)}
                             </td>
                           </tr>
                         ))}
@@ -542,7 +524,7 @@ export function InvestmentBreakdown({
                             {totalRatio}%
                           </td>
                           <td className="py-2 text-right font-semibold">
-                            {fmt(investmentAmount)}
+                            {formatSGD(investmentAmount)}
                           </td>
                         </tr>
                       </tfoot>
@@ -564,40 +546,40 @@ export function InvestmentBreakdown({
                 <Accordion type="single" collapsible>
                   <AccordionItem value="deployable" className="border-none">
                     <AccordionTrigger className="text-muted-foreground p-0 text-xs font-medium">
-                      Deployable Cash — {fmt(totalDeployable)}
+                      Deployable Cash — {formatSGD(totalDeployable)}
                     </AccordionTrigger>
                     <AccordionContent className="px-0 pt-2 pb-0">
                       <div className="space-y-1.5">
                         <div className="flex-between text-xs">
                           <span>Savings</span>
                           <span className="font-medium">
-                            {fmt(currentSavings)}
+                            {formatSGD(currentSavings)}
                           </span>
                         </div>
                         <div className="flex-between text-muted-foreground text-xs">
                           <span>− Emergency Fund</span>
-                          <span>{fmt(emergencyFundGoal)}</span>
+                          <span>{formatSGD(emergencyFundGoal)}</span>
                         </div>
                         <div className="flex-between text-xs">
                           <span>Bonds (war chest)</span>
                           <span className="font-medium">
-                            {fmt(currentBonds)}
+                            {formatSGD(currentBonds)}
                           </span>
                         </div>
                         <div className="flex-between text-muted-foreground text-xs">
                           <span>− War chest goal</span>
-                          <span>{fmt(warChestGoal)}</span>
+                          <span>{formatSGD(warChestGoal)}</span>
                         </div>
                         {bondsShortfall > 0 && (
                           <div className="flex-between text-xs text-amber-500">
                             <span>− War chest shortfall</span>
-                            <span>{fmt(bondsShortfall)}</span>
+                            <span>{formatSGD(bondsShortfall)}</span>
                           </div>
                         )}
                         {bondsSurplus > 0 && (
                           <div className="flex-between text-xs text-emerald-600">
                             <span>+ Bonds surplus</span>
-                            <span>{fmt(bondsSurplus)}</span>
+                            <span>{formatSGD(bondsSurplus)}</span>
                           </div>
                         )}
                         <div className="flex-between border-t pt-1.5 font-semibold">
@@ -609,7 +591,7 @@ export function InvestmentBreakdown({
                                 : 'text-red-500'
                             }
                           >
-                            {fmt(totalDeployable)}
+                            {formatSGD(totalDeployable)}
                           </span>
                         </div>
                       </div>
@@ -654,7 +636,7 @@ export function InvestmentBreakdown({
                                 <span className="text-muted-foreground">%</span>
                               </span>
                               <span className="font-semibold">
-                                {fmt(row.amount)}
+                                {formatSGD(row.amount)}
                               </span>
                             </div>
                           ))}

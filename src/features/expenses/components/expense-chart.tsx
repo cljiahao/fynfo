@@ -7,49 +7,25 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Bar,
+  BarChart,
+  Legend,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from '@/lib/recharts';
+import { formatSGDWhole } from '@/lib/utils/currency';
 import { format, subMonths } from 'date-fns';
-import dynamic from 'next/dynamic';
+import type { TooltipContentProps } from 'recharts/types/component/Tooltip';
 import {
   EXPENSE_TYPES,
   EXPENSE_TYPE_COLORS,
   EXPENSE_TYPE_LABELS,
 } from '../constants';
 import type { ExpenseData, ExpenseType } from '../types';
-
-const BarChart = dynamic(() => import('recharts').then((m) => m.BarChart), {
-  ssr: false,
-});
-const Bar = dynamic(() => import('recharts').then((m) => m.Bar), {
-  ssr: false,
-});
-const XAxis = dynamic(() => import('recharts').then((m) => m.XAxis), {
-  ssr: false,
-});
-const YAxis = dynamic(() => import('recharts').then((m) => m.YAxis), {
-  ssr: false,
-});
-const Tooltip = dynamic(() => import('recharts').then((m) => m.Tooltip), {
-  ssr: false,
-});
-const Legend = dynamic(() => import('recharts').then((m) => m.Legend), {
-  ssr: false,
-});
-const ReferenceLine = dynamic(
-  () => import('recharts').then((m) => m.ReferenceLine),
-  { ssr: false }
-);
-const ResponsiveContainer = dynamic(
-  () => import('recharts').then((m) => m.ResponsiveContainer),
-  { ssr: false }
-);
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency: 'SGD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
 
 interface ChartDataPoint {
   month: string; // "Mar 2026"
@@ -150,9 +126,9 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
             <p className="text-muted-foreground mb-0.5 text-xs tracking-wide uppercase">
               12-month total
             </p>
-            <p className="text-2xl font-bold">{formatCurrency(totalExpense)}</p>
+            <p className="text-2xl font-bold">{formatSGDWhole(totalExpense)}</p>
             <p className="text-muted-foreground text-xs">
-              All-time avg {formatCurrency(allTimeAvg)} / mo
+              All-time avg {formatSGDWhole(allTimeAvg)} / mo
             </p>
           </div>
         </div>
@@ -172,18 +148,18 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
                 fontSize={11}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v: number) => formatCurrency(v)}
+                tickFormatter={(v: number) => formatSGDWhole(v)}
                 width={70}
                 domain={[0, yMax]}
               />
               <Tooltip
                 wrapperStyle={{ zIndex: 10 }}
-                content={({ active, payload, label }) => {
+                content={({ active, payload, label }: TooltipContentProps) => {
                   if (!active || !payload?.length) return null;
                   const items = payload.filter((p) => Number(p.value) > 0);
                   if (!items.length) return null;
                   const total = items.reduce(
-                    (sum, p) => sum + Number(p.value),
+                    (sum: number, p) => sum + Number(p.value),
                     0
                   );
                   return (
@@ -191,7 +167,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
                       <div className="mb-1.5 flex items-center justify-between gap-4">
                         <p className="text-xs font-semibold">{label}</p>
                         <p className="text-xs font-bold">
-                          {formatCurrency(total)}
+                          {formatSGDWhole(total)}
                         </p>
                       </div>
                       <div className="space-y-1">
@@ -210,7 +186,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
                               ] ?? String(item.dataKey)}
                             </span>
                             <span className="ml-auto pl-4 font-medium tabular-nums">
-                              {formatCurrency(Number(item.value))}
+                              {formatSGDWhole(Number(item.value))}
                             </span>
                           </div>
                         ))}
@@ -221,7 +197,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
               />
               <Legend
                 formatter={(value: string) =>
-                  EXPENSE_TYPE_LABELS[value as ExpenseType] ?? value
+                  (EXPENSE_TYPE_LABELS[value as ExpenseType] ?? value) as string
                 }
                 wrapperStyle={{ fontSize: 11 }}
               />
@@ -230,7 +206,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
                 stroke="#94a3b8"
                 strokeDasharray="4 4"
                 label={{
-                  value: `Avg ${formatCurrency(avgExpense)}`,
+                  value: `Avg ${formatSGDWhole(avgExpense)}`,
                   position: 'insideTopRight',
                   fontSize: 11,
                   fill: '#64748b',

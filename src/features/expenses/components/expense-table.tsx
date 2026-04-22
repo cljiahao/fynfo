@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { PaginationControls } from '@/components/widgets';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
@@ -22,8 +23,6 @@ import {
   ArrowUp,
   ArrowUpDown,
   CalendarIcon,
-  ChevronLeft,
-  ChevronRight,
   Plus,
   Search,
   Trash2,
@@ -39,12 +38,10 @@ import {
   useExpenses,
   useUpsertExpense,
 } from '../hooks/use-expenses';
+import { generateId } from '../lib/utils';
 import type { ExpenseData, ExpenseSplitData } from '../types';
 import { ExpenseTypeSelect } from './expense-type-select';
 import { SplitDialog } from './split-dialog';
-
-const generateId = () =>
-  `exp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 const EMPTY_ROW: ExpenseData = {
   id: '',
@@ -56,8 +53,6 @@ const EMPTY_ROW: ExpenseData = {
   splitType: 'self',
   splits: [],
 };
-
-const PAGE_SIZES = [10, 25, 50] as const;
 
 type SortKey = 'date' | 'type' | 'item' | 'amount' | 'splitType';
 type SortDir = 'asc' | 'desc';
@@ -442,7 +437,6 @@ export function ExpenseTable() {
     return sortDir === 'asc' ? cmp : -cmp;
   });
 
-  const totalPages = Math.max(Math.ceil(sorted.length / pageSize), 1);
   const paginated = sorted.slice(page * pageSize, (page + 1) * pageSize);
 
   const addRow = () => {
@@ -632,79 +626,15 @@ export function ExpenseTable() {
         </table>
       </div>
 
-      {/* Pagination */}
       {filtered.length > 0 && (
-        <div className="flex-between text-sm">
-          <span className="text-muted-foreground text-xs">
-            Showing {page * pageSize + 1}–
-            {Math.min((page + 1) * pageSize, sorted.length)} of {sorted.length}{' '}
-            expense{sorted.length !== 1 ? 's' : ''}
-          </span>
-          <div className="flex items-center gap-2">
-            <Select
-              value={String(pageSize)}
-              onValueChange={(v) => {
-                setPageSize(Number(v));
-                setPage(0);
-              }}
-            >
-              <SelectTrigger className="h-8 w-[70px] text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAGE_SIZES.map((s) => (
-                  <SelectItem key={s} value={String(s)}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
-              <span>Page</span>
-              <input
-                key={page}
-                type="number"
-                defaultValue={page + 1}
-                min={1}
-                max={totalPages}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    const n = parseInt(e.currentTarget.value, 10);
-                    if (!isNaN(n))
-                      setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
-                    e.currentTarget.blur();
-                  }
-                }}
-                onBlur={(e) => {
-                  const n = parseInt(e.currentTarget.value, 10);
-                  if (!isNaN(n))
-                    setPage(Math.max(0, Math.min(n - 1, totalPages - 1)));
-                }}
-                onFocus={(e) => e.target.select()}
-                className="h-8 w-12 [appearance:textfield] rounded-md border text-center text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-              />
-              <span>of {totalPages}</span>
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-8"
-              disabled={page === 0}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="size-8"
-              disabled={page >= totalPages - 1}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-        </div>
+        <PaginationControls
+          page={page}
+          pageSize={pageSize}
+          total={sorted.length}
+          itemLabel="expense"
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       )}
     </div>
   );

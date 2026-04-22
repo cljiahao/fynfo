@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatSGDWhole } from '@/lib/utils/currency';
 import { ArrowDown, ArrowUp, Wallet } from 'lucide-react';
 import { INVESTMENT_CATEGORIES } from '../constants';
 import {
@@ -12,15 +13,6 @@ import type { AssetCategory, SnapshotWithTotals } from '../types';
 
 interface SummaryCardsProps {
   snapshots: SnapshotWithTotals[];
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency: 'SGD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 function sumByCategories(
@@ -62,7 +54,7 @@ function ChangeCard({
           className={`text-2xl font-bold ${change >= 0 ? 'text-emerald-500' : 'text-red-500'}`}
         >
           {change >= 0 ? '+' : ''}
-          {formatCurrency(change)}
+          {formatSGDWhole(change)}
         </div>
         <p className="text-muted-foreground text-xs">
           {previousId
@@ -106,7 +98,7 @@ export function SummaryCards({ snapshots }: SummaryCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {formatCurrency(currentTotal)}
+            {formatSGDWhole(currentTotal)}
           </div>
           <p className="text-muted-foreground text-xs">
             {latest?.id ?? 'No data'}
@@ -121,7 +113,7 @@ export function SummaryCards({ snapshots }: SummaryCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {formatCurrency(latestExPension)}
+            {formatSGDWhole(latestExPension)}
           </div>
           <p className="text-muted-foreground text-xs">
             {latest?.id ?? 'No data'}

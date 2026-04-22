@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { formatCurrency } from '@/lib/utils/currency';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
@@ -44,14 +45,6 @@ interface TradeFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editTrade?: EquityTradeData;
-}
-
-function formatCurrency(value: number, currency: string): string {
-  return new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-  }).format(value);
 }
 
 export function TradeFormDialog({

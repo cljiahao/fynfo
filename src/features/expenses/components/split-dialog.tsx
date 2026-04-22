@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { formatSGD } from '@/lib/utils/currency';
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { ExpenseSplitData } from '../types';
@@ -23,13 +24,6 @@ interface SplitDialogProps {
   peopleSuggestions: string[];
   onConfirm: (splits: ExpenseSplitData[]) => void;
 }
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency: 'SGD',
-    minimumFractionDigits: 2,
-  }).format(value);
 
 export function SplitDialog({
   open,
@@ -119,9 +113,7 @@ export function SplitDialog({
       <DialogContent className="top-8 max-h-[calc(100vh-4rem)] translate-y-0 overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Split Expense</DialogTitle>
-          <DialogDescription>
-            Total: {formatCurrency(totalAmount)}
-          </DialogDescription>
+          <DialogDescription>Total: {formatSGD(totalAmount)}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -265,9 +257,9 @@ export function SplitDialog({
                   Split evenly
                 </Button>
                 <span className="text-muted-foreground text-xs">
-                  {formatCurrency(totalAmount)} ÷ {totalPeople}{' '}
+                  {formatSGD(totalAmount)} ÷ {totalPeople}{' '}
                   {totalPeople === 1 ? 'person' : 'people'} ={' '}
-                  {formatCurrency(roundedShare)} each
+                  {formatSGD(roundedShare)} each
                 </span>
               </div>
 
@@ -276,15 +268,13 @@ export function SplitDialog({
               <div className="space-y-1 text-sm">
                 <div className="flex-between">
                   <span className="text-muted-foreground">They owe you</span>
-                  <span className="font-medium">
-                    {formatCurrency(othersTotal)}
-                  </span>
+                  <span className="font-medium">{formatSGD(othersTotal)}</span>
                 </div>
                 {!paidFor && (
                   <div className="flex-between">
                     <span className="font-medium">Your share</span>
                     <span className="font-semibold">
-                      {formatCurrency(yourShare)}
+                      {formatSGD(yourShare)}
                     </span>
                   </div>
                 )}

@@ -1,0 +1,73 @@
+import { useProfile } from '@/features/profile/hooks/use-profile';
+import {
+  calculateTaxSummary,
+  type TaxProfileContext,
+  type TaxSummary,
+} from '../lib/tax-cpf';
+import type { SalaryData } from '../types';
+
+export interface SalaryYtdStats {
+  currentYear: number;
+  taxProfile: TaxProfileContext;
+  currentYearRecords: SalaryData[];
+  monthsRecorded: number;
+  ytdSalary: number;
+  ytdBonus: number;
+  estAnnualSalary: number;
+  estAnnualBonus: number;
+  estSummary: TaxSummary;
+  trueSummary: TaxSummary;
+}
+
+export function useSalaryYtdStats(
+  records: SalaryData[],
+  additionalReliefsTotal = 0
+): SalaryYtdStats {
+  const { data: profile } = useProfile();
+  const currentYear = new Date().getFullYear();
+
+  const taxProfile: TaxProfileContext = {
+    birthYear: profile?.birthYear ?? null,
+    isNsman: profile?.isNsman ?? true,
+    residencyStatus: profile?.residencyStatus ?? 'resident',
+  };
+
+  const currentYearRecords = records.filter((r) =>
+    r.id.startsWith(`${currentYear}-`)
+  );
+  const monthsRecorded = currentYearRecords.length;
+  const ytdSalary = currentYearRecords.reduce((s, r) => s + r.salary, 0);
+  const ytdBonus = currentYearRecords.reduce((s, r) => s + r.bonus, 0);
+  const estAnnualSalary =
+    monthsRecorded > 0 ? (ytdSalary / monthsRecorded) * 12 : 0;
+  const estAnnualBonus =
+    monthsRecorded > 0 ? (ytdBonus / monthsRecorded) * 12 : 0;
+
+  const estSummary = calculateTaxSummary(
+    estAnnualSalary,
+    estAnnualBonus,
+    currentYear,
+    taxProfile,
+    additionalReliefsTotal
+  );
+  const trueSummary = calculateTaxSummary(
+    ytdSalary,
+    ytdBonus,
+    currentYear,
+    taxProfile,
+    additionalReliefsTotal
+  );
+
+  return {
+    currentYear,
+    taxProfile,
+    currentYearRecords,
+    monthsRecorded,
+    ytdSalary,
+    ytdBonus,
+    estAnnualSalary,
+    estAnnualBonus,
+    estSummary,
+    trueSummary,
+  };
+}

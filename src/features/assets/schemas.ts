@@ -1,3 +1,4 @@
+import { YYYY_MM } from '@/lib/zod-utils';
 import { z } from 'zod';
 import { CATEGORIES } from './constants';
 import type { AssetCategory } from './types';
@@ -9,7 +10,7 @@ export const assetEntrySchema = z.object({
 });
 
 export const snapshotFormSchema = z.object({
-  id: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Must be YYYY-MM format'),
+  id: YYYY_MM,
   entries: z.array(assetEntrySchema),
 });
 
@@ -42,7 +43,7 @@ export const importDataSchema = z.object({
   exportedAt: z.string().optional(),
   snapshots: z.array(
     z.object({
-      id: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+      id: YYYY_MM,
       entries: z.array(importEntrySchema),
     })
   ),

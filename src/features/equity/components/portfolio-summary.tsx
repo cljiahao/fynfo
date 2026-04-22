@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatSGD, formatUSD } from '@/lib/utils/currency';
 import {
   ArrowDown,
   ArrowUp,
@@ -11,70 +12,12 @@ import {
 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useStockPrices } from '../hooks/use-prices';
+import { computeHoldings, type Holding } from '../lib/holdings';
 import { getMarket } from '../lib/ticker-map';
 import type { EquityTradeData } from '../types';
 
 interface PortfolioSummaryProps {
   trades: EquityTradeData[];
-}
-
-function formatSGD(value: number): string {
-  return new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency: 'SGD',
-    minimumFractionDigits: 2,
-  }).format(value);
-}
-
-function formatUSD(value: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(value);
-}
-
-interface HoldingSummary {
-  ticker: string;
-  market: 'SG' | 'US';
-  shares: number;
-  totalCost: number;
-  avgCost: number;
-}
-
-function computeHoldings(trades: EquityTradeData[]): HoldingSummary[] {
-  const map = new Map<
-    string,
-    { shares: number; totalBuyCost: number; market: 'SG' | 'US' }
-  >();
-
-  for (const t of trades) {
-    const ticker = t.ticker.toUpperCase();
-    const existing = map.get(ticker) ?? {
-      shares: 0,
-      totalBuyCost: 0,
-      market: getMarket(ticker),
-    };
-
-    if (t.action === 'buy') {
-      existing.shares += t.shares;
-      existing.totalBuyCost += t.shares * t.price + t.fees;
-    } else {
-      existing.shares -= t.shares;
-    }
-
-    map.set(ticker, existing);
-  }
-
-  return Array.from(map.entries())
-    .filter(([, v]) => v.shares > 0)
-    .map(([ticker, v]) => ({
-      ticker,
-      market: v.market,
-      shares: v.shares,
-      totalCost: v.totalBuyCost,
-      avgCost: v.shares > 0 ? v.totalBuyCost / v.shares : 0,
-    }));
 }
 
 // Cash flow: negative = money out (buy), positive = money in (sell / current value)
@@ -115,7 +58,7 @@ function computeIRR(cashFlows: CashFlow[]): number {
 
 function buildCashFlows(
   trades: EquityTradeData[],
-  holdings: HoldingSummary[],
+  holdings: Holding[],
   prices: Record<string, { price: number }>,
   marketFilter?: 'SG' | 'US'
 ): CashFlow[] {
@@ -158,8 +101,8 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
   const usHoldings = holdings.filter((h) => h.market === 'US');
 
   // Total cost (what was spent)
-  const sgCost = sgHoldings.reduce((s, h) => s + h.totalCost, 0);
-  const usCost = usHoldings.reduce((s, h) => s + h.totalCost, 0);
+  const sgCost = sgHoldings.reduce((s, h) => s + h.totalBuyCost, 0);
+  const usCost = usHoldings.reduce((s, h) => s + h.totalBuyCost, 0);
 
   // Current value (shares × current price)
   const sgValue = sgHoldings.reduce((s, h) => {

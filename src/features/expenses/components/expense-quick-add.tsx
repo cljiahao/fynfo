@@ -15,11 +15,9 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { EXPENSE_TYPES, EXPENSE_TYPE_LABELS } from '../constants';
 import { useUpsertExpense } from '../hooks/use-expenses';
+import { generateId } from '../lib/utils';
 import type { ExpenseType } from '../types';
 import { ExpenseTypeSelect } from './expense-type-select';
-
-const generateId = () =>
-  `exp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 // Try to parse a date string into yyyy-MM-dd
 function tryParseDate(s: string): string | null {

@@ -7,44 +7,21 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from '@/lib/recharts';
+import { formatSGDWhole } from '@/lib/utils/currency';
 import { format, parse } from 'date-fns';
-import dynamic from 'next/dynamic';
 import type { SalaryData } from '../types';
-
-const LineChart = dynamic(() => import('recharts').then((m) => m.LineChart), {
-  ssr: false,
-});
-const Line = dynamic(() => import('recharts').then((m) => m.Line), {
-  ssr: false,
-});
-const XAxis = dynamic(() => import('recharts').then((m) => m.XAxis), {
-  ssr: false,
-});
-const YAxis = dynamic(() => import('recharts').then((m) => m.YAxis), {
-  ssr: false,
-});
-const Tooltip = dynamic(() => import('recharts').then((m) => m.Tooltip), {
-  ssr: false,
-});
-const Legend = dynamic(() => import('recharts').then((m) => m.Legend), {
-  ssr: false,
-});
-const ResponsiveContainer = dynamic(
-  () => import('recharts').then((m) => m.ResponsiveContainer),
-  { ssr: false }
-);
 
 interface SalaryChartProps {
   records: SalaryData[];
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency: 'SGD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 const ALL_LABELS: Record<string, string> = {
@@ -106,7 +83,7 @@ export function SalaryChart({ records }: SalaryChartProps) {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v: number) => formatCurrency(v)}
+                tickFormatter={(v: number) => formatSGDWhole(v)}
               />
               <YAxis
                 yAxisId="right"
@@ -114,11 +91,11 @@ export function SalaryChart({ records }: SalaryChartProps) {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(v: number) => formatCurrency(v)}
+                tickFormatter={(v: number) => formatSGDWhole(v)}
               />
               <Tooltip
                 formatter={(value: unknown, name: unknown) => [
-                  formatCurrency(Number(value)),
+                  formatSGDWhole(Number(value)),
                   ALL_LABELS[String(name)] ?? String(name),
                 ]}
                 labelStyle={{ fontWeight: 'bold' }}

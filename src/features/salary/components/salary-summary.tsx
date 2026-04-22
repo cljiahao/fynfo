@@ -8,14 +8,11 @@ import {
 } from '@/components/ui/accordion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { useProfile } from '@/features/profile/hooks/use-profile';
+import { formatSGD } from '@/lib/utils/currency';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
-import {
-  calculateTaxSummary,
-  type TaxProfileContext,
-  type TaxSummary,
-} from '../lib/tax-cpf';
+import { useSalaryYtdStats } from '../hooks/use-salary-ytd-stats';
+import { type TaxSummary } from '../lib/tax-cpf';
 import type { SalaryData } from '../types';
 import { TaxReliefsDialog } from './tax-reliefs-dialog';
 
@@ -26,15 +23,6 @@ export interface ReliefItem {
 
 interface SalarySummaryProps {
   records: SalaryData[];
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency: 'SGD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
 }
 
 function Row({
@@ -92,7 +80,7 @@ function SummaryColumn({
         </p>
         <Row
           label="Gross Annual"
-          value={formatCurrency(summary.grossAnnual)}
+          value={formatSGD(summary.grossAnnual)}
           variant="bold"
           indent
         />
@@ -105,7 +93,7 @@ function SummaryColumn({
         </p>
         <Row
           label="CPF (Employee 20%)"
-          value={`-${formatCurrency(summary.totalCpf)}`}
+          value={`-${formatSGD(summary.totalCpf)}`}
           variant="negative"
           indent
         />
@@ -146,13 +134,13 @@ function SummaryColumn({
                 <>
                   <Row
                     label="Earned Income Relief"
-                    value={`-${formatCurrency(summary.earnedIncomeRelief)}`}
+                    value={`-${formatSGD(summary.earnedIncomeRelief)}`}
                     variant="muted"
                   />
                   {summary.nsmanRelief > 0 && (
                     <Row
                       label="NSMan Relief"
-                      value={`-${formatCurrency(summary.nsmanRelief)}`}
+                      value={`-${formatSGD(summary.nsmanRelief)}`}
                       variant="muted"
                     />
                   )}
@@ -160,13 +148,13 @@ function SummaryColumn({
                     <Row
                       key={item.label}
                       label={item.label}
-                      value={`-${formatCurrency(item.amount)}`}
+                      value={`-${formatSGD(item.amount)}`}
                       variant="muted"
                     />
                   ))}
                   <Row
                     label="Total Tax Reliefs"
-                    value={`-${formatCurrency(summary.taxReliefs)}`}
+                    value={`-${formatSGD(summary.taxReliefs)}`}
                     variant="muted"
                   />
                 </>
@@ -176,12 +164,12 @@ function SummaryColumn({
         </Accordion>
         <Row
           label="Chargeable Income"
-          value={formatCurrency(summary.chargeableIncome)}
+          value={formatSGD(summary.chargeableIncome)}
           indent
         />
         <Row
           label="Tax Payable"
-          value={formatCurrency(summary.taxPayable)}
+          value={formatSGD(summary.taxPayable)}
           variant="negative"
           indent
         />
@@ -197,12 +185,12 @@ function SummaryColumn({
         {/* Net */}
         <Row
           label="Net (after CPF + Tax)"
-          value={formatCurrency(summary.netAfterCpfAndTax)}
+          value={formatSGD(summary.netAfterCpfAndTax)}
           variant="positive"
         />
         <Row
           label="Monthly Take-home"
-          value={formatCurrency(summary.netAfterCpfAndTax / 12)}
+          value={formatSGD(summary.netAfterCpfAndTax / 12)}
           variant="muted"
         />
       </CardContent>
@@ -211,8 +199,6 @@ function SummaryColumn({
 }
 
 export function SalarySummary({ records }: SalarySummaryProps) {
-  const { data: profile } = useProfile();
-  const currentYear = new Date().getFullYear();
   const [reliefDialogOpen, setReliefDialogOpen] = useState(false);
   const [reliefItems, setReliefItems] = useState<ReliefItem[]>([]);
 
@@ -221,38 +207,13 @@ export function SalarySummary({ records }: SalarySummaryProps) {
     0
   );
 
-  const taxProfile: TaxProfileContext = {
-    birthYear: profile?.birthYear ?? null,
-    isNsman: profile?.isNsman ?? true,
-    residencyStatus: profile?.residencyStatus ?? 'resident',
-  };
-
-  const currentYearRecords = records.filter((r) =>
-    r.id.startsWith(`${currentYear}-`)
-  );
-  const monthsRecorded = currentYearRecords.length;
-
-  const ytdSalary = currentYearRecords.reduce((sum, r) => sum + r.salary, 0);
-  const ytdBonus = currentYearRecords.reduce((sum, r) => sum + r.bonus, 0);
-  const estAnnualSalary =
-    monthsRecorded > 0 ? (ytdSalary / monthsRecorded) * 12 : 0;
-  const estAnnualBonus =
-    monthsRecorded > 0 ? (ytdBonus / monthsRecorded) * 12 : 0;
-  const estSummary = calculateTaxSummary(
-    estAnnualSalary,
-    estAnnualBonus,
+  const {
     currentYear,
-    taxProfile,
-    additionalReliefsTotal
-  );
-
-  const trueSummary = calculateTaxSummary(
-    ytdSalary,
-    ytdBonus,
-    currentYear,
-    taxProfile,
-    additionalReliefsTotal
-  );
+    currentYearRecords,
+    monthsRecorded,
+    estSummary,
+    trueSummary,
+  } = useSalaryYtdStats(records, additionalReliefsTotal);
 
   return (
     <>

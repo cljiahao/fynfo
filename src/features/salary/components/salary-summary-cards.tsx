@@ -1,52 +1,25 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useProfile } from '@/features/profile/hooks/use-profile';
+import { formatSGDWhole } from '@/lib/utils/currency';
 import { Banknote, Calculator, Receipt, TrendingUp } from 'lucide-react';
-import { calculateTaxSummary, type TaxProfileContext } from '../lib/tax-cpf';
+import { useSalaryYtdStats } from '../hooks/use-salary-ytd-stats';
 import type { SalaryData } from '../types';
 
 interface SalarySummaryCardsProps {
   records: SalaryData[];
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency: 'SGD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
-  const { data: profile } = useProfile();
-  const currentYear = new Date().getFullYear();
   const latest = records[records.length - 1];
-
-  const taxProfile: TaxProfileContext = {
-    birthYear: profile?.birthYear ?? null,
-    isNsman: profile?.isNsman ?? true,
-    residencyStatus: profile?.residencyStatus ?? 'resident',
-  };
-
-  const currentYearRecords = records.filter((r) =>
-    r.id.startsWith(`${currentYear}-`)
-  );
-  const monthsRecorded = currentYearRecords.length;
-  const ytdSalary = currentYearRecords.reduce((s, r) => s + r.salary, 0);
-  const ytdBonus = currentYearRecords.reduce((s, r) => s + r.bonus, 0);
-
-  const estAnnualSalary =
-    monthsRecorded > 0 ? (ytdSalary / monthsRecorded) * 12 : 0;
-  const estAnnualBonus =
-    monthsRecorded > 0 ? (ytdBonus / monthsRecorded) * 12 : 0;
-  const estSummary = calculateTaxSummary(
-    estAnnualSalary,
-    estAnnualBonus,
+  const {
     currentYear,
-    taxProfile
-  );
+    currentYearRecords,
+    monthsRecorded,
+    ytdSalary,
+    ytdBonus,
+    estSummary,
+  } = useSalaryYtdStats(records);
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -57,7 +30,7 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {latest ? formatCurrency(latest.salary) : '-'}
+            {latest ? formatSGDWhole(latest.salary) : '-'}
           </div>
           <p className="text-muted-foreground text-xs">
             {latest?.id ?? 'No records'}
@@ -72,7 +45,7 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {formatCurrency(estSummary.grossAnnual)}
+            {formatSGDWhole(estSummary.grossAnnual)}
           </div>
           <p className="text-muted-foreground text-xs">
             {monthsRecorded > 0
@@ -89,7 +62,7 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-red-500">
-            {formatCurrency(estSummary.taxPayable)}
+            {formatSGDWhole(estSummary.taxPayable)}
           </div>
           <p className="text-muted-foreground text-xs">
             {estSummary.grossAnnual > 0
@@ -106,7 +79,7 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {formatCurrency(ytdSalary + ytdBonus)}
+            {formatSGDWhole(ytdSalary + ytdBonus)}
           </div>
           <p className="text-muted-foreground text-xs">
             {currentYearRecords.length > 0

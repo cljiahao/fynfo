@@ -12,8 +12,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useExpenses } from '@/features/expenses';
 import { useSalaryRecords } from '@/features/salary/hooks/use-salary';
+import {
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+} from '@/lib/recharts';
+import { formatSGD } from '@/lib/utils/currency';
 import { Loader2 } from 'lucide-react';
-import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   usePlannerSettings,
@@ -25,23 +32,6 @@ import type {
   SnapshotData,
 } from '../types';
 
-const PieChart = dynamic(() => import('recharts').then((m) => m.PieChart), {
-  ssr: false,
-});
-const Pie = dynamic(() => import('recharts').then((m) => m.Pie), {
-  ssr: false,
-});
-const Tooltip = dynamic(() => import('recharts').then((m) => m.Tooltip), {
-  ssr: false,
-});
-const Legend = dynamic(() => import('recharts').then((m) => m.Legend), {
-  ssr: false,
-});
-const ResponsiveContainer = dynamic(
-  () => import('recharts').then((m) => m.ResponsiveContainer),
-  { ssr: false }
-);
-
 export interface PlannerValues {
   investmentAmount: number;
   emergencyFundGoal: number;
@@ -52,15 +42,6 @@ export interface PlannerValues {
 interface SalaryPlannerProps {
   snapshot?: SnapshotData;
   onPlannerValuesChange?: (values: PlannerValues) => void;
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-SG', {
-    style: 'currency',
-    currency: 'SGD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
 }
 
 function ceilToThousand(value: number): number {
@@ -410,7 +391,7 @@ function SalaryPlannerInner({
                       const amt = Number(value);
                       const pct =
                         netAfterCpf > 0 ? (amt / netAfterCpf) * 100 : 0;
-                      return `${formatCurrency(amt)} (${pct.toFixed(1)}%)`;
+                      return `${formatSGD(amt)} (${pct.toFixed(1)}%)`;
                     }}
                   />
                   <Legend
@@ -475,9 +456,7 @@ function SalaryPlannerInner({
               <div className="space-y-1.5 text-sm">
                 <div className="flex-between">
                   <span className="text-muted-foreground">Net (after CPF)</span>
-                  <span className="font-medium">
-                    {formatCurrency(netAfterCpf)}
-                  </span>
+                  <span className="font-medium">{formatSGD(netAfterCpf)}</span>
                 </div>
                 {breakdownItems.map((item) => (
                   <div key={item.label} className="flex-between">
@@ -495,7 +474,7 @@ function SalaryPlannerInner({
                           : 'font-medium'
                       }
                     >
-                      {formatCurrency(item.value)}
+                      {formatSGD(item.value)}
                     </span>
                   </div>
                 ))}
@@ -509,7 +488,7 @@ function SalaryPlannerInner({
                   <div className="flex-between text-sm">
                     <span>Emergency Fund ({emergencyMonths}mo)</span>
                     <span className="font-semibold">
-                      {formatCurrency(emergencyFundGoal)}
+                      {formatSGD(emergencyFundGoal)}
                     </span>
                   </div>
                   <div className="flex-between text-sm">
@@ -519,16 +498,16 @@ function SalaryPlannerInner({
                     <span
                       className={`text-xs ${currentSavings >= emergencyFundGoal ? 'text-emerald-500' : 'text-amber-500'}`}
                     >
-                      {formatCurrency(currentSavings)}{' '}
+                      {formatSGD(currentSavings)}{' '}
                       {currentSavings >= emergencyFundGoal
                         ? '✓'
-                        : `(need ${formatCurrency(emergencyFundGoal - currentSavings)})`}
+                        : `(need ${formatSGD(emergencyFundGoal - currentSavings)})`}
                     </span>
                   </div>
                   <div className="flex-between text-sm">
                     <span>War Chest ({warChestMonths}mo)</span>
                     <span className="font-semibold">
-                      {formatCurrency(warChestGoal)}
+                      {formatSGD(warChestGoal)}
                     </span>
                   </div>
                   <div className="flex-between text-sm">
@@ -538,10 +517,10 @@ function SalaryPlannerInner({
                     <span
                       className={`text-xs ${currentBonds >= warChestGoal ? 'text-emerald-500' : 'text-amber-500'}`}
                     >
-                      {formatCurrency(currentBonds)}{' '}
+                      {formatSGD(currentBonds)}{' '}
                       {currentBonds >= warChestGoal
                         ? '✓'
-                        : `(need ${formatCurrency(warChestGoal - currentBonds)})`}
+                        : `(need ${formatSGD(warChestGoal - currentBonds)})`}
                     </span>
                   </div>
                   {goalsFulfilled && (

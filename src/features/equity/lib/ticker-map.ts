@@ -27,7 +27,3 @@ export function getMarket(ticker: string): 'SG' | 'US' {
   if (SG_TICKER_MAP[upper]) return 'SG';
   return 'US';
 }
-
-export function getCurrency(ticker: string): 'SGD' | 'USD' {
-  return getMarket(ticker) === 'SG' ? 'SGD' : 'USD';
-}
