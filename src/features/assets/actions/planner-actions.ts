@@ -2,6 +2,7 @@
 
 import { requireDbContext } from '@/lib/action-guard';
 import { randomUUID } from 'crypto';
+import { plannerSettingsSchema } from '../schemas';
 import type { PlannerSettingsData } from '../types';
 
 export async function getPlannerSettings(): Promise<PlannerSettingsData | null> {
@@ -28,6 +29,7 @@ export async function getPlannerSettings(): Promise<PlannerSettingsData | null> 
 export async function upsertPlannerSettings(
   data: PlannerSettingsData
 ): Promise<void> {
+  plannerSettingsSchema.parse(data);
   const { userId, supabase } = await requireDbContext();
 
   const { error } = await supabase.from('planner_settings').upsert(

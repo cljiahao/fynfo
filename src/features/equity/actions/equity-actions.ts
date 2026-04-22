@@ -3,6 +3,7 @@
 import { requireActionContext, requireDbContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { randomUUID } from 'crypto';
+import { equityTradeInputSchema } from '../schemas';
 import type { EquityTradeData } from '../types';
 
 export async function getTrades(): Promise<EquityTradeData[]> {
@@ -33,6 +34,7 @@ export async function getTrades(): Promise<EquityTradeData[]> {
 export async function createTrade(
   data: Omit<EquityTradeData, 'id'>
 ): Promise<void> {
+  equityTradeInputSchema.parse(data);
   const { userId, dek, supabase } = await requireActionContext();
 
   const { error } = await supabase.from('equity_trades').insert({
@@ -54,6 +56,7 @@ export async function updateTrade(
   id: string,
   data: Omit<EquityTradeData, 'id'>
 ): Promise<void> {
+  equityTradeInputSchema.parse(data);
   const { userId, dek, supabase } = await requireActionContext();
 
   const { error } = await supabase

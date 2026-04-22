@@ -3,6 +3,7 @@
 import { requireActionContext, requireDbContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { randomUUID } from 'crypto';
+import { importDataSchema, snapshotFormSchema } from '../schemas';
 import type { ExportData, SnapshotData } from '../types';
 
 type AssetEntryRow = {
@@ -67,6 +68,7 @@ export async function getSnapshot(id: string): Promise<SnapshotData | null> {
 }
 
 export async function upsertSnapshot(data: SnapshotData): Promise<void> {
+  snapshotFormSchema.parse(data);
   const { userId, dek, supabase } = await requireActionContext();
 
   const { error: snapErr, data: snapData } = await supabase
@@ -132,8 +134,9 @@ export async function exportData(): Promise<ExportData> {
 }
 
 export async function importData(data: ExportData): Promise<number> {
+  const parsed = importDataSchema.parse(data);
   let count = 0;
-  for (const snapshot of data.snapshots) {
+  for (const snapshot of parsed.snapshots) {
     await upsertSnapshot(snapshot);
     count++;
   }

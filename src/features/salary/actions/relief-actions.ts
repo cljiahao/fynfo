@@ -3,6 +3,8 @@
 import { requireActionContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { randomUUID } from 'crypto';
+import { z } from 'zod';
+import { taxReliefDataSchema } from '../schemas';
 import type { TaxReliefData } from '../types';
 
 export async function getTaxReliefs(year: number): Promise<TaxReliefData[]> {
@@ -28,6 +30,8 @@ export async function upsertTaxReliefs(
   year: number,
   reliefs: TaxReliefData[]
 ): Promise<void> {
+  z.number().int().positive().parse(year);
+  z.array(taxReliefDataSchema).parse(reliefs);
   const { userId, dek, supabase } = await requireActionContext();
 
   const { error: delErr } = await supabase

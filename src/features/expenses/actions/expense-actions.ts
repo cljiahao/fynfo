@@ -3,6 +3,7 @@
 import { requireActionContext, requireDbContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { randomUUID } from 'crypto';
+import { expenseDataSchema } from '../schemas';
 import type { ExpenseData } from '../types';
 
 type ExpenseSplitRow = { person: string; amount: string; settled: boolean };
@@ -44,6 +45,7 @@ export async function getExpenses(): Promise<ExpenseData[]> {
 }
 
 export async function upsertExpense(data: ExpenseData): Promise<void> {
+  expenseDataSchema.parse(data);
   const { userId, dek, supabase } = await requireActionContext();
 
   const [encItem, encInfo, encAmount] = await Promise.all([

@@ -1,6 +1,5 @@
-import { Navbar, SiteFooter } from '@/components/layout';
+import { Navbar, SiteFooter, VaultGate } from '@/components/layout';
 import { UserMenu } from '@/components/layout/user-menu';
-import { VaultGate } from '@/components/layout/vault-gate';
 import { getVaultDekSession } from '@/lib/keystore';
 
 // The proxy middleware already verified the Supabase session. The DEK cookie is

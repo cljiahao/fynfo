@@ -3,6 +3,7 @@
 import { requireActionContext, requireDbContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { randomUUID } from 'crypto';
+import { salaryDataSchema } from '../schemas';
 import type { SalaryData } from '../types';
 
 export async function getSalaryRecords(): Promise<SalaryData[]> {
@@ -45,6 +46,7 @@ export async function getSalaryRecord(id: string): Promise<SalaryData | null> {
 }
 
 export async function upsertSalaryRecord(data: SalaryData): Promise<void> {
+  salaryDataSchema.parse(data);
   const { userId, dek, supabase } = await requireActionContext();
 
   const [encSalary, encBonus] = await Promise.all([

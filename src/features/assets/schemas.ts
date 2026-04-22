@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { CATEGORIES } from './constants';
+import type { AssetCategory } from './types';
 
 export const assetEntrySchema = z.object({
-  category: z.enum(CATEGORIES as [string, ...string[]]),
+  category: z.enum(CATEGORIES as [AssetCategory, ...AssetCategory[]]),
   account: z.string(),
   amount: z.number().min(0, 'Amount must be positive'),
 });
@@ -16,7 +17,7 @@ export type SnapshotFormValues = z.infer<typeof snapshotFormSchema>;
 
 const importEntrySchema = z
   .object({
-    category: z.enum(CATEGORIES as [string, ...string[]]),
+    category: z.enum(CATEGORIES as [AssetCategory, ...AssetCategory[]]),
     account: z.string().optional().default(''),
     note: z.string().optional(),
     amount: z.number().min(0),
@@ -26,6 +27,15 @@ const importEntrySchema = z
     account: e.account || e.note || '',
     amount: e.amount,
   }));
+
+export const plannerSettingsSchema = z.object({
+  emergencyMonths: z.number().min(0),
+  warChestMonths: z.number().min(0),
+  titheEnabled: z.boolean(),
+  tithePct: z.number().min(0).max(100),
+  allowanceEnabled: z.boolean(),
+  allowancePct: z.number().min(0).max(100),
+});
 
 export const importDataSchema = z.object({
   version: z.number().optional(),

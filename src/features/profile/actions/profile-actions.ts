@@ -1,6 +1,7 @@
 'use server';
 
 import { requireDbContext } from '@/lib/action-guard';
+import { profileSchema } from '../schemas';
 import type { ProfileData } from '../types';
 
 export async function getProfile(): Promise<ProfileData | null> {
@@ -22,6 +23,7 @@ export async function getProfile(): Promise<ProfileData | null> {
 }
 
 export async function upsertProfile(data: ProfileData): Promise<void> {
+  profileSchema.parse(data);
   const { userId, supabase } = await requireDbContext();
 
   const { error } = await supabase
