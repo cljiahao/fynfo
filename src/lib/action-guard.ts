@@ -1,5 +1,4 @@
 import { createSupabaseServerClient } from '@/integrations/services/supabase';
-import { requireUserId } from '@/lib/auth-guard';
 import { getVaultDekSession } from '@/lib/keystore';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -9,14 +8,25 @@ export async function getDekOrThrow(): Promise<Buffer> {
   return dek;
 }
 
+async function getSessionUserId(supabase: SupabaseClient): Promise<string> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.user?.id) throw new Error('Unauthorized');
+  return session.user.id;
+}
+
 // For actions that need auth + vault + DB (encrypted reads/writes)
 export async function requireActionContext(): Promise<{
   userId: string;
   dek: Buffer;
   supabase: SupabaseClient;
 }> {
-  const [userId, dek] = await Promise.all([requireUserId(), getDekOrThrow()]);
   const supabase = await createSupabaseServerClient();
+  const [userId, dek] = await Promise.all([
+    getSessionUserId(supabase),
+    getDekOrThrow(),
+  ]);
   return { userId, dek, supabase };
 }
 
@@ -25,7 +35,7 @@ export async function requireDbContext(): Promise<{
   userId: string;
   supabase: SupabaseClient;
 }> {
-  const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
+  const userId = await getSessionUserId(supabase);
   return { userId, supabase };
 }

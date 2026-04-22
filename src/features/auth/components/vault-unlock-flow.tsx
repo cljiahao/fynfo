@@ -3,7 +3,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Lock, Unlock } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useCallback, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -29,7 +28,6 @@ interface VaultUnlockFlowProps {
 }
 
 export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const formRef = useRef<HTMLFormElement>(null);
   // Pre-started derivation promise — kicked off on the 6th keystroke, before submit.
@@ -77,14 +75,13 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
         // Hide overlay immediately, then refresh data in background.
         onUnlocked?.();
         queryClient.invalidateQueries();
-        router.refresh();
       } catch {
         const message = 'Failed to reach server. Please try again.';
         setError('pin', { message });
         toast.error(message);
       }
     },
-    [queryClient, onUnlocked, resetField, router, setError]
+    [queryClient, onUnlocked, resetField, setError]
   );
 
   return (
