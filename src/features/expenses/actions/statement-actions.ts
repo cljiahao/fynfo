@@ -6,34 +6,29 @@ import { parseStatement, type ParsedExpenseRow } from '../lib/statement-parser';
 
 export async function processStatement(
   formData: FormData
-): Promise<{ rows: ParsedExpenseRow[]; usedAi: boolean; error?: string }> {
+): Promise<{ rows: ParsedExpenseRow[]; error?: string }> {
   await requireUserId();
 
   const file = formData.get('file') as File | null;
   if (!file) {
-    return { rows: [], usedAi: false, error: 'No file provided' };
+    return { rows: [], error: 'No file provided' };
   }
 
   const ext = file.name.toLowerCase().split('.').pop();
-  if (ext !== 'pdf' && ext !== 'csv') {
-    return {
-      rows: [],
-      usedAi: false,
-      error: 'Only PDF and CSV files are supported',
-    };
+  if (ext !== 'csv') {
+    return { rows: [], error: 'Only CSV files are supported' };
   }
 
   try {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const result = await parseStatement(buffer, file.name);
+    const result = parseStatement(buffer, file.name);
 
     if (result.rows.length === 0) {
       return {
         ...result,
-        error: result.usedAi
-          ? 'AI could not extract transactions from this statement. Try a different format.'
-          : 'Could not parse the statement. Please ensure Ollama is running (ollama serve) or upload a CSV with clear column headers.',
+        error:
+          'Could not parse the statement. Please upload a CSV with clear column headers (date, description, amount).',
       };
     }
 
@@ -42,8 +37,7 @@ export async function processStatement(
     logger.error({ err: e, fileName: file.name }, 'statement parse failed');
     return {
       rows: [],
-      usedAi: false,
-      error: 'Failed to process statement',
+      error: e instanceof Error ? e.message : 'Failed to process statement',
     };
   }
 }
