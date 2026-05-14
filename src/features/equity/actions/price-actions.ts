@@ -25,18 +25,14 @@ export async function fetchStockPrices(
 
   const results: Record<string, StockPrice> = {};
 
-  // Fetch in batches of 10 to avoid overloading
-  for (let i = 0; i < symbols.length; i += 10) {
-    const batch = symbols.slice(i, i + 10);
-    const promises = batch.map(async (symbol) => {
+  const allResults = await Promise.all(
+    symbols.map(async (symbol) => {
       try {
         const res = await fetch(
           `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`,
           {
-            headers: {
-              'User-Agent': 'Mozilla/5.0',
-            },
-            next: { revalidate: 300 }, // cache for 5 minutes
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+            next: { revalidate: 300 },
           }
         );
 
@@ -64,14 +60,11 @@ export async function fetchStockPrices(
       } catch {
         return null;
       }
-    });
+    })
+  );
 
-    const batchResults = await Promise.all(promises);
-    for (const result of batchResults) {
-      if (result) {
-        results[result.ticker] = result;
-      }
-    }
+  for (const result of allResults) {
+    if (result) results[result.ticker] = result;
   }
 
   return results;

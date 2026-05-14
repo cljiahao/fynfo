@@ -11,10 +11,7 @@ export class DecryptionError extends Error {
   }
 }
 
-export async function encryptPayload(
-  text: string,
-  dek: Buffer
-): Promise<string> {
+export function encryptPayload(text: string, dek: Buffer): string {
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(ALGORITHM, dek, iv);
 
@@ -32,10 +29,7 @@ export async function encryptPayload(
   return Buffer.from(payloadStr).toString('base64');
 }
 
-export async function decryptPayload(
-  encryptedBase64: string,
-  dek: Buffer
-): Promise<string> {
+export function decryptPayload(encryptedBase64: string, dek: Buffer): string {
   try {
     const payloadStr = Buffer.from(encryptedBase64, 'base64').toString('utf8');
     const { iv, data, tag } = JSON.parse(payloadStr);

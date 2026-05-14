@@ -7,26 +7,23 @@ import { decryptPayload } from '@/lib/crypto';
  */
 
 /** Decrypt a required ciphertext to a number. */
-export async function decryptNumber(
-  cipher: string,
-  dek: Buffer
-): Promise<number> {
-  return Number(await decryptPayload(cipher, dek));
+export function decryptNumber(cipher: string, dek: Buffer): number {
+  return Number(decryptPayload(cipher, dek));
 }
 
 /** Decrypt an optional ciphertext to a string; `''` when absent/empty. */
-export async function decryptOptionalString(
+export function decryptOptionalString(
   cipher: string | null | undefined,
   dek: Buffer
-): Promise<string> {
+): string {
   return cipher ? decryptPayload(cipher, dek) : '';
 }
 
 /** Decrypt an optional ciphertext to a number; `fallback` when absent/empty. */
-export async function decryptOptionalNumber(
+export function decryptOptionalNumber(
   cipher: string | null | undefined,
   dek: Buffer,
   fallback = 0
-): Promise<number> {
-  return cipher ? Number(await decryptPayload(cipher, dek)) : fallback;
+): number {
+  return cipher ? Number(decryptPayload(cipher, dek)) : fallback;
 }
