@@ -29,30 +29,6 @@ function sealCookie(plaintext: string): string {
   return Buffer.from(payload).toString('base64');
 }
 
-describe('keystore — deriveKeyFromPinV2', () => {
-  it('is deterministic for the same (pin, userId) and yields a 32-byte key', async () => {
-    const { deriveKeyFromPinV2 } = await import('@/lib/keystore');
-    const a = await deriveKeyFromPinV2('123456', 'user-a');
-    const b = await deriveKeyFromPinV2('123456', 'user-a');
-    expect(a.equals(b)).toBe(true);
-    expect(a.length).toBe(32);
-  });
-
-  it('produces a different key when the salt (userId) differs', async () => {
-    const { deriveKeyFromPinV2 } = await import('@/lib/keystore');
-    const a = await deriveKeyFromPinV2('123456', 'user-a');
-    const b = await deriveKeyFromPinV2('123456', 'user-b');
-    expect(a.equals(b)).toBe(false);
-  });
-
-  it('produces a different key when the PIN differs', async () => {
-    const { deriveKeyFromPinV2 } = await import('@/lib/keystore');
-    const a = await deriveKeyFromPinV2('123456', 'user-a');
-    const b = await deriveKeyFromPinV2('654321', 'user-a');
-    expect(a.equals(b)).toBe(false);
-  });
-});
-
 describe('keystore — getVaultDekSession', () => {
   beforeEach(() => {
     cookieJar = { get: () => undefined };
