@@ -1,13 +1,12 @@
-// Must match server-side derivation in @/lib/keystore exactly so derived bytes
-// are identical across browser and server. Both sides read constants from
-// @/lib/crypto-constants.
 import { KEY_LEN_BYTES, V2_ITERATIONS } from '@/lib/crypto-constants';
 
-async function deriveBitsBase64(
-  pin: string,
-  salt: string,
-  iterations: number
-): Promise<string> {
+// v1: static salt — used by all existing accounts prior to per-user salt migration
+const PBKDF2_SALT_V1 = 'fynfo_v1_salt';
+
+// v2: per-user salt — prevents cross-user rainbow table attacks
+const PBKDF2_SALT_V2_PREFIX = 'fynfo_v2_';
+
+async function pbkdf2(pin: string, salt: string): Promise<string> {
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(pin),
@@ -20,7 +19,7 @@ async function deriveBitsBase64(
     {
       name: 'PBKDF2',
       salt: new TextEncoder().encode(salt),
-      iterations,
+      iterations: V2_ITERATIONS,
       hash: 'SHA-256',
     },
     keyMaterial,
@@ -36,12 +35,18 @@ async function deriveBitsBase64(
 }
 
 /**
- * v2 DEK derivation. Per-user salt (Supabase user id) + 600k iterations
- * (OWASP 2025 PBKDF2-HMAC-SHA-256 minimum / FIPS-140 recommended).
+ * Derives the 256-bit DEK using the v2 per-user salt scheme.
+ * Call this for all new unlock attempts. Kicks off as soon as the
+ * 6th digit is typed (before submit) to hide PBKDF2 latency.
  */
-export async function deriveKeyClientV2(
-  pin: string,
-  userId: string
-): Promise<string> {
-  return deriveBitsBase64(pin, userId, V2_ITERATIONS);
+export function deriveKeyClient(pin: string, userId: string): Promise<string> {
+  return pbkdf2(pin, PBKDF2_SALT_V2_PREFIX + userId);
+}
+
+/**
+ * Derives the DEK using the v1 static salt — only used during one-time
+ * migration of existing accounts to the per-user salt scheme.
+ */
+export function deriveKeyLegacy(pin: string): Promise<string> {
+  return pbkdf2(pin, PBKDF2_SALT_V1);
 }
