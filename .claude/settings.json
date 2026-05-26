@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npx auth:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git switch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git restore:*)",
+      "Bash(git stash:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Read(//**)",
+      "Grep(//**)",
+      "Glob(//**)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -f:*)",
+      "Bash(git branch -D:*)",
+      "Bash(rm -rf:*)",
+      "Bash(docker push:*)",
+      "Bash(./scripts/build-push.sh:*)",
+      "Write(.env*)",
+      "Edit(.env*)",
+      "Write(CONSTITUTION.md)",
+      "Edit(CONSTITUTION.md)",
+      "Write(AGENTS.md)",
+      "Edit(AGENTS.md)",
+      "Write(.claude/settings.json)",
+      "Edit(.claude/settings.json)",
+      "Write(specs/governance/**)",
+      "Edit(specs/governance/**)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -Command \"Write-Output 'FYNFO GOVERNANCE ACTIVE | Read CONSTITUTION.md + AGENTS.md before acting | Spec-first: no code without approved spec in specs/** | Gates: pnpm check && pnpm test:ci && pnpm build must be green | Hard stops: .env*, CONSTITUTION.md, AGENTS.md, .claude/**, specs/governance/**, destructive git/docker'\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -Command \"if (-not (Test-Path 'specs')) { Write-Output 'WARN: specs/ missing — bootstrap before any impl work' }\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -File .claude/hooks/guard-protected-paths.ps1"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -File .claude/hooks/guard-destructive-bash.ps1"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -Command \"$out = & pnpm format:check 2>&1; $out | Select-Object -Last 5\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -Command \"$out = & pnpm test:ci 2>&1; $ec = $LASTEXITCODE; $out | Select-Object -Last 20 | ForEach-Object { [Console]::Error.WriteLine($_) }; if ($ec -ne 0) { exit 2 } else { exit 0 }\""
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -Command \"Write-Output '=== Post-compact context ==='; Get-Content AGENTS.md -TotalCount 30\""
+          }
+        ]
+      }
+    ]
+  }
+}

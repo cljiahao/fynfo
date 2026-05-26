@@ -26,12 +26,6 @@ const DEFAULT_PROFILE: TaxProfileContext = {
   residencyStatus: 'resident',
 };
 
-// Default tax reliefs (kept for backward compatibility)
-export const DEFAULT_TAX_RELIEFS = {
-  earnedIncomeRelief: 1000,
-  nsmanRelief: 1500,
-};
-
 export function computeAutoReliefs(
   profile: TaxProfileContext,
   year: number

@@ -48,3 +48,7 @@ supabase/.temp
 # dotenvx
 .env.keys
 .env.*.local
+
+# supabase backup tooling (scripts/backup-to-supabase.*)
+scripts/.env.backup
+.supabase-backups/

@@ -3,10 +3,13 @@ import crypto from 'crypto';
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12; // Standard for GCM
 
-/**
- * Encrypts a plaintext string using the provided symmetric Data Encryption Key (DEK).
- * Uses AES-256-GCM to provide both confidentiality and authenticity.
- */
+export class DecryptionError extends Error {
+  constructor(message = 'decryption failed') {
+    super(message);
+    this.name = 'DecryptionError';
+  }
+}
+
 export async function encryptPayload(
   text: string,
   dek: Buffer
@@ -19,7 +22,6 @@ export async function encryptPayload(
 
   const authTag = cipher.getAuthTag().toString('base64');
 
-  // Package into a single string for DB storage
   const payloadStr = JSON.stringify({
     iv: iv.toString('base64'),
     data: encrypted,
@@ -29,9 +31,6 @@ export async function encryptPayload(
   return Buffer.from(payloadStr).toString('base64');
 }
 
-/**
- * Decrypts a payload string back to plaintext using the symmetric DEK.
- */
 export async function decryptPayload(
   encryptedBase64: string,
   dek: Buffer
@@ -53,7 +52,6 @@ export async function decryptPayload(
 
     return decrypted;
   } catch {
-    console.error('Decryption failed, returning fallback empty state.');
-    return ''; // Return an empty string if it fails to decrypt (e.g. wrong key)
+    throw new DecryptionError();
   }
 }

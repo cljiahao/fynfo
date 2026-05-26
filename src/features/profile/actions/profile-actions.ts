@@ -1,6 +1,8 @@
 'use server';
 
 import { requireDbContext } from '@/lib/action-guard';
+import { throwIfSupabaseError } from '@/lib/errors';
+import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { profileSchema } from '../schemas';
 import type { ProfileData } from '../types';
 
@@ -23,7 +25,7 @@ export async function getProfile(): Promise<ProfileData | null> {
 }
 
 export async function upsertProfile(data: ProfileData): Promise<void> {
-  profileSchema.parse(data);
+  parseOrThrow(profileSchema, data, 'profile.upsert.input');
   const { userId, supabase } = await requireDbContext();
 
   const { error } = await supabase
@@ -36,5 +38,5 @@ export async function upsertProfile(data: ProfileData): Promise<void> {
     })
     .eq('id', userId);
 
-  if (error) throw new Error(error.message);
+  throwIfSupabaseError(error, 'profile write');
 }

@@ -1,0 +1,27 @@
+{
+  "templatecentral_version": "4.0.0",
+  "stack": "nextjs",
+  "seeded_at": "2026-05-27",
+  "seeded_files": {
+    "AGENTS.md": {
+      "origin_hash": "097ba6646a03c692dfe54a5f7bdd94e7aad19570ae705e431f642b9e998492c5",
+      "path": "AGENTS.md"
+    },
+    "CLAUDE.md": {
+      "origin_hash": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
+      "path": "CLAUDE.md"
+    },
+    ".claude/settings.json": {
+      "origin_hash": "661b257f54970fce1d4357a71b5c795766889dc4dc4a7c319a6d73e976b6b5c1",
+      "path": ".claude/settings.json"
+    },
+    ".claude/skills/next-verify.md": {
+      "origin_hash": "7714d6f271863993565fc2f41ff0b4bdcc9d3a61f785353b8843c93ab106350f",
+      "path": ".claude/skills/next-verify.md"
+    },
+    ".claude/skills/regen-harness.md": {
+      "origin_hash": "9de945b6b1f3a1456a50617bd7cd1ba442a562ae8eb7e3bbaf89acb180358b44",
+      "path": ".claude/skills/regen-harness.md"
+    }
+  }
+}

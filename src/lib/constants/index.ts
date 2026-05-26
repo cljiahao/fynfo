@@ -1,2 +1,2 @@
-export { API_BASE, isDev, isProd } from './env';
+export { isDev } from './env';
 export { API_ROUTES, PAGE_ROUTES } from './routes';

@@ -37,12 +37,6 @@ export interface ChartDataPoint {
   excl_pension: number;
 }
 
-export interface ExportData {
-  version: 1;
-  exportedAt: string;
-  snapshots: SnapshotData[];
-}
-
 export interface PlannerSettingsData {
   emergencyMonths: number;
   warChestMonths: number;

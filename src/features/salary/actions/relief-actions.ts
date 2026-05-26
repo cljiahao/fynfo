@@ -2,6 +2,8 @@
 
 import { requireActionContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
+import { throwIfSupabaseError } from '@/lib/errors';
+import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { taxReliefDataSchema } from '../schemas';
@@ -16,7 +18,7 @@ export async function getTaxReliefs(year: number): Promise<TaxReliefData[]> {
     .eq('user_id', userId)
     .eq('year', year);
 
-  if (error) throw new Error('Failed to fetch tax reliefs');
+  throwIfSupabaseError(error, 'tax_relief read');
 
   return Promise.all(
     (data || []).map(async (e) => ({
@@ -30,8 +32,8 @@ export async function upsertTaxReliefs(
   year: number,
   reliefs: TaxReliefData[]
 ): Promise<void> {
-  z.number().int().positive().parse(year);
-  z.array(taxReliefDataSchema).parse(reliefs);
+  parseOrThrow(z.number().int().positive(), year, 'tax_relief.year');
+  parseOrThrow(z.array(taxReliefDataSchema), reliefs, 'tax_relief.reliefs');
   const { userId, dek, supabase } = await requireActionContext();
 
   const { error: delErr } = await supabase
@@ -40,8 +42,7 @@ export async function upsertTaxReliefs(
     .eq('user_id', userId)
     .eq('year', year);
 
-  if (delErr)
-    throw new Error('Failed to clear old tax reliefs: ' + delErr.message);
+  throwIfSupabaseError(delErr, 'tax_relief delete');
 
   if (reliefs.length === 0) return;
 
@@ -59,6 +60,5 @@ export async function upsertTaxReliefs(
     .from('tax_relief_entries')
     .insert(inserts);
 
-  if (insErr)
-    throw new Error('Failed to insert new tax reliefs: ' + insErr.message);
+  throwIfSupabaseError(insErr, 'tax_relief insert');
 }

@@ -1,6 +1,8 @@
 'use server';
 
 import { requireDbContext } from '@/lib/action-guard';
+import { throwIfSupabaseError } from '@/lib/errors';
+import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { plannerSettingsSchema } from '../schemas';
 import type { PlannerSettingsData } from '../types';
@@ -29,7 +31,7 @@ export async function getPlannerSettings(): Promise<PlannerSettingsData | null> 
 export async function upsertPlannerSettings(
   data: PlannerSettingsData
 ): Promise<void> {
-  plannerSettingsSchema.parse(data);
+  parseOrThrow(plannerSettingsSchema, data, 'planner.upsert.input');
   const { userId, supabase } = await requireDbContext();
 
   const { error } = await supabase.from('planner_settings').upsert(
@@ -49,5 +51,5 @@ export async function upsertPlannerSettings(
     }
   );
 
-  if (error) throw new Error(error.message);
+  throwIfSupabaseError(error, 'planner write');
 }

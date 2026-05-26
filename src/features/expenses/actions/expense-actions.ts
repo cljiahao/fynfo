@@ -2,6 +2,8 @@
 
 import { requireActionContext, requireDbContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
+import { throwIfSupabaseError } from '@/lib/errors';
+import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { expenseDataSchema } from '../schemas';
 import type { ExpenseData } from '../types';
@@ -18,7 +20,7 @@ export async function getExpenses(): Promise<ExpenseData[]> {
     .eq('user_id', userId)
     .order('date', { ascending: false });
 
-  if (error) throw new Error('Failed to fetch expenses: ' + error.message);
+  throwIfSupabaseError(error, 'expense read');
 
   return Promise.all(
     (data || []).map(async (r) => {
@@ -34,8 +36,8 @@ export async function getExpenses(): Promise<ExpenseData[]> {
         id: r.id,
         date: r.date,
         type: r.type as ExpenseData['type'],
-        item: await decryptPayload(r.item || '', dek),
-        info: await decryptPayload(r.info || '', dek),
+        item: r.item ? await decryptPayload(r.item, dek) : '',
+        info: r.info ? await decryptPayload(r.info, dek) : '',
         amount: Number(await decryptPayload(r.amount, dek)),
         splitType: r.split_type as 'self' | 'shared',
         splits: decryptedSplits,
@@ -45,7 +47,7 @@ export async function getExpenses(): Promise<ExpenseData[]> {
 }
 
 export async function upsertExpense(data: ExpenseData): Promise<void> {
-  expenseDataSchema.parse(data);
+  parseOrThrow(expenseDataSchema, data, 'expense.upsert.input');
   const { userId, dek, supabase } = await requireActionContext();
 
   const [encItem, encInfo, encAmount] = await Promise.all([
@@ -70,7 +72,7 @@ export async function upsertExpense(data: ExpenseData): Promise<void> {
     supabase.from('expense_splits').delete().eq('expense_id', data.id),
   ]);
 
-  if (expErr) throw new Error('Failed to save expense');
+  throwIfSupabaseError(expErr, 'expense upsert');
 
   if (data.splitType === 'shared' && data.splits.length > 0) {
     const encSplits = await Promise.all(
@@ -86,7 +88,7 @@ export async function upsertExpense(data: ExpenseData): Promise<void> {
     const { error: splitErr } = await supabase
       .from('expense_splits')
       .insert(encSplits);
-    if (splitErr) throw new Error('Failed to save expense splits');
+    throwIfSupabaseError(splitErr, 'expense splits insert');
   }
 }
 
@@ -99,7 +101,7 @@ export async function deleteExpense(id: string): Promise<void> {
     .eq('id', id)
     .eq('user_id', userId);
 
-  if (error) throw new Error(error.message);
+  throwIfSupabaseError(error, 'expense write');
 }
 
 export async function settleSplit(
@@ -116,7 +118,7 @@ export async function settleSplit(
     .eq('expense_id', expenseId)
     .eq('person', person);
 
-  if (error) throw new Error(error.message);
+  throwIfSupabaseError(error, 'expense write');
 }
 
 export async function settleMonthSplits(
@@ -132,7 +134,7 @@ export async function settleMonthSplits(
     .in('expense_id', expenseIds)
     .eq('person', person);
 
-  if (error) throw new Error(error.message);
+  throwIfSupabaseError(error, 'expense write');
 }
 
 export async function getDistinctPeople(): Promise<string[]> {
@@ -143,7 +145,7 @@ export async function getDistinctPeople(): Promise<string[]> {
     .select('splits:expense_splits(person)')
     .eq('user_id', userId);
 
-  if (error) throw new Error(error.message);
+  throwIfSupabaseError(error, 'expense write');
 
   const peopleSet = new Set<string>();
   data.forEach((r: ExpenseWithSplitsRow) => {

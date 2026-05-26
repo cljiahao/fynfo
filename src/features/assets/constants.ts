@@ -37,11 +37,3 @@ export const INVESTMENT_CATEGORIES: AssetCategory[] = [
   'non_equity',
   'crypto',
 ];
-
-// Chart segment keys and their display config
-export const CHART_SEGMENTS = [
-  { key: 'savings', label: 'Savings', color: '#3b82f6' },
-  { key: 'bonds', label: 'Bonds', color: '#f59e0b' },
-  { key: 'total_investment', label: 'Total Investment', color: '#ef4444' },
-  { key: 'pension', label: 'Pension', color: '#92400e' },
-] as const;

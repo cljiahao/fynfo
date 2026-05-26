@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Lock, Unlock } from 'lucide-react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -11,7 +11,8 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { deriveKeyClient } from '@/lib/client-crypto';
+import { createSupabaseBrowserClient } from '@/integrations/clients/supabase';
+import { deriveKeyClient, deriveKeyClientV2 } from '@/lib/client-crypto';
 
 const pinSchema = z.object({
   pin: z
@@ -22,6 +23,7 @@ const pinSchema = z.object({
 });
 
 type PinFormValues = z.infer<typeof pinSchema>;
+type DerivedKeys = { derivedKey: string; derivedKeyV2: string };
 
 interface VaultUnlockFlowProps {
   onUnlocked?: () => void;
@@ -31,7 +33,27 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
   const queryClient = useQueryClient();
   const formRef = useRef<HTMLFormElement>(null);
   // Pre-started derivation promise — kicked off on the 6th keystroke, before submit.
-  const derivingRef = useRef<Promise<string> | null>(null);
+  const derivingRef = useRef<Promise<DerivedKeys> | null>(null);
+  const userIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    void supabase.auth.getUser().then(({ data }) => {
+      userIdRef.current = data.user?.id ?? null;
+    });
+  }, []);
+
+  const startDerive = useCallback(
+    (pin: string): Promise<DerivedKeys> | null => {
+      const userId = userIdRef.current;
+      if (!userId) return null;
+      return Promise.all([
+        deriveKeyClient(pin),
+        deriveKeyClientV2(pin, userId),
+      ]).then(([derivedKey, derivedKeyV2]) => ({ derivedKey, derivedKeyV2 }));
+    },
+    []
+  );
 
   const {
     control,
@@ -47,15 +69,20 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
   const onSubmit = useCallback(
     async (values: PinFormValues) => {
       try {
-        // Await the pre-started derivation if available; otherwise derive now.
-        const derivedKey = await (derivingRef.current ??
-          deriveKeyClient(values.pin));
+        const pending = derivingRef.current ?? startDerive(values.pin);
         derivingRef.current = null;
+        if (!pending) {
+          const message = 'Session not ready. Please refresh and try again.';
+          setError('pin', { message });
+          toast.error(message);
+          return;
+        }
+        const keys = await pending;
 
         const res = await fetch('/api/vault', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ derivedKey }),
+          body: JSON.stringify(keys),
         });
 
         if (res.status === 401) {
@@ -72,6 +99,15 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
           return;
         }
 
+        const body = (await res.json().catch(() => ({}))) as {
+          rekeyed?: boolean;
+        };
+        if (body.rekeyed) {
+          toast.success(
+            'Vault upgraded to v2 encryption (PBKDF2 600k + per-user salt).'
+          );
+        }
+
         // Hide overlay immediately, then refresh data in background.
         onUnlocked?.();
         queryClient.invalidateQueries();
@@ -81,7 +117,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
         toast.error(message);
       }
     },
-    [queryClient, onUnlocked, resetField, setError]
+    [queryClient, onUnlocked, resetField, setError, startDerive]
   );
 
   return (
@@ -123,8 +159,8 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
                     const clean = e.target.value.replace(/\D/g, '');
                     onChange(clean);
                     if (clean.length === 6) {
-                      // Start derivation immediately on the 6th digit — before submit overhead.
-                      derivingRef.current = deriveKeyClient(clean);
+                      // Start both derivations immediately — before submit.
+                      derivingRef.current = startDerive(clean);
                       setTimeout(() => formRef.current?.requestSubmit(), 0);
                     } else {
                       derivingRef.current = null;

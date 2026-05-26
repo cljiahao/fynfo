@@ -1,14 +1,8 @@
-import { createSupabaseServerClient } from '@/integrations/services/supabase';
+// Thin facade — delegate to action-guard.requireDbContext to avoid duplicating
+// the `supabase.auth.getUser()` verification logic across two modules.
+import { requireDbContext } from '@/lib/action-guard';
 
 export async function requireUserId(): Promise<string> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session?.user?.id) {
-    throw new Error('Unauthorized');
-  }
-
-  return session.user.id;
+  const { userId } = await requireDbContext();
+  return userId;
 }

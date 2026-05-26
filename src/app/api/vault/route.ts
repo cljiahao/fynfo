@@ -1,11 +1,31 @@
 import { createSupabaseServerClient } from '@/integrations/services/supabase';
-import { decryptPayload, encryptPayload } from '@/lib/crypto';
+import { DecryptionError, decryptPayload, encryptPayload } from '@/lib/crypto';
+import { AppError, handleApiError } from '@/lib/errors';
 import { getSessionSecret } from '@/lib/keystore';
+import { logger } from '@/lib/logger';
+import { withLogging } from '@/lib/utils/with-logging';
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 const VAULT_CANARY = 'fynfo_vault_ok';
+
+const VaultUnlockSchema = z.object({
+  derivedKey: z
+    .string()
+    .min(1, 'derivedKey is required')
+    .refine(
+      (v) => {
+        try {
+          return Buffer.from(v, 'base64').length === 32;
+        } catch {
+          return false;
+        }
+      },
+      { message: 'derivedKey must be base64-encoded 32-byte value' }
+    ),
+});
 
 /**
  * Encrypts the raw DEK so it is safe to be stored inside a browser cookie.
@@ -31,31 +51,32 @@ function encryptCookiePayload(data: string): string {
   });
 }
 
-export async function POST(req: Request) {
+export const POST = withLogging('api.vault.unlock', async (req: Request) => {
   try {
-    const [supabase, { derivedKey }] = await Promise.all([
+    const [supabase, raw] = await Promise.all([
       createSupabaseServerClient(),
-      req.json() as Promise<{ derivedKey?: string }>,
+      req.json().catch(() => null),
     ]);
 
-    if (!derivedKey) {
-      return NextResponse.json({ error: 'Missing key' }, { status: 400 });
+    const parsed = VaultUnlockSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid request', issues: z.flattenError(parsed.error) },
+        { status: 400 }
+      );
     }
 
-    const dek = Buffer.from(derivedKey, 'base64');
-    if (dek.length !== 32) {
-      return NextResponse.json({ error: 'Invalid key' }, { status: 400 });
-    }
+    const dek = Buffer.from(parsed.data.derivedKey, 'base64');
 
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser();
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (userError || !user) {
+      throw new AppError('UNAUTHORIZED', 'Unauthorized');
     }
 
-    // Fetch the stored vault_check canary for this user (may be null on first unlock)
     const { data: profile } = await supabase
       .from('users_profile')
       .select('vault_check')
@@ -63,13 +84,18 @@ export async function POST(req: Request) {
       .single();
 
     if (profile?.vault_check) {
-      // Verify PIN: try to decrypt the canary — wrong PIN produces "" due to AES-GCM auth failure
-      const decrypted = await decryptPayload(profile.vault_check, dek);
-      if (decrypted !== VAULT_CANARY) {
-        return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
+      try {
+        const decrypted = await decryptPayload(profile.vault_check, dek);
+        if (decrypted !== VAULT_CANARY) {
+          throw new AppError('VAULT_REJECTED', 'Incorrect PIN');
+        }
+      } catch (err) {
+        if (err instanceof DecryptionError) {
+          throw new AppError('VAULT_REJECTED', 'Incorrect PIN');
+        }
+        throw err;
       }
     } else {
-      // First unlock: encrypt and store the canary
       const encryptedCanary = await encryptPayload(VAULT_CANARY, dek);
       const { error: upsertError } = await supabase
         .from('users_profile')
@@ -80,15 +106,14 @@ export async function POST(req: Request) {
         });
 
       if (upsertError) {
-        console.error('Failed to store vault canary:', upsertError);
-        return NextResponse.json(
-          { error: 'Failed to initialize vault' },
-          { status: 500 }
+        logger.error(
+          { code: upsertError.code, details: upsertError.details },
+          'failed to store vault canary'
         );
+        throw new AppError('INTERNAL', 'Failed to initialize vault');
       }
     }
 
-    // PIN is correct — encrypt the DEK and store in HttpOnly cookie
     const masterKeyBase64 = dek.toString('base64');
     const secureCookieBlob = Buffer.from(
       encryptCookiePayload(masterKeyBase64)
@@ -105,10 +130,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Vault API failure:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
-    );
+    return handleApiError('api.vault.unlock', error);
   }
-}
+});

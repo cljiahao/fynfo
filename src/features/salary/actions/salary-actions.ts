@@ -2,6 +2,8 @@
 
 import { requireActionContext, requireDbContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
+import { throwIfSupabaseError } from '@/lib/errors';
+import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { salaryDataSchema } from '../schemas';
 import type { SalaryData } from '../types';
@@ -15,7 +17,7 @@ export async function getSalaryRecords(): Promise<SalaryData[]> {
     .eq('user_id', userId)
     .order('month', { ascending: true });
 
-  if (error) throw new Error('Failed to fetch salary records');
+  throwIfSupabaseError(error, 'salary read');
 
   return Promise.all(
     (data || []).map(async (r) => ({
@@ -46,7 +48,7 @@ export async function getSalaryRecord(id: string): Promise<SalaryData | null> {
 }
 
 export async function upsertSalaryRecord(data: SalaryData): Promise<void> {
-  salaryDataSchema.parse(data);
+  parseOrThrow(salaryDataSchema, data, 'salary.upsert.input');
   const { userId, dek, supabase } = await requireActionContext();
 
   const [encSalary, encBonus] = await Promise.all([
@@ -69,7 +71,7 @@ export async function upsertSalaryRecord(data: SalaryData): Promise<void> {
     }
   );
 
-  if (error) throw new Error(error.message);
+  throwIfSupabaseError(error, 'salary write');
 }
 
 export async function deleteSalaryRecord(id: string): Promise<void> {
@@ -81,5 +83,5 @@ export async function deleteSalaryRecord(id: string): Promise<void> {
     .eq('user_id', userId)
     .eq('month', id);
 
-  if (error) throw new Error(error.message);
+  throwIfSupabaseError(error, 'salary write');
 }

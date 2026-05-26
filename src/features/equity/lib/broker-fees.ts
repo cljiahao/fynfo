@@ -88,9 +88,8 @@ function moomooSgCustodianBuySell(tradeValue: number): FeeResult {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function moomooUsBuySell(_tradeValue: number): FeeResult {
-  // US: $0 commission, USD 0.99 platform fee per order
+  // US: $0 commission, USD 0.99 platform fee per order (flat regardless of trade value)
   return { commission: 0, platformFee: 0.99, clearingFee: 0, total: 0.99 };
 }
 

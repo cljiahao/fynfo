@@ -2,9 +2,11 @@
 
 import { requireActionContext, requireDbContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
+import { throwIfSupabaseError } from '@/lib/errors';
+import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
-import { importDataSchema, snapshotFormSchema } from '../schemas';
-import type { ExportData, SnapshotData } from '../types';
+import { snapshotFormSchema } from '../schemas';
+import type { SnapshotData } from '../types';
 
 type AssetEntryRow = {
   category: string;
@@ -28,7 +30,7 @@ export async function getSnapshots(): Promise<SnapshotData[]> {
       const decryptedEntries = await Promise.all(
         (s.entries || []).map(async (e: AssetEntryRow) => ({
           category: e.category as SnapshotData['entries'][number]['category'],
-          account: await decryptPayload(e.account || '', dek),
+          account: e.account ? await decryptPayload(e.account, dek) : '',
           amount: Number(await decryptPayload(e.amount, dek)),
         }))
       );
@@ -56,7 +58,7 @@ export async function getSnapshot(id: string): Promise<SnapshotData | null> {
   const decryptedEntries = await Promise.all(
     (data.entries || []).map(async (e: AssetEntryRow) => ({
       category: e.category as SnapshotData['entries'][number]['category'],
-      account: await decryptPayload(e.account || '', dek),
+      account: e.account ? await decryptPayload(e.account, dek) : '',
       amount: Number(await decryptPayload(e.amount, dek)),
     }))
   );
@@ -68,7 +70,7 @@ export async function getSnapshot(id: string): Promise<SnapshotData | null> {
 }
 
 export async function upsertSnapshot(data: SnapshotData): Promise<void> {
-  snapshotFormSchema.parse(data);
+  parseOrThrow(snapshotFormSchema, data, 'snapshot.upsert.input');
   const { userId, dek, supabase } = await requireActionContext();
 
   const { error: snapErr, data: snapData } = await supabase
@@ -87,7 +89,7 @@ export async function upsertSnapshot(data: SnapshotData): Promise<void> {
     .select('id')
     .single();
 
-  if (snapErr) throw new Error(snapErr.message);
+  throwIfSupabaseError(snapErr, 'snapshot upsert');
 
   const snapshotId = snapData.id;
 
@@ -108,7 +110,7 @@ export async function upsertSnapshot(data: SnapshotData): Promise<void> {
     const { error: insErr } = await supabase
       .from('asset_entries')
       .insert(encEntries);
-    if (insErr) throw new Error(insErr.message);
+    throwIfSupabaseError(insErr, 'asset_entries insert');
   }
 }
 
@@ -121,24 +123,5 @@ export async function deleteSnapshot(id: string): Promise<void> {
     .eq('user_id', userId)
     .eq('month', id);
 
-  if (error) throw new Error(error.message);
-}
-
-export async function exportData(): Promise<ExportData> {
-  const snapshots = await getSnapshots();
-  return {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    snapshots,
-  };
-}
-
-export async function importData(data: ExportData): Promise<number> {
-  const parsed = importDataSchema.parse(data);
-  let count = 0;
-  for (const snapshot of parsed.snapshots) {
-    await upsertSnapshot(snapshot);
-    count++;
-  }
-  return count;
+  throwIfSupabaseError(error, 'snapshot write');
 }

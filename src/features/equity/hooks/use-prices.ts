@@ -18,7 +18,7 @@ export function useStockPrices(tickers: string[]) {
 }
 
 export function useExchangeRate(from: string, to: string) {
-  return useQuery<number>({
+  return useQuery<number | null>({
     queryKey: ['exchange-rate', from, to],
     queryFn: () => fetchExchangeRate(from, to),
     staleTime: 5 * 60 * 1000,

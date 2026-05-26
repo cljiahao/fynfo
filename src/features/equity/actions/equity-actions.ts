@@ -2,6 +2,8 @@
 
 import { requireActionContext, requireDbContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
+import { throwIfSupabaseError } from '@/lib/errors';
+import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { equityTradeInputSchema } from '../schemas';
 import type { EquityTradeData } from '../types';
@@ -26,7 +28,7 @@ export async function getTrades(): Promise<EquityTradeData[]> {
       action: t.action as EquityTradeData['action'],
       shares: Number(await decryptPayload(t.shares, dek)),
       price: Number(await decryptPayload(t.price, dek)),
-      fees: Number(await decryptPayload(t.fees || '0', dek)),
+      fees: t.fees ? Number(await decryptPayload(t.fees, dek)) : 0,
     }))
   );
 }
@@ -34,7 +36,7 @@ export async function getTrades(): Promise<EquityTradeData[]> {
 export async function createTrade(
   data: Omit<EquityTradeData, 'id'>
 ): Promise<void> {
-  equityTradeInputSchema.parse(data);
+  parseOrThrow(equityTradeInputSchema, data, 'equity.trade.input');
   const { userId, dek, supabase } = await requireActionContext();
 
   const { error } = await supabase.from('equity_trades').insert({
@@ -49,14 +51,14 @@ export async function createTrade(
     fees: await encryptPayload(data.fees.toString(), dek),
   });
 
-  if (error) throw new Error(error.message);
+  throwIfSupabaseError(error, 'equity trade write');
 }
 
 export async function updateTrade(
   id: string,
   data: Omit<EquityTradeData, 'id'>
 ): Promise<void> {
-  equityTradeInputSchema.parse(data);
+  parseOrThrow(equityTradeInputSchema, data, 'equity.trade.input');
   const { userId, dek, supabase } = await requireActionContext();
 
   const { error } = await supabase
@@ -74,7 +76,7 @@ export async function updateTrade(
     .eq('id', id)
     .eq('user_id', userId);
 
-  if (error) throw new Error(error.message);
+  throwIfSupabaseError(error, 'equity trade write');
 }
 
 export async function deleteTrade(id: string): Promise<void> {
@@ -86,5 +88,5 @@ export async function deleteTrade(id: string): Promise<void> {
     .eq('id', id)
     .eq('user_id', userId);
 
-  if (error) throw new Error(error.message);
+  throwIfSupabaseError(error, 'equity trade write');
 }

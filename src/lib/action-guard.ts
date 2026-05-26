@@ -8,12 +8,13 @@ export async function getDekOrThrow(): Promise<Buffer> {
   return dek;
 }
 
-async function getSessionUserId(supabase: SupabaseClient): Promise<string> {
+async function getVerifiedUserId(supabase: SupabaseClient): Promise<string> {
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session?.user?.id) throw new Error('Unauthorized');
-  return session.user.id;
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+  if (error || !user?.id) throw new Error('Unauthorized');
+  return user.id;
 }
 
 // For actions that need auth + vault + DB (encrypted reads/writes)
@@ -24,7 +25,7 @@ export async function requireActionContext(): Promise<{
 }> {
   const supabase = await createSupabaseServerClient();
   const [userId, dek] = await Promise.all([
-    getSessionUserId(supabase),
+    getVerifiedUserId(supabase),
     getDekOrThrow(),
   ]);
   return { userId, dek, supabase };
@@ -36,6 +37,6 @@ export async function requireDbContext(): Promise<{
   supabase: SupabaseClient;
 }> {
   const supabase = await createSupabaseServerClient();
-  const userId = await getSessionUserId(supabase);
+  const userId = await getVerifiedUserId(supabase);
   return { userId, supabase };
 }

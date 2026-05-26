@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 describe('GET /api (health check)', () => {
   it('should return status ok with 200', async () => {
-    const response = await GET();
+    const response = await GET(new Request('http://localhost/api'));
     const data = await response.json();
 
     expect(response.status).toBe(200);

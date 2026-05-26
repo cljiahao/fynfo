@@ -1,6 +1,7 @@
 'use server';
 
 import { requireUserId } from '@/lib/auth-guard';
+import { logger } from '@/lib/logger';
 import { parseStatement, type ParsedExpenseRow } from '../lib/statement-parser';
 
 export async function processStatement(
@@ -38,10 +39,11 @@ export async function processStatement(
 
     return result;
   } catch (e) {
+    logger.error({ err: e, fileName: file.name }, 'statement parse failed');
     return {
       rows: [],
       usedAi: false,
-      error: e instanceof Error ? e.message : 'Failed to process statement',
+      error: 'Failed to process statement',
     };
   }
 }

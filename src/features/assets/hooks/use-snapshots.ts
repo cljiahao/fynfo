@@ -3,13 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   deleteSnapshot,
-  exportData,
   getSnapshot,
   getSnapshots,
-  importData,
   upsertSnapshot,
 } from '../actions/snapshot-actions';
-import type { ExportData, SnapshotData } from '../types';
+import type { SnapshotData } from '../types';
 
 const SNAPSHOTS_KEY = ['snapshots'] as const;
 
@@ -42,22 +40,6 @@ export function useDeleteSnapshot() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteSnapshot(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SNAPSHOTS_KEY });
-    },
-  });
-}
-
-export function useExportData() {
-  return useMutation({
-    mutationFn: () => exportData(),
-  });
-}
-
-export function useImportData() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: ExportData) => importData(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SNAPSHOTS_KEY });
     },

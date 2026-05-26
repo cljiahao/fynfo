@@ -77,7 +77,7 @@ export async function fetchStockPrices(
 export async function fetchExchangeRate(
   from: string,
   to: string
-): Promise<number> {
+): Promise<number | null> {
   try {
     const symbol = `${from}${to}=X`;
     const res = await fetch(
@@ -87,10 +87,11 @@ export async function fetchExchangeRate(
         next: { revalidate: 300 },
       }
     );
-    if (!res.ok) return 0;
+    if (!res.ok) return null;
     const data = await res.json();
-    return data?.chart?.result?.[0]?.meta?.regularMarketPrice ?? 0;
+    const rate = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    return typeof rate === 'number' && rate > 0 ? rate : null;
   } catch {
-    return 0;
+    return null;
   }
 }
