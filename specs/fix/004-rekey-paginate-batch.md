@@ -2,12 +2,12 @@
 id: 004
 slug: rekey-paginate-batch
 area: fix
-status: approved
+status: shipped
 author: clarence + claude (opus 4.7, 2026-05-28)
 created: 2026-05-28
 approved: 2026-05-28
-shipped:
-impl_pr:
+shipped: 2026-05-28
+impl_pr: https://github.com/cljiahao/fynfo/commit/0b04a7a
 supersedes:
 constitution_satisfies:
   - '§Security' # zero-knowledge encryption invariant — rekey MUST process every owned row

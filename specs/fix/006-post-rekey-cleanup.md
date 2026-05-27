@@ -2,12 +2,12 @@
 id: 006
 slug: post-rekey-cleanup
 area: fix
-status: approved
+status: shipped
 author: clarence + claude (opus 4.7, 2026-05-28)
 created: 2026-05-28
 approved: 2026-05-28
-shipped:
-impl_pr:
+shipped: 2026-05-28
+impl_pr: https://github.com/cljiahao/fynfo/commit/e6a05e8
 supersedes:
 constitution_satisfies:
   - '§Simplicity' # remove dead code immediately once a one-shot migration is complete

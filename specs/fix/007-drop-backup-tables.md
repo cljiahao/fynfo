@@ -2,12 +2,12 @@
 id: 007
 slug: drop-backup-tables
 area: fix
-status: approved
+status: shipped
 author: clarence + claude (opus 4.7, 2026-05-28)
 created: 2026-05-28
 approved: 2026-05-28
-shipped:
-impl_pr:
+shipped: 2026-05-28
+impl_pr: https://github.com/cljiahao/fynfo/commit/0af187a
 supersedes:
 constitution_satisfies:
   - '§Simplicity' # purge unused schema once the migration that produced it is complete

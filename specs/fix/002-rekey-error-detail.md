@@ -2,12 +2,12 @@
 id: 002
 slug: rekey-error-detail
 area: fix
-status: approved
+status: shipped
 author: claude (opus 4.7, 2026-05-27)
 created: 2026-05-27
 approved: 2026-05-27
-shipped:
-impl_pr:
+shipped: 2026-05-27
+impl_pr: https://github.com/cljiahao/fynfo/commit/15d3169
 supersedes:
 constitution_satisfies:
   - '§Observability' # structured logs at every error boundary

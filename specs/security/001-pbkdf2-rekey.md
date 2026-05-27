@@ -2,12 +2,12 @@
 id: 001
 slug: pbkdf2-rekey-on-unlock
 area: governance
-status: approved
+status: shipped
 author: claude (templatecentral v4 alignment, 2026-05-27)
 created: 2026-05-27
 approved: 2026-05-27
-shipped:
-impl_pr:
+shipped: 2026-05-28
+impl_pr: https://github.com/cljiahao/fynfo/commit/e6a05e8
 supersedes:
 constitution_satisfies:
   - '§Security' # zero-knowledge encryption invariant
