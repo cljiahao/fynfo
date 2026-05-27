@@ -19,7 +19,6 @@ export const logger: Logger = pino({
       'pin',
       'derivedKey',
       'dek',
-      'vault_check',
       'vault_check_v2',
       'cookie',
       'authorization',

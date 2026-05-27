@@ -4,7 +4,6 @@ import { AppError, handleApiError } from '@/lib/errors';
 import { getSessionSecret } from '@/lib/keystore';
 import { logger } from '@/lib/logger';
 import { withLogging } from '@/lib/utils/with-logging';
-import { rekeyUserVault } from '@/lib/vault-rekey/rekey';
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -28,7 +27,6 @@ const base64Dek = z
 
 const VaultUnlockSchema = z.object({
   derivedKey: base64Dek,
-  derivedKeyV2: base64Dek,
 });
 
 function encryptCookiePayload(data: string): string {
@@ -93,8 +91,7 @@ export const POST = withLogging('api.vault.unlock', async (req: Request) => {
       );
     }
 
-    const dekV1 = Buffer.from(parsed.data.derivedKey, 'base64');
-    const dekV2 = Buffer.from(parsed.data.derivedKeyV2, 'base64');
+    const dek = Buffer.from(parsed.data.derivedKey, 'base64');
 
     const {
       data: { user },
@@ -107,30 +104,20 @@ export const POST = withLogging('api.vault.unlock', async (req: Request) => {
 
     const { data: profile } = await supabase
       .from('users_profile')
-      .select('vault_check, vault_check_v2, vault_version')
+      .select('vault_check_v2')
       .eq('id', user.id)
       .single();
 
-    // Case A: v2 vault — verify v2 canary, no rekey.
+    // Returning user: verify canary against existing v2 vault.
     if (profile?.vault_check_v2) {
-      await verifyCanary(profile.vault_check_v2, dekV2);
+      await verifyCanary(profile.vault_check_v2, dek);
       const cookieStore = await cookies();
-      cookieStore.set('fynfo_vault_dek', cookieBlob(dekV2), COOKIE_OPTS);
+      cookieStore.set('fynfo_vault_dek', cookieBlob(dek), COOKIE_OPTS);
       return NextResponse.json({ success: true });
     }
 
-    // Case B: legacy v1 vault — verify v1 canary, then rekey to v2.
-    if (profile?.vault_check) {
-      await verifyCanary(profile.vault_check, dekV1);
-      await rekeyUserVault(supabase, user.id, dekV1, dekV2);
-      const cookieStore = await cookies();
-      cookieStore.set('fynfo_vault_dek', cookieBlob(dekV2), COOKIE_OPTS);
-      logger.info({ userId: user.id }, 'vault unlock rekeyed v1 -> v2');
-      return NextResponse.json({ success: true, rekeyed: true });
-    }
-
-    // Case C: first unlock — write v2 canary, mark version 2.
-    const encryptedCanary = await encryptPayload(VAULT_CANARY, dekV2);
+    // First unlock: write v2 canary, mark version 2.
+    const encryptedCanary = await encryptPayload(VAULT_CANARY, dek);
     const { error: upsertError } = await supabase.from('users_profile').upsert({
       id: user.id,
       email: user.email ?? '',
@@ -147,7 +134,7 @@ export const POST = withLogging('api.vault.unlock', async (req: Request) => {
     }
 
     const cookieStore = await cookies();
-    cookieStore.set('fynfo_vault_dek', cookieBlob(dekV2), COOKIE_OPTS);
+    cookieStore.set('fynfo_vault_dek', cookieBlob(dek), COOKIE_OPTS);
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleApiError('api.vault.unlock', error);

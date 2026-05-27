@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { createSupabaseBrowserClient } from '@/integrations/clients/supabase';
-import { deriveKeyClient, deriveKeyClientV2 } from '@/lib/client-crypto';
+import { deriveKeyClientV2 } from '@/lib/client-crypto';
 
 const pinSchema = z.object({
   pin: z
@@ -23,7 +23,7 @@ const pinSchema = z.object({
 });
 
 type PinFormValues = z.infer<typeof pinSchema>;
-type DerivedKeys = { derivedKey: string; derivedKeyV2: string };
+type DerivedKeys = { derivedKey: string };
 
 interface VaultUnlockFlowProps {
   onUnlocked?: () => void;
@@ -47,10 +47,9 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
     (pin: string): Promise<DerivedKeys> | null => {
       const userId = userIdRef.current;
       if (!userId) return null;
-      return Promise.all([
-        deriveKeyClient(pin),
-        deriveKeyClientV2(pin, userId),
-      ]).then(([derivedKey, derivedKeyV2]) => ({ derivedKey, derivedKeyV2 }));
+      return deriveKeyClientV2(pin, userId).then((derivedKey) => ({
+        derivedKey,
+      }));
     },
     []
   );
@@ -97,15 +96,6 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
           setError('pin', { message });
           toast.error(message);
           return;
-        }
-
-        const body = (await res.json().catch(() => ({}))) as {
-          rekeyed?: boolean;
-        };
-        if (body.rekeyed) {
-          toast.success(
-            'Vault upgraded to v2 encryption (PBKDF2 600k + per-user salt).'
-          );
         }
 
         // Hide overlay immediately, then refresh data in background.

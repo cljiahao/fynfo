@@ -1,8 +1,6 @@
 import {
   KEY_LEN_BYTES,
   PBKDF2_DIGEST,
-  V1_ITERATIONS,
-  V1_PBKDF2_SALT,
   V2_ITERATIONS,
 } from '@/lib/crypto-constants';
 import { logger } from '@/lib/logger';
@@ -20,21 +18,7 @@ export function getSessionSecret(): string {
 }
 
 /**
- * Legacy v1 derivation. Use only inside the rekey-on-unlock path.
- * New code must call {@link deriveKeyFromPinV2}.
- */
-export async function deriveKeyFromPin(pin: string): Promise<Buffer> {
-  return pbkdf2Async(
-    pin,
-    V1_PBKDF2_SALT,
-    V1_ITERATIONS,
-    KEY_LEN_BYTES,
-    PBKDF2_DIGEST
-  );
-}
-
-/**
- * Current PBKDF2 derivation: 600k iterations (OWASP 2025 minimum for SHA-256),
+ * PBKDF2 derivation: 600k iterations (OWASP 2025 minimum for SHA-256),
  * per-user salt bound to the Supabase user id. Front-loads work into the
  * authentication step so brute-force on a stolen PIN hash is infeasible.
  */
@@ -45,9 +29,6 @@ export async function deriveKeyFromPinV2(
   return pbkdf2Async(pin, userId, V2_ITERATIONS, KEY_LEN_BYTES, PBKDF2_DIGEST);
 }
 
-/**
- * Internal helper to securely decrypt the payload of the HttpOnly session cookie.
- */
 function decryptCookiePayload(encryptedBase64: string): string {
   const payloadStr = Buffer.from(encryptedBase64, 'base64').toString('utf8');
   const { iv, data, tag } = JSON.parse(payloadStr) as {
