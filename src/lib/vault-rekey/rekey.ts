@@ -22,8 +22,8 @@ async function rekeyRow(
   const out: Record<string, string | null> = { id: row.id };
   for (const col of encryptedCols) {
     const v = row[col];
-    if (v == null) {
-      out[col] = null;
+    if (v == null || v === '') {
+      out[col] = v == null ? null : '';
       continue;
     }
     try {
