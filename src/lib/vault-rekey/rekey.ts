@@ -42,6 +42,131 @@ async function rekeyRow(
   return out;
 }
 
+const PAGE_SIZE = 1000;
+const IN_BATCH = 100;
+
+async function fetchAllByUser(
+  supabase: SupabaseClient,
+  table: string,
+  select: string,
+  userColumn: string,
+  userId: string
+): Promise<EncryptedRow[]> {
+  const out: EncryptedRow[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const to = from + PAGE_SIZE - 1;
+    const { data, error } = await supabase
+      .from(table)
+      .select(select)
+      .eq(userColumn, userId)
+      .range(from, to);
+    if (error) {
+      logger.error(
+        {
+          userId,
+          table,
+          from,
+          to,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        },
+        'vault rekey: read failed'
+      );
+      throw new AppError('DB_ERROR', `vault rekey: read ${table} failed`);
+    }
+    const rows = (data ?? []) as unknown as EncryptedRow[];
+    out.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+  }
+  return out;
+}
+
+async function fetchAllParentIds(
+  supabase: SupabaseClient,
+  table: string,
+  userColumn: string,
+  userId: string
+): Promise<string[]> {
+  const out: string[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const to = from + PAGE_SIZE - 1;
+    const { data, error } = await supabase
+      .from(table)
+      .select('id')
+      .eq(userColumn, userId)
+      .range(from, to);
+    if (error) {
+      logger.error(
+        {
+          userId,
+          table,
+          from,
+          to,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        },
+        'vault rekey: read parent failed'
+      );
+      throw new AppError('DB_ERROR', `vault rekey: read ${table} failed`);
+    }
+    const ids = (data ?? []).map((r: { id: string }) => r.id);
+    out.push(...ids);
+    if (ids.length < PAGE_SIZE) break;
+  }
+  return out;
+}
+
+async function fetchByParentIds(
+  supabase: SupabaseClient,
+  table: string,
+  select: string,
+  onColumn: string,
+  parentIds: string[],
+  joinTable: string,
+  userId: string
+): Promise<EncryptedRow[]> {
+  const out: EncryptedRow[] = [];
+  for (let i = 0; i < parentIds.length; i += IN_BATCH) {
+    const chunk = parentIds.slice(i, i + IN_BATCH);
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const to = from + PAGE_SIZE - 1;
+      const { data, error } = await supabase
+        .from(table)
+        .select(select)
+        .in(onColumn, chunk)
+        .range(from, to);
+      if (error) {
+        logger.error(
+          {
+            userId,
+            table,
+            joinTable,
+            chunkIndex: i / IN_BATCH,
+            chunkSize: chunk.length,
+            parentCount: parentIds.length,
+            from,
+            to,
+            code: error.code,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+          },
+          'vault rekey: read child failed'
+        );
+        throw new AppError('DB_ERROR', `vault rekey: read ${table} failed`);
+      }
+      const rows = (data ?? []) as unknown as EncryptedRow[];
+      out.push(...rows);
+      if (rows.length < PAGE_SIZE) break;
+    }
+  }
+  return out;
+}
+
 async function fetchRows(
   supabase: SupabaseClient,
   table: string,
@@ -53,70 +178,27 @@ async function fetchRows(
   const select = ['id', ...encryptedCols].join(', ');
 
   if (userColumn) {
-    const { data, error } = await supabase
-      .from(table)
-      .select(select)
-      .eq(userColumn, userId);
-    if (error) {
-      logger.error(
-        {
-          userId,
-          table,
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-        },
-        'vault rekey: read failed'
-      );
-      throw new AppError('DB_ERROR', `vault rekey: read ${table} failed`);
-    }
-    return (data ?? []) as unknown as EncryptedRow[];
+    return fetchAllByUser(supabase, table, select, userColumn, userId);
   }
 
   if (!joinVia) return [];
-  const { data: parents, error: parentErr } = await supabase
-    .from(joinVia.table)
-    .select('id')
-    .eq(joinVia.userColumn, userId);
-  if (parentErr) {
-    logger.error(
-      {
-        userId,
-        table: joinVia.table,
-        code: parentErr.code,
-        message: parentErr.message,
-        details: parentErr.details,
-        hint: parentErr.hint,
-      },
-      'vault rekey: read parent failed'
-    );
-    throw new AppError('DB_ERROR', `vault rekey: read ${joinVia.table} failed`);
-  }
-  const parentIds = (parents ?? []).map((r: { id: string }) => r.id);
+  const parentIds = await fetchAllParentIds(
+    supabase,
+    joinVia.table,
+    joinVia.userColumn,
+    userId
+  );
   if (parentIds.length === 0) return [];
 
-  const { data, error } = await supabase
-    .from(table)
-    .select(select)
-    .in(joinVia.on, parentIds);
-  if (error) {
-    logger.error(
-      {
-        userId,
-        table,
-        joinTable: joinVia.table,
-        parentCount: parentIds.length,
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-      },
-      'vault rekey: read child failed'
-    );
-    throw new AppError('DB_ERROR', `vault rekey: read ${table} failed`);
-  }
-  return (data ?? []) as unknown as EncryptedRow[];
+  return fetchByParentIds(
+    supabase,
+    table,
+    select,
+    joinVia.on,
+    parentIds,
+    joinVia.table,
+    userId
+  );
 }
 
 /**
