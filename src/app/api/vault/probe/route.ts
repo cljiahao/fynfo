@@ -6,31 +6,28 @@
 
 import { createSupabaseServerClient } from '@/integrations/services/supabase';
 import { DecryptionError, decryptPayload } from '@/lib/crypto';
+import {
+  INTERMEDIATE_ITERATIONS,
+  INTERMEDIATE_PBKDF2_SALT_PREFIX,
+  KEY_LEN_BYTES,
+  PBKDF2_DIGEST,
+  V1_ITERATIONS,
+  V1_PBKDF2_SALT,
+  V2_ITERATIONS,
+} from '@/lib/crypto-constants';
 import { AppError, handleApiError } from '@/lib/errors';
 import { withLogging } from '@/lib/utils/with-logging';
 import { ENCRYPTED_TABLES } from '@/lib/vault-rekey/manifest';
+import { pbkdf2 } from 'crypto';
 import { NextResponse } from 'next/server';
+import { promisify } from 'util';
 import { z } from 'zod';
 
-const base64Dek = z
-  .string()
-  .min(1)
-  .refine(
-    (v) => {
-      try {
-        return Buffer.from(v, 'base64').length === 32;
-      } catch {
-        return false;
-      }
-    },
-    { message: 'derived key must be base64-encoded 32-byte value' }
-  );
+const pbkdf2Async = promisify(pbkdf2);
 
 const ProbeSchema = z.object({
   rowId: z.string().uuid(),
-  derivedKeyV1: base64Dek,
-  derivedKeyIntermediate: base64Dek,
-  derivedKeyV2: base64Dek,
+  pin: z.string().regex(/^\d{6}$/),
 });
 
 type Match = 'v1' | 'intermediate' | 'v2' | 'none';
@@ -71,13 +68,29 @@ export const POST = withLogging('api.vault.probe', async (req: Request) => {
       throw new AppError('UNAUTHORIZED', 'Unauthorized');
     }
 
+    const pin = parsed.data.pin;
+    const [dekV1, dekIntermediate, dekV2] = await Promise.all([
+      pbkdf2Async(
+        pin,
+        V1_PBKDF2_SALT,
+        V1_ITERATIONS,
+        KEY_LEN_BYTES,
+        PBKDF2_DIGEST
+      ),
+      pbkdf2Async(
+        pin,
+        INTERMEDIATE_PBKDF2_SALT_PREFIX + user.id,
+        INTERMEDIATE_ITERATIONS,
+        KEY_LEN_BYTES,
+        PBKDF2_DIGEST
+      ),
+      pbkdf2Async(pin, user.id, V2_ITERATIONS, KEY_LEN_BYTES, PBKDF2_DIGEST),
+    ]);
+
     const candidates: { label: Match; dek: Buffer }[] = [
-      { label: 'v1', dek: Buffer.from(parsed.data.derivedKeyV1, 'base64') },
-      {
-        label: 'intermediate',
-        dek: Buffer.from(parsed.data.derivedKeyIntermediate, 'base64'),
-      },
-      { label: 'v2', dek: Buffer.from(parsed.data.derivedKeyV2, 'base64') },
+      { label: 'v1', dek: dekV1 },
+      { label: 'intermediate', dek: dekIntermediate },
+      { label: 'v2', dek: dekV2 },
     ];
 
     for (const t of ENCRYPTED_TABLES) {
