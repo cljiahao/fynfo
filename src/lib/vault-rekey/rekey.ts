@@ -58,6 +58,17 @@ async function fetchRows(
       .select(select)
       .eq(userColumn, userId);
     if (error) {
+      logger.error(
+        {
+          userId,
+          table,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+        },
+        'vault rekey: read failed'
+      );
       throw new AppError('DB_ERROR', `vault rekey: read ${table} failed`);
     }
     return (data ?? []) as unknown as EncryptedRow[];
@@ -69,6 +80,17 @@ async function fetchRows(
     .select('id')
     .eq(joinVia.userColumn, userId);
   if (parentErr) {
+    logger.error(
+      {
+        userId,
+        table: joinVia.table,
+        code: parentErr.code,
+        message: parentErr.message,
+        details: parentErr.details,
+        hint: parentErr.hint,
+      },
+      'vault rekey: read parent failed'
+    );
     throw new AppError('DB_ERROR', `vault rekey: read ${joinVia.table} failed`);
   }
   const parentIds = (parents ?? []).map((r: { id: string }) => r.id);
@@ -79,6 +101,19 @@ async function fetchRows(
     .select(select)
     .in(joinVia.on, parentIds);
   if (error) {
+    logger.error(
+      {
+        userId,
+        table,
+        joinTable: joinVia.table,
+        parentCount: parentIds.length,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      },
+      'vault rekey: read child failed'
+    );
     throw new AppError('DB_ERROR', `vault rekey: read ${table} failed`);
   }
   return (data ?? []) as unknown as EncryptedRow[];
