@@ -2,6 +2,8 @@
 // are identical across browser and server. Both sides read constants from
 // @/lib/crypto-constants.
 import {
+  INTERMEDIATE_ITERATIONS,
+  INTERMEDIATE_PBKDF2_SALT_PREFIX,
   KEY_LEN_BYTES,
   V1_ITERATIONS,
   V1_PBKDF2_SALT,
@@ -57,4 +59,20 @@ export async function deriveKeyClientV2(
   userId: string
 ): Promise<string> {
   return deriveBitsBase64(pin, userId, V2_ITERATIONS);
+}
+
+/**
+ * Intermediate DEK derivation from feat/logo-redesign (b71cd15). Used only by
+ * the salvage path: when v1 canary verifies but encrypted rows were re-written
+ * to this scheme during an aborted preview-branch migration.
+ */
+export async function deriveKeyClientIntermediate(
+  pin: string,
+  userId: string
+): Promise<string> {
+  return deriveBitsBase64(
+    pin,
+    INTERMEDIATE_PBKDF2_SALT_PREFIX + userId,
+    INTERMEDIATE_ITERATIONS
+  );
 }

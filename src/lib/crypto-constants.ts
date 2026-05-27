@@ -8,6 +8,11 @@
 export const V1_PBKDF2_SALT = 'fynfo_v1_salt';
 export const V1_ITERATIONS = 100000;
 
+// Intermediate (feat/logo-redesign, b71cd15): partial-migration salvage only.
+// Same iteration count as v1 with a per-user salt prefix.
+export const INTERMEDIATE_PBKDF2_SALT_PREFIX = 'fynfo_v2_';
+export const INTERMEDIATE_ITERATIONS = 100000;
+
 // v2 (current OWASP 2025 minimum): per-user salt = Supabase user id.
 export const V2_ITERATIONS = 600000;
 
