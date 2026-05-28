@@ -10,7 +10,8 @@ When you edit any file tracked in `.claude/harness.json` (AGENTS.md, CLAUDE.md, 
 python - <<'PY'
 import hashlib, json, datetime
 files = ['AGENTS.md', 'CLAUDE.md', '.claude/settings.json',
-         '.claude/skills/next-verify.md', '.claude/skills/regen-harness.md']
+         '.claude/skills/next-verify.md', '.claude/skills/regen-harness.md',
+         '.claude/hooks/post-edit-tsc.ps1']
 out = {
     'templatecentral_version': '4.0.0',
     'stack': 'nextjs',
