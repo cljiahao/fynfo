@@ -1,7 +1,7 @@
 {
   "templatecentral_version": "4.0.0",
   "stack": "nextjs",
-  "seeded_at": "2026-05-27",
+  "seeded_at": "2026-05-29",
   "seeded_files": {
     "AGENTS.md": {
       "origin_hash": "097ba6646a03c692dfe54a5f7bdd94e7aad19570ae705e431f642b9e998492c5",
@@ -12,7 +12,7 @@
       "path": "CLAUDE.md"
     },
     ".claude/settings.json": {
-      "origin_hash": "661b257f54970fce1d4357a71b5c795766889dc4dc4a7c319a6d73e976b6b5c1",
+      "origin_hash": "b2f4ee8dd68018e061642842703df2089546ed8e43f7a45605306c3737628ba4",
       "path": ".claude/settings.json"
     },
     ".claude/skills/next-verify.md": {
@@ -20,8 +20,12 @@
       "path": ".claude/skills/next-verify.md"
     },
     ".claude/skills/regen-harness.md": {
-      "origin_hash": "9de945b6b1f3a1456a50617bd7cd1ba442a562ae8eb7e3bbaf89acb180358b44",
+      "origin_hash": "dbbbc28588857a4037234e4ec61da4f75540ac188e3defd1f80f2fd4e226d1b8",
       "path": ".claude/skills/regen-harness.md"
+    },
+    ".claude/hooks/post-edit-tsc.ps1": {
+      "origin_hash": "072ba54c22b3dedf8fdcf021f68278afba66d2e65f1da5c828beb37842b94b26",
+      "path": ".claude/hooks/post-edit-tsc.ps1"
     }
   }
 }
