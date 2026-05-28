@@ -88,6 +88,17 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -File .claude/hooks/post-edit-tsc.ps1"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
