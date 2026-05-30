@@ -2,12 +2,12 @@
 id: 010
 slug: harness-4.2.0-alignment
 area: governance
-status: approved
+status: shipped
 author: clarence + claude (opus 4.8, 2026-05-30)
 created: 2026-05-30
 approved: 2026-05-30
-shipped:
-impl_pr:
+shipped: 2026-05-31
+impl_pr: e43ed08 (direct to main, solo project)
 supersedes: 003 (Stop hook — restores test enforcement that 003 removed)
 constitution_satisfies:
   - '§7.1'
@@ -50,15 +50,15 @@ All hooks remain PowerShell external `.ps1` (Windows dev host — load-bearing d
 
 ## Acceptance
 
-- [ ] `stop-tests.ps1` runs `pnpm test:ci`, stderr, exit 2 on fail / 0 on pass; no inline `$VAR`.
-- [ ] `injection-guard.ps1` blocks a known injection phrase (exit 2), passes a normal prompt (exit 0).
-- [ ] `settings.json` has new Stop command, injection handler, `skillListingBudgetFraction: 0.02`.
-- [ ] `guard-protected-paths.ps1` blocks `.github/workflows/ci.yml`, `x.pem`, `credentials.json`; still allows app code.
-- [ ] `AGENTS.md` §11 updated; §12 has the 010 note.
-- [ ] `harness.json` version `4.2.0`, lists both new hooks, hashes match disk.
-- [ ] `.agents` symlink created OR skip documented.
-- [ ] `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:ci && pnpm build` green.
-- [ ] Spec hash matches at impl time.
+- [x] `stop-tests.ps1` runs `pnpm test:ci`, stderr, exit 2 on fail / 0 on pass; no inline `$VAR`.
+- [x] `injection-guard.ps1` blocks a known injection phrase (exit 2), passes a normal prompt (exit 0).
+- [x] `settings.json` has new Stop command, injection handler, `skillListingBudgetFraction: 0.02`.
+- [x] `guard-protected-paths.ps1` blocks `.github/workflows/ci.yml`, `x.pem`, `credentials.json`; still allows app code.
+- [x] `AGENTS.md` §11 updated; §12 has the 010 note.
+- [x] `harness.json` version `4.2.0`, lists both new hooks, hashes match disk.
+- [x] `.agents` symlink created OR skip documented.
+- [x] `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:ci && pnpm build` green.
+- [x] Spec hash: n/a — direct-to-main, no PR hash gate.
 
 ## Risk & reversibility
 
@@ -68,5 +68,5 @@ All hooks remain PowerShell external `.ps1` (Windows dev host — load-bearing d
 
 ## Open questions
 
-- [ ] Q: Stop on full `pnpm test:ci` vs faster subset each turn? — Owner: Clarence — A: start with `test:ci`.
-- [ ] Q: Keep Stop reminder as second handler once tests enforce? — Owner: Clarence — A: keep both for now.
+- [x] Q: Stop on full `pnpm test:ci` vs faster subset each turn? — Owner: Clarence — A: start with `test:ci`.
+- [x] Q: Keep Stop reminder as second handler once tests enforce? — Owner: Clarence — A: keep both for now.
