@@ -72,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -File .claude/hooks/injection-guard.ps1"
+            "command": "powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/hooks/injection-guard.ps1"
           }
         ]
       }
@@ -83,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -File .claude/hooks/guard-protected-paths.ps1"
+            "command": "powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/hooks/guard-protected-paths.ps1"
           }
         ]
       },
@@ -92,7 +92,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -File .claude/hooks/guard-destructive-bash.ps1"
+            "command": "powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/hooks/guard-destructive-bash.ps1"
           }
         ]
       }
@@ -103,7 +103,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -File .claude/hooks/post-edit-tsc.ps1"
+            "command": "powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/hooks/post-edit-tsc.ps1"
           }
         ]
       }
@@ -113,7 +113,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -File .claude/hooks/stop-tests.ps1"
+            "command": "powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/hooks/stop-tests.ps1"
           },
           {
             "type": "command",

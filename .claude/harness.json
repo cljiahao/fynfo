@@ -12,7 +12,7 @@
                                            "path":  "CLAUDE.md"
                                        },
                          ".claude/settings.json":  {
-                                                       "origin_hash":  "ab90d1103647b361de6ce9c7d5bbf8519449e2f14ed35d122b2443d2f1ec8e9c",
+                                                       "origin_hash":  "a2873536e18af567f5a3cffbd20e29d472734093ff044a2ad0ca778dc649f9f0",
                                                        "path":  ".claude/settings.json"
                                                    },
                          ".claude/skills/next-verify.md":  {
@@ -28,7 +28,7 @@
                                                                  "path":  ".claude/hooks/post-edit-tsc.ps1"
                                                              },
                          ".claude/hooks/stop-tests.ps1":  {
-                                                              "origin_hash":  "4078d0f1d23c2118027f60c9a6fcfa0c74f1b881edb7cd7f573494cdd9d0e9c8",
+                                                              "origin_hash":  "ecf07cc51b43a946943fc43265cf0beeefba1035fe1a695e6eec0657eb294477",
                                                               "path":  ".claude/hooks/stop-tests.ps1"
                                                           },
                          ".claude/hooks/injection-guard.ps1":  {
