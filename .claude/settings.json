@@ -1,5 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "skillListingBudgetFraction": 0.02,
   "permissions": {
     "allow": [
       "Bash(pnpm:*)",
@@ -66,6 +67,14 @@
             "command": "powershell -NoProfile -Command \"if (-not (Test-Path 'specs')) { Write-Output 'WARN: specs/ missing — bootstrap before any impl work' }\""
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -File .claude/hooks/injection-guard.ps1"
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -102,6 +111,10 @@
     "Stop": [
       {
         "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -File .claude/hooks/stop-tests.ps1"
+          },
           {
             "type": "command",
             "command": "powershell -NoProfile -Command \"Write-Output 'Done. Gates green? Spec linked? Sections cited? Scope respected? Run /next-verify before commit.'\""
