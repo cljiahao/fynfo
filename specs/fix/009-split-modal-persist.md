@@ -91,11 +91,15 @@ changes.
     cannot trigger a save the manual paths would reject.
   - Reuses the same `onSave` → `useUpsertExpense` mutation; no new persistence surface.
 
-- **Fix stale modal state** (`split-dialog.tsx`): ensure the dialog's working copy resyncs to
-  `initialSplits` each time it opens. Either reset `splits` (and the `paidFor`/`newName` UI state)
-  on the open transition via an effect keyed on `open`, or have the parent remount the dialog with a
-  `key` tied to open count. Decision deferred to impl; effect-on-open preferred to avoid leaking
-  open-state tracking into the parent.
+- **Fix stale modal state** (`split-dialog.tsx`): resync the dialog's working copy to
+  `initialSplits` each time it opens, via an **effect-on-open reset** (effect keyed on `open`) that
+  resets `splits` plus the `paidFor`/`newName` UI state on the closed→open transition. Decided
+  (open Q1): effect-on-open, not parent `key`-remount — keeps open-state tracking inside the dialog
+  and out of `expense-table.tsx`.
+
+- **Toast on confirm** (open Q2): confirming the modal on an existing valid row routes through the
+  existing `onSave` → `handleSave`, so the current `toast.success('Expense saved')` fires
+  unchanged. No silent-save branch; feedback stays consistent with Enter/blur saves.
 
 - No change to `handleRowBlur`, the `splitDialogOpenRef` guard, or the `8f6c5be` self/shared guard —
   those stay as-is.
@@ -135,7 +139,8 @@ changes.
 
 ## Open questions
 
-- [ ] Q: Stale-modal fix — effect-on-`open` reset inside `SplitDialog`, or `key`-based remount from
-      the parent? — Owner: Clarence — A: (lean effect-on-open; confirm at approval)
-- [ ] Q: Should confirming the modal show the "Expense saved" toast (current `handleSave` behavior)
-      for existing rows, or save silently? — Owner: Clarence — A:
+- [x] Q: Stale-modal fix — effect-on-`open` reset inside `SplitDialog`, or `key`-based remount from
+      the parent? — Owner: Clarence — A (2026-06-01): effect-on-`open` reset inside `SplitDialog`.
+- [x] Q: Should confirming the modal show the "Expense saved" toast (current `handleSave` behavior)
+      for existing rows, or save silently? — Owner: Clarence — A (2026-06-01): show the toast (route
+      through existing `onSave`/`handleSave`; no silent branch).
