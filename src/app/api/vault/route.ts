@@ -60,6 +60,35 @@ async function verifyCanary(ciphertext: string, dek: Buffer): Promise<void> {
   }
 }
 
+type ServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
+
+// Throttle helpers fail OPEN: if the rate-limit RPCs are not deployed yet
+// (migration not applied), log and allow, so unlock is never bricked.
+async function isUnlockLocked(supabase: ServerClient): Promise<boolean> {
+  const { data, error } = await supabase.rpc('vault_unlock_locked');
+  if (error) {
+    logger.warn({ code: error.code }, 'vault unlock rate-limit unavailable');
+    return false;
+  }
+  return data === true;
+}
+
+async function recordUnlockAttempt(
+  supabase: ServerClient,
+  success: boolean
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc('vault_unlock_record', {
+    p_success: success,
+  });
+  if (error) {
+    logger.warn({ code: error.code }, 'vault unlock rate-limit unavailable');
+    return false;
+  }
+  return data === true;
+}
+
+const TOO_MANY = { error: 'Too many attempts. Try again later.' };
+
 export const POST = withLogging('api.vault.unlock', async (req: Request) => {
   try {
     const [supabase, raw] = await Promise.all([
@@ -92,9 +121,25 @@ export const POST = withLogging('api.vault.unlock', async (req: Request) => {
       .eq('id', user.id)
       .single();
 
-    // Returning user: verify canary against existing v2 vault.
+    // Returning user: verify canary against existing v2 vault, rate-limited.
     if (profile?.vault_check_v2) {
-      await verifyCanary(profile.vault_check_v2, dek);
+      if (await isUnlockLocked(supabase)) {
+        return NextResponse.json(TOO_MANY, { status: 429 });
+      }
+
+      try {
+        await verifyCanary(profile.vault_check_v2, dek);
+      } catch (err) {
+        if (err instanceof AppError && err.code === 'VAULT_REJECTED') {
+          const nowLocked = await recordUnlockAttempt(supabase, false);
+          return nowLocked
+            ? NextResponse.json(TOO_MANY, { status: 429 })
+            : NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
+        }
+        throw err;
+      }
+
+      await recordUnlockAttempt(supabase, true);
       const cookieStore = await cookies();
       cookieStore.set(
         'fynfo_vault_dek',

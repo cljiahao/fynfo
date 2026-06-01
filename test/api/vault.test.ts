@@ -26,6 +26,8 @@ let getUserResult: {
   data: { user: { id: string; email: string } | null };
   error: { message: string } | null;
 };
+let rpcLocked: { data: unknown; error: unknown };
+let rpcRecord: { data: unknown; error: unknown };
 
 vi.mock('next/headers', () => ({
   cookies: async () => cookieJar,
@@ -35,6 +37,8 @@ vi.mock('@/integrations/services/supabase', () => ({
   createSupabaseServerClient: async () => ({
     auth: { getUser: async () => getUserResult },
     from: (table: string) => buildFromBuilder(table),
+    rpc: async (fn: string) =>
+      fn === 'vault_unlock_locked' ? rpcLocked : rpcRecord,
   }),
 }));
 
@@ -83,6 +87,8 @@ describe('POST /api/vault', () => {
       error: null,
     };
     profileRow = null;
+    rpcLocked = { data: false, error: null };
+    rpcRecord = { data: false, error: null };
   });
 
   afterEach(() => {
@@ -175,5 +181,50 @@ describe('POST /api/vault', () => {
 
     expect(res.status).toBe(401);
     expect(cookieJar.set).not.toHaveBeenCalled();
+  });
+
+  it('rate-limit: returns 429 and skips the canary check when locked', async () => {
+    profileRow = {
+      vault_check_v2: await encryptPayload(VAULT_CANARY, DEK),
+      vault_version: 2,
+    };
+    rpcLocked = { data: true, error: null };
+    const POST = await freshPost();
+
+    const res = await POST(makeRequest({ derivedKey: DEK.toString('base64') }));
+
+    expect(res.status).toBe(429);
+    expect(cookieJar.set).not.toHaveBeenCalled();
+  });
+
+  it('rate-limit: a wrong PIN that trips the lock returns 429', async () => {
+    profileRow = {
+      vault_check_v2: await encryptPayload(VAULT_CANARY, DEK),
+      vault_version: 2,
+    };
+    rpcRecord = { data: true, error: null }; // record() reports now-locked
+    const POST = await freshPost();
+
+    const wrong = Buffer.alloc(32, 8);
+    const res = await POST(
+      makeRequest({ derivedKey: wrong.toString('base64') })
+    );
+
+    expect(res.status).toBe(429);
+    expect(cookieJar.set).not.toHaveBeenCalled();
+  });
+
+  it('rate-limit: fails open (still unlocks) when the throttle RPC errors', async () => {
+    profileRow = {
+      vault_check_v2: await encryptPayload(VAULT_CANARY, DEK),
+      vault_version: 2,
+    };
+    rpcLocked = { data: null, error: { code: '42883' } }; // function missing
+    const POST = await freshPost();
+
+    const res = await POST(makeRequest({ derivedKey: DEK.toString('base64') }));
+
+    expect(res.status).toBe(200);
+    expect(cookieJar.set).toHaveBeenCalledTimes(1);
   });
 });
