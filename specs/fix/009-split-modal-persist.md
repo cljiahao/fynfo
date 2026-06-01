@@ -2,12 +2,12 @@
 id: 009
 slug: split-modal-persist
 area: fix
-status: draft # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: claude (opus 4.8, 2026-05-29)
 created: 2026-05-29
-approved: # YYYY-MM-DD, set on approval
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # link to impl PR, set on shipped
+approved: 2026-06-01 # Clarence approved; PR ceremony waived (personal project, direct-to-main)
+shipped: 2026-06-01
+impl_pr: direct merge to main (no PR — owner waived)
 supersedes:
 constitution_satisfies:
   - '§4.2' # bugfix requires a regression test (fails on main, passes on PR)
@@ -69,18 +69,21 @@ open shows **stale** splits.
 
 ## Solution shape
 
-All edits in `src/features/expenses/components/expense-table.tsx` and
-`src/features/expenses/components/split-dialog.tsx`. No action, hook, schema, type, or migration
-changes.
+Edits in `src/features/expenses/components/expense-table.tsx`,
+`src/features/expenses/components/split-dialog.tsx`, and
+`src/features/expenses/lib/utils.ts` (a small pure decision helper so the persist rule is unit
+testable in the node-env vitest setup — no jsdom/RTL in this repo, so component render tests are not
+possible without a new dependency). No action, hook, schema, type, or migration changes.
 
 - **Persist on confirm** (`expense-table.tsx`, `handleSplitConfirm`): after updating local state,
-  persist immediately for existing, valid rows by calling the existing `onSave`:
+  persist immediately for existing, valid rows by calling the existing `onSave`. The decision is
+  extracted to a pure `resolveSplitConfirm(data, isNew, splits)` helper in `lib/utils.ts`:
 
   ```ts
   const handleSplitConfirm = (splits: ExpenseSplitData[]) => {
-    const next = { ...data, splits, id: data.id || generateId() };
+    const { next, shouldSave } = resolveSplitConfirm(data, isNew, splits);
     setData(next);
-    if (!isNew && next.date && next.amount > 0) onSave(next);
+    if (shouldSave) onSave(next);
   };
   ```
 
@@ -92,10 +95,12 @@ changes.
   - Reuses the same `onSave` → `useUpsertExpense` mutation; no new persistence surface.
 
 - **Fix stale modal state** (`split-dialog.tsx`): resync the dialog's working copy to
-  `initialSplits` each time it opens, via an **effect-on-open reset** (effect keyed on `open`) that
-  resets `splits` plus the `paidFor`/`newName` UI state on the closed→open transition. Decided
-  (open Q1): effect-on-open, not parent `key`-remount — keeps open-state tracking inside the dialog
-  and out of `expense-table.tsx`.
+  `initialSplits` each time it opens, resetting `splits` plus the `paidFor`/`newName`/suggestion UI
+  state on the closed→open transition. Decided (open Q1): reset lives **inside** the dialog, not a
+  parent `key`-remount. Implemented as a **render-phase adjustment** (track `prevOpen` in state, set
+  on transition) rather than a literal `useEffect` — the `react-hooks/set-state-in-effect` lint rule
+  (max-warnings=0) forbids the sync-setState-in-effect form. Same intent and behavior, lint-clean,
+  reset still owned by `SplitDialog`.
 
 - **Toast on confirm** (open Q2): confirming the modal on an existing valid row routes through the
   existing `onSave` → `handleSave`, so the current `toast.success('Expense saved')` fires
@@ -126,8 +131,9 @@ changes.
       row; it still saves only on Enter/blur with a valid date + amount.
 - [ ] Manual: open modal on row A, confirm; reopen modal on the same row → shows the just-saved
       splits, not stale data.
-- [ ] No `any`, no `console.log`, no new dependency, no files outside the two listed.
-- [ ] Spec hash unchanged since approval.
+- [x] No `any`, no `console.log`, no new dependency. Files: `expense-table.tsx`,
+      `split-dialog.tsx`, `lib/utils.ts` (pure helper), and the test — all in scope.
+- [x] Spec hash unchanged since approval.
 
 ## Risk & reversibility
 

@@ -40,6 +40,22 @@ export function SplitDialog({
   // false (default) = you're splitting with others (your share = total - others)
   const [paidFor, setPaidFor] = useState(false);
 
+  // useState seeds only on mount; the dialog instance is reused across rows, so
+  // resync the working copy to initialSplits on each closed -> open transition.
+  // Without this, reopening shows stale splits from a previously edited row.
+  // Render-phase adjustment (React's "you might not need an effect" pattern)
+  // keeps the reset inside this dialog and avoids a cascading-render effect.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setSplits(initialSplits);
+      setNewName('');
+      setShowSuggestions(false);
+      setPaidFor(false);
+    }
+  }
+
   const existingNames = splits.map((s) => s.person);
   const filtered = peopleSuggestions.filter(
     (s) =>
