@@ -57,4 +57,17 @@ describe('crypto — AES-256-GCM payload envelope', () => {
       decryptPayload('not-valid-base64-json', DEK)
     ).rejects.toBeInstanceOf(DecryptionError);
   });
+
+  it('throws DecryptionError for an invalid IV length', async () => {
+    const bad = Buffer.from(
+      JSON.stringify({
+        iv: Buffer.alloc(4).toString('base64'), // not 12 bytes
+        data: 'AAAA',
+        tag: Buffer.alloc(16).toString('base64'),
+      })
+    ).toString('base64');
+    await expect(decryptPayload(bad, DEK)).rejects.toBeInstanceOf(
+      DecryptionError
+    );
+  });
 });

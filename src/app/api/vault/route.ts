@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from '@/integrations/services/supabase';
+import { sealCookie } from '@/lib/cookie-seal';
 import { DecryptionError, decryptPayload, encryptPayload } from '@/lib/crypto';
 import { AppError, handleApiError } from '@/lib/errors';
-import { getSessionSecret } from '@/lib/keystore';
 import { logger } from '@/lib/logger';
 import { withLogging } from '@/lib/utils/with-logging';
 import crypto from 'crypto';
@@ -29,31 +29,6 @@ const VaultUnlockSchema = z.object({
   derivedKey: base64Dek,
 });
 
-function encryptCookiePayload(data: string): string {
-  const iv = crypto.randomBytes(12);
-  const aesKey = crypto
-    .createHash('sha256')
-    .update(getSessionSecret())
-    .digest();
-
-  const cipher = crypto.createCipheriv('aes-256-gcm', aesKey, iv);
-  let encrypted = cipher.update(data, 'utf8', 'base64');
-  encrypted += cipher.final('base64');
-  const authTag = cipher.getAuthTag().toString('base64');
-
-  return JSON.stringify({
-    iv: iv.toString('base64'),
-    data: encrypted,
-    tag: authTag,
-  });
-}
-
-function cookieBlob(dek: Buffer): string {
-  return Buffer.from(encryptCookiePayload(dek.toString('base64'))).toString(
-    'base64'
-  );
-}
-
 const COOKIE_OPTS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
@@ -62,10 +37,19 @@ const COOKIE_OPTS = {
   maxAge: 60 * 60 * 6,
 };
 
+// Constant-time string compare on equal-length buffers (defense-in-depth;
+// GCM already authenticates the canary).
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
 async function verifyCanary(ciphertext: string, dek: Buffer): Promise<void> {
   try {
     const decrypted = await decryptPayload(ciphertext, dek);
-    if (decrypted !== VAULT_CANARY) {
+    if (!safeEqual(decrypted, VAULT_CANARY)) {
       throw new AppError('VAULT_REJECTED', 'Incorrect PIN');
     }
   } catch (err) {
@@ -112,7 +96,11 @@ export const POST = withLogging('api.vault.unlock', async (req: Request) => {
     if (profile?.vault_check_v2) {
       await verifyCanary(profile.vault_check_v2, dek);
       const cookieStore = await cookies();
-      cookieStore.set('fynfo_vault_dek', cookieBlob(dek), COOKIE_OPTS);
+      cookieStore.set(
+        'fynfo_vault_dek',
+        sealCookie(dek.toString('base64')),
+        COOKIE_OPTS
+      );
       return NextResponse.json({ success: true });
     }
 
@@ -134,7 +122,11 @@ export const POST = withLogging('api.vault.unlock', async (req: Request) => {
     }
 
     const cookieStore = await cookies();
-    cookieStore.set('fynfo_vault_dek', cookieBlob(dek), COOKIE_OPTS);
+    cookieStore.set(
+      'fynfo_vault_dek',
+      sealCookie(dek.toString('base64')),
+      COOKIE_OPTS
+    );
     return NextResponse.json({ success: true });
   } catch (error) {
     return handleApiError('api.vault.unlock', error);

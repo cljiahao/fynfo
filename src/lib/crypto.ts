@@ -2,6 +2,7 @@ import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12; // Standard for GCM
+const TAG_LENGTH = 16; // AES-GCM auth tag
 
 export class DecryptionError extends Error {
   constructor(message = 'decryption failed') {
@@ -39,13 +40,14 @@ export async function decryptPayload(
     const payloadStr = Buffer.from(encryptedBase64, 'base64').toString('utf8');
     const { iv, data, tag } = JSON.parse(payloadStr);
 
-    const decipher = crypto.createDecipheriv(
-      ALGORITHM,
-      dek,
-      Buffer.from(iv, 'base64')
-    );
+    const ivBuf = Buffer.from(iv, 'base64');
+    const tagBuf = Buffer.from(tag, 'base64');
+    if (ivBuf.length !== IV_LENGTH || tagBuf.length !== TAG_LENGTH) {
+      throw new DecryptionError();
+    }
 
-    decipher.setAuthTag(Buffer.from(tag, 'base64'));
+    const decipher = crypto.createDecipheriv(ALGORITHM, dek, ivBuf);
+    decipher.setAuthTag(tagBuf);
 
     let decrypted = decipher.update(data, 'base64', 'utf8');
     decrypted += decipher.final('utf8');
