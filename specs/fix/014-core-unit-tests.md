@@ -2,11 +2,11 @@
 id: 014
 slug: core-unit-tests
 area: fix
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: claude (opus 4.8, 2026-06-02)
 created: 2026-06-02
 approved: 2026-06-02 # Clarence approved Phase 2 of the 2026-06-02 audit roadmap (track selection)
-shipped:
+shipped: 2026-06-02
 impl_pr: direct merge to main (no PR — owner waived)
 supersedes:
 constitution_satisfies:
