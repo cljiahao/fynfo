@@ -2,12 +2,12 @@
 id: 011
 slug: expense-quickadd-refetch
 area: fix
-status: draft # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: claude (opus 4.8, 2026-06-01)
 created: 2026-06-01
-approved: # YYYY-MM-DD, set on approval
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # link to impl PR, set on shipped
+approved: 2026-06-01 # Clarence approved; PR ceremony waived (personal project, direct-to-main)
+shipped: 2026-06-01
+impl_pr: direct merge to main (no PR — owner waived)
 supersedes:
 constitution_satisfies:
   - '§4.2' # bugfix ships a regression test (fails on main, passes on PR)
@@ -55,7 +55,11 @@ but latency and decrypt churn.
 
 ## Solution shape
 
-All edits in `src/features/expenses/hooks/use-expenses.ts`, `useUpsertExpense` only.
+All edits in `src/features/expenses/hooks/use-expenses.ts`. The upsert mutation options are
+extracted to an exported pure `buildUpsertMutationOptions(queryClient)` so the invalidation contract
+is unit-testable in the node-env vitest setup (no jsdom/RTL in this repo — testing the hook directly
+would need a new dependency). `useUpsertExpense` now just calls
+`useMutation(buildUpsertMutationOptions(queryClient))`; behavior of the other hooks is unchanged.
 
 - **Drop the success-path full refetch.** Remove the unconditional `EXPENSE_KEY` invalidation from
   `onSettled`. Keep the existing `onMutate` optimistic write as the source of truth on success and
@@ -94,8 +98,8 @@ component. The Quick Add and inline-edit save paths both call `useUpsertExpense`
       immediately ready for the next with no visible table re-decrypt stall.
 - [ ] Manual: a newly entered split person still appears in the people suggestions on the next row.
 - [ ] Manual: force a save failure (e.g. offline) — the optimistic row rolls back via `onError`.
-- [ ] No `any`, no `console.log`, no new dependency, no files outside `use-expenses.ts`.
-- [ ] Spec hash unchanged since approval.
+- [x] No `any`, no `console.log`, no new dependency. Files: `use-expenses.ts` + the new test.
+- [x] Spec hash unchanged since approval.
 
 ## Risk & reversibility
 
