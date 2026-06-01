@@ -38,7 +38,7 @@ import {
   useExpenses,
   useUpsertExpense,
 } from '../hooks/use-expenses';
-import { generateId } from '../lib/utils';
+import { generateId, resolveSplitConfirm } from '../lib/utils';
 import type { ExpenseData, ExpenseSplitData } from '../types';
 import { ExpenseTypeSelect } from './expense-type-select';
 import { SplitDialog } from './split-dialog';
@@ -123,7 +123,9 @@ function EditableRow({
   };
 
   const handleSplitConfirm = (splits: ExpenseSplitData[]) => {
-    update({ splits });
+    const { next, shouldSave } = resolveSplitConfirm(data, isNew, splits);
+    setData(next);
+    if (shouldSave) onSave(next);
   };
 
   const handleSave = () => {
