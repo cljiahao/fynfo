@@ -16,14 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  AlertCircle,
-  Loader2,
-  Save,
-  Sparkles,
-  Trash2,
-  Upload,
-} from 'lucide-react';
+import { AlertCircle, Loader2, Save, Trash2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { processStatement } from '../actions/statement-actions';
@@ -54,7 +47,6 @@ function rowToExpense(row: ParsedExpenseRow): ExpenseData {
 export function StatementDialog({ open, onOpenChange }: StatementDialogProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [rows, setRows] = useState<ExpenseData[]>([]);
-  const [usedAi, setUsedAi] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -63,7 +55,6 @@ export function StatementDialog({ open, onOpenChange }: StatementDialogProps) {
 
   const reset = () => {
     setRows([]);
-    setUsedAi(false);
     setError(null);
     setFileName(null);
     setIsProcessing(false);
@@ -89,7 +80,6 @@ export function StatementDialog({ open, onOpenChange }: StatementDialogProps) {
       }
       if (result.rows.length > 0) {
         setRows(result.rows.map(rowToExpense));
-        setUsedAi(result.usedAi);
       }
     } catch {
       setError('Failed to process file');
@@ -143,7 +133,7 @@ export function StatementDialog({ open, onOpenChange }: StatementDialogProps) {
         <DialogHeader>
           <DialogTitle>Import Bank Statement</DialogTitle>
           <DialogDescription>
-            Upload a PDF or CSV bank/credit card statement. Transactions will be
+            Upload a CSV bank/credit card statement. Transactions will be
             extracted and shown below for review before saving.
           </DialogDescription>
         </DialogHeader>
@@ -160,13 +150,13 @@ export function StatementDialog({ open, onOpenChange }: StatementDialogProps) {
                 {fileName ?? 'Click to upload or drag and drop'}
               </p>
               <p className="text-muted-foreground text-xs">
-                PDF or CSV — DBS, UOB, OCBC, credit card statements
+                CSV — DBS, UOB, OCBC, credit card statements
               </p>
             </div>
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.csv"
+              accept=".csv"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -187,14 +177,6 @@ export function StatementDialog({ open, onOpenChange }: StatementDialogProps) {
             <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
               <AlertCircle className="mt-0.5 size-4 shrink-0 text-red-500" />
               <p className="text-sm text-red-700">{error}</p>
-            </div>
-          )}
-
-          {/* AI badge */}
-          {usedAi && rows.length > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-violet-600">
-              <Sparkles className="size-3.5" />
-              Extracted using local AI — please review before saving
             </div>
           )}
 

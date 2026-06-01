@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Dark rounded background -->
+  <rect width="32" height="32" rx="7" fill="#101010"/>
+  <!-- "F" letterform — clean geometric sans-serif proportions -->
+  <!-- Vertical stem -->
+  <rect x="8" y="7" width="3.5" height="18" fill="#f9f9f9"/>
+  <!-- Top crossbar -->
+  <rect x="11.5" y="7" width="12.5" height="3.5" fill="#f9f9f9"/>
+  <!-- Mid crossbar (shorter — classic F proportion) -->
+  <rect x="11.5" y="14.5" width="8" height="3.5" fill="#f9f9f9"/>
+</svg>

@@ -252,17 +252,23 @@ Intentional and load-bearing — do NOT "fix" toward the template:
 
 `.claude/settings.json` hooks (PowerShell on Windows):
 
-| Event                 | Action                                                                                                                             |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| SessionStart          | Prints governance reminder banner.                                                                                                 |
-| UserPromptSubmit      | Warns if `specs/` missing.                                                                                                         |
-| PreToolUse Write/Edit | `guard-protected-paths.ps1` — blocks edits to constitution / governance / secret / infra files.                                    |
-| PreToolUse Bash       | `guard-destructive-bash.ps1` — blocks force pushes, hard resets, branch deletion, docker push, destructive SQL, `.env` overwrites. |
-| Stop                  | Reminds: gates green? spec linked? sections cited? scope respected?                                                                |
+| Event                                          | Action                                                                                                                                                                                 |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SessionStart                                   | Prints governance reminder banner.                                                                                                                                                     |
+| UserPromptSubmit                               | Warns if `specs/` missing. `injection-guard.ps1` blocks OWASP-LLM01 prompt-injection phrases (exit 2).                                                                                 |
+| PreToolUse Write/Edit                          | `guard-protected-paths.ps1` — blocks edits to constitution / governance / secret / infra files.                                                                                        |
+| PreToolUse Bash                                | `guard-destructive-bash.ps1` — blocks force pushes, hard resets, branch deletion, docker                                                                                               |
+| push, destructive SQL, `.env` overwrites.      |
+| PostToolUse Write/Edit                         | `post-edit-tsc.ps1` — fast incremental typecheck feedback (`pnpm exec tsc --noEmit                                                                                                     |
+| --incremental`). Feedback-only; exit 0 always. |
+| Stop                                           | `stop-tests.ps1` runs `pnpm test:ci` — tail to stderr, exit 2 on failure (forces a fix before the turn ends); then reminds: gates green? spec linked? sections cited? scope respected? |
+|                                                |
 
 Cross-platform note: hooks are PowerShell because the dev host is Windows. CI runs the gates directly (`pnpm check`, `pnpm test:ci`, `pnpm build`) — it does not need these hooks. If a teammate runs on macOS/Linux, port to `.sh` and gate by `$OS` in `settings.json`.
 
 Project skill manifest: `.claude/harness.json` records SHA-256 hashes of seeded files so `templatecentral:standards` / drift-check can detect tampering.
+
+Context load order (context only — not enforcement, broad → specific): managed policy → `~/.claude/CLAUDE.md` → `CLAUDE.md` (`@AGENTS.md`, optional) → this file → `.claude/rules/*.md`. Hard enforcement lives only in the `settings.json` PreToolUse hooks.
 
 ---
 
@@ -272,6 +278,12 @@ Project skill manifest: `.claude/harness.json` records SHA-256 hashes of seeded 
 
 **Supabase & E2E Encryption Migration (2026-04-11)**: migrated from Prisma + NextAuth to Supabase + zero-knowledge AES-256-GCM payload encryption. DEK derived from 6-digit PIN (PBKDF2, salt = Supabase user id), held in HttpOnly cookie `fynfo_vault_dek`. All server actions inside `features/` call `requireUserId()` → `getVaultDekSession()` → `encryptPayload`/`decryptPayload`.
 
+**Spec 008 — PostToolUse reintroduction (2026-05-28)**: typecheck-only `PostToolUse` hook reintroduced via external
+`.claude/hooks/post-edit-tsc.ps1` per the spec-003 lesson (no inline `$VAR`, no `&`). Supersedes spec 003 only on the
+"PostToolUse absent" decision; 003's Stop simplification still holds.
+
 **templateCentral v4 alignment (2026-05-27)**: added plugin marker, §9 Skills, §10 Skills Security, `.claude/skills/next-verify` project skill, `.claude/harness.json`. Collapsed prior `CLAUDE.md` project reference into this file; `CLAUDE.md` is now `@AGENTS.md` only per v4. Per-action `requireUserId` now expected to use server-side `supabase.auth.getUser()` (not the client-readable `getSession()`); PBKDF2 hardening (600k iters, user-id salt) tracked under a follow-up spec with rekey-on-unlock migration plan.
+
+**Spec 010 — templateCentral 4.2.0 harness alignment (2026-05-31)**: restored a test-enforcing `Stop` hook (`stop-tests.ps1`, `pnpm test:ci` → stderr + `exit 2`), added an OWASP-LLM01 `UserPromptSubmit` injection guard (`injection-guard.ps1`), expanded `guard-protected-paths.ps1` to also block `.github/workflows/` + cert/credential files and fixed its block path to `exit 2` (the prior `Write-Error` under `$ErrorActionPreference=Stop` threw before reaching `exit 2`, so the hook never actually blocked), added `skillListingBudgetFraction: 0.02` and the §11 context-load-order note. The `.agents → .claude` symlink is deferred — Windows symlink creation needs Developer Mode/admin. Supersedes 003 on the Stop hook; `harness.json` bumped to 4.2.0.
 
 <!-- [[post-harness]] — reserved for trace capture and meta-harness integration (v5.0+) -->
