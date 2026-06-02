@@ -5,8 +5,6 @@
     "allow": [
       "Bash(pnpm:*)",
       "Bash(npx shadcn@latest add:*)",
-      "Bash(npx prisma:*)",
-      "Bash(npx auth:*)",
       "Bash(git status)",
       "Bash(git diff:*)",
       "Bash(git log:*)",

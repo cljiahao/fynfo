@@ -64,7 +64,7 @@ Personal wealth management dashboard. Next.js 16 App Router, React 19 Server Com
 - Frontend: Next.js 16, React 19, TanStack Query v5, Zod v4, React Hook Form, Tailwind, shadcn/ui
 - Backend: Supabase (`@supabase/ssr`) + Postgres + RLS; server actions for mutations
 - Encryption: AES-256-GCM payload encryption with DEK derived from PIN (PBKDF2, salt = Supabase user id), DEK held in HttpOnly cookie `fynfo_vault_dek`
-- Tests: Vitest + Testing Library + jsdom
+- Tests: Vitest (Node environment — no jsdom/Testing Library; test pure logic seams, not component render)
 - Tooling: pnpm, ESLint, Prettier, husky
 
 ### Layout
@@ -89,23 +89,23 @@ src/
 
 ### Key files
 
-| File                                    | Purpose                                                                                                                                                 |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/proxy.ts`                          | Supabase session refresh + route protection (Next.js 16 proxy, not deprecated middleware)                                                               |
-| `src/lib/auth-guard.ts`                 | `requireUserId()` — Supabase auth check for server actions                                                                                              |
-| `src/lib/crypto.ts`                     | `encryptPayload` / `decryptPayload` — AES-256-GCM field encryption                                                                                      |
-| `src/lib/keystore.ts`                   | `getVaultDekSession()` — reads DEK from HttpOnly cookie; `deriveKeyFromPin()` (v1, legacy) + `deriveKeyFromPinV2()` (600k iters, user-id salt) — PBKDF2 |
-| `src/lib/crypto-constants.ts`           | Shared PBKDF2 + AES constants used by both server keystore and client `client-crypto.ts` so derivations stay in lock-step                               |
-| `src/lib/logger.ts`                     | Pino server-side structured logger with PII / secret redaction                                                                                          |
-| `src/lib/utils/with-logging.ts`         | API route handler wrapper — request id, structured log of method/path/status/duration                                                                   |
-| `src/lib/utils/request-origin.ts`       | `getAppOrigin()` — honors `TRUST_PROXY` to read `X-Forwarded-*` only when trusted                                                                       |
-| `src/lib/errors/handle-api-error.ts`    | Canonical Next.js route handler error responder — maps `ZodError` / `DecryptionError` / `AppError` to safe HTTP responses                               |
-| `src/lib/validation/parse-or-throw.ts`  | `parseOrThrow(schema, input, label)` — safe boundary parse for server actions; throws opaque `AppError('VALIDATION')`                                   |
-| `src/app/api/vault/route.ts`            | PIN → DEK derivation; sets `fynfo_vault_dek` HttpOnly cookie                                                                                            |
-| `src/integrations/clients/supabase.ts`  | Browser-side Supabase client                                                                                                                            |
-| `src/integrations/services/supabase.ts` | Server-side Supabase client (uses cookies)                                                                                                              |
-| `supabase/migrations/`                  | SQL schema + RLS policies                                                                                                                               |
-| `src/features/salary/lib/tax-cpf.ts`    | Singapore tax/CPF calculation logic                                                                                                                     |
+| File                                    | Purpose                                                                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `src/proxy.ts`                          | Supabase session refresh + route protection (Next.js 16 proxy, not deprecated middleware)                                 |
+| `src/lib/auth-guard.ts`                 | `requireUserId()` — Supabase auth check for server actions                                                                |
+| `src/lib/crypto.ts`                     | `encryptPayload` / `decryptPayload` — AES-256-GCM field encryption                                                        |
+| `src/lib/keystore.ts`                   | `getVaultDekSession()` — reads DEK from HttpOnly cookie; `deriveKeyFromPinV2()` (600k iters, user-id salt) — PBKDF2       |
+| `src/lib/crypto-constants.ts`           | Shared PBKDF2 + AES constants used by both server keystore and client `client-crypto.ts` so derivations stay in lock-step |
+| `src/lib/logger.ts`                     | Pino server-side structured logger with PII / secret redaction                                                            |
+| `src/lib/utils/with-logging.ts`         | API route handler wrapper — request id, structured log of method/path/status/duration                                     |
+| `src/lib/utils/request-origin.ts`       | `getAppOrigin()` — honors `TRUST_PROXY` to read `X-Forwarded-*` only when trusted                                         |
+| `src/lib/errors/handle-api-error.ts`    | Canonical Next.js route handler error responder — maps `ZodError` / `DecryptionError` / `AppError` to safe HTTP responses |
+| `src/lib/validation/parse-or-throw.ts`  | `parseOrThrow(schema, input, label)` — safe boundary parse for server actions; throws opaque `AppError('VALIDATION')`     |
+| `src/app/api/vault/route.ts`            | PIN → DEK derivation; sets `fynfo_vault_dek` HttpOnly cookie                                                              |
+| `src/integrations/clients/supabase.ts`  | Browser-side Supabase client                                                                                              |
+| `src/integrations/services/supabase.ts` | Server-side Supabase client (uses cookies)                                                                                |
+| `supabase/migrations/`                  | SQL schema + RLS policies                                                                                                 |
+| `src/features/salary/lib/tax-cpf.ts`    | Singapore tax/CPF calculation logic                                                                                       |
 
 ### Required env (see `.env.example`)
 
