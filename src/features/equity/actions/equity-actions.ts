@@ -2,6 +2,7 @@
 
 import { requireActionContext, requireDbContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
+import { decryptNumber, decryptOptionalNumber } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
@@ -26,9 +27,9 @@ export async function getTrades(): Promise<EquityTradeData[]> {
       broker: t.broker,
       ticker: await decryptPayload(t.ticker, dek),
       action: t.action as EquityTradeData['action'],
-      shares: Number(await decryptPayload(t.shares, dek)),
-      price: Number(await decryptPayload(t.price, dek)),
-      fees: t.fees ? Number(await decryptPayload(t.fees, dek)) : 0,
+      shares: await decryptNumber(t.shares, dek),
+      price: await decryptNumber(t.price, dek),
+      fees: await decryptOptionalNumber(t.fees, dek),
     }))
   );
 }

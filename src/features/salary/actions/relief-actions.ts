@@ -1,7 +1,8 @@
 'use server';
 
 import { requireActionContext } from '@/lib/action-guard';
-import { decryptPayload, encryptPayload } from '@/lib/crypto';
+import { encryptPayload } from '@/lib/crypto';
+import { decryptNumber } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
@@ -23,7 +24,7 @@ export async function getTaxReliefs(year: number): Promise<TaxReliefData[]> {
   return Promise.all(
     (data || []).map(async (e) => ({
       reliefKey: e.relief_key,
-      amount: Number(await decryptPayload(e.amount, dek)),
+      amount: await decryptNumber(e.amount, dek),
     }))
   );
 }

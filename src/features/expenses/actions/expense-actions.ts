@@ -1,7 +1,8 @@
 'use server';
 
 import { requireActionContext, requireDbContext } from '@/lib/action-guard';
-import { decryptPayload, encryptPayload } from '@/lib/crypto';
+import { encryptPayload } from '@/lib/crypto';
+import { decryptNumber, decryptOptionalString } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
@@ -27,7 +28,7 @@ export async function getExpenses(): Promise<ExpenseData[]> {
       const decryptedSplits = await Promise.all(
         (r.splits || []).map(async (s: ExpenseSplitRow) => ({
           person: s.person,
-          amount: Number(await decryptPayload(s.amount, dek)),
+          amount: await decryptNumber(s.amount, dek),
           settled: s.settled,
         }))
       );
@@ -36,9 +37,9 @@ export async function getExpenses(): Promise<ExpenseData[]> {
         id: r.id,
         date: r.date,
         type: r.type as ExpenseData['type'],
-        item: r.item ? await decryptPayload(r.item, dek) : '',
-        info: r.info ? await decryptPayload(r.info, dek) : '',
-        amount: Number(await decryptPayload(r.amount, dek)),
+        item: await decryptOptionalString(r.item, dek),
+        info: await decryptOptionalString(r.info, dek),
+        amount: await decryptNumber(r.amount, dek),
         splitType: r.split_type as 'self' | 'shared',
         splits: decryptedSplits,
       };

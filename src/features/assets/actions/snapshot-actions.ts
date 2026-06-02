@@ -1,7 +1,8 @@
 'use server';
 
 import { requireActionContext, requireDbContext } from '@/lib/action-guard';
-import { decryptPayload, encryptPayload } from '@/lib/crypto';
+import { encryptPayload } from '@/lib/crypto';
+import { decryptNumber, decryptOptionalString } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
@@ -30,8 +31,8 @@ export async function getSnapshots(): Promise<SnapshotData[]> {
       const decryptedEntries = await Promise.all(
         (s.entries || []).map(async (e: AssetEntryRow) => ({
           category: e.category as SnapshotData['entries'][number]['category'],
-          account: e.account ? await decryptPayload(e.account, dek) : '',
-          amount: Number(await decryptPayload(e.amount, dek)),
+          account: await decryptOptionalString(e.account, dek),
+          amount: await decryptNumber(e.amount, dek),
         }))
       );
 
@@ -58,8 +59,8 @@ export async function getSnapshot(id: string): Promise<SnapshotData | null> {
   const decryptedEntries = await Promise.all(
     (data.entries || []).map(async (e: AssetEntryRow) => ({
       category: e.category as SnapshotData['entries'][number]['category'],
-      account: e.account ? await decryptPayload(e.account, dek) : '',
-      amount: Number(await decryptPayload(e.amount, dek)),
+      account: await decryptOptionalString(e.account, dek),
+      amount: await decryptNumber(e.amount, dek),
     }))
   );
 

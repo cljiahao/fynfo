@@ -1,7 +1,8 @@
 'use server';
 
 import { requireActionContext, requireDbContext } from '@/lib/action-guard';
-import { decryptPayload, encryptPayload } from '@/lib/crypto';
+import { encryptPayload } from '@/lib/crypto';
+import { decryptNumber } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
@@ -22,8 +23,8 @@ export async function getSalaryRecords(): Promise<SalaryData[]> {
   return Promise.all(
     (data || []).map(async (r) => ({
       id: r.month,
-      salary: Number(await decryptPayload(r.salary, dek)),
-      bonus: Number(await decryptPayload(r.bonus, dek)),
+      salary: await decryptNumber(r.salary, dek),
+      bonus: await decryptNumber(r.bonus, dek),
     }))
   );
 }
@@ -42,8 +43,8 @@ export async function getSalaryRecord(id: string): Promise<SalaryData | null> {
 
   return {
     id: data.month,
-    salary: Number(await decryptPayload(data.salary, dek)),
-    bonus: Number(await decryptPayload(data.bonus, dek)),
+    salary: await decryptNumber(data.salary, dek),
+    bonus: await decryptNumber(data.bonus, dek),
   };
 }
 
