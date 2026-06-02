@@ -2,24 +2,37 @@
 id: 007
 slug: dek-pepper-derivation
 area: security
-status: draft # draft | approved | shipped | superseded  --  NEEDS CLARENCE APPROVAL
+status: superseded # draft | approved | shipped | superseded  --  DECLINED 2026-06-02 (risk-accepted)
 author: claude (opus 4.8, 2026-06-02)
 created: 2026-06-02
-approved: # NOT pre-approved — high stakes (irrecoverable secret + full rekey); explicit sign-off required
+approved: # never approved — declined by owner (risk-accepted); see decision banner
 shipped:
-impl_pr: direct merge to main (no PR — owner waived)
+impl_pr:
 supersedes:
 constitution_satisfies:
   - '§2.1' # defends the vault against offline brute-force from a DB dump
 constitution_overrides:
 ---
 
-# Spec 007 (security): Server pepper in the DEK derivation (DESIGN — needs approval)
+# Spec 007 (security): Server pepper in the DEK derivation (DESIGN — DECLINED)
 
-> **STATUS: DRAFT. Do not implement until Clarence sets `status: approved`.** This spec proposes a
-> change with two heavy consequences: a new **irrecoverable** server secret, and a **full re-encrypt
-> (rekey) of all vault data**. It is the real fix for audit HIGH #2, but the stakes demand explicit
-> sign-off and the decisions in §Open questions resolved first.
+> **DECISION 2026-06-02 — DECLINED (risk-accepted by Clarence). Not implementing.**
+> Fynfo is a personal, manual-entry expenses app. The threat this spec defends — an attacker holding a
+> full offline Supabase DB dump brute-forcing a 6-digit PIN — is **out of scope**, and the cost (a new
+> **irrecoverable** `VAULT_PEPPER` + a full rekey, with permanent-data-loss risk) is not justified for
+> that data sensitivity. The realistic threat (account takeover) is already covered: **login is Google
+> OAuth, so it inherits the user's Google 2FA**; data-at-rest is AES-256-GCM under a client-derived
+> DEK; online PIN guessing is rate-limited (spec 003) with a timing-safe compare (spec 002). HIGH #2 is
+> closed as risk-accepted. Spec retained as the analysis record; reopen only if the threat model
+> changes (e.g. multi-user, or storing materially more sensitive data).
+>
+> _Original design preserved below for the record._
+
+---
+
+> **(Original draft.)** This spec proposes a change with two heavy consequences: a new **irrecoverable**
+> server secret, and a **full re-encrypt (rekey) of all vault data**. It is the real fix for audit
+> HIGH #2, but the stakes demand explicit sign-off and the decisions in §Open questions resolved first.
 
 ## Problem
 
