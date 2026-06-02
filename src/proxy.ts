@@ -20,7 +20,26 @@ function isPublicRoute(pathname: string): boolean {
   );
 }
 
+/**
+ * A Next.js server action (POST carrying the `next-action` header). These
+ * self-validate auth via `requireActionContext`/`requireDbContext` and rotate
+ * the session cookie through their own Supabase client, so the proxy's
+ * `getUser()` pass on them is a redundant auth round-trip. Fails secure: any
+ * request this does not positively classify still gets the full proxy pass.
+ */
+export function isServerActionRequest(
+  method: string,
+  headers: Headers
+): boolean {
+  return method === 'POST' && headers.has('next-action');
+}
+
 export async function proxy(req: NextRequest) {
+  // Skip the redundant auth/refresh pass on self-guarded server actions.
+  if (isServerActionRequest(req.method, req.headers)) {
+    return NextResponse.next({ request: req });
+  }
+
   let supabaseResponse = NextResponse.next({
     request: req,
   });

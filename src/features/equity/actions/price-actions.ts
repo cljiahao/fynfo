@@ -1,5 +1,6 @@
 'use server';
 
+import { requireUserId } from '@/lib/auth-guard';
 import { getYahooSymbol } from '../lib/ticker-map';
 
 export interface StockPrice {
@@ -14,6 +15,8 @@ export interface StockPrice {
 export async function fetchStockPrices(
   tickers: string[]
 ): Promise<Record<string, StockPrice>> {
+  await requireUserId();
+
   const unique = [...new Set(tickers.map((t) => t.toUpperCase()))];
   const symbols = unique.map((t) => getYahooSymbol(t));
   const symbolToTicker = Object.fromEntries(
@@ -78,6 +81,8 @@ export async function fetchExchangeRate(
   from: string,
   to: string
 ): Promise<number | null> {
+  await requireUserId();
+
   try {
     const symbol = `${from}${to}=X`;
     const res = await fetch(
