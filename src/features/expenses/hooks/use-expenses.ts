@@ -14,10 +14,13 @@ import {
   settleSplit,
   upsertExpense,
 } from '../actions/expense-actions';
+import { applySplitSettlement } from '../lib/utils';
 import type { ExpenseData } from '../types';
 
 const EXPENSE_KEY = ['expenses'] as const;
 const PEOPLE_KEY = ['expense-people'] as const;
+
+type SettleVars = { expenseIds: string[]; person: string; settled: boolean };
 
 /**
  * Mutation options for upserting an expense.
@@ -82,11 +85,16 @@ export const useUpsertExpense = () => {
   return useMutation(buildUpsertMutationOptions(queryClient));
 };
 
-export const useDeleteExpense = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
+/**
+ * Delete options. Optimistically drops the row (rollback on error) and, like
+ * the upsert path, never refetches EXPENSE_KEY — deletion derives nothing the
+ * client lacks. Only the cheap plaintext PEOPLE_KEY is refreshed, since a
+ * removed expense can drop a person from the suggestions list.
+ */
+export function buildDeleteMutationOptions(queryClient: QueryClient) {
+  return {
     mutationFn: (id: string) => deleteExpense(id),
-    onMutate: async (id) => {
+    onMutate: async (id: string) => {
       await queryClient.cancelQueries({ queryKey: EXPENSE_KEY });
       const previous = queryClient.getQueryData<ExpenseData[]>(EXPENSE_KEY);
       queryClient.setQueryData<ExpenseData[]>(EXPENSE_KEY, (old) =>
@@ -94,43 +102,79 @@ export const useDeleteExpense = () => {
       );
       return { previous };
     },
-    onError: (_err, _id, context) => {
+    onError: (
+      _err: unknown,
+      _id: string,
+      context: { previous?: ExpenseData[] } | undefined
+    ) => {
       if (context?.previous) {
         queryClient.setQueryData(EXPENSE_KEY, context.previous);
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: EXPENSE_KEY });
+      queryClient.invalidateQueries({ queryKey: PEOPLE_KEY });
     },
-  });
+  };
+}
+
+/**
+ * Shared optimistic settle options for both the per-row and whole-month cases.
+ * Flips `settled` on the matching splits in-cache and never invalidates: the
+ * cache equals server truth (no derived fields, person set unchanged), so a
+ * full re-decrypt refetch is pure waste. Rolls back on error.
+ */
+function buildSettleMutationOptions(
+  queryClient: QueryClient,
+  mutationFn: (vars: SettleVars) => Promise<void>
+) {
+  return {
+    mutationFn,
+    onMutate: async ({ expenseIds, person, settled }: SettleVars) => {
+      await queryClient.cancelQueries({ queryKey: EXPENSE_KEY });
+      const previous = queryClient.getQueryData<ExpenseData[]>(EXPENSE_KEY);
+      queryClient.setQueryData<ExpenseData[]>(EXPENSE_KEY, (old) =>
+        applySplitSettlement(old ?? [], expenseIds, person, settled)
+      );
+      return { previous };
+    },
+    onError: (
+      _err: unknown,
+      _vars: SettleVars,
+      context: { previous?: ExpenseData[] } | undefined
+    ) => {
+      if (context?.previous) {
+        queryClient.setQueryData(EXPENSE_KEY, context.previous);
+      }
+    },
+  };
+}
+
+export function buildSettleSplitMutationOptions(queryClient: QueryClient) {
+  return buildSettleMutationOptions(
+    queryClient,
+    ({ expenseIds, person, settled }) =>
+      settleSplit(expenseIds[0], person, settled)
+  );
+}
+
+export function buildSettleMonthMutationOptions(queryClient: QueryClient) {
+  return buildSettleMutationOptions(
+    queryClient,
+    ({ expenseIds, person, settled }) =>
+      settleMonthSplits(expenseIds, person, settled)
+  );
+}
+
+export const useDeleteExpense = () => {
+  return useMutation(buildDeleteMutationOptions(useQueryClient()));
 };
 
 export const useSettleSplit = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: {
-      expenseId: string;
-      person: string;
-      settled: boolean;
-    }) => settleSplit(data.expenseId, data.person, data.settled),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: EXPENSE_KEY });
-    },
-  });
+  return useMutation(buildSettleSplitMutationOptions(useQueryClient()));
 };
 
 export const useSettleMonthSplits = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: {
-      expenseIds: string[];
-      person: string;
-      settled: boolean;
-    }) => settleMonthSplits(data.expenseIds, data.person, data.settled),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: EXPENSE_KEY });
-    },
-  });
+  return useMutation(buildSettleMonthMutationOptions(useQueryClient()));
 };
 
 export const useDistinctPeople = () => {

@@ -1,4 +1,7 @@
-import { resolveSplitConfirm } from '@/features/expenses/lib/utils';
+import {
+  applySplitSettlement,
+  resolveSplitConfirm,
+} from '@/features/expenses/lib/utils';
 import type { ExpenseData } from '@/features/expenses/types';
 import { describe, expect, it } from 'vitest';
 
@@ -48,5 +51,42 @@ describe('resolveSplitConfirm', () => {
     const { shouldSave } = resolveSplitConfirm(invalid, false, newSplits);
 
     expect(shouldSave).toBe(false);
+  });
+});
+
+describe('applySplitSettlement', () => {
+  const shared = (id: string): ExpenseData => ({
+    ...baseRow,
+    id,
+    splits: [
+      { person: 'Alice', amount: 20, settled: false },
+      { person: 'Bob', amount: 20, settled: false },
+    ],
+  });
+
+  it('flips settled only on the matched person within the matched ids', () => {
+    const list = [shared('a'), shared('b')];
+    const next = applySplitSettlement(list, ['a'], 'Alice', true);
+
+    expect(next[0].splits).toEqual([
+      { person: 'Alice', amount: 20, settled: true },
+      { person: 'Bob', amount: 20, settled: false },
+    ]);
+    expect(next[1].splits).toEqual(list[1].splits); // 'b' untouched
+  });
+
+  it('settles a person across many ids (month case)', () => {
+    const list = [shared('a'), shared('b'), shared('c')];
+    const next = applySplitSettlement(list, ['a', 'c'], 'Bob', true);
+
+    expect(next.map((e) => e.splits[1].settled)).toEqual([true, false, true]);
+  });
+
+  it('does not mutate the input list or rows', () => {
+    const list = [shared('a')];
+    const before = structuredClone(list);
+    applySplitSettlement(list, ['a'], 'Alice', true);
+
+    expect(list).toEqual(before);
   });
 });

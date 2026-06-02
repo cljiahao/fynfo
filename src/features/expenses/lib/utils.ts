@@ -22,3 +22,27 @@ export function resolveSplitConfirm(
   const shouldSave = !isNew && Boolean(next.date) && next.amount > 0;
   return { next, shouldSave };
 }
+
+/**
+ * Optimistic cache transform for settling splits. Returns a new list with
+ * `settled` flipped on every split whose `person` matches, for expenses whose
+ * id is in `expenseIds`. Pure — inputs are not mutated. A single id covers the
+ * per-row `settleSplit` case; many ids cover the month case.
+ */
+export function applySplitSettlement(
+  list: ExpenseData[],
+  expenseIds: readonly string[],
+  person: string,
+  settled: boolean
+): ExpenseData[] {
+  const ids = new Set(expenseIds);
+  return list.map((expense) => {
+    if (!ids.has(expense.id)) return expense;
+    return {
+      ...expense,
+      splits: expense.splits.map((s) =>
+        s.person === person ? { ...s, settled } : s
+      ),
+    };
+  });
+}
