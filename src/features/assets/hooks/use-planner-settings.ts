@@ -7,7 +7,7 @@ import {
 } from '../actions/planner-actions';
 import type { PlannerSettingsData } from '../types';
 
-const PLANNER_KEY = ['planner-settings'] as const;
+export const PLANNER_KEY = ['planner-settings'] as const;
 
 export function usePlannerSettings() {
   return useQuery({

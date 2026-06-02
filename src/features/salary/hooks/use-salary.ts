@@ -9,7 +9,7 @@ import {
 } from '../actions/salary-actions';
 import type { SalaryData } from '../types';
 
-const SALARY_KEY = ['salary'] as const;
+export const SALARY_KEY = ['salary'] as const;
 
 export function useSalaryRecords() {
   return useQuery({

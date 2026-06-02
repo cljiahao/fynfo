@@ -1,1 +1,1 @@
-export { useExpenses } from './use-expenses';
+export { EXPENSE_KEY, useExpenses } from './use-expenses';

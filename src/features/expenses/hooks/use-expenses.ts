@@ -17,7 +17,7 @@ import {
 import { applySplitSettlement } from '../lib/utils';
 import type { ExpenseData } from '../types';
 
-const EXPENSE_KEY = ['expenses'] as const;
+export const EXPENSE_KEY = ['expenses'] as const;
 const PEOPLE_KEY = ['expense-people'] as const;
 
 type SettleVars = { expenseIds: string[]; person: string; settled: boolean };

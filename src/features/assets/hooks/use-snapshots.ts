@@ -9,7 +9,7 @@ import {
 } from '../actions/snapshot-actions';
 import type { SnapshotData } from '../types';
 
-const SNAPSHOTS_KEY = ['snapshots'] as const;
+export const SNAPSHOTS_KEY = ['snapshots'] as const;
 
 export function useSnapshots() {
   return useQuery({
