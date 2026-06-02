@@ -19,7 +19,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils/currency';
-import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -27,19 +26,11 @@ import { toast } from 'sonner';
 import { useCreateTrade, useUpdateTrade } from '../hooks/use-equity';
 import { BROKERS, calculateFees, type Broker } from '../lib/broker-fees';
 import { getMarket } from '../lib/ticker-map';
+import {
+  buildTradeFormDefaults,
+  type TradeFormValues,
+} from '../lib/trade-form-defaults';
 import type { EquityTradeData } from '../types';
-
-interface TradeFormValues {
-  date: string;
-  broker: string;
-  ticker: string;
-  action: 'buy' | 'sell';
-  shares: number;
-  price: number;
-  fees: number;
-  isCdp: boolean;
-  isPO: boolean;
-}
 
 interface TradeFormDialogProps {
   open: boolean;
@@ -57,46 +48,18 @@ export function TradeFormDialog({
   const isPending = create.isPending || update.isPending;
 
   const form = useForm<TradeFormValues>({
-    defaultValues: {
-      date: format(new Date(), 'yyyy-MM-dd'),
-      broker: '',
-      ticker: '',
-      action: 'buy',
-      shares: '' as unknown as number,
-      price: '' as unknown as number,
-      fees: '' as unknown as number,
-      isCdp: false,
-      isPO: false,
-    },
+    defaultValues: buildTradeFormDefaults(),
   });
 
   useEffect(() => {
     if (editTrade) {
-      form.reset({
-        date: format(new Date(editTrade.date), 'yyyy-MM-dd'),
-        broker: editTrade.broker,
-        ticker: editTrade.ticker,
-        action: editTrade.action,
-        shares: editTrade.shares,
-        price: editTrade.price,
-        fees: editTrade.fees,
-        isCdp: false,
-      });
+      form.reset(buildTradeFormDefaults(editTrade));
     }
   }, [editTrade, form]);
 
   useEffect(() => {
     if (open && !editTrade) {
-      form.reset({
-        date: format(new Date(), 'yyyy-MM-dd'),
-        broker: '',
-        ticker: '',
-        action: 'buy',
-        shares: '' as unknown as number,
-        price: '' as unknown as number,
-        fees: '' as unknown as number,
-        isCdp: false,
-      });
+      form.reset(buildTradeFormDefaults());
     }
   }, [open, editTrade, form]);
 
