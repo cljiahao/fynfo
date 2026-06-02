@@ -21,6 +21,7 @@ interface CookieJar {
 
 let cookieJar: CookieJar;
 let profileRow: ProfileRow | null;
+let profileError: { code: string } | null;
 let upsertSpy: ReturnType<typeof vi.fn>;
 let getUserResult: {
   data: { user: { id: string; email: string } | null };
@@ -54,7 +55,7 @@ function buildFromBuilder(table: string) {
   return {
     select: () => ({
       eq: () => ({
-        single: async () => ({ data: profileRow, error: null }),
+        maybeSingle: async () => ({ data: profileRow, error: profileError }),
       }),
     }),
     upsert: upsertSpy,
@@ -87,6 +88,7 @@ describe('POST /api/vault', () => {
       error: null,
     };
     profileRow = null;
+    profileError = null;
     rpcLocked = { data: false, error: null };
     rpcRecord = { data: false, error: null };
   });
@@ -211,6 +213,17 @@ describe('POST /api/vault', () => {
     );
 
     expect(res.status).toBe(429);
+    expect(cookieJar.set).not.toHaveBeenCalled();
+  });
+
+  it('fails closed (500, no re-init) when the profile read errors', async () => {
+    profileError = { code: '08006' }; // connection failure
+    const POST = await freshPost();
+
+    const res = await POST(makeRequest({ derivedKey: DEK.toString('base64') }));
+
+    expect(res.status).toBe(500);
+    expect(upsertSpy).not.toHaveBeenCalled();
     expect(cookieJar.set).not.toHaveBeenCalled();
   });
 

@@ -32,7 +32,7 @@ const VaultUnlockSchema = z.object({
 const COOKIE_OPTS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  sameSite: 'strict' as const,
   path: '/',
   maxAge: 60 * 60 * 6,
 };
@@ -115,11 +115,18 @@ export const POST = withLogging('api.vault.unlock', async (req: Request) => {
       throw new AppError('UNAUTHORIZED', 'Unauthorized');
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('users_profile')
       .select('vault_check_v2')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
+
+    // Fail closed: a read error must never fall through to first-unlock, which
+    // would re-init the vault with a fresh canary and orphan existing data.
+    if (profileError) {
+      logger.error({ code: profileError.code }, 'failed to read vault profile');
+      throw new AppError('INTERNAL', 'Vault unavailable');
+    }
 
     // Returning user: verify canary against existing v2 vault, rate-limited.
     if (profile?.vault_check_v2) {
