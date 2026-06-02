@@ -64,7 +64,7 @@ Personal wealth management dashboard. Next.js 16 App Router, React 19 Server Com
 - Frontend: Next.js 16, React 19, TanStack Query v5, Zod v4, React Hook Form, Tailwind, shadcn/ui
 - Backend: Supabase (`@supabase/ssr`) + Postgres + RLS; server actions for mutations
 - Encryption: AES-256-GCM payload encryption with DEK derived from PIN (PBKDF2, salt = Supabase user id), DEK held in HttpOnly cookie `fynfo_vault_dek`
-- Tests: Vitest (Node environment — no jsdom/Testing Library; test pure logic seams, not component render)
+- Tests: Vitest (Node default; opt-in jsdom + Testing Library per-file for component tests)
 - Tooling: pnpm, ESLint, Prettier, husky
 
 ### Layout
