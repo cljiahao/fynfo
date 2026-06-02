@@ -26,11 +26,12 @@ import {
   usePlannerSettings,
   useUpsertPlannerSettings,
 } from '../hooks/use-planner-settings';
-import type {
-  AssetCategory,
-  PlannerSettingsData,
-  SnapshotData,
-} from '../types';
+import {
+  calcAllTimeAvgExpense,
+  computeSalaryPlan,
+  sumByCategory,
+} from '../lib/salary-plan';
+import type { PlannerSettingsData, SnapshotData } from '../types';
 
 export interface PlannerValues {
   investmentAmount: number;
@@ -44,19 +45,6 @@ interface SalaryPlannerProps {
   onPlannerValuesChange?: (values: PlannerValues) => void;
 }
 
-function ceilToThousand(value: number): number {
-  return Math.ceil(value / 1000) * 1000;
-}
-
-function sumByCategory(
-  entries: SnapshotData['entries'],
-  category: AssetCategory
-): number {
-  return entries
-    .filter((e) => e.category === category)
-    .reduce((sum, e) => sum + e.amount, 0);
-}
-
 const DEFAULT_SETTINGS: PlannerSettingsData = {
   emergencyMonths: 3,
   warChestMonths: 9,
@@ -65,23 +53,6 @@ const DEFAULT_SETTINGS: PlannerSettingsData = {
   allowanceEnabled: false,
   allowancePct: 5,
 };
-
-function calcAllTimeAvgExpense(
-  expenses: ReturnType<typeof useExpenses>['data']
-): number {
-  if (!expenses?.length) return 0;
-  const monthTotals = new Map<string, number>();
-  for (const e of expenses) {
-    const key = e.date.slice(0, 7);
-    let userAmount = e.amount;
-    if (e.splitType === 'shared' && e.splits.length > 0) {
-      userAmount = e.amount - e.splits.reduce((sum, s) => sum + s.amount, 0);
-    }
-    monthTotals.set(key, (monthTotals.get(key) ?? 0) + userAmount);
-  }
-  const totals = Array.from(monthTotals.values());
-  return totals.reduce((sum, v) => sum + v, 0) / totals.length;
-}
 
 export function SalaryPlanner(props: SalaryPlannerProps) {
   const { data: salaryRecords, isLoading: salaryLoading } = useSalaryRecords();
@@ -182,62 +153,40 @@ function SalaryPlannerInner({
     debouncedSave,
   ]);
 
-  const netAfterCpf = salary * 0.8;
-
-  // Fixed percentages
-  const expensesPct = netAfterCpf > 0 ? expenses / netAfterCpf : 0;
-  const insurancePct = 0.05;
-  const tithePct = titheEnabled ? tithePctInput / 100 : 0;
-  const allowancePct = allowanceEnabled ? allowancePctInput / 100 : 0;
-
-  // Goals
-  const emergencyFundGoal = ceilToThousand(expenses * emergencyMonths);
-  const warChestGoal = ceilToThousand(expenses * warChestMonths);
-
-  // Current asset values
   const currentSavings = snapshot
     ? sumByCategory(snapshot.entries, 'savings')
     : 0;
   const currentBonds = snapshot ? sumByCategory(snapshot.entries, 'bonds') : 0;
 
-  // Determine savings % dynamically
-  const usedPct = expensesPct + insurancePct + tithePct + allowancePct;
-  const cappedPct = Math.max(1 - usedPct, 0);
-
-  let savingsPct = 0;
-  let investmentPct = 0;
-
-  const emergencyFulfilled = currentSavings >= emergencyFundGoal;
-  const warChestFulfilled = currentBonds >= warChestGoal;
-  const goalsFulfilled = emergencyFulfilled && warChestFulfilled;
-
-  const goalsNeeded = emergencyFundGoal + warChestGoal;
-  const goalsFunded = currentSavings + currentBonds;
-
-  if (netAfterCpf > 0) {
-    if (!goalsFulfilled && usedPct < 1) {
-      const remaining = Math.max(goalsNeeded - goalsFunded, 0);
-      const average = remaining / 9;
-      const cappedAmount = cappedPct * netAfterCpf;
-
-      if (average < cappedAmount) {
-        savingsPct = average / netAfterCpf;
-      } else {
-        savingsPct = cappedPct;
-      }
-    }
-    // else goals fulfilled: savings = 0, all goes to investment
-
-    investmentPct = Math.max(cappedPct - savingsPct, 0);
-  }
-
-  // Calculated amounts
-  const savingsAmt = netAfterCpf * savingsPct;
-  const expensesAmt = expenses;
-  const insuranceAmt = netAfterCpf * insurancePct;
-  const investmentAmt = netAfterCpf * investmentPct;
-  const titheAmt = netAfterCpf * tithePct;
-  const allowanceAmt = netAfterCpf * allowancePct;
+  const {
+    netAfterCpf,
+    expensesPct,
+    insurancePct,
+    tithePct,
+    allowancePct,
+    savingsPct,
+    investmentPct,
+    emergencyFundGoal,
+    warChestGoal,
+    goalsFulfilled,
+    savingsAmt,
+    expensesAmt,
+    insuranceAmt,
+    investmentAmt,
+    titheAmt,
+    allowanceAmt,
+  } = computeSalaryPlan({
+    salary,
+    expenses,
+    emergencyMonths,
+    warChestMonths,
+    titheEnabled,
+    tithePctInput,
+    allowanceEnabled,
+    allowancePctInput,
+    currentSavings,
+    currentBonds,
+  });
 
   useEffect(() => {
     onPlannerValuesChange?.({
