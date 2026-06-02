@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { calculateFees } from '@/features/equity/lib/broker-fees';
+import {
+  calculateFees,
+  resolveTradeFees,
+} from '@/features/equity/lib/broker-fees';
 
 // SGX fees: tradeValue * 0.000325 + tradeValue * 0.000075 + 0.35
 // = tradeValue * 0.0004 + 0.35
@@ -182,5 +185,37 @@ describe('calculateFees — ticker case-insensitivity', () => {
     const upper = calculateFees('DBS Vickers', 'DBS', 'buy', 10000, false);
     const lower = calculateFees('DBS Vickers', 'dbs', 'buy', 10000, false);
     expect(lower).toEqual(upper);
+  });
+});
+
+describe('resolveTradeFees — input gating', () => {
+  const ok = {
+    ticker: 'DBS',
+    action: 'buy' as const,
+    broker: 'DBS Vickers',
+    tradeValue: 10000,
+    isCdp: false,
+    isPO: false,
+  };
+
+  it('prices a fully-specified trade (matches calculateFees)', () => {
+    const r = resolveTradeFees(ok);
+    expect(r).not.toBeNull();
+    expect(r!.total).toBeCloseTo(
+      calculateFees('DBS Vickers', 'DBS', 'buy', 10000, false).total
+    );
+  });
+
+  it('returns null without a ticker, action, or positive value', () => {
+    expect(resolveTradeFees({ ...ok, ticker: undefined })).toBeNull();
+    expect(resolveTradeFees({ ...ok, action: undefined })).toBeNull();
+    expect(resolveTradeFees({ ...ok, tradeValue: 0 })).toBeNull();
+  });
+
+  it('requires a valid broker unless it is a PO', () => {
+    expect(resolveTradeFees({ ...ok, broker: '' })).toBeNull();
+    expect(resolveTradeFees({ ...ok, broker: 'Nope' })).toBeNull();
+    // PO on SG needs no broker
+    expect(resolveTradeFees({ ...ok, broker: '', isPO: true })).not.toBeNull();
   });
 });

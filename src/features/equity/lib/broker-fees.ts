@@ -2,7 +2,7 @@ import { getMarket } from './ticker-map';
 
 // All rates are GST-inclusive where stated
 
-interface FeeResult {
+export interface FeeResult {
   commission: number;
   platformFee: number;
   clearingFee: number;
@@ -133,4 +133,40 @@ export function calculateFees(
       : moomooSgCustodianBuySell(tradeValue);
   }
   return moomooUsBuySell(tradeValue);
+}
+
+export interface TradeFeeInput {
+  ticker?: string;
+  action?: 'buy' | 'sell';
+  broker?: string;
+  tradeValue: number;
+  isCdp?: boolean;
+  isPO?: boolean;
+}
+
+/**
+ * Gate raw form inputs, then price the trade. Returns null when the inputs are
+ * not yet complete enough to quote — no ticker/action, non-positive value, or
+ * (unless it is a PO) no valid broker. Shared by the live fee preview and the
+ * fee auto-fill so the two cannot drift.
+ */
+export function resolveTradeFees(input: TradeFeeInput): FeeResult | null {
+  const {
+    ticker,
+    action,
+    broker,
+    tradeValue,
+    isCdp = false,
+    isPO = false,
+  } = input;
+  if (!ticker || !action || tradeValue <= 0) return null;
+  if (!isPO && (!broker || !BROKERS.includes(broker as Broker))) return null;
+  return calculateFees(
+    broker as Broker,
+    ticker,
+    action,
+    tradeValue,
+    isCdp,
+    isPO
+  );
 }

@@ -24,7 +24,7 @@ import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useCreateTrade, useUpdateTrade } from '../hooks/use-equity';
-import { BROKERS, calculateFees, type Broker } from '../lib/broker-fees';
+import { BROKERS, resolveTradeFees } from '../lib/broker-fees';
 import { getMarket } from '../lib/ticker-map';
 import {
   buildTradeFormDefaults,
@@ -85,34 +85,27 @@ export function TradeFormDialog({
   const tradeValue = shares * price;
 
   // Compute fees as derived state (no useMemo needed per templateCentral standards)
-  const calculatedFees = (() => {
-    if (!ticker || !action || tradeValue <= 0) return null;
-    if (!isPO && (!broker || !BROKERS.includes(broker as Broker))) return null;
-    return calculateFees(
-      broker as Broker,
-      ticker,
-      action,
-      tradeValue,
-      isCdp ?? false,
-      isPO
-    );
-  })();
+  const calculatedFees = resolveTradeFees({
+    ticker,
+    action,
+    broker,
+    tradeValue,
+    isCdp: isCdp ?? false,
+    isPO,
+  });
 
   // Auto-populate fees when calculation inputs change (via event handlers below)
   const autoFillFees = () => {
-    const fees = (() => {
-      const tv =
+    const fees = resolveTradeFees({
+      ticker: form.getValues('ticker'),
+      action: form.getValues('action'),
+      broker: form.getValues('broker'),
+      tradeValue:
         (Number(form.getValues('shares')) || 0) *
-        (Number(form.getValues('price')) || 0);
-      const t = form.getValues('ticker');
-      const b = form.getValues('broker') as Broker;
-      const a = form.getValues('action');
-      const cdp = form.getValues('isCdp');
-      const po = form.getValues('isPO');
-      if (!t || tv <= 0) return null;
-      if (!po && (!b || !BROKERS.includes(b))) return null;
-      return calculateFees(b, t, a, tv, cdp, po);
-    })();
+        (Number(form.getValues('price')) || 0),
+      isCdp: form.getValues('isCdp'),
+      isPO: form.getValues('isPO'),
+    });
     if (fees && !editTrade) {
       form.setValue('fees', Math.round(fees.total * 100) / 100);
     }
