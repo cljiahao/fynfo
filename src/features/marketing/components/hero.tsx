@@ -23,14 +23,15 @@ const item: Variants = {
 
 export function Hero() {
   const reduce = useReducedMotion();
-  const motionProps = reduce
-    ? {}
-    : {
-        variants: container,
-        initial: 'hidden' as const,
-        animate: 'show' as const,
-      };
-  const child = reduce ? {} : { variants: item };
+  // initial={false} renders straight at the "show" state (no mount animation),
+  // so reduced-motion users see the hero immediately instead of a stuck
+  // opacity:0 from SSR. Non-reduced users still get the staggered entrance.
+  const motionProps = {
+    variants: container,
+    initial: reduce ? false : ('hidden' as const),
+    animate: 'show' as const,
+  };
+  const child = { variants: item };
 
   return (
     <section className="relative overflow-hidden px-6 pt-40 pb-24 md:pb-32">
