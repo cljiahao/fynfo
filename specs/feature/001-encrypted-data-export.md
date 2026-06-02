@@ -2,11 +2,11 @@
 id: 001
 slug: encrypted-data-export
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: claude (opus 4.8, 2026-06-02)
 created: 2026-06-02
-approved: # set on owner approval of this spec
-shipped:
+approved: 2026-06-02 # owner reviewed spec + approved
+shipped: 2026-06-02
 impl_pr: direct merge to main (no PR — owner waived)
 supersedes:
 constitution_satisfies:

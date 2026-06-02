@@ -1,6 +1,6 @@
 'use client';
 
-import { ProfileForm } from '@/features/profile';
+import { ExportDataCard, ProfileForm } from '@/features/profile';
 
 export default function ProfilePage() {
   return (
@@ -13,6 +13,7 @@ export default function ProfilePage() {
       </div>
 
       <ProfileForm />
+      <ExportDataCard />
     </div>
   );
 }

@@ -29,6 +29,28 @@ export async function getTaxReliefs(year: number): Promise<TaxReliefData[]> {
   );
 }
 
+/** Every tax-relief row for the user across all years (for data export). */
+export async function getAllTaxReliefs(): Promise<
+  Array<TaxReliefData & { year: number }>
+> {
+  const { userId, dek, supabase } = await requireActionContext();
+
+  const { data, error } = await supabase
+    .from('tax_relief_entries')
+    .select('*')
+    .eq('user_id', userId);
+
+  throwIfSupabaseError(error, 'tax_relief read');
+
+  return Promise.all(
+    (data || []).map(async (e) => ({
+      year: e.year as number,
+      reliefKey: e.relief_key,
+      amount: await decryptNumber(e.amount, dek),
+    }))
+  );
+}
+
 export async function upsertTaxReliefs(
   year: number,
   reliefs: TaxReliefData[]
