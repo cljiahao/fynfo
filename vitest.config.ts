@@ -27,11 +27,14 @@ export default defineConfig({
       // regression below today's baseline (most UI is still untested pending
       // the jsdom/RTL decision); ratchet up as coverage grows. The security
       // core is gated high to keep the zero-knowledge contract locked down.
+      // Floors re-baselined for Vitest 4, which counts every `include` file
+      // (not just test-imported ones): all-files lines ~23.8 / funcs ~15.1 /
+      // branches ~17.3.
       thresholds: {
-        lines: 10,
-        statements: 10,
-        functions: 50,
-        branches: 60,
+        lines: 20,
+        statements: 20,
+        functions: 12,
+        branches: 15,
         'src/lib/crypto.ts': {
           lines: 100,
           statements: 100,
