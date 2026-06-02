@@ -38,6 +38,12 @@ import {
   useExpenses,
   useUpsertExpense,
 } from '../hooks/use-expenses';
+import {
+  filterExpenses,
+  sortExpenses,
+  type SortDir,
+  type SortKey,
+} from '../lib/expense-table';
 import { generateId, resolveSplitConfirm } from '../lib/utils';
 import type { ExpenseData, ExpenseSplitData } from '../types';
 import { ExpenseTypeSelect } from './expense-type-select';
@@ -53,9 +59,6 @@ const EMPTY_ROW: ExpenseData = {
   splitType: 'self',
   splits: [],
 };
-
-type SortKey = 'date' | 'type' | 'item' | 'amount' | 'splitType';
-type SortDir = 'asc' | 'desc';
 
 // --- Editable Row ---
 
@@ -401,44 +404,12 @@ export function ExpenseTable() {
   };
 
   // Filter + sort
-  const filtered = (expenses ?? []).filter((e) => {
-    if (typeFilter !== 'all' && e.type !== typeFilter) return false;
-    if (splitFilter !== 'all' && e.splitType !== splitFilter) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return (
-        e.item.toLowerCase().includes(q) ||
-        e.info.toLowerCase().includes(q) ||
-        EXPENSE_TYPE_LABELS[e.type].toLowerCase().includes(q)
-      );
-    }
-    return true;
+  const filtered = filterExpenses(expenses ?? [], {
+    searchQuery,
+    typeFilter,
+    splitFilter,
   });
-
-  const sorted = [...filtered].sort((a, b) => {
-    let cmp = 0;
-    switch (sortKey) {
-      case 'date':
-        cmp = a.date.localeCompare(b.date);
-        break;
-      case 'type':
-        cmp = EXPENSE_TYPE_LABELS[a.type].localeCompare(
-          EXPENSE_TYPE_LABELS[b.type]
-        );
-        break;
-      case 'item':
-        cmp = a.item.localeCompare(b.item);
-        break;
-      case 'amount':
-        cmp = a.amount - b.amount;
-        break;
-      case 'splitType':
-        cmp = a.splitType.localeCompare(b.splitType);
-        break;
-    }
-    return sortDir === 'asc' ? cmp : -cmp;
-  });
-
+  const sorted = sortExpenses(filtered, sortKey, sortDir);
   const paginated = sorted.slice(page * pageSize, (page + 1) * pageSize);
 
   const addRow = () => {
