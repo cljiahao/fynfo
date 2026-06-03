@@ -24,7 +24,7 @@ function AccordionItem({
       <div className="bg-brand-gradient rounded-lg p-px">
         <AccordionPrimitive.Item
           data-slot="accordion-item"
-          className={cn('rounded-lg bg-white', className)}
+          className={cn('bg-card rounded-lg', className)}
           {...props}
         />
       </div>

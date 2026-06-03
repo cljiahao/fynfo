@@ -9,7 +9,7 @@ export default function PublicLayout({
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex flex-1 flex-col">{children}</main>
-      <SiteFooter />
+      <SiteFooter tone="marketing" />
     </div>
   );
 }

@@ -79,7 +79,7 @@ export function Navbar({ userMenu }: { userMenu?: React.ReactNode }) {
   // Authenticated navbar — shown on dashboard pages
   return (
     <nav className="sticky top-0 z-50 w-full">
-      <div className="flex-between min-h-20 border-b bg-white px-6 py-3 shadow-lg md:px-8">
+      <div className="flex-between bg-background min-h-20 border-b px-6 py-3 shadow-lg md:px-8">
         <Link
           href={PAGE_ROUTES.HOME}
           onClick={() => window.scrollTo({ top: 0 })}

@@ -192,7 +192,7 @@ export function SplitDialog({
               </Button>
             </div>
             {showSuggestions && filtered.length > 0 && newName.length > 0 && (
-              <div className="absolute top-full z-10 mt-1 w-full rounded-md border bg-white py-1 shadow-md">
+              <div className="bg-popover absolute top-full z-10 mt-1 w-full rounded-md border py-1 shadow-md">
                 {filtered.map((s) => (
                   <button
                     key={s}

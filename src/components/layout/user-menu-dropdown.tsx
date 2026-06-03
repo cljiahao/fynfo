@@ -1,5 +1,6 @@
 'use client';
 
+import { ThemeToggle } from '@/components/layout/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -67,6 +68,10 @@ export function UserMenuDropdown({
             FAQ
           </Link>
         </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        <ThemeToggle />
 
         <DropdownMenuSeparator />
 
