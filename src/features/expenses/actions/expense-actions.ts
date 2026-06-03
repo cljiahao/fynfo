@@ -102,7 +102,7 @@ export async function deleteExpense(id: string): Promise<void> {
     .eq('id', id)
     .eq('user_id', userId);
 
-  throwIfSupabaseError(error, 'expense write');
+  throwIfSupabaseError(error, 'expense delete');
 }
 
 export async function settleSplit(
@@ -119,7 +119,7 @@ export async function settleSplit(
     .eq('expense_id', expenseId)
     .eq('person', person);
 
-  throwIfSupabaseError(error, 'expense write');
+  throwIfSupabaseError(error, 'expense settle split');
 }
 
 export async function settleMonthSplits(
@@ -135,7 +135,7 @@ export async function settleMonthSplits(
     .in('expense_id', expenseIds)
     .eq('person', person);
 
-  throwIfSupabaseError(error, 'expense write');
+  throwIfSupabaseError(error, 'expense settle month');
 }
 
 export async function getDistinctPeople(): Promise<string[]> {
@@ -146,7 +146,7 @@ export async function getDistinctPeople(): Promise<string[]> {
     .select('splits:expense_splits(person)')
     .eq('user_id', userId);
 
-  throwIfSupabaseError(error, 'expense write');
+  throwIfSupabaseError(error, 'people read');
 
   const peopleSet = new Set<string>();
   data.forEach((r: ExpenseWithSplitsRow) => {

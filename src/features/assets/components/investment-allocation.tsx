@@ -21,6 +21,7 @@ import {
 } from '@/features/equity/hooks/use-prices';
 import { computeHoldings, type Holding } from '@/features/equity/lib/holdings';
 import { formatCurrency } from '@/lib/utils/currency';
+import { loadLocal, saveLocal } from '@/lib/utils/local-store';
 import { ArrowDown, ArrowUp, ArrowUpDown, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { MarketBudgets } from './investment-breakdown';
@@ -33,19 +34,6 @@ interface InvestmentAllocationProps {
 }
 
 const STORAGE_KEY = 'fynfo-allocations';
-
-function loadAllocations(): Record<string, number> {
-  if (typeof window === 'undefined') return {};
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
-  } catch {
-    return {};
-  }
-}
-
-function saveAllocations(allocs: Record<string, number>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(allocs));
-}
 
 function MarketAllocationTable({
   title,
@@ -296,13 +284,14 @@ export function InvestmentAllocation({ budgets }: InvestmentAllocationProps) {
     useStockPrices(heldTickers);
   const { data: usdToSgd } = useExchangeRate('USD', 'SGD');
 
-  const [allocations, setAllocations] =
-    useState<Record<string, number>>(loadAllocations);
+  const [allocations, setAllocations] = useState<Record<string, number>>(() =>
+    loadLocal<Record<string, number>>(STORAGE_KEY, {})
+  );
 
   const handleAllocationChange = (ticker: string, pct: number) => {
     setAllocations((prev) => {
       const next = { ...prev, [ticker]: pct };
-      saveAllocations(next);
+      saveLocal(STORAGE_KEY, next);
       return next;
     });
   };

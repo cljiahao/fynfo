@@ -9,6 +9,7 @@ import {
   useChartData,
   useSnapshots,
 } from '@/features/assets';
+import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { AssetsSkeleton } from './assets-skeleton';
@@ -38,7 +39,7 @@ export default function AssetsPage() {
             Track your assets and investments over time
           </p>
         </div>
-        <Link href="/dashboard/entry">
+        <Link href={PAGE_ROUTES.ENTRY}>
           <Button>
             <Plus className="mr-2 size-4" />
             Add Snapshot

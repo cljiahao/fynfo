@@ -2,7 +2,7 @@ import { createSupabaseServerClient } from '@/integrations/services/supabase';
 import { getVaultDekSession } from '@/lib/keystore';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export async function getDekOrThrow(): Promise<Buffer> {
+async function getDekOrThrow(): Promise<Buffer> {
   const dek = await getVaultDekSession();
   if (!dek) throw new Error('Vault is locked. Please unlock your vault.');
   return dek;

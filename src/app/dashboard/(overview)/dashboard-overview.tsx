@@ -13,6 +13,7 @@ import {
 } from '@/features/assets';
 import { useExpenses } from '@/features/expenses';
 import { SalarySummaryCards, useSalaryRecords } from '@/features/salary';
+import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
@@ -60,7 +61,7 @@ export function DashboardOverview() {
             Overview of your financial health
           </p>
         </div>
-        <Link href="/dashboard/entry">
+        <Link href={PAGE_ROUTES.ENTRY}>
           <Button>
             <Plus className="mr-2 size-4" />
             Add Snapshot
