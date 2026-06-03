@@ -4,6 +4,7 @@ import { DecryptionError, decryptPayload, encryptPayload } from '@/lib/crypto';
 import { AppError, handleApiError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
 import { withLogging } from '@/lib/utils/with-logging';
+import { VAULT_COOKIE_BASE_OPTS, VAULT_DEK_COOKIE } from '@/lib/vault-cookie';
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -30,10 +31,7 @@ const VaultUnlockSchema = z.object({
 });
 
 const COOKIE_OPTS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
-  path: '/',
+  ...VAULT_COOKIE_BASE_OPTS,
   maxAge: 60 * 60 * 6,
 };
 
@@ -149,7 +147,7 @@ export const POST = withLogging('api.vault.unlock', async (req: Request) => {
       await recordUnlockAttempt(supabase, true);
       const cookieStore = await cookies();
       cookieStore.set(
-        'fynfo_vault_dek',
+        VAULT_DEK_COOKIE,
         sealCookie(dek.toString('base64')),
         COOKIE_OPTS
       );
@@ -175,7 +173,7 @@ export const POST = withLogging('api.vault.unlock', async (req: Request) => {
 
     const cookieStore = await cookies();
     cookieStore.set(
-      'fynfo_vault_dek',
+      VAULT_DEK_COOKIE,
       sealCookie(dek.toString('base64')),
       COOKIE_OPTS
     );

@@ -5,6 +5,7 @@ import {
   V2_ITERATIONS,
 } from '@/lib/crypto-constants';
 import { logger } from '@/lib/logger';
+import { VAULT_DEK_COOKIE } from '@/lib/vault-cookie';
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
 import { promisify } from 'util';
@@ -32,7 +33,7 @@ export async function deriveKeyFromPinV2(
  */
 export async function getVaultDekSession(): Promise<Buffer | null> {
   const cookieStore = await cookies();
-  const secureCookieBlob = cookieStore.get('fynfo_vault_dek')?.value;
+  const secureCookieBlob = cookieStore.get(VAULT_DEK_COOKIE)?.value;
 
   if (!secureCookieBlob) return null;
 
