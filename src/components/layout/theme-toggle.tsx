@@ -1,7 +1,13 @@
 'use client';
 
-import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { Monitor, Moon, Sun } from 'lucide-react';
+import {
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Monitor, Moon, Palette, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 
 const OPTIONS = [
@@ -10,20 +16,29 @@ const OPTIONS = [
   { value: 'system', label: 'System', Icon: Monitor },
 ] as const;
 
-// Theme switcher for the user menu (spec feature/003). Designed to be dropped
-// inside the existing DropdownMenuContent. Renders no theme-dependent markup, so
-// no `mounted` hydration guard is needed — server and first client paint match.
+// Theme switcher for the user menu (spec feature/003). A "Theme" sub-trigger
+// that flies out a side submenu; the active theme is marked via a radio group.
+// `value` resolves on the client (next-themes reads storage in an effect) — the
+// indicator updating post-mount is a client update, not a hydration mismatch.
 export function ThemeToggle() {
-  const { setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   return (
-    <>
-      {OPTIONS.map(({ value, label, Icon }) => (
-        <DropdownMenuItem key={value} onSelect={() => setTheme(value)}>
-          <Icon className="mr-2 size-4" />
-          {label}
-        </DropdownMenuItem>
-      ))}
-    </>
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <Palette className="mr-2 size-4" />
+        Theme
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent>
+        <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
+          {OPTIONS.map(({ value, label, Icon }) => (
+            <DropdownMenuRadioItem key={value} value={value}>
+              <Icon className="mr-2 size-4" />
+              {label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 }

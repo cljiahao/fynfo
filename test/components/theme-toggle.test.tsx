@@ -32,25 +32,41 @@ function renderToggle() {
   );
 }
 
-describe('ThemeToggle', () => {
-  it('renders Light, Dark, and System options', () => {
-    renderToggle();
-    expect(screen.getByText('Light')).toBeInTheDocument();
-    expect(screen.getByText('Dark')).toBeInTheDocument();
-    expect(screen.getByText('System')).toBeInTheDocument();
-  });
+// Open the submenu via the keyboard. Pointer hit-testing relies on layout
+// geometry that jsdom can't provide (radix's safe-triangle drops the click);
+// keyboard navigation is geometry-free and is radix's other supported path.
+async function openSubmenu(user: ReturnType<typeof userEvent.setup>) {
+  screen.getByRole('menuitem', { name: 'Theme' }).focus();
+  await user.keyboard('{Enter}');
+  await screen.findByRole('menuitemradio', { name: 'Light' });
+}
 
-  it('calls setTheme with the selected value', async () => {
+describe('ThemeToggle', () => {
+  it('exposes a Theme sub-trigger that reveals Light/Dark/System', async () => {
     const user = userEvent.setup();
     renderToggle();
 
-    await user.click(screen.getByText('Dark'));
+    expect(screen.getByRole('menuitem', { name: 'Theme' })).toBeInTheDocument();
+    await openSubmenu(user);
+
+    expect(
+      screen.getByRole('menuitemradio', { name: 'Light' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitemradio', { name: 'Dark' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitemradio', { name: 'System' })
+    ).toBeInTheDocument();
+  });
+
+  it('calls setTheme with the chosen value on select', async () => {
+    const user = userEvent.setup();
+    renderToggle();
+    await openSubmenu(user);
+
+    // Submenu opens with focus on the first item (Light); step down to Dark.
+    await user.keyboard('{ArrowDown}{Enter}');
     expect(setTheme).toHaveBeenCalledWith('dark');
-
-    await user.click(screen.getByText('System'));
-    expect(setTheme).toHaveBeenCalledWith('system');
-
-    await user.click(screen.getByText('Light'));
-    expect(setTheme).toHaveBeenCalledWith('light');
   });
 });
