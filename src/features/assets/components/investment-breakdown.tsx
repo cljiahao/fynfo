@@ -1,43 +1,32 @@
 'use client';
 
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
-import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { useTrades } from '@/features/equity/hooks/use-equity';
 import { useStockPrices } from '@/features/equity/hooks/use-prices';
 import { computeHoldings } from '@/features/equity/lib/holdings';
 import { getMarket } from '@/features/equity/lib/ticker-map';
 import { formatSGD } from '@/lib/utils/currency';
 import { loadLocal, saveLocal } from '@/lib/utils/local-store';
-import { AlertCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
   computeInvestmentBreakdown,
   computeMarketEquity,
   computeQuarterSpend,
-  deployPctColor,
   getCurrentQuarter,
   sumCat,
   type MarketBudgets,
 } from '../lib/investment-math';
 import type { SnapshotData } from '../types';
+import { DeployableCashBreakdown } from './deployable-cash-breakdown';
+import { MarketDeploymentCard } from './market-deployment-card';
+import { MonthlyInvestmentTable } from './monthly-investment-table';
 
 export type { MarketBudgets } from '../lib/investment-math';
 
@@ -162,6 +151,33 @@ export function InvestmentBreakdown({
 
   const hasUndeployed = sgAvailable > 0 || usAvailable > 0;
 
+  const markets = [
+    {
+      market: {
+        label: 'SG',
+        quarterly: sgQuarterly,
+        spent: sgSpent,
+        equity: sgEquity,
+        target: sgTarget,
+        available: sgAvailable,
+        deployPct: sgDeployPct,
+      },
+      cashAllocPct: cashAlloc.sg,
+    },
+    {
+      market: {
+        label: 'US',
+        quarterly: usQuarterly,
+        spent: usSpent,
+        equity: usEquity,
+        target: usTarget,
+        available: usAvailable,
+        deployPct: usDeployPct,
+      },
+      cashAllocPct: cashAlloc.us,
+    },
+  ];
+
   return (
     <TooltipProvider>
       <Card>
@@ -188,379 +204,43 @@ export function InvestmentBreakdown({
 
           {/* SG & US Market Cards */}
           <div className="grid gap-4 sm:grid-cols-2">
-            {[
-              {
-                label: 'SG',
-                quarterly: sgQuarterly,
-                cash: sgCash,
-                spent: sgSpent,
-                equity: sgEquity,
-                target: sgTarget,
-                available: sgAvailable,
-                deployPct: sgDeployPct,
-              },
-              {
-                label: 'US',
-                quarterly: usQuarterly,
-                cash: usCash,
-                spent: usSpent,
-                equity: usEquity,
-                target: usTarget,
-                available: usAvailable,
-                deployPct: usDeployPct,
-              },
-            ].map((m) => {
-              const qPct =
-                m.quarterly > 0
-                  ? Math.min((m.spent / m.quarterly) * 100, 100)
-                  : 0;
-              const targetPct =
-                m.target > 0 ? Math.min((m.equity / m.target) * 100, 100) : 0;
-              const pctLabel = m.deployPct.toFixed(0);
-              return (
-                <div key={m.label} className="space-y-2 rounded-lg border p-4">
-                  <div className="flex-between text-sm">
-                    <span className="font-semibold">
-                      {m.label} — {qLabel}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      {qDaysLeft}d left
-                    </span>
-                  </div>
-
-                  {/* Quarterly budget progress */}
-                  <div className="space-y-0.5">
-                    <div className="flex-between text-muted-foreground text-[10px]">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="cursor-help underline decoration-dotted">
-                            Budget ({qLabel})
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-64 space-y-1.5 p-3">
-                          <p className="font-semibold">Budget ({qLabel})</p>
-                          <p className="text-primary-foreground/80 leading-relaxed">
-                            Projected from your monthly salary allocation.
-                            Assumes continued income for the quarter.
-                          </p>
-                          <p className="text-primary-foreground/60 leading-relaxed">
-                            Spent {formatSGD(m.spent)} of{' '}
-                            {formatSGD(m.quarterly)} this quarter.
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                      <span>
-                        {formatSGD(m.spent)} / {formatSGD(m.quarterly)}
-                      </span>
-                    </div>
-                    <div className="bg-muted h-1.5 overflow-hidden rounded-full">
-                      <div
-                        className={`h-full rounded-full ${qPct >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                        style={{ width: `${qPct}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Portfolio target progress */}
-                  <div className="space-y-0.5">
-                    <div className="flex-between text-muted-foreground text-[10px]">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="cursor-help underline decoration-dotted">
-                            Portfolio Target
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-64 space-y-1.5 p-3">
-                          <p className="font-semibold">Portfolio Target</p>
-                          <p className="text-primary-foreground/80 leading-relaxed">
-                            Based on cash you can deploy today. Shows current
-                            equity vs your allocation target.
-                          </p>
-                          <p className="text-primary-foreground/60 leading-relaxed">
-                            Holding {formatSGD(m.equity)} of{' '}
-                            {formatSGD(m.target)} target.
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                      <span>
-                        {formatSGD(m.equity)} / {formatSGD(m.target)}
-                      </span>
-                    </div>
-                    <div className="bg-muted h-1.5 overflow-hidden rounded-full">
-                      <div
-                        className={`h-full rounded-full ${targetPct >= 100 ? 'bg-emerald-500' : 'bg-violet-500'}`}
-                        style={{ width: `${targetPct}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1 text-xs">
-                    <div className="flex-between">
-                      <span className="text-muted-foreground">
-                        Target ({m.label === 'SG' ? cashAlloc.sg : cashAlloc.us}
-                        %)
-                      </span>
-                      <span className="font-medium">{formatSGD(m.target)}</span>
-                    </div>
-                    <div className="flex-between">
-                      <span className="text-muted-foreground">
-                        Current equity
-                      </span>
-                      <span>{formatSGD(m.equity)}</span>
-                    </div>
-                    <div className="flex-between">
-                      <span className="text-muted-foreground">
-                        Quarterly budget
-                      </span>
-                      <span>{formatSGD(m.quarterly)}</span>
-                    </div>
-                    <div className="flex-between">
-                      <span className="text-muted-foreground">
-                        Spent this quarter
-                      </span>
-                      <span>{formatSGD(m.spent)}</span>
-                    </div>
-                    <div className="flex-between border-t pt-1 font-semibold">
-                      <span className="flex items-center gap-1.5">
-                        Available
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span
-                              className={`cursor-help text-[10px] font-bold ${deployPctColor(m.deployPct)}`}
-                            >
-                              {pctLabel}%
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-64 space-y-1.5 p-3">
-                            <p className="font-semibold">Deployment Status</p>
-                            <p className="text-primary-foreground/80 leading-relaxed">
-                              {m.deployPct > 50
-                                ? 'High cash available — consider deploying more into the market.'
-                                : m.deployPct > 20
-                                  ? 'Moderate cash remaining to be deployed.'
-                                  : 'Well deployed — most of your cash is invested.'}
-                            </p>
-                            <p className="text-primary-foreground/60 leading-relaxed">
-                              {formatSGD(m.available)} of {formatSGD(m.target)}{' '}
-                              still available.
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </span>
-                      <span
-                        className={
-                          m.available > 0
-                            ? 'text-emerald-600'
-                            : 'text-muted-foreground'
-                        }
-                      >
-                        {formatSGD(m.available)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {markets.map((m) => (
+              <MarketDeploymentCard
+                key={m.market.label}
+                market={m.market}
+                qLabel={qLabel}
+                qDaysLeft={qDaysLeft}
+                cashAllocPct={m.cashAllocPct}
+              />
+            ))}
           </div>
 
           {/* Two columns: Category Ratios | Deployable Cash */}
           <div className="grid gap-6 sm:grid-cols-2">
-            {/* Left: Monthly Investment Breakdown */}
-            <div className="overflow-x-auto">
-              <Accordion type="single" collapsible>
-                <AccordionItem value="monthly" className="border-none">
-                  <AccordionTrigger className="text-muted-foreground p-0 text-xs font-medium">
-                    Monthly Investment — {formatSGD(investmentAmount)}
-                  </AccordionTrigger>
-                  <AccordionContent className="px-0 pt-2 pb-0">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="py-2 text-left font-medium">
-                            Category
-                          </th>
-                          <th className="py-2 text-center font-medium">
-                            Ratio
-                          </th>
-                          <th className="py-2 text-right font-medium">
-                            Monthly
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[
-                          {
-                            label: 'RSP',
-                            key: 'rsp' as const,
-                            monthly: rspMonthly,
-                          },
-                          {
-                            label: 'SG Market',
-                            key: 'sg' as const,
-                            monthly: sgMonthly,
-                          },
-                          {
-                            label: 'US Market',
-                            key: 'us' as const,
-                            monthly: usMonthly,
-                          },
-                        ].map((row) => (
-                          <tr key={row.key} className="border-b last:border-0">
-                            <td className="py-2 font-medium">{row.label}</td>
-                            <td className="py-2 text-center">
-                              <Input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="1"
-                                className="mx-auto h-7 w-16 text-center text-xs"
-                                value={ratios[row.key] || ''}
-                                placeholder="0"
-                                onChange={(e) =>
-                                  updateRatio(
-                                    row.key,
-                                    Number(e.target.value) || 0
-                                  )
-                                }
-                              />
-                            </td>
-                            <td className="py-2 text-right">
-                              {formatSGD(row.monthly)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t">
-                          <td className="py-2 font-semibold">Total</td>
-                          <td
-                            className={`py-2 text-center font-semibold ${totalRatio !== 100 ? 'text-red-500' : ''}`}
-                          >
-                            {totalRatio}%
-                          </td>
-                          <td className="py-2 text-right font-semibold">
-                            {formatSGD(investmentAmount)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                    {totalRatio !== 100 && (
-                      <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
-                        <AlertCircle className="size-3" />
-                        Must sum to 100%
-                      </p>
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </div>
+            <MonthlyInvestmentTable
+              investmentAmount={investmentAmount}
+              ratios={ratios}
+              rspMonthly={rspMonthly}
+              sgMonthly={sgMonthly}
+              usMonthly={usMonthly}
+              totalRatio={totalRatio}
+              updateRatio={updateRatio}
+            />
 
-            {/* Right: Deployable Cash Breakdown */}
             {snapshot && (
-              <div className="text-sm">
-                <Accordion type="single" collapsible>
-                  <AccordionItem value="deployable" className="border-none">
-                    <AccordionTrigger className="text-muted-foreground p-0 text-xs font-medium">
-                      Deployable Cash — {formatSGD(totalDeployable)}
-                    </AccordionTrigger>
-                    <AccordionContent className="px-0 pt-2 pb-0">
-                      <div className="space-y-1.5">
-                        <div className="flex-between text-xs">
-                          <span>Savings</span>
-                          <span className="font-medium">
-                            {formatSGD(currentSavings)}
-                          </span>
-                        </div>
-                        <div className="flex-between text-muted-foreground text-xs">
-                          <span>− Emergency Fund</span>
-                          <span>{formatSGD(emergencyFundGoal)}</span>
-                        </div>
-                        <div className="flex-between text-xs">
-                          <span>Bonds (war chest)</span>
-                          <span className="font-medium">
-                            {formatSGD(currentBonds)}
-                          </span>
-                        </div>
-                        <div className="flex-between text-muted-foreground text-xs">
-                          <span>− War chest goal</span>
-                          <span>{formatSGD(warChestGoal)}</span>
-                        </div>
-                        {bondsShortfall > 0 && (
-                          <div className="flex-between text-xs text-amber-500">
-                            <span>− War chest shortfall</span>
-                            <span>{formatSGD(bondsShortfall)}</span>
-                          </div>
-                        )}
-                        {bondsSurplus > 0 && (
-                          <div className="flex-between text-xs text-emerald-600">
-                            <span>+ Bonds surplus</span>
-                            <span>{formatSGD(bondsSurplus)}</span>
-                          </div>
-                        )}
-                        <div className="flex-between border-t pt-1.5 font-semibold">
-                          <span>Total Deployable</span>
-                          <span
-                            className={
-                              totalDeployable > 0
-                                ? 'text-emerald-600'
-                                : 'text-red-500'
-                            }
-                          >
-                            {formatSGD(totalDeployable)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Market allocation */}
-                      {totalDeployable > 0 && (
-                        <div className="mt-2 space-y-1 border-t pt-1.5">
-                          {[
-                            {
-                              label: 'SG',
-                              value: cashAlloc.sg,
-                              amount: sgCash,
-                              onChange: (v: number) =>
-                                updateCashAlloc({ sg: v, us: 100 - v }),
-                            },
-                            {
-                              label: 'US',
-                              value: cashAlloc.us,
-                              amount: usCash,
-                              onChange: (v: number) =>
-                                updateCashAlloc({ sg: 100 - v, us: v }),
-                            },
-                          ].map((row) => (
-                            <div
-                              key={row.label}
-                              className="flex-between text-xs"
-                            >
-                              <span className="flex items-center gap-1.5">
-                                <span className="w-6 font-medium">
-                                  {row.label}
-                                </span>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  className="h-6 w-16 text-center text-xs"
-                                  value={row.value || ''}
-                                  onChange={(e) =>
-                                    row.onChange(Number(e.target.value) || 0)
-                                  }
-                                />
-                                <span className="text-muted-foreground">%</span>
-                              </span>
-                              <span className="font-semibold">
-                                {formatSGD(row.amount)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </div>
+              <DeployableCashBreakdown
+                totalDeployable={totalDeployable}
+                currentSavings={currentSavings}
+                emergencyFundGoal={emergencyFundGoal}
+                currentBonds={currentBonds}
+                warChestGoal={warChestGoal}
+                bondsShortfall={bondsShortfall}
+                bondsSurplus={bondsSurplus}
+                cashAlloc={cashAlloc}
+                sgCash={sgCash}
+                usCash={usCash}
+                updateCashAlloc={updateCashAlloc}
+              />
             )}
           </div>
         </CardContent>
