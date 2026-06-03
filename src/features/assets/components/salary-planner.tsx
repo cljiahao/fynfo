@@ -10,6 +10,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useExpenses } from '@/features/expenses';
 import { useSalaryRecords } from '@/features/salary/hooks/use-salary';
 import {
@@ -20,7 +21,6 @@ import {
   Tooltip,
 } from '@/lib/recharts';
 import { formatSGD } from '@/lib/utils/currency';
-import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   usePlannerSettings,
@@ -63,8 +63,14 @@ export function SalaryPlanner(props: SalaryPlannerProps) {
   if (salaryLoading || settingsLoading || expensesLoading) {
     return (
       <Card>
-        <CardContent className="flex-center py-12">
-          <Loader2 className="size-6 animate-spin" />
+        <CardContent className="space-y-4 py-6">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-32 w-full rounded-lg" />
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Skeleton className="h-16 rounded-lg" />
+            <Skeleton className="h-16 rounded-lg" />
+            <Skeleton className="h-16 rounded-lg" />
+          </div>
         </CardContent>
       </Card>
     );

@@ -14,7 +14,7 @@ import {
   PaginationControls,
 } from '@/components/widgets';
 import { formatSGD } from '@/lib/utils/currency';
-import { Loader2, Pencil, Trash2, Wallet } from 'lucide-react';
+import { Pencil, Trash2, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useDeleteSalary, useSalaryRecords } from '../hooks/use-salary';
@@ -63,20 +63,12 @@ function SalaryActionButtons({
 }
 
 export function SalaryTable({ onEdit }: SalaryTableProps) {
-  const { data: records, isLoading } = useSalaryRecords();
+  const { data: records } = useSalaryRecords();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(10);
 
   const reversed = [...(records ?? [])].reverse();
   const paged = reversed.slice(page * pageSize, (page + 1) * pageSize);
-
-  if (isLoading) {
-    return (
-      <div className="flex-center py-12">
-        <Loader2 className="size-8 animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <Card>
