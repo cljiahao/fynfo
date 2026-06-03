@@ -2,12 +2,12 @@
 id: 007
 slug: decompose-oversized-components
 area: refactor
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: claude (opus 4.8, 2026-06-03)
 created: 2026-06-03
 approved: 2026-06-03 # owner: "do all" — decompose the 6 oversized components
-shipped:
-impl_pr:
+shipped: 2026-06-03
+impl_pr: direct-to-main (solo project; 6 commits, one per file)
 supersedes:
 constitution_satisfies:
   - '§3.4' # file naming for new sub-component files
