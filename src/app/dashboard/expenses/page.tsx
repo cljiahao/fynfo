@@ -1,41 +1,37 @@
-'use client';
-
+import { EXPENSE_KEY, PEOPLE_KEY } from '@/features/expenses';
 import {
-  ExpenseChart,
-  ExpenseQuickAdd,
-  ExpenseTable,
-  OwedSummary,
-  useExpenses,
-} from '@/features/expenses';
-import { Loader2 } from 'lucide-react';
+  getDistinctPeople,
+  getExpenses,
+} from '@/features/expenses/actions/expense-actions';
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+} from '@tanstack/react-query';
+import { ExpensesBody } from './expenses-body';
 
-export default function ExpensesPage() {
-  const { data: expenses, isLoading } = useExpenses();
+// Per-user, vault-cookie-dependent data — never statically cached.
+export const dynamic = 'force-dynamic';
 
-  if (isLoading) {
-    return (
-      <div className="flex-center min-h-[60vh]">
-        <Loader2 className="size-8 animate-spin" />
-      </div>
-    );
-  }
+export default async function ExpensesPage() {
+  const queryClient = new QueryClient();
+
+  // EXPENSE_KEY gates the page; PEOPLE_KEY (cheap plaintext) warms the
+  // quick-add suggestions so neither fires a post-hydration fetch.
+  await Promise.all([
+    queryClient.prefetchQuery({
+      queryKey: EXPENSE_KEY,
+      queryFn: () => getExpenses(),
+    }),
+    queryClient.prefetchQuery({
+      queryKey: PEOPLE_KEY,
+      queryFn: () => getDistinctPeople(),
+    }),
+  ]);
 
   return (
-    <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Expenses</h1>
-        <p className="text-muted-foreground mt-1">
-          Track your expenses and split shared costs
-        </p>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <ExpenseChart expenses={expenses ?? []} />
-        <OwedSummary expenses={expenses ?? []} />
-      </div>
-
-      <ExpenseQuickAdd />
-      <ExpenseTable />
-    </div>
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <ExpensesBody />
+    </HydrationBoundary>
   );
 }

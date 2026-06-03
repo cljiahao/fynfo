@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import DashboardError from '@/app/dashboard/(overview)/error';
+import { DashboardError } from '@/components/layout';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

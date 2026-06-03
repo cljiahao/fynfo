@@ -8,10 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { ConfirmDeleteDialog, PaginationControls } from '@/components/widgets';
+import {
+  ConfirmDeleteDialog,
+  EmptyState,
+  PaginationControls,
+} from '@/components/widgets';
 import { formatSGD } from '@/lib/utils/currency';
 import { format } from 'date-fns';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useDeleteTrade } from '../hooks/use-equity';
@@ -69,12 +73,11 @@ export function TradeTable({ trades, onEdit }: TradeTableProps) {
 
   if (!trades.length) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Trade History</CardTitle>
-          <CardDescription>No trades recorded yet</CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={TrendingUp}
+        title="No trades recorded yet"
+        description="Add a trade to start tracking your equity portfolio."
+      />
     );
   }
 

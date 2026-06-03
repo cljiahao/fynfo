@@ -8,9 +8,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { ConfirmDeleteDialog, PaginationControls } from '@/components/widgets';
+import {
+  ConfirmDeleteDialog,
+  EmptyState,
+  PaginationControls,
+} from '@/components/widgets';
 import { formatSGD } from '@/lib/utils/currency';
-import { Loader2, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, Pencil, Trash2, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useDeleteSalary, useSalaryRecords } from '../hooks/use-salary';
@@ -82,9 +86,12 @@ export function SalaryTable({ onEdit }: SalaryTableProps) {
       </CardHeader>
       <CardContent>
         {reversed.length === 0 ? (
-          <p className="text-muted-foreground py-8 text-center text-sm">
-            No salary records yet. Add your first one.
-          </p>
+          <EmptyState
+            icon={Wallet}
+            title="No salary records yet"
+            description="Add your first record to track salary, tax, and CPF."
+            className="border-0 py-8"
+          />
         ) : (
           <>
             <div className="overflow-x-auto">

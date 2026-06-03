@@ -2,12 +2,12 @@
 id: 023
 slug: dashboard-loading-error-ux
 area: fix
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: claude (opus 4.8, 2026-06-03)
 created: 2026-06-03
 approved: 2026-06-03 # owner approved design (loading+error+empty scope; single dashboard error.tsx; empty-states bounded to 4 main tables) in brainstorming
-shipped:
-impl_pr:
+shipped: 2026-06-03
+impl_pr: direct-to-main (solo project; spec-first + green gates)
 supersedes:
 constitution_satisfies:
   - '§4.1' # pages compose from features; data-fetching moves to RSC prefetch, client bodies stay presentational

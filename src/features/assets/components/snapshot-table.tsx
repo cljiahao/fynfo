@@ -8,9 +8,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { ConfirmDeleteDialog, PaginationControls } from '@/components/widgets';
+import {
+  ConfirmDeleteDialog,
+  EmptyState,
+  PaginationControls,
+} from '@/components/widgets';
 import { formatSGDWhole } from '@/lib/utils/currency';
-import { Pencil, Trash2 } from 'lucide-react';
+import { LineChart, Pencil, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -109,12 +113,11 @@ export function SnapshotTable({ snapshots }: SnapshotTableProps) {
 
   if (!snapshots.length) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>History</CardTitle>
-          <CardDescription>No snapshots recorded yet</CardDescription>
-        </CardHeader>
-      </Card>
+      <EmptyState
+        icon={LineChart}
+        title="No snapshots recorded yet"
+        description="Add a monthly snapshot to start tracking your assets over time."
+      />
     );
   }
 

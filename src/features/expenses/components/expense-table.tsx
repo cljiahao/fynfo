@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PaginationControls } from '@/components/widgets';
+import { EmptyState, PaginationControls } from '@/components/widgets';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
@@ -24,6 +24,7 @@ import {
   ArrowUpDown,
   CalendarIcon,
   Plus,
+  Receipt,
   Search,
   Trash2,
   Users,
@@ -585,13 +586,19 @@ export function ExpenseTable() {
             ))}
             {filtered.length === 0 && newRows.length === 0 && (
               <tr>
-                <td
-                  colSpan={8}
-                  className="text-muted-foreground px-3 py-16 text-center text-sm"
-                >
-                  {(expenses ?? []).length === 0
-                    ? 'No expenses yet. Click "Add Expense" to get started.'
-                    : 'No expenses match your filters.'}
+                <td colSpan={8} className="px-3 py-10">
+                  {(expenses ?? []).length === 0 ? (
+                    <EmptyState
+                      icon={Receipt}
+                      title="No expenses yet"
+                      description='Click "Add Expense" to get started.'
+                      className="border-0"
+                    />
+                  ) : (
+                    <p className="text-muted-foreground text-center text-sm">
+                      No expenses match your filters.
+                    </p>
+                  )}
                 </td>
               </tr>
             )}
