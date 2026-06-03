@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatCurrency } from '@/lib/utils/currency';
 import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -31,6 +30,7 @@ import {
   type TradeFormValues,
 } from '../lib/trade-form-defaults';
 import type { EquityTradeData } from '../types';
+import { TradeFeeBreakdown, TradeSummary } from './trade-form-summary';
 
 interface TradeFormDialogProps {
   open: boolean;
@@ -322,66 +322,17 @@ export function TradeFormDialog({
 
           {/* Fee breakdown */}
           {calculatedFees && tradeValue > 0 && (
-            <div className="bg-muted space-y-1 rounded-md p-3 text-xs">
-              <p className="text-muted-foreground font-medium">
-                Estimated fee breakdown ({currency})
-              </p>
-              {calculatedFees.commission > 0 && (
-                <div className="flex-between">
-                  <span className="text-muted-foreground">Commission</span>
-                  <span>
-                    {formatCurrency(calculatedFees.commission, currency)}
-                  </span>
-                </div>
-              )}
-              {calculatedFees.platformFee > 0 && (
-                <div className="flex-between">
-                  <span className="text-muted-foreground">Platform Fee</span>
-                  <span>
-                    {formatCurrency(calculatedFees.platformFee, currency)}
-                  </span>
-                </div>
-              )}
-              {calculatedFees.clearingFee > 0 && (
-                <div className="flex-between">
-                  <span className="text-muted-foreground">
-                    Clearing / SGX Fees
-                  </span>
-                  <span>
-                    {formatCurrency(calculatedFees.clearingFee, currency)}
-                  </span>
-                </div>
-              )}
-              <div className="flex-between border-t pt-1 font-medium">
-                <span>Total Fees</span>
-                <span>{formatCurrency(calculatedFees.total, currency)}</span>
-              </div>
-            </div>
+            <TradeFeeBreakdown fees={calculatedFees} currency={currency} />
           )}
 
           {/* Trade summary */}
           {shares > 0 && price > 0 && (
-            <div className="bg-muted rounded-md p-3 text-sm">
-              <div className="flex-between">
-                <span className="text-muted-foreground">Total Value</span>
-                <span className="font-semibold">
-                  {formatCurrency(tradeValue, currency)}
-                </span>
-              </div>
-              {fees > 0 && (
-                <div className="flex-between mt-1">
-                  <span className="text-muted-foreground">
-                    Total incl. Fees
-                  </span>
-                  <span className="font-semibold">
-                    {formatCurrency(
-                      tradeValue + (action === 'buy' ? 1 : -1) * fees,
-                      currency
-                    )}
-                  </span>
-                </div>
-              )}
-            </div>
+            <TradeSummary
+              tradeValue={tradeValue}
+              fees={fees}
+              action={action}
+              currency={currency}
+            />
           )}
 
           <div className="flex justify-end gap-3">
