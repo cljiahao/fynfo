@@ -9,7 +9,7 @@ import {
 } from '../actions/equity-actions';
 import type { EquityTradeData } from '../types';
 
-export const TRADES_KEY = ['equity-trades'] as const;
+const TRADES_KEY = ['equity-trades'] as const;
 
 export function useTrades() {
   return useQuery({

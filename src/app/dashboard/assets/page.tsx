@@ -1,30 +1,61 @@
-import { SNAPSHOTS_KEY } from '@/features/assets';
-import { getSnapshots } from '@/features/assets/actions/snapshot-actions';
+'use client';
+
+import { Button } from '@/components/ui/button';
 import {
-  dehydrate,
-  HydrationBoundary,
-  QueryClient,
-} from '@tanstack/react-query';
-import { AssetsBody } from './assets-body';
+  AssetLineChart,
+  calculateTotal,
+  CategoryBreakdown,
+  SnapshotTable,
+  useChartData,
+  useSnapshots,
+} from '@/features/assets';
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
+import { AssetsSkeleton } from './assets-skeleton';
 
-// Per-user, vault-cookie-dependent data — never statically cached.
-export const dynamic = 'force-dynamic';
+export default function AssetsPage() {
+  const { data: snapshots, isLoading } = useSnapshots();
 
-export default async function AssetsPage() {
-  const queryClient = new QueryClient();
+  const snapshotsWithTotals = (snapshots ?? []).map((s) => ({
+    ...s,
+    total: calculateTotal(s.entries),
+  }));
 
-  // Prefetch server-side so the client renders from a hydrated cache on first
-  // paint (no post-hydration fetch / spinner; the loading.tsx skeleton covers
-  // this wait). prefetchQuery never throws — a locked vault leaves it uncached
-  // and the client hook fetches as before.
-  await queryClient.prefetchQuery({
-    queryKey: SNAPSHOTS_KEY,
-    queryFn: () => getSnapshots(),
-  });
+  // useChartData is a hook — must run before any conditional return.
+  const chartData = useChartData(snapshots);
+  const latest = snapshotsWithTotals[snapshotsWithTotals.length - 1];
+
+  if (isLoading) return <AssetsSkeleton />;
 
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <AssetsBody />
-    </HydrationBoundary>
+    <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
+      <div className="flex-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Assets & Investments
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Track your assets and investments over time
+          </p>
+        </div>
+        <Link href="/dashboard/entry">
+          <Button>
+            <Plus className="mr-2 size-4" />
+            Add Snapshot
+          </Button>
+        </Link>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <AssetLineChart data={chartData} />
+        </div>
+        <CategoryBreakdown
+          snapshot={latest ? snapshots?.[snapshots.length - 1] : undefined}
+        />
+      </div>
+
+      <SnapshotTable snapshots={snapshots ?? []} />
+    </div>
   );
 }

@@ -1,26 +1,61 @@
-import { TRADES_KEY } from '@/features/equity';
-import { getTrades } from '@/features/equity/actions/equity-actions';
+'use client';
+
+import { Button } from '@/components/ui/button';
 import {
-  dehydrate,
-  HydrationBoundary,
-  QueryClient,
-} from '@tanstack/react-query';
-import { EquityBody } from './equity-body';
+  EquityTradeData,
+  HoldingsTable,
+  PortfolioSummary,
+  TradeFormDialog,
+  TradeTable,
+  useTrades,
+} from '@/features/equity';
+import { Plus } from 'lucide-react';
+import { useState } from 'react';
+import { EquitySkeleton } from './equity-skeleton';
 
-// Per-user, vault-cookie-dependent data — never statically cached.
-export const dynamic = 'force-dynamic';
+export default function EquityPage() {
+  const { data: trades, isLoading } = useTrades();
+  const [formOpen, setFormOpen] = useState(false);
+  const [editTrade, setEditTrade] = useState<EquityTradeData | undefined>();
 
-export default async function EquityPage() {
-  const queryClient = new QueryClient();
+  if (isLoading) return <EquitySkeleton />;
 
-  await queryClient.prefetchQuery({
-    queryKey: TRADES_KEY,
-    queryFn: () => getTrades(),
-  });
+  function handleAdd() {
+    setEditTrade(undefined);
+    setFormOpen(true);
+  }
+
+  function handleEdit(trade: EquityTradeData) {
+    setEditTrade(trade);
+    setFormOpen(true);
+  }
 
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <EquityBody />
-    </HydrationBoundary>
+    <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
+      <div className="flex-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Equity Tracker</h1>
+          <p className="text-muted-foreground mt-1">
+            Record and track your stock trades
+          </p>
+        </div>
+        <Button onClick={handleAdd}>
+          <Plus className="mr-2 size-4" />
+          Add Trade
+        </Button>
+      </div>
+
+      <PortfolioSummary trades={trades ?? []} />
+
+      <HoldingsTable trades={trades ?? []} />
+
+      <TradeTable trades={trades ?? []} onEdit={handleEdit} />
+
+      <TradeFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        editTrade={editTrade}
+      />
+    </div>
   );
 }

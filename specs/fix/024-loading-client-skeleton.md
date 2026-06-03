@@ -2,12 +2,12 @@
 id: 024
 slug: loading-client-skeleton
 area: fix
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: claude (opus 4.8, 2026-06-03)
 created: 2026-06-03
 approved: 2026-06-03 # owner confirmed diagnosis + Option A (client pages + shared skeleton) after verification
-shipped:
-impl_pr:
+shipped: 2026-06-03
+impl_pr: direct-to-main (solo project; spec-first + green gates)
 supersedes:
 constitution_satisfies:
   - '§4.1' # pages compose from features; presentational skeleton shared by loading.tsx + the page
