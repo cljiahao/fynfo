@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -9,24 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { formatSGD } from '@/lib/utils/currency';
-import { Info, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { RELIEF_CATALOG } from '../constants';
 import { useTaxReliefs, useUpsertTaxReliefs } from '../hooks/use-tax-reliefs';
@@ -38,6 +23,7 @@ import {
   type ReliefStateMap,
 } from '../lib/tax-reliefs';
 import type { TaxReliefData } from '../types';
+import { ReliefLabel, ReliefRow } from './relief-row';
 import type { ReliefItem } from './salary-summary';
 
 interface TaxReliefsDialogProps {
@@ -47,28 +33,6 @@ interface TaxReliefsDialogProps {
   nsmanRelief: number;
   isNonResident: boolean;
   onConfirm?: (items: ReliefItem[]) => void;
-}
-
-function ReliefLabel({
-  label,
-  description,
-}: {
-  label: string;
-  description: string;
-}) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      {label}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Info className="text-muted-foreground size-3.5 shrink-0 cursor-help" />
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-64 text-xs">
-          {description}
-        </TooltipContent>
-      </Tooltip>
-    </span>
-  );
 }
 
 function TaxReliefsDialogInner({
@@ -184,170 +148,14 @@ function TaxReliefsDialogInner({
                   Additional Reliefs
                 </p>
                 <div className="space-y-3">
-                  {RELIEF_CATALOG.map((def) => {
-                    const state = reliefState.get(def.key) ?? {
-                      enabled: false,
-                      amount: def.defaultAmount,
-                      count: 1,
-                      variant: def.variants?.[0]?.value ?? '',
-                    };
-
-                    // Countable relief (child)
-                    if (def.maxCount) {
-                      return (
-                        <div key={def.key} className="flex items-center gap-3">
-                          <Checkbox
-                            id={`relief-${def.key}`}
-                            checked={state.enabled}
-                            onCheckedChange={(v) => {
-                              const enabled = v === true;
-                              const count = enabled
-                                ? Math.max(state.count, 1)
-                                : state.count;
-                              updateRelief(def.key, {
-                                enabled,
-                                count,
-                                amount: enabled ? def.defaultAmount * count : 0,
-                              });
-                            }}
-                          />
-                          <Label
-                            htmlFor={`relief-${def.key}`}
-                            className="min-w-0 flex-1 cursor-pointer text-sm"
-                          >
-                            <ReliefLabel
-                              label={def.label}
-                              description={def.description}
-                            />
-                          </Label>
-                          <Select
-                            value={String(state.count)}
-                            disabled={!state.enabled}
-                            onValueChange={(v) => {
-                              const count = Number(v);
-                              updateRelief(def.key, {
-                                count,
-                                amount: def.defaultAmount * count,
-                              });
-                            }}
-                          >
-                            <SelectTrigger className="h-8 w-20 text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Array.from({ length: def.maxCount }, (_, i) => (
-                                <SelectItem key={i + 1} value={String(i + 1)}>
-                                  {i + 1}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <span className="text-muted-foreground w-24 text-right text-sm tabular-nums">
-                            {state.enabled ? formatSGD(state.amount) : '—'}
-                          </span>
-                        </div>
-                      );
-                    }
-
-                    // Variant relief (parent)
-                    if (def.variants) {
-                      return (
-                        <div key={def.key} className="flex items-center gap-3">
-                          <Checkbox
-                            id={`relief-${def.key}`}
-                            checked={state.enabled}
-                            onCheckedChange={(v) => {
-                              const enabled = v === true;
-                              const variant =
-                                state.variant || def.variants![0].value;
-                              const matched = def.variants!.find(
-                                (vr) => vr.value === variant
-                              );
-                              updateRelief(def.key, {
-                                enabled,
-                                variant,
-                                amount: enabled
-                                  ? (matched?.amount ?? def.defaultAmount)
-                                  : 0,
-                              });
-                            }}
-                          />
-                          <Label
-                            htmlFor={`relief-${def.key}`}
-                            className="min-w-0 flex-1 cursor-pointer text-sm"
-                          >
-                            <ReliefLabel
-                              label={def.label}
-                              description={def.description}
-                            />
-                          </Label>
-                          <Select
-                            value={state.variant}
-                            disabled={!state.enabled}
-                            onValueChange={(v) => {
-                              const matched = def.variants!.find(
-                                (vr) => vr.value === v
-                              );
-                              updateRelief(def.key, {
-                                variant: v,
-                                amount: matched?.amount ?? def.defaultAmount,
-                              });
-                            }}
-                          >
-                            <SelectTrigger className="h-8 w-40 text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {def.variants.map((v) => (
-                                <SelectItem key={v.value} value={v.value}>
-                                  {v.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <span className="text-muted-foreground w-24 text-right text-sm tabular-nums">
-                            {state.enabled ? formatSGD(state.amount) : '—'}
-                          </span>
-                        </div>
-                      );
-                    }
-
-                    // Standard relief
-                    return (
-                      <div key={def.key} className="flex items-center gap-3">
-                        <Checkbox
-                          id={`relief-${def.key}`}
-                          checked={state.enabled}
-                          onCheckedChange={(v) =>
-                            updateRelief(def.key, { enabled: v === true })
-                          }
-                        />
-                        <div className="flex flex-1 items-center gap-2">
-                          <Label
-                            htmlFor={`relief-${def.key}`}
-                            className="min-w-0 flex-1 cursor-pointer text-sm"
-                          >
-                            <ReliefLabel
-                              label={def.label}
-                              description={def.description}
-                            />
-                          </Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            className="h-8 w-24 text-sm"
-                            disabled={!state.enabled}
-                            value={state.amount || ''}
-                            onChange={(e) =>
-                              updateRelief(def.key, {
-                                amount: Number(e.target.value) || 0,
-                              })
-                            }
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {RELIEF_CATALOG.map((def) => (
+                    <ReliefRow
+                      key={def.key}
+                      def={def}
+                      state={reliefState.get(def.key)}
+                      onUpdate={(update) => updateRelief(def.key, update)}
+                    />
+                  ))}
                 </div>
               </div>
 
