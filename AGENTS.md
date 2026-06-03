@@ -98,8 +98,6 @@ src/
 | `src/lib/crypto-constants.ts`           | Shared PBKDF2 + AES constants used by both server keystore and client `client-crypto.ts` so derivations stay in lock-step |
 | `src/lib/logger.ts`                     | Pino server-side structured logger with PII / secret redaction                                                            |
 | `src/lib/utils/with-logging.ts`         | API route handler wrapper — request id, structured log of method/path/status/duration                                     |
-| `src/lib/utils/request-origin.ts`       | `getAppOrigin()` — honors `TRUST_PROXY` to read `X-Forwarded-*` only when trusted                                         |
-| `src/lib/errors/handle-api-error.ts`    | Canonical Next.js route handler error responder — maps `ZodError` / `DecryptionError` / `AppError` to safe HTTP responses |
 | `src/lib/validation/parse-or-throw.ts`  | `parseOrThrow(schema, input, label)` — safe boundary parse for server actions; throws opaque `AppError('VALIDATION')`     |
 | `src/app/api/vault/route.ts`            | PIN → DEK derivation; sets `fynfo_vault_dek` HttpOnly cookie                                                              |
 | `src/integrations/clients/supabase.ts`  | Browser-side Supabase client                                                                                              |
@@ -112,7 +110,6 @@ src/
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SESSION_SECRET` — 32-byte secret for encrypting the vault DEK cookie (`openssl rand -base64 32`)
-- `TRUST_PROXY` — comma-separated trusted proxy hosts; empty disables `X-Forwarded-*` trust
 
 ---
 
