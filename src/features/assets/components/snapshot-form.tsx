@@ -90,6 +90,10 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
         entries: buildInitialEntries(),
       });
     }
+    // Intentional limited deps: prefill must fire only when allSnapshots loads or
+    // editId flips. `form` (stable RHF ref) and buildInitialEntries (new identity
+    // each render) are omitted on purpose — including them would re-run form.reset
+    // and clobber in-progress user edits. Justified per specs/fix/030.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allSnapshots, editId]);
 
