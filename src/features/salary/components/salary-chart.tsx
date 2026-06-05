@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/card';
 import {
   CHART_AXIS_TICK_PROPS,
+  CHART_TOOLTIP_PROPS,
   Legend,
   Line,
   LineChart,
@@ -102,7 +103,7 @@ export function SalaryChart({ records }: SalaryChartProps) {
                   formatSGDWhole(Number(value)),
                   ALL_LABELS[String(name)] ?? String(name),
                 ]}
-                labelStyle={{ fontWeight: 'bold' }}
+                {...CHART_TOOLTIP_PROPS}
               />
               <Legend
                 formatter={(value: string) => ALL_LABELS[value] ?? value}

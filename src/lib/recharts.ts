@@ -15,6 +15,21 @@ export const CHART_AXIS_TICK_PROPS = {
   tick: { fill: 'currentColor' },
 } as const;
 
+// Theme-aware tooltip surface for charts that use recharts' default Tooltip
+// (no custom content). recharts' default popup is a hard-coded white box with
+// near-black label text — illegible/jarring in dark mode. Driving the surface
+// and label from Tailwind theme vars makes it track light/dark. itemStyle is
+// left untouched so each series keeps its own color. See spec 028.
+export const CHART_TOOLTIP_PROPS = {
+  contentStyle: {
+    backgroundColor: 'var(--background)',
+    border: '1px solid var(--border)',
+    borderRadius: '0.5rem',
+    color: 'var(--foreground)',
+  },
+  labelStyle: { color: 'var(--foreground)', fontWeight: 600 },
+} as const;
+
 export const Bar = dynamic(() => import('recharts').then((m) => m.Bar), {
   ssr: false,
 });

@@ -4,6 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  CHART_TOOLTIP_PROPS,
   Legend,
   Pie,
   PieChart,
@@ -94,6 +95,7 @@ export function PlannerResults({
                 const pct = netAfterCpf > 0 ? (amt / netAfterCpf) * 100 : 0;
                 return `${formatSGD(amt)} (${pct.toFixed(1)}%)`;
               }}
+              {...CHART_TOOLTIP_PROPS}
             />
             <Legend
               formatter={(value: string) => (

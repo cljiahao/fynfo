@@ -12,6 +12,7 @@ import {
   BarChart,
   Cell,
   CHART_AXIS_TICK_PROPS,
+  CHART_TOOLTIP_PROPS,
   LabelList,
   ResponsiveContainer,
   Tooltip,
@@ -133,6 +134,7 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
                     formatter={(value: unknown) =>
                       formatSGDWhole(Number(value))
                     }
+                    {...CHART_TOOLTIP_PROPS}
                   />
                   <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={16}>
                     {cpfData.map((entry) => (
