@@ -11,6 +11,7 @@ import {
   Bar,
   BarChart,
   Cell,
+  CHART_AXIS_TICK_PROPS,
   LabelList,
   ResponsiveContainer,
   Tooltip,
@@ -126,8 +127,7 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
                     tickLine={false}
                     axisLine={false}
                     width={30}
-                    className="fill-foreground"
-                    tick={{ fill: 'currentColor' }}
+                    {...CHART_AXIS_TICK_PROPS}
                   />
                   <Tooltip
                     formatter={(value: unknown) =>

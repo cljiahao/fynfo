@@ -10,6 +10,7 @@ import {
 import {
   Bar,
   BarChart,
+  CHART_AXIS_TICK_PROPS,
   Legend,
   ReferenceLine,
   ResponsiveContainer,
@@ -143,6 +144,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v: string) => v.split(' ')[0]}
+                {...CHART_AXIS_TICK_PROPS}
               />
               <YAxis
                 fontSize={11}
@@ -151,6 +153,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
                 tickFormatter={(v: number) => formatSGDWhole(v)}
                 width={70}
                 domain={[0, yMax]}
+                {...CHART_AXIS_TICK_PROPS}
               />
               <Tooltip
                 wrapperStyle={{ zIndex: 10 }}
@@ -209,7 +212,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
                   value: `Avg ${formatSGDWhole(avgExpense)}`,
                   position: 'insideTopRight',
                   fontSize: 11,
-                  fill: '#64748b',
+                  fill: 'currentColor',
                 }}
               />
               {activeTypes.map((type) => (

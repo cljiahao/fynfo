@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
+  CHART_AXIS_TICK_PROPS,
   Legend,
   Line,
   LineChart,
@@ -77,6 +78,7 @@ export function SalaryChart({ records }: SalaryChartProps) {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
+                {...CHART_AXIS_TICK_PROPS}
               />
               <YAxis
                 yAxisId="left"
@@ -84,6 +86,7 @@ export function SalaryChart({ records }: SalaryChartProps) {
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v: number) => formatSGDWhole(v)}
+                {...CHART_AXIS_TICK_PROPS}
               />
               <YAxis
                 yAxisId="right"
@@ -92,6 +95,7 @@ export function SalaryChart({ records }: SalaryChartProps) {
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v: number) => formatSGDWhole(v)}
+                {...CHART_AXIS_TICK_PROPS}
               />
               <Tooltip
                 formatter={(value: unknown, name: unknown) => [

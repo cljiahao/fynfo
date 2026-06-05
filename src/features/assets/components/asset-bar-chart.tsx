@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  CHART_AXIS_TICK_PROPS,
   Legend,
   Line,
   LineChart,
@@ -172,12 +173,14 @@ export function AssetLineChart({ data }: AssetLineChartProps) {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
+                {...CHART_AXIS_TICK_PROPS}
               />
               <YAxis
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v: number) => formatSGDWhole(v)}
+                {...CHART_AXIS_TICK_PROPS}
               />
               <Tooltip
                 formatter={(value: unknown, name: unknown) => [
