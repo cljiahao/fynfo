@@ -16,7 +16,7 @@ files = ['AGENTS.md', 'CLAUDE.md', '.claude/settings.json',
          '.claude/hooks/guard-protected-paths.ps1',
          '.claude/hooks/guard-destructive-bash.ps1']
 out = {
-    'templatecentral_version': '4.2.0',
+    'templatecentral_version': '4.5.0',
     'stack': 'nextjs',
     'seeded_at': datetime.date.today().isoformat(),
     'seeded_files': {},
