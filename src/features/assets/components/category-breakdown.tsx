@@ -86,7 +86,12 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
                   />
                   {CATEGORY_LABELS[cat]}
                 </span>
-                <span className="font-medium">{formatSGDWhole(amount)}</span>
+                <span className="flex items-baseline gap-1.5">
+                  <span className="font-medium">{formatSGDWhole(amount)}</span>
+                  <span className="text-muted-foreground text-xs tabular-nums">
+                    {Math.round(pct)}%
+                  </span>
+                </span>
               </div>
               <div className="bg-muted h-2 rounded-full">
                 <div
@@ -121,6 +126,8 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
                     tickLine={false}
                     axisLine={false}
                     width={30}
+                    className="fill-foreground"
+                    tick={{ fill: 'currentColor' }}
                   />
                   <Tooltip
                     formatter={(value: unknown) =>
@@ -138,6 +145,7 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
                       dataKey="amount"
                       position="right"
                       fontSize={10}
+                      className="fill-foreground"
                       formatter={(v: unknown) => formatSGDWhole(Number(v))}
                     />
                   </Bar>
