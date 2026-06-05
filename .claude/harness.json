@@ -1,7 +1,7 @@
 {
-  "templatecentral_version": "4.2.0",
+  "templatecentral_version": "4.5.0",
   "stack": "nextjs",
-  "seeded_at": "2026-06-03",
+  "seeded_at": "2026-06-06",
   "seeded_files": {
     "AGENTS.md": {
       "origin_hash": "07d0bdea0cfa1b3c8176cab11ed3b6326de14c6cc229161e5db9419e31e25508",
@@ -12,7 +12,7 @@
       "path": "CLAUDE.md"
     },
     ".claude/settings.json": {
-      "origin_hash": "2f95e454160eb9061d87ef63095f4850b5aa7b5c776d964bdc5ff4a920fe6f7a",
+      "origin_hash": "577cf3153a5ad3b9dfe28df149ad9e87ce178f4e5766d6ad2c921aa913e737cc",
       "path": ".claude/settings.json"
     },
     ".claude/skills/next-verify.md": {
@@ -32,15 +32,15 @@
       "path": ".claude/hooks/stop-tests.ps1"
     },
     ".claude/hooks/injection-guard.ps1": {
-      "origin_hash": "5435c484db245a7f90afa66012a6a12453d1c9baf5406b83826c15c0af387d1a",
+      "origin_hash": "c42d53d7cd690e4c17e82c2a48e739b6d64761876631b59133626afb25fe25a4",
       "path": ".claude/hooks/injection-guard.ps1"
     },
     ".claude/hooks/guard-protected-paths.ps1": {
-      "origin_hash": "c0854850508994c1318200a41125cad4ed6e6a8122cd2c6e901c1bf25c34e912",
+      "origin_hash": "096b3d7c257bef81c91593c26f8fe2331e08ab7deb008f3483f31411b2be20df",
       "path": ".claude/hooks/guard-protected-paths.ps1"
     },
     ".claude/hooks/guard-destructive-bash.ps1": {
-      "origin_hash": "213c74c4182ba94f048b0ce6a12339d236827b48fb1f4cca0bc80d0f9f49b91a",
+      "origin_hash": "e947975f6ee14c8baa3d9ef00c9c904f80f9067792baecbec9801d29a309de7d",
       "path": ".claude/hooks/guard-destructive-bash.ps1"
     }
   }

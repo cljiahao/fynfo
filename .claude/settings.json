@@ -20,7 +20,6 @@
       "Bash(gh pr list:*)",
       "Bash(gh pr diff:*)",
       "Bash(ls:*)",
-      "Bash(cat:*)",
       "Read(//**)",
       "Grep(//**)",
       "Glob(//**)"
@@ -34,6 +33,14 @@
       "Bash(rm -rf:*)",
       "Bash(docker push:*)",
       "Bash(./scripts/build-push.sh:*)",
+      "Read(.env)",
+      "Read(.env.local)",
+      "Read(.env.*.local)",
+      "Read(.env.development)",
+      "Read(.env.production)",
+      "Read(.env.production.*)",
+      "Read(.env.staging)",
+      "Read(./secrets/**)",
       "Write(.env*)",
       "Edit(.env*)",
       "Write(CONSTITUTION.md)",
@@ -41,9 +48,7 @@
       "Write(AGENTS.md)",
       "Edit(AGENTS.md)",
       "Write(.claude/settings.json)",
-      "Edit(.claude/settings.json)",
-      "Write(specs/governance/**)",
-      "Edit(specs/governance/**)"
+      "Edit(.claude/settings.json)"
     ]
   },
   "hooks": {
@@ -52,7 +57,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -Command \"Write-Output 'FYNFO GOVERNANCE ACTIVE | Read CONSTITUTION.md + AGENTS.md before acting | Spec-first: no code without approved spec in specs/** | Gates: pnpm check && pnpm test:ci && pnpm build must be green | Hard stops: .env*, CONSTITUTION.md, AGENTS.md, .claude/**, specs/governance/**, destructive git/docker'\""
+            "command": "powershell -NoProfile -Command \"Write-Output 'FYNFO GOVERNANCE ACTIVE | Read CONSTITUTION.md + AGENTS.md before acting | Spec-first: no code without approved spec in specs/** | Gates: pnpm check && pnpm test:ci && pnpm build green | Hard stops: .env*, CONSTITUTION.md, AGENTS.md, .claude/**, specs/governance/**, destructive git/docker'; Write-Output '=== CONSTITUTION (head) ==='; Get-Content CONSTITUTION.md -TotalCount 20; Write-Output '=== AGENTS (head) ==='; Get-Content AGENTS.md -TotalCount 30\""
           }
         ]
       }
@@ -116,16 +121,6 @@
           {
             "type": "command",
             "command": "powershell -NoProfile -Command \"Write-Output 'Done. Gates green? Spec linked? Sections cited? Scope respected? Run /next-verify before commit.'\""
-          }
-        ]
-      }
-    ],
-    "PostCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "powershell -NoProfile -Command \"Write-Output '=== Post-compact context ==='; Get-Content AGENTS.md -TotalCount 30\""
           }
         ]
       }

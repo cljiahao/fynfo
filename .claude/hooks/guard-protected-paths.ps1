@@ -26,7 +26,6 @@ $protected = @(
     '/\.claude/harness\.json$',
     '/\.claude/hooks/',
     '/\.claude/skills/',
-    '/specs/governance/',
     '/\.env(\.|$)',
     '/scripts/build-push\.sh$',
     '/\.github/workflows/',
