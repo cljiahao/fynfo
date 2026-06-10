@@ -1,6 +1,6 @@
 # Fynfo Constitution
 
-**Version:** 1.0
+**Version:** 2.0
 **Effective:** 2026-05-25
 **Owner:** Clarence (cljiahao27@gmail.com)
 **Status:** Living document. Amendments tracked in git history.
@@ -19,12 +19,14 @@ Personal wealth management dashboard for a single Singapore user. Tracks savings
 
 ### §1.2 What Fynfo is NOT
 
-- Not a multi-tenant SaaS. No customer-facing surface.
 - Not a financial advisor. No automated trading, no recommendations.
-- Not a public service. No anonymous access, no signup flow beyond owner.
 - Not a real-time trading platform. Daily/weekly cadence acceptable.
+- Not a bank or aggregator. No bank-login sync, no live multi-currency — best-effort, owner-entered snapshots by design.
+- Not a paid multi-tenant SaaS — yet. Billing, plans, and horizontal scale are out of scope until a future `specs/governance/` amendment opts in.
 
-**Why:** Scope creep into any of these invalidates the security model (zero-knowledge, single-user RLS) and the deployment model (single Pi, no horizontal scale).
+It MAY have a public marketing storefront, anonymous non-PII operational telemetry (§2.2 carve-out), and open account signup (OAuth or email/password). Each account stays single-user and zero-knowledge — more accounts do not weaken the per-user RLS + PIN-derived encryption model.
+
+**Why:** The security model (zero-knowledge, per-user RLS — §2.1, §5) and the deployment model (single Pi / Vercel, no horizontal scale) must hold regardless of how many accounts exist. Monetisation is gated behind an explicit governance decision, not drifted into.
 
 ---
 
@@ -38,13 +40,22 @@ All monetary amounts, tickers, salary figures, account identifiers MUST be AES-2
 
 ### §2.2 `HARD` Server actions are the only mutation surface
 
-Mutations live in `src/features/<name>/actions/`. No `/api/` route handlers for mutations. API routes reserved for: NextAuth callbacks (none currently), `/api/vault` (DEK lifecycle), `/api/health`.
+Mutations live in `src/features/<name>/actions/`. No `/api/` route handlers for mutations. API routes reserved for: NextAuth callbacks (none currently), `/api/vault` (DEK lifecycle), `/api/health`, `/api/track` (anonymous operational telemetry — see telemetry carve-out below).
 
 **Why:** Single mutation pattern = single auth+vault gate to audit.
 
+**Telemetry carve-out:** `/api/track` may write ONLY to non-financial, non-PII operational telemetry tables (no `user_id`, no plaintext or ciphertext financial payload, no identifiers). It validates input at the boundary (Zod) and is the single auditable ingestion gate. This is the only sanctioned anonymous write path.
+
 ### §2.3 `HARD` Every server action calls `requireUserId()` then `getVaultDekSession()` before DB access
 
-No exceptions. Order matters: identity first, vault second. Public actions don't exist.
+Applies to every action or read that touches encrypted feature data. Order matters: identity first, vault second.
+
+Two scoped exceptions, both non-financial and vault-free:
+
+1. Anonymous operational telemetry ingestion via the §2.2 `/api/track` carve-out (no identity, no vault — it stores no user data).
+2. Admin aggregate reads of non-encrypted operational data (e.g. visit/signup counts) require `requireUserId()` + an admin-allowlist check, but NOT `getVaultDekSession()` — there is no ciphertext to decrypt.
+
+Outside these two, public actions still don't exist.
 
 **Why:** Defense-in-depth. RLS is the floor, not the ceiling. Missing either call = data leak class bug.
 
@@ -204,6 +215,7 @@ Weekly: `auditor` agent scans repo against `HARD` rules, reports violations. Vio
 ### §8.1 What agents may do unsupervised
 
 - Write specs (require human approval before impl).
+- Draft amendments to `CONSTITUTION.md`, `AGENTS.md`, `CLAUDE.md`, and `specs/governance/*` (git-reviewable; require explicit human approval before commit).
 - Implement approved specs.
 - Run quality gates and iterate until green.
 - Open PRs.
@@ -213,7 +225,8 @@ Weekly: `auditor` agent scans repo against `HARD` rules, reports violations. Vio
 ### §8.2 What agents may NEVER do unsupervised
 
 - Force-push, rewrite history, delete branches.
-- Modify `CONSTITUTION.md`, `AGENTS.md`, `.claude/settings.json`, or `specs/governance/*`.
+- Edit the enforcement layer or secrets: `.claude/settings.json`, `.claude/hooks/**`, `.claude/harness.json`, `.claude/skills/**`, `.env*`, `.github/workflows/**`, `scripts/build-push.sh`, or any cert/key file. This is the lock-on-the-lock — never agent-editable.
+- Commit changes to `CONSTITUTION.md`, `AGENTS.md`, `CLAUDE.md`, or `specs/governance/*` without explicit human approval (drafting is allowed; the human reviews the diff and approves before commit).
 - Run destructive migrations.
 - Touch `.env*` files.
 - Push images to Docker Hub.
@@ -233,6 +246,7 @@ Any of the following = stop and ask Clarence:
 
 ## Amendment Log
 
-| Version | Date       | Change                |
-| ------- | ---------- | --------------------- |
-| 1.0     | 2026-05-25 | Initial ratification. |
+| Version | Date       | Change                                                                                                                                                                                                                                                                                                                                                           |
+| ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.0     | 2026-05-25 | Initial ratification.                                                                                                                                                                                                                                                                                                                                            |
+| 2.0     | 2026-06-11 | §2.2/§2.3 telemetry carve-out: sanctioned anonymous, non-PII, non-financial operational telemetry via `/api/track` + admin aggregate reads without vault. Agent edit-scope widened (§8): rulebooks/specs are agent-editable with human approval; enforcement layer + secrets stay human-only. Authorized by `specs/governance/013-telemetry-write-exception.md`. |

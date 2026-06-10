@@ -19,9 +19,6 @@ if (-not $path) { exit 0 }
 $normalized = $path -replace '\\', '/'
 
 $protected = @(
-    '/CONSTITUTION\.md$',
-    '/AGENTS\.md$',
-    '/CLAUDE\.md$',
     '/\.claude/settings\.json$',
     '/\.claude/harness\.json$',
     '/\.claude/hooks/',

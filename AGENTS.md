@@ -16,7 +16,7 @@ You MUST stop and surface to the human owner if any of these are true:
 
 1. There is no approved spec in `specs/**` for the change you are being asked to make.
 2. The change would violate any `HARD` rule in `CONSTITUTION.md`.
-3. The change would touch any of: `CONSTITUTION.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/**`, `specs/governance/**`, `.env*`, `supabase/migrations/**` (destructive ops only), `scripts/build-push.sh`.
+3. The change would touch the **enforcement layer or secrets**: `.claude/settings.json`, `.claude/hooks/**`, `.claude/harness.json`, `.claude/skills/**`, `.env*`, `.github/workflows/**`, `scripts/build-push.sh`, any cert/key file, or destructive `supabase/migrations/**`. (As of gov-013 / constitution v2.0, the rulebooks — `CONSTITUTION.md`, `AGENTS.md`, `CLAUDE.md` — and `specs/**` are agent-editable, but governance changes still require explicit human approval before commit per `CONSTITUTION.md` §8.2.)
 4. A new dependency is required.
 5. Confidence in the approach is below "I'd bet money on this".
 
@@ -110,6 +110,7 @@ src/
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SESSION_SECRET` — 32-byte secret for encrypting the vault DEK cookie (`openssl rand -base64 32`)
+- `ADMIN_EMAILS` — comma-separated emails granted the `/dashboard/admin` telemetry page (spec 005, supersedes spec 004's `ADMIN_USER_IDS`). Optional; unset ⇒ admin page 404s for everyone (fails closed).
 
 ---
 
@@ -249,16 +250,16 @@ Intentional and load-bearing — do NOT "fix" toward the template:
 
 `.claude/settings.json` hooks (PowerShell on Windows):
 
-| Event                                          | Action                                                                                                                                                                                 |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SessionStart                                   | Prints governance reminder banner.                                                                                                                                                     |
-| UserPromptSubmit                               | Warns if `specs/` missing. `injection-guard.ps1` blocks OWASP-LLM01 prompt-injection phrases (exit 2).                                                                                 |
-| PreToolUse Write/Edit                          | `guard-protected-paths.ps1` — blocks edits to constitution / governance / secret / infra files.                                                                                        |
-| PreToolUse Bash                                | `guard-destructive-bash.ps1` — blocks force pushes, hard resets, branch deletion, docker                                                                                               |
+| Event                                          | Action                                                                                                                                                                                                                                                                              |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SessionStart                                   | Prints governance reminder banner.                                                                                                                                                                                                                                                  |
+| UserPromptSubmit                               | Warns if `specs/` missing. `injection-guard.ps1` blocks OWASP-LLM01 prompt-injection phrases (exit 2).                                                                                                                                                                              |
+| PreToolUse Write/Edit                          | `guard-protected-paths.ps1` — blocks edits to the enforcement layer (`.claude/settings.json`, `hooks/**`, `harness.json`, `skills/**`), secrets/`.env*`, certs, CI workflows, `build-push.sh`. Rulebooks (`CONSTITUTION.md`/`AGENTS.md`/`CLAUDE.md`) are NOT blocked as of gov-013. |
+| PreToolUse Bash                                | `guard-destructive-bash.ps1` — blocks force pushes, hard resets, branch deletion, docker                                                                                                                                                                                            |
 | push, destructive SQL, `.env` overwrites.      |
-| PostToolUse Write/Edit                         | `post-edit-tsc.ps1` — fast incremental typecheck feedback (`pnpm exec tsc --noEmit                                                                                                     |
+| PostToolUse Write/Edit                         | `post-edit-tsc.ps1` — fast incremental typecheck feedback (`pnpm exec tsc --noEmit                                                                                                                                                                                                  |
 | --incremental`). Feedback-only; exit 0 always. |
-| Stop                                           | `stop-tests.ps1` runs `pnpm test:ci` — tail to stderr, exit 2 on failure (forces a fix before the turn ends); then reminds: gates green? spec linked? sections cited? scope respected? |
+| Stop                                           | `stop-tests.ps1` runs `pnpm test:ci` — tail to stderr, exit 2 on failure (forces a fix before the turn ends); then reminds: gates green? spec linked? sections cited? scope respected?                                                                                              |
 |                                                |
 
 Cross-platform note: hooks are PowerShell because the dev host is Windows. CI runs the gates directly (`pnpm check`, `pnpm test:ci`, `pnpm build`) — it does not need these hooks. If a teammate runs on macOS/Linux, port to `.sh` and gate by `$OS` in `settings.json`.
@@ -282,5 +283,7 @@ Context load order (context only — not enforcement, broad → specific): manag
 **templateCentral v4 alignment (2026-05-27)**: added plugin marker, §9 Skills, §10 Skills Security, `.claude/skills/next-verify` project skill, `.claude/harness.json`. Collapsed prior `CLAUDE.md` project reference into this file; `CLAUDE.md` is now `@AGENTS.md` only per v4. Per-action `requireUserId` now expected to use server-side `supabase.auth.getUser()` (not the client-readable `getSession()`); PBKDF2 hardening (600k iters, user-id salt) tracked under a follow-up spec with rekey-on-unlock migration plan.
 
 **Spec 010 — templateCentral 4.2.0 harness alignment (2026-05-31)**: restored a test-enforcing `Stop` hook (`stop-tests.ps1`, `pnpm test:ci` → stderr + `exit 2`), added an OWASP-LLM01 `UserPromptSubmit` injection guard (`injection-guard.ps1`), expanded `guard-protected-paths.ps1` to also block `.github/workflows/` + cert/credential files and fixed its block path to `exit 2` (the prior `Write-Error` under `$ErrorActionPreference=Stop` threw before reaching `exit 2`, so the hook never actually blocked), added `skillListingBudgetFraction: 0.02` and the §11 context-load-order note. The `.agents → .claude` symlink is deferred — Windows symlink creation needs Developer Mode/admin. Supersedes 003 on the Stop hook; `harness.json` bumped to 4.2.0.
+
+**gov-013 — telemetry carve-out + agent edit-scope (2026-06-11)**: constitution → v2.0. §2.2/§2.3 gained a scoped anonymous, non-PII, non-financial telemetry carve-out (`/api/track` + admin aggregate reads, both vault-free); §8 widened so rulebooks + `specs/**` are agent-editable with human approval, while the enforcement layer (`.claude/settings.json`, `hooks/**`, `harness.json`, `skills/**`) + secrets + CI stay human-only. Clarence relaxed `.claude/settings.json` deny + `guard-protected-paths.ps1` accordingly. Enabled spec 004 (storefront moat + telemetry + admin dashboard).
 
 <!-- [[post-harness]] — reserved for trace capture and meta-harness integration (v5.0+) -->
