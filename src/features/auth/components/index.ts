@@ -1,3 +1,4 @@
+export { EmailLoginForm } from './email-login-form';
 export { IdleLockWatcher } from './idle-lock-watcher';
 export { LoginButton } from './login-button';
 export { LoginCard } from './login-card';

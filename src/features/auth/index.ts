@@ -1,4 +1,5 @@
 export {
+  EmailLoginForm,
   IdleLockWatcher,
   LoginButton,
   LoginCard,

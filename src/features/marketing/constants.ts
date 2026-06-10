@@ -2,7 +2,10 @@ import {
   BarChart3,
   BriefcaseBusiness,
   Calculator,
+  EyeOff,
+  PenLine,
   PiggyBank,
+  Unplug,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -39,6 +42,36 @@ export const FEATURES: MarketingFeature[] = [
   },
 ];
 
+export interface MoatPoint {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+}
+
+// The "why Fynfo" upsell. Deliberately distinct from SecurityBand (which sells
+// the encryption mechanics) — these sell the product philosophy: best-effort,
+// no bank sync, not your data for sale.
+export const MOAT_POINTS: MoatPoint[] = [
+  {
+    icon: Unplug,
+    title: 'No bank logins, ever',
+    description:
+      'Fynfo never connects to your bank or brokerage. There is no third party holding the keys to your accounts — nothing to breach, nothing to leak. You capture what matters, when it matters.',
+  },
+  {
+    icon: PenLine,
+    title: 'Best-effort, by design',
+    description:
+      'A clear personal ledger, not a bank statement. Entering your own figures means you actually understand your money — and own every number in it, instead of trusting a sync you can not see.',
+  },
+  {
+    icon: EyeOff,
+    title: 'Never the product',
+    description:
+      'Your finances are not something we sell. No ads, no data brokers, no tracking pixels on your numbers — the opposite of a "free" finance app that monetises you.',
+  },
+];
+
 export const TRUST_BADGES: string[] = [
   'Zero-knowledge',
   'AES-256 encrypted',
@@ -54,7 +87,12 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'Is Fynfo free to use?',
     answer:
-      'Yes — Fynfo is completely free for personal use. No premium tiers, no hidden fees.',
+      'Fynfo is free while we are in early access — no ads, no selling your data, no premium tier today. If that ever changes, you will hear about it well in advance, and your data always stays yours to export.',
+  },
+  {
+    question: 'Why does not Fynfo sync my bank accounts?',
+    answer:
+      'By design. Connecting bank logins means trusting a third party with the keys to your accounts — exactly the risk Fynfo exists to avoid. You enter snapshots yourself, so there is nothing to breach and every number is one you understand.',
   },
   {
     question: 'How secure is my financial data?',

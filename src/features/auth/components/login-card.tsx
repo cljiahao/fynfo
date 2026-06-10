@@ -2,6 +2,7 @@
 
 import { CustomCard } from '@/components/widgets';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
+import { EmailLoginForm } from './email-login-form';
 import { LoginButton } from './login-button';
 
 export function LoginCard() {
@@ -23,6 +24,14 @@ export function LoginCard() {
         label="Sign in with Google"
         className="py-6 text-lg"
       />
+
+      <div className="flex items-center gap-3">
+        <span className="bg-border h-px flex-1" />
+        <span className="text-muted-foreground text-xs uppercase">or</span>
+        <span className="bg-border h-px flex-1" />
+      </div>
+
+      <EmailLoginForm />
     </CustomCard>
   );
 }

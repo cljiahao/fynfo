@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { TRUST_BADGES } from '../constants';
 import { fraunces } from '../fonts';
 import { DashboardPreview } from './dashboard-preview';
+import { TrackedCtaLink } from './tracked-cta-link';
 
 const container: Variants = {
   hidden: {},
@@ -75,13 +76,13 @@ export function Hero() {
             {...child}
             className="mt-9 flex flex-wrap items-center gap-3"
           >
-            <Link
+            <TrackedCtaLink
               href={PAGE_ROUTES.LOGIN}
               className="group inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-white/90"
             >
               Get started
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
+            </TrackedCtaLink>
             <Link
               href="#features"
               className="inline-flex items-center gap-2 rounded-full border border-white/15 px-6 py-3 text-sm font-medium text-white/80 transition hover:bg-white/5 hover:text-white"

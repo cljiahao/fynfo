@@ -14,4 +14,5 @@ export const PAGE_ROUTES = {
 export const API_ROUTES = {
   HEALTH: '/api/health',
   VAULT: '/api/vault',
+  TRACK: '/api/track',
 } as const;

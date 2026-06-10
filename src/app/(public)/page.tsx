@@ -3,6 +3,8 @@ import {
   Faq,
   FeatureGrid,
   Hero,
+  MoatBand,
+  PageViewTracker,
   SecurityBand,
 } from '@/features/marketing';
 
@@ -11,8 +13,10 @@ export default function HomePage() {
   // app's light/dark toggle; explicit zinc-950 is the canvas.
   return (
     <div className="dark relative bg-zinc-950 text-white">
+      <PageViewTracker />
       <Hero />
       <FeatureGrid />
+      <MoatBand />
       <SecurityBand />
       <Faq />
       <CtaBand />

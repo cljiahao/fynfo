@@ -1,8 +1,8 @@
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { ArrowRight } from 'lucide-react';
-import Link from 'next/link';
 import { fraunces } from '../fonts';
 import { Reveal } from './reveal';
+import { TrackedCtaLink } from './tracked-cta-link';
 
 export function CtaBand() {
   return (
@@ -25,13 +25,13 @@ export function CtaBand() {
           Start tracking your wealth today. It only takes a minute — and
           it&apos;s free.
         </p>
-        <Link
+        <TrackedCtaLink
           href={PAGE_ROUTES.LOGIN}
           className="group mt-8 inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-zinc-950 transition hover:bg-white/90"
         >
           Get started
           <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-        </Link>
+        </TrackedCtaLink>
       </Reveal>
     </section>
   );
