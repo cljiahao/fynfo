@@ -1,7 +1,7 @@
 'use client';
 
 import { PAGE_ROUTES } from '@/lib/constants/routes';
-import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { m, useReducedMotion, type Variants } from 'framer-motion';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { TRUST_BADGES } from '../constants';
@@ -45,15 +45,15 @@ export function Hero() {
       </div>
 
       <div className="mx-auto grid max-w-6xl items-center gap-16 lg:grid-cols-[1.05fr_0.95fr]">
-        <motion.div {...motionProps}>
-          <motion.div {...child}>
+        <m.div {...motionProps}>
+          <m.div {...child}>
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/70 backdrop-blur">
               <ShieldCheck className="size-3.5 text-emerald-300" />
               Zero-knowledge personal wealth
             </span>
-          </motion.div>
+          </m.div>
 
-          <motion.h1
+          <m.h1
             {...child}
             className={`${fraunces.className} mt-6 text-5xl leading-[1.05] font-medium tracking-tight text-white md:text-6xl lg:text-7xl`}
           >
@@ -62,20 +62,17 @@ export function Hero() {
             <span className="bg-gradient-to-r from-emerald-200 via-emerald-300 to-sky-300 bg-clip-text text-transparent italic">
               one pulse away
             </span>
-          </motion.h1>
+          </m.h1>
 
-          <motion.p
+          <m.p
             {...child}
             className="mt-6 max-w-md text-lg leading-relaxed text-white/60"
           >
             Track your assets, salary, taxes, CPF, and portfolio in one private
             place. Encrypted on your device — even we can&apos;t read it.
-          </motion.p>
+          </m.p>
 
-          <motion.div
-            {...child}
-            className="mt-9 flex flex-wrap items-center gap-3"
-          >
+          <m.div {...child} className="mt-9 flex flex-wrap items-center gap-3">
             <TrackedCtaLink
               href={PAGE_ROUTES.LOGIN}
               className="group inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-white/90"
@@ -89,9 +86,9 @@ export function Hero() {
             >
               Learn more
             </Link>
-          </motion.div>
+          </m.div>
 
-          <motion.div
+          <m.div
             {...child}
             className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-xs text-white/40"
           >
@@ -101,16 +98,16 @@ export function Hero() {
                 {b}
               </span>
             ))}
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
 
-        <motion.div
+        <m.div
           initial={reduce ? false : { opacity: 0, y: 40, rotate: -1.5 }}
           animate={{ opacity: 1, y: 0, rotate: -1.5 }}
           transition={{ duration: 0.9, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
         >
           <DashboardPreview />
-        </motion.div>
+        </m.div>
       </div>
     </section>
   );

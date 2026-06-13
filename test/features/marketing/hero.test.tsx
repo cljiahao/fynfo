@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { Hero } from '@/features/marketing/components/hero';
+import { MotionProvider } from '@/features/marketing/components/motion-provider';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -30,7 +31,11 @@ afterEach(cleanup);
 
 describe('Hero', () => {
   it('renders the headline and a Get started link to /login', () => {
-    render(<Hero />);
+    render(
+      <MotionProvider>
+        <Hero />
+      </MotionProvider>
+    );
     expect(screen.getByText(/one pulse away/i)).toBeInTheDocument();
     const cta = screen.getByRole('link', { name: /get started/i });
     expect(cta).toHaveAttribute('href', '/login');

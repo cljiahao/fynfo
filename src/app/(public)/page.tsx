@@ -4,6 +4,7 @@ import {
   FeatureGrid,
   Hero,
   MoatBand,
+  MotionProvider,
   PageViewTracker,
   SecurityBand,
 } from '@/features/marketing';
@@ -14,12 +15,14 @@ export default function HomePage() {
   return (
     <div className="dark relative bg-zinc-950 text-white">
       <PageViewTracker />
-      <Hero />
-      <FeatureGrid />
-      <MoatBand />
-      <SecurityBand />
-      <Faq />
-      <CtaBand />
+      <MotionProvider>
+        <Hero />
+        <FeatureGrid />
+        <MoatBand />
+        <SecurityBand />
+        <Faq />
+        <CtaBand />
+      </MotionProvider>
     </div>
   );
 }
