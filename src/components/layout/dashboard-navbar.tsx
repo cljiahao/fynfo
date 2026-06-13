@@ -24,10 +24,8 @@ const NAV_ITEMS = [
   { label: 'Expenses', href: PAGE_ROUTES.EXPENSES, exact: false },
 ] as const;
 
-export function Navbar({ userMenu }: { userMenu?: React.ReactNode }) {
+export function DashboardNavbar({ userMenu }: { userMenu?: React.ReactNode }) {
   const pathname = usePathname();
-  const rootPath = `/${pathname.split('/')[1]}`;
-  const isDashboard = rootPath === PAGE_ROUTES.DASHBOARD;
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isActive = (item: (typeof NAV_ITEMS)[number]) => {
@@ -35,48 +33,6 @@ export function Navbar({ userMenu }: { userMenu?: React.ReactNode }) {
     return pathname.startsWith(item.href);
   };
 
-  // Public navbar — shown on landing page and login
-  if (!isDashboard) {
-    return (
-      <nav className="max-w-site fixed inset-x-0 top-0 z-50 mx-auto px-6 pt-6">
-        <div className="flex-between min-h-16 rounded-2xl border border-white/10 bg-zinc-950/60 px-6 py-3 shadow-2xl shadow-black/30 backdrop-blur-xl md:px-8">
-          <Link
-            href={PAGE_ROUTES.HOME}
-            onClick={() => window.scrollTo({ top: 0 })}
-            className="text-xl font-bold tracking-tight md:text-2xl"
-          >
-            <span className="bg-gradient-to-r from-emerald-300 to-sky-300 bg-clip-text text-transparent">
-              Fyn
-            </span>
-            <span className="text-white">fo</span>
-          </Link>
-
-          <div className="flex items-center gap-5">
-            <Link
-              href="/#features"
-              className="hidden text-sm font-medium text-white/60 transition-colors hover:text-white sm:inline"
-            >
-              Features
-            </Link>
-            <Link
-              href="/#faq"
-              className="hidden text-sm font-medium text-white/60 transition-colors hover:text-white sm:inline"
-            >
-              FAQ
-            </Link>
-            <Link
-              href={PAGE_ROUTES.LOGIN}
-              className="inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-white/90"
-            >
-              Get started
-            </Link>
-          </div>
-        </div>
-      </nav>
-    );
-  }
-
-  // Authenticated navbar — shown on dashboard pages
   return (
     <nav className="sticky top-0 z-50 w-full">
       <div className="flex-between bg-background min-h-20 border-b px-6 py-3 shadow-lg md:px-8">

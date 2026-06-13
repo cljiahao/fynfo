@@ -1,4 +1,4 @@
-import { Navbar, SiteFooter, VaultGate } from '@/components/layout';
+import { DashboardNavbar, SiteFooter, VaultGate } from '@/components/layout';
 import { UserMenu } from '@/components/layout/user-menu';
 import { IdleLockWatcher, VaultLockProvider } from '@/features/auth';
 import { getVaultDekSession } from '@/lib/keystore';
@@ -23,7 +23,7 @@ export default async function DashboardLayout({
       <div className="flex min-h-screen flex-col">
         <VaultGate />
         <IdleLockWatcher />
-        <Navbar userMenu={<UserMenu />} />
+        <DashboardNavbar userMenu={<UserMenu />} />
         <main className="flex flex-1 flex-col">{children}</main>
         <SiteFooter />
       </div>
