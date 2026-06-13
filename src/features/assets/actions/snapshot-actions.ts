@@ -24,10 +24,10 @@ export async function getSnapshots(): Promise<SnapshotData[]> {
     .eq('user_id', userId)
     .order('month', { ascending: true });
 
-  if (error) return [];
+  throwIfSupabaseError(error, 'snapshots read');
 
   return Promise.all(
-    data.map(async (s) => {
+    (data || []).map(async (s) => {
       const decryptedEntries = await Promise.all(
         (s.entries || []).map(async (e: AssetEntryRow) => ({
           category: e.category as SnapshotData['entries'][number]['category'],

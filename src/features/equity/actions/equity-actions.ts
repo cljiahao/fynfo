@@ -18,10 +18,10 @@ export async function getTrades(): Promise<EquityTradeData[]> {
     .eq('user_id', userId)
     .order('date', { ascending: false });
 
-  if (error || !data) return [];
+  throwIfSupabaseError(error, 'trades read');
 
   return Promise.all(
-    data.map(async (t) => ({
+    (data || []).map(async (t) => ({
       id: t.id,
       date: t.date,
       broker: t.broker,
