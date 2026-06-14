@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Lock, Unlock } from 'lucide-react';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -13,6 +13,16 @@ import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { createSupabaseBrowserClient } from '@/integrations/clients/supabase';
 import { deriveKeyClient, deriveKeyLegacy } from '@/lib/client-crypto';
+
+const UNLOCK_MESSAGES = [
+  'Deriving encryption key…',
+  'Running 600k PBKDF2 iterations…',
+  'Verifying vault integrity…',
+  'Unlocking your dashboard…',
+] as const;
+
+const PROGRESS_DURATION_MS = 1800;
+const MESSAGE_INTERVAL_MS = 600;
 
 const pinSchema = z.object({
   pin: z
@@ -31,10 +41,12 @@ interface VaultUnlockFlowProps {
 export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
   const queryClient = useQueryClient();
   const formRef = useRef<HTMLFormElement>(null);
-  // Pre-started v2 derivation — kicked off on the 6th keystroke, before submit.
   const derivingRef = useRef<Promise<string> | null>(null);
-  // User ID for per-user PBKDF2 salt — fetched on mount.
   const userIdRef = useRef<string | null>(null);
+
+  // Progress + message state updated only from interval callbacks (not effect body).
+  const [progress, setProgress] = useState(0);
+  const [msgIndex, setMsgIndex] = useState(0);
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -54,7 +66,22 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
     defaultValues: { pin: '' },
   });
 
-  // Returns cached user ID or fetches it if not yet available.
+  useEffect(() => {
+    if (!isSubmitting) return;
+    const start = Date.now();
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - start;
+      setProgress(Math.min(90, (elapsed / PROGRESS_DURATION_MS) * 90));
+      setMsgIndex(
+        Math.min(
+          Math.floor(elapsed / MESSAGE_INTERVAL_MS),
+          UNLOCK_MESSAGES.length - 1
+        )
+      );
+    }, 50);
+    return () => clearInterval(timer);
+  }, [isSubmitting]);
+
   const getUserId = useCallback(async (): Promise<string> => {
     if (userIdRef.current) return userIdRef.current;
     const { data } = await createSupabaseBrowserClient().auth.getUser();
@@ -68,7 +95,6 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
       try {
         const userId = await getUserId();
 
-        // Await the pre-started v2 derivation if available; otherwise derive now.
         const derivedKey = await (derivingRef.current ??
           deriveKeyClient(values.pin, userId));
         derivingRef.current = null;
@@ -86,8 +112,6 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
         }
 
         if (res.status === 409) {
-          // Server needs migration: v2 DEK didn't match existing canary.
-          // Derive v1 (legacy) key and retry with both so server can migrate.
           const legacyKey = await deriveKeyLegacy(values.pin);
           const migrateRes = await fetch('/api/vault', {
             method: 'POST',
@@ -139,7 +163,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
       <div className="flex w-full max-w-md flex-col items-center rounded-2xl border border-zinc-800 bg-zinc-950 p-8 shadow-2xl">
-        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/10 text-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/10 text-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
           {isSubmitting ? (
             <Loader2 className="h-8 w-8 animate-spin" />
           ) : (
@@ -147,10 +171,22 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
           )}
         </div>
 
+        {isSubmitting && (
+          <div className="mb-4 h-1 w-full overflow-hidden rounded-full bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-blue-500 transition-all duration-100 ease-linear"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
+
         <h2 className="mb-2 text-2xl font-bold text-white">Vault Locked</h2>
-        <p className="mb-8 text-center text-zinc-400">
-          Enter your secure 6-digit PIN to derive your encryption keys and
-          unlock your financial dashboard.
+        <p className="mb-8 min-h-[3rem] text-center text-zinc-400">
+          {isSubmitting ? (
+            <span className="animate-pulse">{UNLOCK_MESSAGES[msgIndex]}</span>
+          ) : (
+            'Enter your secure 6-digit PIN to derive your encryption keys and unlock your financial dashboard.'
+          )}
         </p>
 
         <form
@@ -175,7 +211,6 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
                     const clean = e.target.value.replace(/\D/g, '');
                     onChange(clean);
                     if (clean.length === 6 && userIdRef.current) {
-                      // Start v2 derivation immediately on 6th digit — before submit overhead.
                       derivingRef.current = deriveKeyClient(
                         clean,
                         userIdRef.current
@@ -206,7 +241,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
             disabled={isSubmitting}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 text-lg font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
           >
-            {isSubmitting ? 'Decrypting keys...' : 'Unlock Vault'}
+            {isSubmitting ? 'Unlocking…' : 'Unlock Vault'}
             {!isSubmitting && <Unlock className="h-5 w-5" />}
           </Button>
         </form>
