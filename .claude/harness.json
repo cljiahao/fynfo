@@ -12,7 +12,7 @@
       "path": "CLAUDE.md"
     },
     ".claude/settings.json": {
-      "origin_hash": "76b3be62a1818e6a9661419916915c6e0f70d0ede07ad1a978f79c64247d129d",
+      "origin_hash": "01cf7fd5f775bf966e3fcf0a17d0cb9452c798b07532638131ca912f3268b28a",
       "path": ".claude/settings.json"
     },
     ".claude/skills/next-verify/SKILL.md": {
@@ -23,25 +23,25 @@
       "origin_hash": "fee788bf3cd018f4489625ef6020b7e4a7c27d324d14d9d5df316c3279c8bedd",
       "path": ".claude/skills/regen-harness/SKILL.md"
     },
-    ".claude/hooks/post-edit-tsc.ps1": {
-      "origin_hash": "072ba54c22b3dedf8fdcf021f68278afba66d2e65f1da5c828beb37842b94b26",
-      "path": ".claude/hooks/post-edit-tsc.ps1"
+    ".claude/hooks/stop-tests.sh": {
+      "origin_hash": "674af1275b4dd43538edf17813695f56cd9d5d8f43af2c9e344b22644ea05242",
+      "path": ".claude/hooks/stop-tests.sh"
     },
-    ".claude/hooks/stop-tests.ps1": {
-      "origin_hash": "ecf07cc51b43a946943fc43265cf0beeefba1035fe1a695e6eec0657eb294477",
-      "path": ".claude/hooks/stop-tests.ps1"
+    ".claude/hooks/post-edit-tsc.sh": {
+      "origin_hash": "f6227547f92c1681566340dd0c62b5cf7eb3cb85d90afcd02d438609d5e56785",
+      "path": ".claude/hooks/post-edit-tsc.sh"
     },
-    ".claude/hooks/injection-guard.ps1": {
-      "origin_hash": "30d49b25187141b88b9fe5c712410ed2926a0d39652cf22a390b1789b844f3cb",
-      "path": ".claude/hooks/injection-guard.ps1"
+    ".claude/hooks/injection-guard.sh": {
+      "origin_hash": "156d942b045bf5d2eb3a31cb811c72f21de20e7b5199a2bcd61c7e79b6fb119d",
+      "path": ".claude/hooks/injection-guard.sh"
     },
-    ".claude/hooks/guard-protected-paths.ps1": {
-      "origin_hash": "dfbc38b68f22b1e3c860e6e571774066817ee9b95a9d7d7be159282d6812db82",
-      "path": ".claude/hooks/guard-protected-paths.ps1"
+    ".claude/hooks/guard-protected-paths.sh": {
+      "origin_hash": "e66d42c3d6949683266451d44154a3bfa664948087bac59d16632d7e3440ff03",
+      "path": ".claude/hooks/guard-protected-paths.sh"
     },
-    ".claude/hooks/guard-destructive-bash.ps1": {
-      "origin_hash": "e947975f6ee14c8baa3d9ef00c9c904f80f9067792baecbec9801d29a309de7d",
-      "path": ".claude/hooks/guard-destructive-bash.ps1"
+    ".claude/hooks/guard-destructive-bash.sh": {
+      "origin_hash": "28e91a930bac34f6a95dc09087e8c43f30651b8e9c711c197a08ad0d5561dd03",
+      "path": ".claude/hooks/guard-destructive-bash.sh"
     }
   }
 }

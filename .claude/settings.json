@@ -57,7 +57,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -Command \"Write-Output 'FYNFO GOVERNANCE ACTIVE | Read CONSTITUTION.md + AGENTS.md before acting | Spec-first: no code without approved spec in specs/** | Gates: pnpm check && pnpm test:ci && pnpm build green | Hard stops: .env*, CONSTITUTION.md, AGENTS.md, .claude/**, specs/governance/**, destructive git/docker'; Write-Output '=== CONSTITUTION (head) ==='; Get-Content CONSTITUTION.md -TotalCount 20; Write-Output '=== AGENTS (head) ==='; Get-Content AGENTS.md -TotalCount 30\""
+            "command": "bash -c \"head -20 CONSTITUTION.md; head -30 AGENTS.md\""
           }
         ]
       }
@@ -67,7 +67,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -Command \"if (-not (Test-Path 'specs')) { Write-Output 'WARN: specs/ missing — bootstrap before any impl work' }\""
+            "command": "bash -c \"[ ! -d specs ] && echo 'WARN: specs/ missing'\""
           }
         ]
       },
@@ -75,7 +75,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/hooks/injection-guard.ps1"
+            "command": "bash .claude/hooks/injection-guard.sh"
           }
         ]
       }
@@ -86,7 +86,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/hooks/guard-protected-paths.ps1"
+            "command": "bash .claude/hooks/guard-protected-paths.sh"
           }
         ]
       },
@@ -95,7 +95,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/hooks/guard-destructive-bash.ps1"
+            "command": "bash .claude/hooks/guard-destructive-bash.sh"
           }
         ]
       }
@@ -106,7 +106,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/hooks/post-edit-tsc.ps1"
+            "command": "bash .claude/hooks/post-edit-tsc.sh"
           }
         ]
       }
@@ -116,11 +116,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "powershell -NoProfile -ExecutionPolicy RemoteSigned -File .claude/hooks/stop-tests.ps1"
+            "command": "bash .claude/hooks/stop-tests.sh"
           },
           {
             "type": "command",
-            "command": "powershell -NoProfile -Command \"Write-Output 'Done. Gates green? Spec linked? Sections cited? Scope respected? Run /next-verify before commit.'\""
+            "command": "bash -c \"echo 'Done. Gates green? Spec linked? Scope respected?'\""
           }
         ]
       }
