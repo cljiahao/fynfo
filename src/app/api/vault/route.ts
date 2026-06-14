@@ -144,11 +144,16 @@ export const POST = withLogging('api.vault.unlock', async (req: Request) => {
       throw new AppError('UNAUTHORIZED', 'Unauthorized');
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from('users_profile')
-      .select('vault_check_v2')
-      .eq('id', user.id)
-      .maybeSingle();
+    // Parallelise: profile read and rate-limit check are independent once we have user.id.
+    const [{ data: profile, error: profileError }, alreadyLocked] =
+      await Promise.all([
+        supabase
+          .from('users_profile')
+          .select('vault_check_v2')
+          .eq('id', user.id)
+          .maybeSingle(),
+        isUnlockLocked(supabase),
+      ]);
 
     // Fail closed: a read error must never fall through to first-unlock, which
     // would re-init the vault with a fresh canary and orphan existing data.
@@ -159,7 +164,7 @@ export const POST = withLogging('api.vault.unlock', async (req: Request) => {
 
     // Returning user: verify canary against existing v2 vault, rate-limited.
     if (profile?.vault_check_v2) {
-      if (await isUnlockLocked(supabase)) {
+      if (alreadyLocked) {
         return NextResponse.json(TOO_MANY, { status: 429 });
       }
 
