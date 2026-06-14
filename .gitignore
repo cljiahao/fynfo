@@ -52,3 +52,6 @@ supabase/.temp
 # supabase backup tooling (scripts/backup-to-supabase.*)
 scripts/.env.backup
 .supabase-backups/
+
+# tc5.0.1: per-machine symlink; a committed symlink breaks Windows CI runners
+.agents

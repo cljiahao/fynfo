@@ -1,4 +1,4 @@
-<!-- templateCentral: nextjs@4.0.0 -->
+<!-- templateCentral: nextjs@5.0.0 -->
 
 # AGENTS.md — Fynfo Governance Protocol
 
@@ -285,5 +285,7 @@ Context load order (context only — not enforcement, broad → specific): manag
 **Spec 010 — templateCentral 4.2.0 harness alignment (2026-05-31)**: restored a test-enforcing `Stop` hook (`stop-tests.ps1`, `pnpm test:ci` → stderr + `exit 2`), added an OWASP-LLM01 `UserPromptSubmit` injection guard (`injection-guard.ps1`), expanded `guard-protected-paths.ps1` to also block `.github/workflows/` + cert/credential files and fixed its block path to `exit 2` (the prior `Write-Error` under `$ErrorActionPreference=Stop` threw before reaching `exit 2`, so the hook never actually blocked), added `skillListingBudgetFraction: 0.02` and the §11 context-load-order note. The `.agents → .claude` symlink is deferred — Windows symlink creation needs Developer Mode/admin. Supersedes 003 on the Stop hook; `harness.json` bumped to 4.2.0.
 
 **gov-013 — telemetry carve-out + agent edit-scope (2026-06-11)**: constitution → v2.0. §2.2/§2.3 gained a scoped anonymous, non-PII, non-financial telemetry carve-out (`/api/track` + admin aggregate reads, both vault-free); §8 widened so rulebooks + `specs/**` are agent-editable with human approval, while the enforcement layer (`.claude/settings.json`, `hooks/**`, `harness.json`, `skills/**`) + secrets + CI stay human-only. Clarence relaxed `.claude/settings.json` deny + `guard-protected-paths.ps1` accordingly. Enabled spec 004 (storefront moat + telemetry + admin dashboard).
+
+**gov-014 — templateCentral 5.0.0 harness alignment (2026-06-14)**: flat `.claude/skills/*.md` don't load in tc5.x (silent ignore). Moved both project skills to directory form (`next-verify/SKILL.md`, `regen-harness/SKILL.md`). Bumped AGENTS marker `@4.0.0` → `@5.0.0`. Updated regen-harness skill paths + version string. Added `.agents` to `.gitignore` (committed symlink breaks Windows CI). Regenerated `harness.json` @ 5.0.0 (clears two stale hashes from gov-013). Spec 033.
 
 <!-- [[post-harness]] — reserved for trace capture and meta-harness integration (v5.0+) -->

@@ -1,10 +1,10 @@
 {
-  "templatecentral_version": "4.5.0",
+  "templatecentral_version": "5.0.0",
   "stack": "nextjs",
-  "seeded_at": "2026-06-06",
+  "seeded_at": "2026-06-14",
   "seeded_files": {
     "AGENTS.md": {
-      "origin_hash": "07d0bdea0cfa1b3c8176cab11ed3b6326de14c6cc229161e5db9419e31e25508",
+      "origin_hash": "dc2a651435064641df0c75c081537940899dfff10b7d052aa571afc187d7f8e1",
       "path": "AGENTS.md"
     },
     "CLAUDE.md": {
@@ -12,31 +12,31 @@
       "path": "CLAUDE.md"
     },
     ".claude/settings.json": {
-      "origin_hash": "577cf3153a5ad3b9dfe28df149ad9e87ce178f4e5766d6ad2c921aa913e737cc",
+      "origin_hash": "76b3be62a1818e6a9661419916915c6e0f70d0ede07ad1a978f79c64247d129d",
       "path": ".claude/settings.json"
     },
-    ".claude/skills/next-verify.md": {
+    ".claude/skills/next-verify/SKILL.md": {
       "origin_hash": "7714d6f271863993565fc2f41ff0b4bdcc9d3a61f785353b8843c93ab106350f",
-      "path": ".claude/skills/next-verify.md"
+      "path": ".claude/skills/next-verify/SKILL.md"
     },
-    ".claude/skills/regen-harness.md": {
-      "origin_hash": "9883e66a0de0c0f5dbc151433428a0fb7b6d05bc13e252cc3ffc43000334a405",
-      "path": ".claude/skills/regen-harness.md"
+    ".claude/skills/regen-harness/SKILL.md": {
+      "origin_hash": "fee788bf3cd018f4489625ef6020b7e4a7c27d324d14d9d5df316c3279c8bedd",
+      "path": ".claude/skills/regen-harness/SKILL.md"
     },
     ".claude/hooks/post-edit-tsc.ps1": {
-      "origin_hash": "3296235533deac16caf25931797d70a63eb12ae4c50c26e9eacb227e909741dd",
+      "origin_hash": "072ba54c22b3dedf8fdcf021f68278afba66d2e65f1da5c828beb37842b94b26",
       "path": ".claude/hooks/post-edit-tsc.ps1"
     },
     ".claude/hooks/stop-tests.ps1": {
-      "origin_hash": "1b01a6d8c132829298b92b6341043d57a4828f9f52d8180d61541b11924786b7",
+      "origin_hash": "ecf07cc51b43a946943fc43265cf0beeefba1035fe1a695e6eec0657eb294477",
       "path": ".claude/hooks/stop-tests.ps1"
     },
     ".claude/hooks/injection-guard.ps1": {
-      "origin_hash": "c42d53d7cd690e4c17e82c2a48e739b6d64761876631b59133626afb25fe25a4",
+      "origin_hash": "30d49b25187141b88b9fe5c712410ed2926a0d39652cf22a390b1789b844f3cb",
       "path": ".claude/hooks/injection-guard.ps1"
     },
     ".claude/hooks/guard-protected-paths.ps1": {
-      "origin_hash": "096b3d7c257bef81c91593c26f8fe2331e08ab7deb008f3483f31411b2be20df",
+      "origin_hash": "dfbc38b68f22b1e3c860e6e571774066817ee9b95a9d7d7be159282d6812db82",
       "path": ".claude/hooks/guard-protected-paths.ps1"
     },
     ".claude/hooks/guard-destructive-bash.ps1": {

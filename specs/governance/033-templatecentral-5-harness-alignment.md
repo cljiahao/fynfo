@@ -2,11 +2,11 @@
 id: 033
 slug: templatecentral-5-harness-alignment
 area: governance
-status: draft # draft | approved | shipped | superseded — HUMAN approves + applies (enforcement layer)
+status: shipped
 author: Claude (Opus 4.8)
 created: 2026-06-14
-approved: # Clarence sets on approval
-shipped:
+approved: 2026-06-14
+shipped: 2026-06-14
 impl_pr: # direct-to-main per solo-project workflow
 supersedes:
 constitution_satisfies:
