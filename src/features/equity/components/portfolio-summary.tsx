@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatSGD, formatUSD } from '@/lib/utils/currency';
 import {
+  AlertCircle,
   ArrowDown,
   ArrowUp,
   DollarSign,
@@ -94,8 +95,11 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
   const holdings = useMemo(() => computeHoldings(trades), [trades]);
 
   const heldTickers = holdings.map((h) => h.ticker);
-  const { data: prices, isLoading: pricesLoading } =
-    useStockPrices(heldTickers);
+  const {
+    data: prices,
+    isLoading: pricesLoading,
+    isError: pricesError,
+  } = useStockPrices(heldTickers);
 
   const sgHoldings = holdings.filter((h) => h.market === 'SG');
   const usHoldings = holdings.filter((h) => h.market === 'US');
@@ -171,21 +175,34 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
               {pricesLoading && (
                 <Loader2 className="ml-2 inline size-3 animate-spin" />
               )}
+              {pricesError && (
+                <AlertCircle className="ml-2 inline size-3 text-amber-500" />
+              )}
             </CardTitle>
             <TrendingUp className="text-muted-foreground size-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatSGD(totalValue)}</div>
-            <div className="text-muted-foreground mt-1 space-y-0.5 text-xs">
-              <div className="flex-between">
-                <span>SG</span>
-                <span>{formatSGD(sgValue)}</span>
-              </div>
-              <div className="flex-between">
-                <span>US</span>
-                <span>{formatUSD(usValue)}</span>
-              </div>
-            </div>
+            {pricesError || pricesLoading ? (
+              <p className="text-muted-foreground text-sm">
+                {pricesError ? 'Prices unavailable' : 'Loading…'}
+              </p>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {formatSGD(totalValue)}
+                </div>
+                <div className="text-muted-foreground mt-1 space-y-0.5 text-xs">
+                  <div className="flex-between">
+                    <span>SG</span>
+                    <span>{formatSGD(sgValue)}</span>
+                  </div>
+                  <div className="flex-between">
+                    <span>US</span>
+                    <span>{formatUSD(usValue)}</span>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -240,36 +257,42 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
             <Percent className="text-muted-foreground size-4" />
           </CardHeader>
           <CardContent>
-            <div
-              className={`text-2xl font-bold ${mwrPct >= 0 ? 'text-emerald-500' : 'text-red-500'}`}
-            >
-              {mwrPct >= 0 ? '+' : ''}
-              {mwrPct.toFixed(2)}%
-            </div>
-            <div className="text-muted-foreground mt-1 space-y-0.5 text-xs">
-              <div className="flex-between">
-                <span>SG</span>
-                <span
-                  className={
-                    sgMwrPct >= 0 ? 'text-emerald-500' : 'text-red-500'
-                  }
+            {pricesError || pricesLoading ? (
+              <p className="text-muted-foreground text-sm">—</p>
+            ) : (
+              <>
+                <div
+                  className={`text-2xl font-bold ${mwrPct >= 0 ? 'text-emerald-500' : 'text-red-500'}`}
                 >
-                  {sgMwrPct >= 0 ? '+' : ''}
-                  {sgMwrPct.toFixed(2)}%
-                </span>
-              </div>
-              <div className="flex-between">
-                <span>US</span>
-                <span
-                  className={
-                    usMwrPct >= 0 ? 'text-emerald-500' : 'text-red-500'
-                  }
-                >
-                  {usMwrPct >= 0 ? '+' : ''}
-                  {usMwrPct.toFixed(2)}%
-                </span>
-              </div>
-            </div>
+                  {mwrPct >= 0 ? '+' : ''}
+                  {mwrPct.toFixed(2)}%
+                </div>
+                <div className="text-muted-foreground mt-1 space-y-0.5 text-xs">
+                  <div className="flex-between">
+                    <span>SG</span>
+                    <span
+                      className={
+                        sgMwrPct >= 0 ? 'text-emerald-500' : 'text-red-500'
+                      }
+                    >
+                      {sgMwrPct >= 0 ? '+' : ''}
+                      {sgMwrPct.toFixed(2)}%
+                    </span>
+                  </div>
+                  <div className="flex-between">
+                    <span>US</span>
+                    <span
+                      className={
+                        usMwrPct >= 0 ? 'text-emerald-500' : 'text-red-500'
+                      }
+                    >
+                      {usMwrPct >= 0 ? '+' : ''}
+                      {usMwrPct.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

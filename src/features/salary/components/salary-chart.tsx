@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { EmptyState } from '@/components/widgets';
 import {
   CHART_AXIS_TICK_PROPS,
   CHART_TOOLTIP_PROPS,
@@ -20,6 +21,7 @@ import {
 } from '@/lib/recharts';
 import { formatSGDWhole } from '@/lib/utils/currency';
 import { format, parse } from 'date-fns';
+import { TrendingUp } from 'lucide-react';
 import type { SalaryData } from '../types';
 
 interface SalaryChartProps {
@@ -38,12 +40,17 @@ export function SalaryChart({ records }: SalaryChartProps) {
       <Card>
         <CardHeader>
           <CardTitle>Salary Growth</CardTitle>
-          <CardDescription>No salary records yet</CardDescription>
+          <CardDescription>
+            Monthly salary, bonus, and cumulative earnings
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex-center text-muted-foreground h-[300px] text-sm">
-            Add salary records to see your growth chart
-          </div>
+          <EmptyState
+            icon={TrendingUp}
+            title="No salary records yet"
+            description="Add salary records to see your growth chart"
+            className="h-[300px] border-0"
+          />
         </CardContent>
       </Card>
     );

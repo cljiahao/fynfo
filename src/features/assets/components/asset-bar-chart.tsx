@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { EmptyState } from '@/components/widgets';
 import {
   CHART_AXIS_TICK_PROPS,
   CHART_TOOLTIP_PROPS,
@@ -28,7 +29,7 @@ import {
   YAxis,
 } from '@/lib/recharts';
 import { formatSGDWhole } from '@/lib/utils/currency';
-import { Filter } from 'lucide-react';
+import { Filter, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants';
 import type { AssetCategory, ChartDataPoint } from '../types';
@@ -100,13 +101,16 @@ export function AssetLineChart({ data }: AssetLineChartProps) {
         <CardHeader>
           <CardTitle>Asset Trends</CardTitle>
           <CardDescription>
-            No data yet. Add your first monthly snapshot to see trends.
+            Monthly asset values over time by category
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex-center text-muted-foreground h-[300px]">
-            Add entries to see your asset chart
-          </div>
+          <EmptyState
+            icon={TrendingUp}
+            title="No data yet"
+            description="Add your first monthly snapshot to see trends."
+            className="h-[300px] border-0"
+          />
         </CardContent>
       </Card>
     );
@@ -139,6 +143,7 @@ export function AssetLineChart({ data }: AssetLineChartProps) {
                   onSelect={(e) => e.preventDefault()}
                 >
                   <span
+                    aria-hidden="true"
                     className="mr-2 inline-block size-2.5 rounded-full"
                     style={{ backgroundColor: line.color }}
                   />
@@ -155,6 +160,7 @@ export function AssetLineChart({ data }: AssetLineChartProps) {
                   onSelect={(e) => e.preventDefault()}
                 >
                   <span
+                    aria-hidden="true"
                     className="mr-2 inline-block size-2.5 rounded-full"
                     style={{ backgroundColor: CATEGORY_COLORS[cat] }}
                   />
