@@ -1,8 +1,32 @@
 import { throwIfSupabaseError } from '@/lib/errors';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 import { decryptPayload, encryptPayload } from './crypto';
 
 const VAULT_CANARY = 'fynfo_vault_ok';
+
+// Minimal typed shapes for each encrypted table. Only the re-encrypted fields
+// are typed explicitly; the rest pass through via the Record spread.
+type TradeRow = Record<string, unknown> & {
+  ticker: string | null;
+  shares: string | null;
+  price: string | null;
+  fees: string | null;
+};
+type ExpenseRow = Record<string, unknown> & {
+  item: string | null;
+  info: string | null;
+  amount: string | null;
+};
+type SplitRow = Record<string, unknown> & { amount: string | null };
+type SalaryRow = Record<string, unknown> & {
+  salary: string | null;
+  bonus: string | null;
+};
+type TaxReliefRow = Record<string, unknown> & { amount: string | null };
+type AssetEntryRow = Record<string, unknown> & {
+  account: string | null;
+  amount: string | null;
+};
 
 function reEnc(value: string | null, oldDek: Buffer, newDek: Buffer): string {
   return encryptPayload(decryptPayload(value ?? '', oldDek), newDek);
@@ -52,12 +76,10 @@ export async function migrateUserVault(
   ]);
 
   // Phase 2: re-encrypt each table and upsert in parallel
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const upserts: PromiseLike<{ error: any }>[] = [];
+  const upserts: PromiseLike<{ error: PostgrestError | null }>[] = [];
 
   if ((trades ?? []).length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = (trades ?? []).map((t: any) => ({
+    const rows = (trades ?? []).map((t: TradeRow) => ({
       ...t,
       ticker: reEnc(t.ticker, oldDek, newDek),
       shares: reEnc(t.shares, oldDek, newDek),
@@ -68,8 +90,7 @@ export async function migrateUserVault(
   }
 
   if ((expenses ?? []).length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = (expenses ?? []).map((r: any) => ({
+    const rows = (expenses ?? []).map((r: ExpenseRow) => ({
       ...r,
       item: reEnc(r.item, oldDek, newDek),
       info: reEnc(r.info, oldDek, newDek),
@@ -79,8 +100,7 @@ export async function migrateUserVault(
   }
 
   if ((splits ?? []).length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = (splits ?? []).map((s: any) => ({
+    const rows = (splits ?? []).map((s: SplitRow) => ({
       ...s,
       amount: reEnc(s.amount, oldDek, newDek),
     }));
@@ -88,8 +108,7 @@ export async function migrateUserVault(
   }
 
   if ((salaryRecords ?? []).length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = (salaryRecords ?? []).map((r: any) => ({
+    const rows = (salaryRecords ?? []).map((r: SalaryRow) => ({
       ...r,
       salary: reEnc(r.salary, oldDek, newDek),
       bonus: reEnc(r.bonus, oldDek, newDek),
@@ -98,8 +117,7 @@ export async function migrateUserVault(
   }
 
   if ((taxReliefs ?? []).length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = (taxReliefs ?? []).map((r: any) => ({
+    const rows = (taxReliefs ?? []).map((r: TaxReliefRow) => ({
       ...r,
       amount: reEnc(r.amount, oldDek, newDek),
     }));
@@ -107,8 +125,7 @@ export async function migrateUserVault(
   }
 
   if ((entries ?? []).length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = (entries ?? []).map((e: any) => ({
+    const rows = (entries ?? []).map((e: AssetEntryRow) => ({
       ...e,
       account: reEnc(e.account, oldDek, newDek),
       amount: reEnc(e.amount, oldDek, newDek),
