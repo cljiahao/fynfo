@@ -109,6 +109,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
           }
 
           const message = 'Migration failed. Please try again.';
+          resetField('pin');
           setError('pin', { message });
           toast.error(message);
           return;
@@ -122,10 +123,12 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
         }
 
         const message = 'Failed to unlock vault. Please try again.';
+        resetField('pin');
         setError('pin', { message });
         toast.error(message);
       } catch {
         const message = 'Failed to reach server. Please try again.';
+        resetField('pin');
         setError('pin', { message });
         toast.error(message);
       }

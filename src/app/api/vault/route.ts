@@ -46,7 +46,7 @@ function safeEqual(a: string, b: string): boolean {
 
 async function verifyCanary(ciphertext: string, dek: Buffer): Promise<void> {
   try {
-    const decrypted = await decryptPayload(ciphertext, dek);
+    const decrypted = decryptPayload(ciphertext, dek);
     if (!safeEqual(decrypted, VAULT_CANARY)) {
       throw new AppError('VAULT_REJECTED', 'Incorrect PIN');
     }
@@ -86,6 +86,37 @@ async function recordUnlockAttempt(
 }
 
 const TOO_MANY = { error: 'Too many attempts. Try again later.' };
+
+export const DELETE = withLogging('api.vault.reset', async () => {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      throw new AppError('UNAUTHORIZED', 'Unauthorized');
+    }
+
+    const { error } = await supabase
+      .from('users_profile')
+      .update({ vault_check_v2: null, vault_version: 1 })
+      .eq('id', user.id);
+
+    if (error) {
+      logger.error({ code: error.code }, 'failed to reset vault');
+      throw new AppError('INTERNAL', 'Failed to reset vault');
+    }
+
+    const cookieStore = await cookies();
+    cookieStore.delete(VAULT_DEK_COOKIE);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return handleApiError('api.vault.reset', error);
+  }
+});
 
 export const POST = withLogging('api.vault.unlock', async (req: Request) => {
   try {
@@ -155,7 +186,7 @@ export const POST = withLogging('api.vault.unlock', async (req: Request) => {
     }
 
     // First unlock: write v2 canary, mark version 2.
-    const encryptedCanary = await encryptPayload(VAULT_CANARY, dek);
+    const encryptedCanary = encryptPayload(VAULT_CANARY, dek);
     const { error: upsertError } = await supabase.from('users_profile').upsert({
       id: user.id,
       email: user.email ?? '',
