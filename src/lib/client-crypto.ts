@@ -1,10 +1,7 @@
 import { KEY_LEN_BYTES, V2_ITERATIONS } from '@/lib/crypto-constants';
 
-// v1: static salt — used by all existing accounts prior to per-user salt migration
+// v1: static salt — used by accounts before per-user salt migration
 const PBKDF2_SALT_V1 = 'fynfo_v1_salt';
-
-// v2: per-user salt — prevents cross-user rainbow table attacks
-const PBKDF2_SALT_V2_PREFIX = 'fynfo_v2_';
 
 async function pbkdf2(pin: string, salt: string): Promise<string> {
   const keyMaterial = await crypto.subtle.importKey(
@@ -40,7 +37,7 @@ async function pbkdf2(pin: string, salt: string): Promise<string> {
  * 6th digit is typed (before submit) to hide PBKDF2 latency.
  */
 export function deriveKeyClient(pin: string, userId: string): Promise<string> {
-  return pbkdf2(pin, PBKDF2_SALT_V2_PREFIX + userId);
+  return pbkdf2(pin, userId);
 }
 
 /**
