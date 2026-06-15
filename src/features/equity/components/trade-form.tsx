@@ -226,24 +226,34 @@ export function TradeFormDialog({
                 <Controller
                   name="broker"
                   control={form.control}
-                  render={({ field }) => (
-                    <Select
-                      value={field.value || ''}
-                      disabled={isPO}
-                      onValueChange={handleBrokerChange}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select broker" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {BROKERS.map((b) => (
-                          <SelectItem key={b} value={b}>
-                            {b}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                  render={({ field }) => {
+                    // Show the saved broker even if it isn't one of the canonical
+                    // BROKERS (the trade schema allows any string), so edit never
+                    // renders blank and the value round-trips.
+                    const options =
+                      field.value &&
+                      !(BROKERS as readonly string[]).includes(field.value)
+                        ? [field.value, ...BROKERS]
+                        : [...BROKERS];
+                    return (
+                      <Select
+                        value={field.value || ''}
+                        disabled={isPO}
+                        onValueChange={handleBrokerChange}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select broker" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {options.map((b) => (
+                            <SelectItem key={b} value={b}>
+                              {b}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    );
+                  }}
                 />
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1.5">
