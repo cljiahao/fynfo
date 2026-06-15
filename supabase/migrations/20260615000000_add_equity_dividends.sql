@@ -20,3 +20,8 @@ CREATE INDEX idx_equity_dividends_user ON equity_dividends(user_id);
 
 ALTER TABLE "public"."equity_dividends" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users manage own equity dividends" ON "public"."equity_dividends" FOR ALL USING (auth.uid() = user_id);
+
+-- API role privileges. GRANT is checked BEFORE RLS, so without this the
+-- `authenticated` role hits "42501 permission denied for table" on every read
+-- and write — RLS never even runs. RLS still gates which rows are visible.
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."equity_dividends" TO authenticated;
