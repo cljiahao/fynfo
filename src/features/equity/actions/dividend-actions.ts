@@ -47,6 +47,28 @@ export async function createDividend(
   throwIfSupabaseError(error, 'dividend write');
 }
 
+export async function createDividends(
+  rows: Omit<DividendData, 'id'>[]
+): Promise<void> {
+  if (rows.length === 0) return;
+  const parsed = rows.map((r) =>
+    parseOrThrow(dividendInputSchema, r, 'dividend.input')
+  );
+  const { userId, dek, supabase } = await requireActionContext();
+
+  const inserts = parsed.map((r) => ({
+    id: randomUUID(),
+    user_id: userId,
+    ticker: encryptPayload(r.ticker, dek),
+    amount: encryptPayload(r.amount.toString(), dek),
+    currency: r.currency,
+    date: r.date.slice(0, 10),
+  }));
+
+  const { error } = await supabase.from('equity_dividends').insert(inserts);
+  throwIfSupabaseError(error, 'dividend write');
+}
+
 export async function updateDividend(
   id: string,
   data: Omit<DividendData, 'id'>

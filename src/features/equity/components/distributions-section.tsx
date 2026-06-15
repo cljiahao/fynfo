@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { formatSGD } from '@/lib/utils/currency';
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useDividends } from '../hooks/use-dividends';
 import { useExchangeRate } from '../hooks/use-prices';
@@ -17,6 +17,7 @@ import { totalSGD } from '../lib/dividend-metrics';
 import type { DividendData, EquityTradeData } from '../types';
 import { DividendFormDialog } from './dividend-form';
 import { DividendIncomeChart } from './dividend-income-chart';
+import { DividendScanDialog } from './dividend-scan-dialog';
 import { DividendTable } from './dividend-table';
 import { YieldOnCostTable } from './yield-on-cost-table';
 
@@ -31,6 +32,7 @@ export function DistributionsSection({ trades }: DistributionsSectionProps) {
   const rows = useMemo(() => dividends ?? [], [dividends]);
 
   const [formOpen, setFormOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [editDividend, setEditDividend] = useState<DividendData | undefined>();
 
   const total = totalSGD(rows, usdSgdRate);
@@ -57,10 +59,21 @@ export function DistributionsSection({ trades }: DistributionsSectionProps) {
               {rows.length > 0 ? ` — ${formatSGD(total)} total` : ''}
             </CardDescription>
           </div>
-          <Button size="sm" onClick={handleAdd}>
-            <Plus className="size-4" />
-            Add
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setScanOpen(true)}
+              disabled={trades.length === 0}
+            >
+              <Sparkles className="size-4" />
+              Scan
+            </Button>
+            <Button size="sm" onClick={handleAdd}>
+              <Plus className="size-4" />
+              Add
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -86,6 +99,13 @@ export function DistributionsSection({ trades }: DistributionsSectionProps) {
         onOpenChange={setFormOpen}
         trades={trades}
         editDividend={editDividend}
+      />
+
+      <DividendScanDialog
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        trades={trades}
+        existing={rows}
       />
     </Card>
   );

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createDividend,
+  createDividends,
   deleteDividend,
   getDividends,
   updateDividend,
@@ -22,6 +23,16 @@ export function useCreateDividend() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: Omit<DividendData, 'id'>) => createDividend(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: DIVIDENDS_KEY });
+    },
+  });
+}
+
+export function useCreateDividends() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (rows: Omit<DividendData, 'id'>[]) => createDividends(rows),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DIVIDENDS_KEY });
     },

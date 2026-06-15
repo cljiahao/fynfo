@@ -126,6 +126,13 @@ export default defineConfig({
           functions: 100,
           branches: 85,
         },
+        // Spec 042 — dividend scan candidate builder.
+        'src/features/equity/lib/dividend-scan.ts': {
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 70,
+        },
       },
     },
   },

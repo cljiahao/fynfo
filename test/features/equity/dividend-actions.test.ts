@@ -102,6 +102,51 @@ describe('dividend-actions — createDividend', () => {
   });
 });
 
+describe('dividend-actions — createDividends (bulk)', () => {
+  it('encrypts and inserts every row in one call', async () => {
+    const fake = setSupabase();
+    const { createDividends } =
+      await import('@/features/equity/actions/dividend-actions');
+    await createDividends([
+      VALID,
+      { ticker: 'fct', amount: 50, currency: 'SGD', date: '2026-06-01' },
+    ]);
+
+    expect(fake.calls.insert).toHaveLength(1); // single array insert
+    const rows = fake.calls.insert[0] as Array<Record<string, string>>;
+    expect(rows).toHaveLength(2);
+    expect(await decryptPayload(rows[0].ticker, DEK)).toBe('MLT');
+    expect(await decryptPayload(rows[1].amount, DEK)).toBe('50');
+  });
+
+  it('is a no-op (no DB call) for an empty list', async () => {
+    const fake = setSupabase();
+    const { createDividends } =
+      await import('@/features/equity/actions/dividend-actions');
+    await createDividends([]);
+    expect(fake.calls.from).toHaveLength(0);
+  });
+
+  it('rejects if any row is invalid, before any DB write', async () => {
+    const fake = setSupabase();
+    const { createDividends } =
+      await import('@/features/equity/actions/dividend-actions');
+    await expect(
+      createDividends([VALID, { ...VALID, amount: -1 }])
+    ).rejects.toThrow();
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+
+  it('surfaces an opaque error on an insert failure', async () => {
+    setSupabase({ insertError: { message: 'value too long' } });
+    const { createDividends } =
+      await import('@/features/equity/actions/dividend-actions');
+    await expect(createDividends([VALID])).rejects.toThrow(
+      'dividend write failed'
+    );
+  });
+});
+
 describe('dividend-actions — updateDividend', () => {
   it('encrypts fields on update', async () => {
     const fake = setSupabase();
