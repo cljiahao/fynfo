@@ -70,6 +70,36 @@ describe('snapshot-actions — getSnapshots', () => {
   });
 });
 
+describe('snapshot-actions — getSnapshot', () => {
+  it('decrypts a single month by id', async () => {
+    setSupabase({
+      selectData: {
+        month: '2026-03',
+        entries: [
+          {
+            category: 'savings',
+            account: await encryptPayload('OCBC', DEK),
+            amount: await encryptPayload('8000', DEK),
+          },
+        ],
+      },
+    });
+    const { getSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    expect(await getSnapshot('2026-03')).toEqual({
+      id: '2026-03',
+      entries: [{ category: 'savings', account: 'OCBC', amount: 8000 }],
+    });
+  });
+
+  it('returns null on a read error or missing row', async () => {
+    setSupabase({ selectError: { message: 'permission denied' } });
+    const { getSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    expect(await getSnapshot('2026-03')).toBeNull();
+  });
+});
+
 const VALID_SNAPSHOT = {
   id: '2026-03',
   entries: [{ category: 'savings' as const, account: 'DBS', amount: 5000 }],

@@ -28,13 +28,14 @@ export default defineConfig({
       // the jsdom/RTL decision); ratchet up as coverage grows. The security
       // core + the server-action layer are gated per-file to keep the
       // zero-knowledge + encrypt-on-write contracts locked down.
-      // Re-baselined after spec 035 (action-layer tests): all-files lines
-      // ~36 / stmts ~35 / funcs ~24 / branches ~25.
+      // Re-baselined after spec 037 (full action-layer coverage): all-files
+      // lines ~37 / stmts ~36 / funcs ~25 / branches ~25. Every server-action
+      // file is now per-file gated.
       thresholds: {
-        lines: 30,
-        statements: 30,
-        functions: 20,
-        branches: 20,
+        lines: 33,
+        statements: 33,
+        functions: 22,
+        branches: 22,
         'src/lib/crypto.ts': {
           lines: 100,
           statements: 100,
@@ -68,22 +69,35 @@ export default defineConfig({
           branches: 75,
         },
         'src/features/equity/actions/equity-actions.ts': {
-          lines: 70,
-          statements: 70,
-          functions: 75,
+          lines: 95,
+          statements: 95,
+          functions: 100,
           branches: 45,
         },
         'src/features/assets/actions/snapshot-actions.ts': {
-          lines: 72,
-          statements: 72,
-          functions: 72,
-          branches: 30,
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 60,
         },
         'src/features/salary/actions/relief-actions.ts': {
           lines: 90,
           statements: 90,
           functions: 100,
           branches: 60,
+        },
+        // Spec 037 — remainder of the action layer.
+        'src/features/assets/actions/planner-actions.ts': {
+          lines: 90,
+          statements: 90,
+          functions: 100,
+          branches: 70,
+        },
+        'src/features/expenses/actions/expense-actions.ts': {
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 55,
         },
       },
     },

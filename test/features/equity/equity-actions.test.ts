@@ -122,6 +122,40 @@ describe('equity-actions — createTrade', () => {
   });
 });
 
+describe('equity-actions — updateTrade', () => {
+  it('encrypts fields (upper-cased ticker) before the scoped update', async () => {
+    const fake = setSupabase();
+    const { updateTrade } =
+      await import('@/features/equity/actions/equity-actions');
+    await updateTrade('trade-1', VALID_TRADE);
+
+    const row = fake.calls.update[0] as Record<string, string>;
+    expect(await decryptPayload(row.ticker, DEK)).toBe('AAPL');
+    expect(await decryptPayload(row.shares, DEK)).toBe('10');
+    expect(await decryptPayload(row.price, DEK)).toBe('190.5');
+    expect(typeof row.updated_at).toBe('string');
+  });
+
+  it('rejects invalid input before any DB write', async () => {
+    const fake = setSupabase();
+    const { updateTrade } =
+      await import('@/features/equity/actions/equity-actions');
+    await expect(
+      updateTrade('trade-1', { ...VALID_TRADE, price: -1 })
+    ).rejects.toThrow();
+    expect(fake.calls.update).toHaveLength(0);
+  });
+
+  it('surfaces an opaque error on an update failure', async () => {
+    setSupabase({ selectError: { message: 'permission denied' } });
+    const { updateTrade } =
+      await import('@/features/equity/actions/equity-actions');
+    await expect(updateTrade('trade-1', VALID_TRADE)).rejects.toThrow(
+      'equity trade write failed'
+    );
+  });
+});
+
 describe('equity-actions — deleteTrade', () => {
   it('issues a scoped delete on equity_trades', async () => {
     const fake = setSupabase();

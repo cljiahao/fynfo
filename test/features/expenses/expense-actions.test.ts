@@ -121,6 +121,91 @@ describe('expense-actions — upsertExpense', () => {
     await expect(upsertExpense(invalid)).rejects.toThrow();
     expect(fake.calls.from).toHaveLength(0);
   });
+
+  it('skips the splits insert for a self expense', async () => {
+    const fake = setSupabase();
+    const { upsertExpense } =
+      await import('@/features/expenses/actions/expense-actions');
+    await upsertExpense({ ...validExpense, splitType: 'self', splits: [] });
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+
+  it('surfaces an opaque error when the record upsert fails', async () => {
+    setSupabase({ upsertError: { message: 'duplicate key value' } });
+    const { upsertExpense } =
+      await import('@/features/expenses/actions/expense-actions');
+    await expect(upsertExpense(validExpense)).rejects.toThrow(
+      'expense upsert failed'
+    );
+  });
+
+  it('surfaces an opaque error when the splits insert fails', async () => {
+    setSupabase({ insertError: { message: 'value too long' } });
+    const { upsertExpense } =
+      await import('@/features/expenses/actions/expense-actions');
+    await expect(upsertExpense(validExpense)).rejects.toThrow(
+      'expense splits insert failed'
+    );
+  });
+});
+
+describe('expense-actions — deleteExpense', () => {
+  it('issues a scoped delete on expense_records', async () => {
+    const fake = setSupabase();
+    const { deleteExpense } =
+      await import('@/features/expenses/actions/expense-actions');
+    await deleteExpense('exp1');
+    expect(fake.calls.from).toContain('expense_records');
+    expect(fake.calls.delete).toBe(1);
+  });
+
+  it('surfaces an opaque error on a delete failure', async () => {
+    setSupabase({ selectError: { message: 'permission denied' } });
+    const { deleteExpense } =
+      await import('@/features/expenses/actions/expense-actions');
+    await expect(deleteExpense('exp1')).rejects.toThrow(
+      'expense delete failed'
+    );
+  });
+});
+
+describe('expense-actions — settleSplit', () => {
+  it('updates the settled flag for one person on one expense', async () => {
+    const fake = setSupabase();
+    const { settleSplit } =
+      await import('@/features/expenses/actions/expense-actions');
+    await settleSplit('exp1', 'Alice', true);
+    expect(fake.calls.from).toContain('expense_splits');
+    expect(fake.calls.update[0]).toEqual({ settled: true });
+  });
+
+  it('surfaces an opaque error on failure', async () => {
+    setSupabase({ selectError: { message: 'permission denied' } });
+    const { settleSplit } =
+      await import('@/features/expenses/actions/expense-actions');
+    await expect(settleSplit('exp1', 'Alice', true)).rejects.toThrow(
+      'expense settle split failed'
+    );
+  });
+});
+
+describe('expense-actions — settleMonthSplits', () => {
+  it('updates the settled flag across many expenses for one person', async () => {
+    const fake = setSupabase();
+    const { settleMonthSplits } =
+      await import('@/features/expenses/actions/expense-actions');
+    await settleMonthSplits(['exp1', 'exp2'], 'Alice', true);
+    expect(fake.calls.update[0]).toEqual({ settled: true });
+  });
+
+  it('surfaces an opaque error on failure', async () => {
+    setSupabase({ selectError: { message: 'permission denied' } });
+    const { settleMonthSplits } =
+      await import('@/features/expenses/actions/expense-actions');
+    await expect(settleMonthSplits(['exp1'], 'Alice', false)).rejects.toThrow(
+      'expense settle month failed'
+    );
+  });
 });
 
 describe('expense-actions — getDistinctPeople', () => {
@@ -134,5 +219,12 @@ describe('expense-actions — getDistinctPeople', () => {
     const { getDistinctPeople } =
       await import('@/features/expenses/actions/expense-actions');
     expect(await getDistinctPeople()).toEqual(['Alice', 'Bob']);
+  });
+
+  it('surfaces an opaque error on a read failure', async () => {
+    setSupabase({ selectError: { message: 'permission denied' } });
+    const { getDistinctPeople } =
+      await import('@/features/expenses/actions/expense-actions');
+    await expect(getDistinctPeople()).rejects.toThrow('people read failed');
   });
 });
