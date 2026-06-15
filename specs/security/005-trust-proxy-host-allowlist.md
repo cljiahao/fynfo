@@ -2,7 +2,7 @@
 id: 005
 slug: trust-proxy-host-allowlist
 area: security
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: claude (opus 4.8, 2026-06-02)
 created: 2026-06-02
 approved: 2026-06-02 # Clarence pre-approved Phase 1 security (audit roadmap)

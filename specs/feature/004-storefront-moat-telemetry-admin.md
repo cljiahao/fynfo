@@ -2,13 +2,13 @@
 id: 004
 slug: storefront-moat-telemetry-admin
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude (Opus 4.8)
 approved_by: Clarence
 created: 2026-06-11
 approved: 2026-06-11
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # link to impl PR, set on shipped
+shipped: 2026-06-11
+impl_pr: direct merge to main (no PR)
 supersedes:
 depends_on: specs/governance/013-telemetry-write-exception.md # MUST be approved + constitution bumped first
 constitution_satisfies:

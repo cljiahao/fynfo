@@ -2,7 +2,7 @@
 id: 013
 slug: telemetry-write-exception
 area: governance
-status: approved
+status: shipped
 author: Claude (Opus 4.8)
 approved_by: Clarence
 created: 2026-06-11

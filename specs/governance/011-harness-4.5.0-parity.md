@@ -2,11 +2,11 @@
 id: 011
 slug: harness-4.5.0-parity
 area: governance
-status: approved
+status: shipped
 author: Claude (Opus 4.8)
 created: 2026-06-06
 approved: 2026-06-06
-shipped:
+shipped: 2026-06-06
 constitution_satisfies:
   - '§8.2'
   - '§7.1'

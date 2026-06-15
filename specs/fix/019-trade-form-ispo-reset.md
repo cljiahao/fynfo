@@ -2,7 +2,7 @@
 id: 019
 slug: trade-form-ispo-reset
 area: fix
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: claude (opus 4.8, 2026-06-02)
 created: 2026-06-02
 approved: 2026-06-02 # audit Phase 3; Clarence pre-approved roadmap fixes

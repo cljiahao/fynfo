@@ -2,7 +2,7 @@
 id: 020
 slug: rsc-prefetch-dashboard
 area: fix
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: claude (opus 4.8, 2026-06-02)
 created: 2026-06-02
 approved: 2026-06-02 # Track A spike fix #2; Clarence pre-approved roadmap

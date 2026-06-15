@@ -2,7 +2,7 @@
 id: 018
 slug: dashboard-error-boundary-contract
 area: fix
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: claude (opus 4.8, 2026-06-02)
 created: 2026-06-02
 approved: 2026-06-02 # audit HIGH #4; Clarence pre-approved roadmap fixes

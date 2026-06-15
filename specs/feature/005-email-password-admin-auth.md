@@ -2,12 +2,12 @@
 id: 005
 slug: email-password-admin-auth
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude (Opus 4.8)
 approved_by: Clarence
 created: 2026-06-11
 approved: 2026-06-11
-shipped:
+shipped: 2026-06-11
 supersedes: # partially supersedes 004's admin-gate decision (ADMIN_USER_IDS -> ADMIN_EMAILS)
 constitution_satisfies:
   - '§2.5' # 'use client' justified (form interactivity)

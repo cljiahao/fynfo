@@ -2,11 +2,11 @@
 id: 030
 slug: cite-snapshot-form-eslint-disable
 area: fix
-status: approved
+status: shipped
 author: Claude (Opus 4.8)
 created: 2026-06-06
 approved: 2026-06-06
-shipped:
+shipped: 2026-06-06
 impl_pr: direct-to-main (solo project)
 supersedes:
 constitution_satisfies:

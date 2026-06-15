@@ -2,7 +2,7 @@
 id: 006
 slug: self-guarded-actions-skip-proxy-auth
 area: security
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: claude (opus 4.8, 2026-06-02)
 created: 2026-06-02
 approved: 2026-06-02 # Track A spike fix #1; Clarence pre-approved roadmap

@@ -2,11 +2,11 @@
 id: 012
 slug: unlock-spec-authoring
 area: governance
-status: approved
+status: shipped
 author: Claude (Opus 4.8)
 created: 2026-06-06
 approved: 2026-06-06
-shipped:
+shipped: 2026-06-06
 constitution_satisfies:
   - '§8.2'
 constitution_overrides:
