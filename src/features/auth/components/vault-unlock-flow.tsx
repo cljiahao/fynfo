@@ -23,6 +23,10 @@ const UNLOCK_MESSAGES = [
 
 const PROGRESS_DURATION_MS = 1800;
 const MESSAGE_INTERVAL_MS = 600;
+// Cap on how long the overlay waits for the unlocked page's data to settle before
+// revealing the dashboard. Past this, the page's own skeletons take over.
+const DATA_WAIT_TIMEOUT_MS = 6000;
+const LOADING_DATA_MESSAGE = 'Loading your dashboard…';
 
 const pinSchema = z.object({
   pin: z
@@ -47,6 +51,8 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
   // Progress + message state updated only from interval callbacks (not effect body).
   const [progress, setProgress] = useState(0);
   const [msgIndex, setMsgIndex] = useState(0);
+  // Phase 2: DEK cookie set, now holding the overlay until the page's data settles.
+  const [loadingData, setLoadingData] = useState(false);
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -66,8 +72,10 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
     defaultValues: { pin: '' },
   });
 
+  // Phase 1 — key derivation: animate 0→90 while submitting. Once we flip to
+  // loadingData (phase 2), this stops and the bar is pinned manually.
   useEffect(() => {
-    if (!isSubmitting) return;
+    if (!isSubmitting || loadingData) return;
     const start = Date.now();
     const timer = setInterval(() => {
       const elapsed = Date.now() - start;
@@ -80,7 +88,20 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
       );
     }, 50);
     return () => clearInterval(timer);
-  }, [isSubmitting]);
+  }, [isSubmitting, loadingData]);
+
+  // After the DEK cookie is set, hold the overlay until the unlocked page's active
+  // queries settle (capped) so the dashboard reveals populated, not blank.
+  const revealWhenReady = useCallback(async () => {
+    setLoadingData(true);
+    setProgress(95);
+    await Promise.race([
+      queryClient.invalidateQueries(),
+      new Promise((resolve) => setTimeout(resolve, DATA_WAIT_TIMEOUT_MS)),
+    ]);
+    setProgress(100);
+    onUnlocked?.();
+  }, [queryClient, onUnlocked]);
 
   const getUserId = useCallback(async (): Promise<string> => {
     if (userIdRef.current) return userIdRef.current;
@@ -106,8 +127,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
         });
 
         if (res.ok) {
-          onUnlocked?.();
-          queryClient.invalidateQueries();
+          await revealWhenReady();
           return;
         }
 
@@ -120,8 +140,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
           });
 
           if (migrateRes.ok) {
-            onUnlocked?.();
-            queryClient.invalidateQueries();
+            await revealWhenReady();
             return;
           }
 
@@ -157,7 +176,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
         toast.error(message);
       }
     },
-    [queryClient, onUnlocked, resetField, setError, getUserId]
+    [getUserId, revealWhenReady, resetField, setError]
   );
 
   return (
@@ -183,7 +202,9 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
         <h2 className="mb-2 text-2xl font-bold text-white">Vault Locked</h2>
         <p className="mb-8 min-h-[3rem] text-center text-zinc-400">
           {isSubmitting ? (
-            <span className="animate-pulse">{UNLOCK_MESSAGES[msgIndex]}</span>
+            <span className="animate-pulse">
+              {loadingData ? LOADING_DATA_MESSAGE : UNLOCK_MESSAGES[msgIndex]}
+            </span>
           ) : (
             'Enter your secure 6-digit PIN to derive your encryption keys and unlock your financial dashboard.'
           )}
