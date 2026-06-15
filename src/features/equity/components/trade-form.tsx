@@ -116,7 +116,7 @@ export function TradeFormDialog({
     form.setValue('broker', v);
     const tickerVal = form.getValues('ticker');
     const mkt = tickerVal ? getMarket(tickerVal.toUpperCase()) : null;
-    if (mkt === 'SG' && v === 'DBS Vickers') {
+    if (mkt === 'SG' && (v === 'DBS Vickers' || v === 'FSMOne')) {
       form.setValue('isCdp', true);
     }
     autoFillFees();

@@ -1,7 +1,11 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { ConfirmDeleteDialog, EmptyState } from '@/components/widgets';
+import {
+  ConfirmDeleteDialog,
+  EmptyState,
+  PaginationControls,
+} from '@/components/widgets';
 import { formatCurrency } from '@/lib/utils/currency';
 import { format } from 'date-fns';
 import { Coins, Pencil, Trash2 } from 'lucide-react';
@@ -56,6 +60,10 @@ function RowActions({
 }
 
 export function DividendTable({ dividends, onEdit }: DividendTableProps) {
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const paged = dividends.slice(page * pageSize, (page + 1) * pageSize);
+
   if (!dividends.length) {
     return (
       <EmptyState
@@ -68,29 +76,41 @@ export function DividendTable({ dividends, onEdit }: DividendTableProps) {
   }
 
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="border-b">
-          <th className="py-2 text-left font-medium">Date</th>
-          <th className="py-2 text-left font-medium">Ticker</th>
-          <th className="py-2 text-right font-medium">Amount</th>
-          <th className="py-2 text-right font-medium">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {dividends.map((d) => (
-          <tr key={d.id} className="border-b last:border-0">
-            <td className="py-2">{format(new Date(d.date), 'dd MMM yyyy')}</td>
-            <td className="py-2 font-medium">{d.ticker}</td>
-            <td className="py-2 text-right tabular-nums">
-              {formatCurrency(d.amount, d.currency)}
-            </td>
-            <td className="py-2">
-              <RowActions dividend={d} onEdit={onEdit} />
-            </td>
+    <>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b">
+            <th className="py-2 text-left font-medium">Date</th>
+            <th className="py-2 text-left font-medium">Ticker</th>
+            <th className="py-2 text-right font-medium">Amount</th>
+            <th className="py-2 text-right font-medium">Actions</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {paged.map((d) => (
+            <tr key={d.id} className="border-b last:border-0">
+              <td className="py-2">
+                {format(new Date(d.date), 'dd MMM yyyy')}
+              </td>
+              <td className="py-2 font-medium">{d.ticker}</td>
+              <td className="py-2 text-right tabular-nums">
+                {formatCurrency(d.amount, d.currency)}
+              </td>
+              <td className="py-2">
+                <RowActions dividend={d} onEdit={onEdit} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <PaginationControls
+        page={page}
+        pageSize={pageSize}
+        total={dividends.length}
+        itemLabel="distribution"
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
+    </>
   );
 }

@@ -95,7 +95,7 @@ function moomooUsBuySell(_tradeValue: number): FeeResult {
 
 // --- Public API ---
 
-export const BROKERS = ['DBS Vickers', 'Moomoo'] as const;
+export const BROKERS = ['DBS Vickers', 'Moomoo', 'FSMOne'] as const;
 export type Broker = (typeof BROKERS)[number];
 
 export function calculateFees(
@@ -160,7 +160,9 @@ export function resolveTradeFees(input: TradeFeeInput): FeeResult | null {
     isPO = false,
   } = input;
   if (!ticker || !action || tradeValue <= 0) return null;
-  if (!isPO && (!broker || !BROKERS.includes(broker as Broker))) return null;
+  // Only DBS Vickers / Moomoo have auto-fee formulas. Other listed brokers
+  // (e.g. FSMone, tiered/complex) are selectable but priced manually → null.
+  if (!isPO && broker !== 'DBS Vickers' && broker !== 'Moomoo') return null;
   return calculateFees(
     broker as Broker,
     ticker,

@@ -218,4 +218,9 @@ describe('resolveTradeFees — input gating', () => {
     // PO on SG needs no broker
     expect(resolveTradeFees({ ...ok, broker: '', isPO: true })).not.toBeNull();
   });
+
+  it('does not auto-quote FSMOne (manual fee), but keeps DBS Vickers/Moomoo', () => {
+    expect(resolveTradeFees({ ...ok, broker: 'FSMOne' })).toBeNull();
+    expect(resolveTradeFees({ ...ok, broker: 'Moomoo' })).not.toBeNull();
+  });
 });
