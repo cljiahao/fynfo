@@ -65,4 +65,36 @@ describe('buildReliefItems', () => {
     expect(items).toHaveLength(1);
     expect(items[0].amount).toBe(500);
   });
+
+  it('decorates the label with the count for a count-based relief', () => {
+    if (!countDef) return; // catalog has no count-based relief
+    const state = buildInitialState(null);
+    state.set(countDef.key, {
+      enabled: true,
+      amount: countDef.defaultAmount * 2,
+      count: 2,
+      variant: '',
+    });
+    const item = buildReliefItems(state).find((i) =>
+      i.label.startsWith(countDef.label)
+    );
+    expect(item?.label).toBe(`${countDef.label} (×2)`);
+  });
+
+  it('decorates the label with the variant for a variant-based relief', () => {
+    if (!variantDef?.variants) return;
+    const v = variantDef.variants[0];
+    const state = buildInitialState(null);
+    state.set(variantDef.key, {
+      enabled: true,
+      amount: v.amount,
+      count: 1,
+      variant: v.value,
+    });
+    const item = buildReliefItems(state).find((i) =>
+      i.label.startsWith(variantDef.label)
+    );
+    // label is `${def.label} — ${matched.label}` (em-dash separator)
+    expect(item?.label).toBe(`${variantDef.label} — ${v.label}`);
+  });
 });

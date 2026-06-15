@@ -86,6 +86,14 @@ export default defineConfig({
           functions: 100,
           branches: 60,
         },
+        // Pure SG tax-relief logic (spec 038). Lines/funcs fully covered;
+        // branch floor sits just under the residual label-fallback edges.
+        'src/features/salary/lib/tax-reliefs.ts': {
+          lines: 100,
+          statements: 100,
+          functions: 100,
+          branches: 85,
+        },
         // Spec 037 — remainder of the action layer.
         'src/features/assets/actions/planner-actions.ts': {
           lines: 90,
