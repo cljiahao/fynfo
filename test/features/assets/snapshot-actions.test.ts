@@ -1,4 +1,4 @@
-import { encryptPayload } from '@/lib/crypto';
+import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   makeFakeSupabase,
@@ -67,5 +67,93 @@ describe('snapshot-actions — getSnapshots', () => {
     const { getSnapshots } =
       await import('@/features/assets/actions/snapshot-actions');
     await expect(getSnapshots()).rejects.toThrow('snapshots read failed');
+  });
+});
+
+const VALID_SNAPSHOT = {
+  id: '2026-03',
+  entries: [{ category: 'savings' as const, account: 'DBS', amount: 5000 }],
+};
+
+describe('snapshot-actions — upsertSnapshot', () => {
+  it('upserts the month then encrypts entry account/amount before insert', async () => {
+    const fake = setSupabase({ upsertData: { id: 'snap-1' } });
+    const { upsertSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    await upsertSnapshot(VALID_SNAPSHOT);
+
+    expect(fake.calls.from).toContain('monthly_snapshots');
+    const month = fake.calls.upsert[0] as Record<string, unknown>;
+    expect(month.month).toBe('2026-03');
+    expect(month.user_id).toBe(USER_ID);
+
+    const entries = fake.calls.insert[0] as Array<Record<string, string>>;
+    expect(entries).toHaveLength(1);
+    expect(entries[0].snapshot_id).toBe('snap-1');
+    expect(entries[0].category).toBe('savings');
+    expect(await decryptPayload(entries[0].account, DEK)).toBe('DBS');
+    expect(await decryptPayload(entries[0].amount, DEK)).toBe('5000');
+  });
+
+  it('skips the entry insert when no entry has a positive amount', async () => {
+    const fake = setSupabase({ upsertData: { id: 'snap-1' } });
+    const { upsertSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    await upsertSnapshot({
+      id: '2026-03',
+      entries: [{ category: 'savings', account: 'DBS', amount: 0 }],
+    });
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+
+  it('rejects an invalid month before any DB call', async () => {
+    const fake = setSupabase({ upsertData: { id: 'snap-1' } });
+    const { upsertSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    await expect(
+      upsertSnapshot({ ...VALID_SNAPSHOT, id: 'not-a-month' })
+    ).rejects.toThrow();
+    expect(fake.calls.upsert).toHaveLength(0);
+  });
+
+  it('surfaces an opaque error when the snapshot upsert fails', async () => {
+    setSupabase({ upsertError: { message: 'deadlock detected' } });
+    const { upsertSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    await expect(upsertSnapshot(VALID_SNAPSHOT)).rejects.toThrow(
+      'snapshot upsert failed'
+    );
+  });
+
+  it('surfaces an opaque error when the entry insert fails', async () => {
+    setSupabase({
+      upsertData: { id: 'snap-1' },
+      insertError: { message: 'value too long for type' },
+    });
+    const { upsertSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    await expect(upsertSnapshot(VALID_SNAPSHOT)).rejects.toThrow(
+      'asset_entries insert failed'
+    );
+  });
+});
+
+describe('snapshot-actions — deleteSnapshot', () => {
+  it('issues a scoped delete on monthly_snapshots', async () => {
+    const fake = setSupabase();
+    const { deleteSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    await deleteSnapshot('2026-03');
+    expect(fake.calls.from).toContain('monthly_snapshots');
+    expect(fake.calls.delete).toBe(1);
+  });
+
+  it('surfaces an opaque error on a delete failure', async () => {
+    setSupabase({ selectError: { message: 'permission denied' } });
+    const { deleteSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    await expect(deleteSnapshot('2026-03')).rejects.toThrow(
+      'snapshot write failed'
+    );
   });
 });
