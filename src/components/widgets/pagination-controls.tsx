@@ -64,6 +64,7 @@ export function PaginationControls({
           <input
             key={page}
             type="number"
+            aria-label="Page number"
             defaultValue={page + 1}
             min={1}
             max={totalPages}
@@ -89,6 +90,7 @@ export function PaginationControls({
           variant="outline"
           size="icon"
           className="size-8"
+          aria-label="Previous page"
           onClick={() => onPageChange(page - 1)}
           disabled={page === 0}
         >
@@ -98,6 +100,7 @@ export function PaginationControls({
           variant="outline"
           size="icon"
           className="size-8"
+          aria-label="Next page"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages - 1}
         >

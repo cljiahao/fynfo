@@ -174,6 +174,11 @@ export function OwedSummary({ expenses }: OwedSummaryProps) {
                           handleSettle(m.expenseIds, group.person, !m.settled)
                         }
                         disabled={settle.isPending}
+                        aria-label={
+                          m.settled
+                            ? 'Mark month unsettled'
+                            : 'Mark month settled'
+                        }
                       >
                         <Check className="size-3" />
                       </Button>

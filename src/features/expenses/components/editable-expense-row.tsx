@@ -262,6 +262,7 @@ export function EditableRow({
                 className="size-8"
                 onClick={onCancel}
                 title="Cancel"
+                aria-label="Cancel edit"
               >
                 <X className="size-3.5" />
               </Button>
@@ -279,6 +280,7 @@ export function EditableRow({
                 }}
                 onClick={() => onDelete(data.id)}
                 title="Delete"
+                aria-label="Delete expense"
               >
                 <Trash2 className="size-3.5" />
               </Button>

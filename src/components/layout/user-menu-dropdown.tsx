@@ -28,7 +28,10 @@ export function UserMenuDropdown({
 }: UserMenuDropdownProps) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="focus-visible:ring-ring flex items-center gap-2 rounded-full outline-none focus-visible:ring-2">
+      <DropdownMenuTrigger
+        aria-label="Account menu"
+        className="focus-visible:ring-ring flex items-center gap-2 rounded-full outline-none focus-visible:ring-2"
+      >
         <Avatar className="transition-opacity hover:opacity-75">
           <AvatarImage
             src={image}

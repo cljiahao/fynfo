@@ -81,6 +81,7 @@ export function DashboardNavbar({ userMenu }: { userMenu?: React.ReactNode }) {
                 variant="outline"
                 size="icon"
                 className="size-9 border-0 shadow-none"
+                aria-label="Open navigation menu"
               >
                 <Menu className="size-5" />
               </Button>
