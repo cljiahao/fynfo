@@ -53,8 +53,34 @@ describe('equity-actions — getTrades', () => {
         shares: 10,
         price: 190.5,
         fees: 1.2,
+        isCdp: false,
+        isPO: false,
       },
     ]);
+  });
+
+  it('maps the saved is_cdp / is_po flags', async () => {
+    setSupabase({
+      selectData: [
+        {
+          id: 'trade-1',
+          date: '2026-03-01',
+          broker: 'DBS Vickers',
+          ticker: await encryptPayload('MLT', DEK),
+          action: 'buy',
+          shares: await encryptPayload('1000', DEK),
+          price: await encryptPayload('1.84', DEK),
+          fees: await encryptPayload('0', DEK),
+          is_cdp: true,
+          is_po: true,
+        },
+      ],
+    });
+    const { getTrades } =
+      await import('@/features/equity/actions/equity-actions');
+    const [trade] = await getTrades();
+    expect(trade.isCdp).toBe(true);
+    expect(trade.isPO).toBe(true);
   });
 
   it('returns an empty array when the user has no trades', async () => {
@@ -102,6 +128,18 @@ describe('equity-actions — createTrade', () => {
     expect(await decryptPayload(row.shares, DEK)).toBe('10');
     expect(await decryptPayload(row.price, DEK)).toBe('190.5');
     expect(await decryptPayload(row.fees, DEK)).toBe('1.2');
+    expect(row.is_cdp).toBe(false); // defaults when not provided
+    expect(row.is_po).toBe(false);
+  });
+
+  it('persists is_cdp / is_po when provided', async () => {
+    const fake = setSupabase();
+    const { createTrade } =
+      await import('@/features/equity/actions/equity-actions');
+    await createTrade({ ...VALID_TRADE, isCdp: true, isPO: true });
+    const row = fake.calls.insert[0] as Record<string, unknown>;
+    expect(row.is_cdp).toBe(true);
+    expect(row.is_po).toBe(true);
   });
 
   it('rejects invalid input before any DB write', async () => {

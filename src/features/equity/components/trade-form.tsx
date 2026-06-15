@@ -131,6 +131,8 @@ export function TradeFormDialog({
       shares: Number(values.shares) || 0,
       price: Number(values.price) || 0,
       fees: Number(values.fees) || 0,
+      isCdp: values.isCdp,
+      isPO: values.isPO,
     };
 
     if (

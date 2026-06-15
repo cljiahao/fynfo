@@ -20,6 +20,8 @@ export const equityTradeInputSchema = z.object({
   shares: z.number().positive().finite(),
   price: z.number().positive().finite(),
   fees: z.number().min(0).finite(),
+  isCdp: z.boolean().optional(),
+  isPO: z.boolean().optional(),
 });
 
 export const dividendInputSchema = z.object({

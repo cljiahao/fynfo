@@ -9,6 +9,8 @@ export interface EquityTradeData {
   shares: number;
   price: number;
   fees: number;
+  isCdp?: boolean;
+  isPO?: boolean;
 }
 
 export type DividendCurrency = 'SGD' | 'USD';

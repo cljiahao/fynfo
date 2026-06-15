@@ -30,6 +30,8 @@ export async function getTrades(): Promise<EquityTradeData[]> {
       shares: await decryptNumber(t.shares, dek),
       price: await decryptNumber(t.price, dek),
       fees: await decryptOptionalNumber(t.fees, dek),
+      isCdp: t.is_cdp ?? false,
+      isPO: t.is_po ?? false,
     }))
   );
 }
@@ -50,6 +52,8 @@ export async function createTrade(
     shares: await encryptPayload(data.shares.toString(), dek),
     price: await encryptPayload(data.price.toString(), dek),
     fees: await encryptPayload(data.fees.toString(), dek),
+    is_cdp: data.isCdp ?? false,
+    is_po: data.isPO ?? false,
   });
 
   throwIfSupabaseError(error, 'equity trade write');
@@ -72,6 +76,8 @@ export async function updateTrade(
       shares: await encryptPayload(data.shares.toString(), dek),
       price: await encryptPayload(data.price.toString(), dek),
       fees: await encryptPayload(data.fees.toString(), dek),
+      is_cdp: data.isCdp ?? false,
+      is_po: data.isPO ?? false,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
