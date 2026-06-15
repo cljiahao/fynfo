@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useCreateTrade, useUpdateTrade } from '../hooks/use-equity';
 import { BROKERS, resolveTradeFees } from '../lib/broker-fees';
@@ -223,22 +223,28 @@ export function TradeFormDialog({
             <div className="col-span-2 space-y-2">
               <Label>Broker</Label>
               <div className="flex items-center gap-3">
-                <Select
-                  value={broker}
-                  disabled={isPO}
-                  onValueChange={handleBrokerChange}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Select broker" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BROKERS.map((b) => (
-                      <SelectItem key={b} value={b}>
-                        {b}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="broker"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || ''}
+                      disabled={isPO}
+                      onValueChange={handleBrokerChange}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select broker" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BROKERS.map((b) => (
+                          <SelectItem key={b} value={b}>
+                            {b}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1.5">
                     <Checkbox
