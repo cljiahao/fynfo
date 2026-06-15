@@ -93,3 +93,49 @@ export async function fetchExchangeRate(
     return null;
   }
 }
+
+/**
+ * Historical distributions (per-unit amount + ex-date) for a ticker, from the
+ * Yahoo chart `events=div` feed. Public market data — same trust level and
+ * defensive shape as the quote fetch. Returns [] on any failure.
+ */
+export async function fetchDividends(
+  ticker: string
+): Promise<Array<{ exDate: string; dpu: number }>> {
+  await requireUserId();
+
+  try {
+    const symbol = getYahooSymbol(ticker);
+    const res = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5y&events=div`,
+      {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        next: { revalidate: 86400 },
+      }
+    );
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    const dividends = data?.chart?.result?.[0]?.events?.dividends;
+    if (!dividends || typeof dividends !== 'object') return [];
+
+    return Object.values(dividends as Record<string, unknown>)
+      .map((d) => {
+        const entry = d as { amount?: number; date?: number };
+        if (
+          typeof entry.amount !== 'number' ||
+          typeof entry.date !== 'number'
+        ) {
+          return null;
+        }
+        return {
+          exDate: new Date(entry.date * 1000).toISOString().slice(0, 10),
+          dpu: entry.amount,
+        };
+      })
+      .filter((p): p is { exDate: string; dpu: number } => p !== null)
+      .sort((a, b) => a.exDate.localeCompare(b.exDate));
+  } catch {
+    return [];
+  }
+}

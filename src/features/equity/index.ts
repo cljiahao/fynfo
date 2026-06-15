@@ -1,3 +1,3 @@
 export * from './components';
 export * from './hooks';
-export type { EquityTradeData } from './types';
+export type { DividendData, EquityTradeData } from './types';

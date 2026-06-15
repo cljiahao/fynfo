@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import {
+  DistributionsSection,
   EquityTradeData,
   HoldingsTable,
   PortfolioSummary,
@@ -50,6 +51,8 @@ export default function EquityPage() {
       <HoldingsTable trades={trades ?? []} />
 
       <TradeTable trades={trades ?? []} onEdit={handleEdit} />
+
+      <DistributionsSection trades={trades ?? []} />
 
       <TradeFormDialog
         open={formOpen}

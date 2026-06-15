@@ -21,3 +21,19 @@ export const equityTradeInputSchema = z.object({
   price: z.number().positive().finite(),
   fees: z.number().min(0).finite(),
 });
+
+export const dividendInputSchema = z.object({
+  date: z
+    .string()
+    .regex(ISO_DATE, 'date must be ISO-8601 (YYYY-MM-DD or full timestamp)')
+    .refine(
+      (s) => !Number.isNaN(Date.parse(s)),
+      'date is not a valid calendar date'
+    ),
+  ticker: z
+    .string()
+    .transform((s) => s.trim().toUpperCase())
+    .pipe(z.string().regex(TICKER_RE, 'ticker must be 1-16 chars [A-Z0-9.-:]')),
+  amount: z.number().positive().finite(),
+  currency: z.enum(['SGD', 'USD']),
+});

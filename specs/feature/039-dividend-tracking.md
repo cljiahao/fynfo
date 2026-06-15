@@ -2,12 +2,12 @@
 id: 039
 slug: dividend-tracking
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude (Opus 4.8)
-approved_by:
+approved_by: Clarence
 created: 2026-06-15
-approved: # YYYY-MM-DD, set on approval
-shipped: # YYYY-MM-DD, set on impl merge
+approved: 2026-06-15
+shipped: 2026-06-16
 impl_pr: direct-to-main (solo project)
 supersedes:
 constitution_satisfies:

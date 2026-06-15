@@ -142,3 +142,59 @@ describe('price-actions — fetchExchangeRate', () => {
     expect(await fetchExchangeRate('USD', 'SGD')).toBeNull();
   });
 });
+
+function dividendsResponse(
+  events: Record<string, { amount: number; date: number }>
+) {
+  return {
+    ok: true,
+    json: async () => ({
+      chart: { result: [{ events: { dividends: events } }] },
+    }),
+  } as Response;
+}
+
+describe('price-actions — fetchDividends', () => {
+  it('requires auth and parses ex-date + DPU, sorted ascending', async () => {
+    const t1 = Math.floor(Date.UTC(2026, 1, 15) / 1000);
+    const t2 = Math.floor(Date.UTC(2026, 4, 30) / 1000);
+    fetchMock.mockResolvedValue(
+      dividendsResponse({
+        [t2]: { amount: 0.025, date: t2 },
+        [t1]: { amount: 0.02, date: t1 },
+      })
+    );
+    const { fetchDividends } =
+      await import('@/features/equity/actions/price-actions');
+    const out = await fetchDividends('MLT');
+    expect(requireUserId).toHaveBeenCalledOnce();
+    expect(out).toEqual([
+      { exDate: '2026-02-15', dpu: 0.02 },
+      { exDate: '2026-05-30', dpu: 0.025 },
+    ]);
+  });
+
+  it('returns [] when the response is not ok', async () => {
+    fetchMock.mockResolvedValue({ ok: false } as Response);
+    const { fetchDividends } =
+      await import('@/features/equity/actions/price-actions');
+    expect(await fetchDividends('MLT')).toEqual([]);
+  });
+
+  it('returns [] when there are no dividend events', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ chart: { result: [{ events: {} }] } }),
+    } as Response);
+    const { fetchDividends } =
+      await import('@/features/equity/actions/price-actions');
+    expect(await fetchDividends('MLT')).toEqual([]);
+  });
+
+  it('returns [] when the fetch throws', async () => {
+    fetchMock.mockRejectedValue(new Error('network'));
+    const { fetchDividends } =
+      await import('@/features/equity/actions/price-actions');
+    expect(await fetchDividends('MLT')).toEqual([]);
+  });
+});

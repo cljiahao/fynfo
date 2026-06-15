@@ -10,3 +10,13 @@ export interface EquityTradeData {
   price: number;
   fees: number;
 }
+
+export type DividendCurrency = 'SGD' | 'USD';
+
+export interface DividendData {
+  id?: string;
+  ticker: string;
+  amount: number; // native-currency amount received
+  currency: DividendCurrency;
+  date: string; // ISO date (payment date)
+}

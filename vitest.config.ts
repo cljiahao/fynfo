@@ -107,6 +107,25 @@ export default defineConfig({
           functions: 100,
           branches: 55,
         },
+        // Spec 039 — dividend tracking (actions + pure libs).
+        'src/features/equity/actions/dividend-actions.ts': {
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 45,
+        },
+        'src/features/equity/lib/dividend-suggest.ts': {
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 85,
+        },
+        'src/features/equity/lib/dividend-metrics.ts': {
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 85,
+        },
       },
     },
   },
