@@ -13,81 +13,12 @@ import {
 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useStockPrices } from '../hooks/use-prices';
-import { computeHoldings, type Holding } from '../lib/holdings';
-import { getMarket } from '../lib/ticker-map';
+import { computeHoldings } from '../lib/holdings';
+import { buildCashFlows, computeIRR } from '../lib/mwr';
 import type { EquityTradeData } from '../types';
 
 interface PortfolioSummaryProps {
   trades: EquityTradeData[];
-}
-
-// Cash flow: negative = money out (buy), positive = money in (sell / current value)
-interface CashFlow {
-  date: Date;
-  amount: number;
-}
-
-// Compute annualised MWR (IRR) via Newton's method
-// NPV = Σ CF_i / (1 + r)^(years_i) = 0, solve for r
-function computeIRR(cashFlows: CashFlow[]): number {
-  if (cashFlows.length < 2) return 0;
-
-  const t0 = cashFlows[0].date.getTime();
-  const years = cashFlows.map(
-    (cf) => (cf.date.getTime() - t0) / (365.25 * 24 * 60 * 60 * 1000)
-  );
-
-  let r = 0.1; // initial guess 10%
-  for (let iter = 0; iter < 200; iter++) {
-    let npv = 0;
-    let dnpv = 0;
-    for (let i = 0; i < cashFlows.length; i++) {
-      const disc = Math.pow(1 + r, years[i]);
-      npv += cashFlows[i].amount / disc;
-      dnpv -= (years[i] * cashFlows[i].amount) / (disc * (1 + r));
-    }
-    if (Math.abs(dnpv) < 1e-12) break;
-    const step = npv / dnpv;
-    r -= step;
-    // Clamp to prevent divergence
-    if (r <= -1) r = -0.99;
-    if (Math.abs(step) < 1e-10) break;
-  }
-
-  return r * 100;
-}
-
-function buildCashFlows(
-  trades: EquityTradeData[],
-  holdings: Holding[],
-  prices: Record<string, { price: number }>,
-  marketFilter?: 'SG' | 'US'
-): CashFlow[] {
-  const flows: CashFlow[] = [];
-
-  for (const t of trades) {
-    const market = getMarket(t.ticker.toUpperCase());
-    if (marketFilter && market !== marketFilter) continue;
-
-    const total = t.shares * t.price + t.fees;
-    flows.push({
-      date: new Date(t.date),
-      amount: t.action === 'buy' ? -total : total - t.fees, // sell: proceeds minus fees
-    });
-  }
-
-  // Add current portfolio value as final positive cash flow (today)
-  const now = new Date();
-  for (const h of holdings) {
-    if (marketFilter && h.market !== marketFilter) continue;
-    const p = prices[h.ticker]?.price ?? 0;
-    if (p > 0) {
-      flows.push({ date: now, amount: h.shares * p });
-    }
-  }
-
-  flows.sort((a, b) => a.date.getTime() - b.date.getTime());
-  return flows;
 }
 
 export function PortfolioSummary({ trades }: PortfolioSummaryProps) {

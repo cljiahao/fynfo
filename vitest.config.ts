@@ -133,6 +133,19 @@ export default defineConfig({
           functions: 100,
           branches: 70,
         },
+        // Spec 049 — math extracted out of components into gated libs.
+        'src/features/equity/lib/mwr.ts': {
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 85,
+        },
+        'src/features/expenses/lib/owed.ts': {
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 85,
+        },
       },
     },
   },
