@@ -21,21 +21,6 @@ export function totalSGD(
   );
 }
 
-/** SGD distributions grouped by ticker, descending by total. */
-export function totalsByTicker(
-  dividends: DividendData[],
-  usdSgdRate: number
-): Array<{ ticker: string; total: number }> {
-  const map = new Map<string, number>();
-  for (const d of dividends) {
-    const tk = d.ticker.toUpperCase();
-    map.set(tk, (map.get(tk) ?? 0) + toSGD(d.amount, d.currency, usdSgdRate));
-  }
-  return Array.from(map.entries())
-    .map(([ticker, total]) => ({ ticker, total }))
-    .sort((a, b) => b.total - a.total);
-}
-
 /** SGD distributions grouped by calendar year, ascending by year. */
 export function incomeByYear(
   dividends: DividendData[],

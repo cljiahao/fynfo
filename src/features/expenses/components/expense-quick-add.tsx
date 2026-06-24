@@ -15,7 +15,7 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useUpsertExpense } from '../hooks/use-expenses';
 import { parsePastedRow } from '../lib/paste-parser';
-import { generateId } from '../lib/utils';
+import { buildSelfExpense } from '../lib/utils';
 import type { ExpenseType } from '../types';
 import { ExpenseTypeSelect } from './expense-type-select';
 
@@ -81,16 +81,13 @@ export function ExpenseQuickAdd() {
       const amountNum = parseFloat(nextAmount);
       if (nextDate && amountNum > 0) {
         upsert.mutate(
-          {
-            id: generateId(),
+          buildSelfExpense({
             date: nextDate,
             type: nextType,
             item: nextItem,
             info: nextInfo,
             amount: amountNum,
-            splitType: 'self',
-            splits: [],
-          },
+          }),
           {
             onSuccess: () => toast.success('Expense added from paste'),
             onError: () =>
@@ -121,16 +118,13 @@ export function ExpenseQuickAdd() {
     // a failing row surfaces its own error toast. Clear the form right away.
     valid.forEach((p) =>
       upsert.mutate(
-        {
-          id: generateId(),
+        buildSelfExpense({
           date: p.date!,
           type: p.type ?? type,
           item: p.item ?? '',
           info: p.info ?? '',
           amount: parseFloat(p.amount!),
-          splitType: 'self',
-          splits: [],
-        },
+        }),
         {
           onError: () =>
             toast.error('A pasted expense failed to save — removed from list'),
@@ -157,16 +151,7 @@ export function ExpenseQuickAdd() {
     // `onError` rolls it back, so we clear the form immediately for the next row
     // instead of waiting on the server round-trip.
     upsert.mutate(
-      {
-        id: generateId(),
-        date,
-        type,
-        item,
-        info,
-        amount: amountNum,
-        splitType: 'self',
-        splits: [],
-      },
+      buildSelfExpense({ date, type, item, info, amount: amountNum }),
       {
         onSuccess: () => toast.success('Expense added'),
         onError: () => toast.error('Failed to add expense — removed from list'),

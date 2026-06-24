@@ -2,7 +2,6 @@ import {
   incomeByYear,
   toSGD,
   totalSGD,
-  totalsByTicker,
   ttmDistributionsSGD,
   yieldOnCost,
 } from '@/features/equity/lib/dividend-metrics';
@@ -39,23 +38,6 @@ describe('totalSGD', () => {
       RATE
     );
     expect(out).toBeCloseTo(113.5);
-  });
-});
-
-describe('totalsByTicker', () => {
-  it('groups by ticker and sorts descending by total', () => {
-    const out = totalsByTicker(
-      [
-        div({ ticker: 'MLT', amount: 50 }),
-        div({ ticker: 'FCT', amount: 80 }),
-        div({ ticker: 'mlt', amount: 50 }),
-      ],
-      RATE
-    );
-    expect(out).toEqual([
-      { ticker: 'MLT', total: 100 },
-      { ticker: 'FCT', total: 80 },
-    ]);
   });
 });
 

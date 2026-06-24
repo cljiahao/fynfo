@@ -1,7 +1,22 @@
-import type { ExpenseData, ExpenseSplitData } from '../types';
+import type { ExpenseData, ExpenseSplitData, ExpenseType } from '../types';
 
 export function generateId(): string {
   return `exp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * Build a fresh "self" (non-split) expense payload with a generated id. Single
+ * source of truth for the quick-add / paste submit paths so the shape stays in
+ * lock-step.
+ */
+export function buildSelfExpense(p: {
+  date: string;
+  type: ExpenseType;
+  item: string;
+  info: string;
+  amount: number;
+}): ExpenseData {
+  return { id: generateId(), ...p, splitType: 'self', splits: [] };
 }
 
 /**

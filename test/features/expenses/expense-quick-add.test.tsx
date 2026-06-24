@@ -55,7 +55,12 @@ describe('ExpenseQuickAdd reset-on-submit', () => {
     // Mutation fired exactly once with the typed payload...
     expect(mutate).toHaveBeenCalledTimes(1);
     expect(mutate).toHaveBeenCalledWith(
-      expect.objectContaining({ item: 'Grab', amount: 12 }),
+      expect.objectContaining({
+        item: 'Grab',
+        amount: 12,
+        splitType: 'self',
+        splits: [],
+      }),
       expect.any(Object)
     );
 
