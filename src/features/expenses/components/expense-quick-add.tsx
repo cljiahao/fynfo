@@ -80,8 +80,8 @@ export function ExpenseQuickAdd() {
 
       const amountNum = parseFloat(nextAmount);
       if (nextDate && amountNum > 0) {
-        upsert
-          .mutateAsync({
+        upsert.mutate(
+          {
             id: generateId(),
             date: nextDate,
             type: nextType,
@@ -90,15 +90,14 @@ export function ExpenseQuickAdd() {
             amount: amountNum,
             splitType: 'self',
             splits: [],
-          })
-          .then(() => {
-            toast.success('Expense added from paste');
-            resetForm();
-          })
-          .catch(() => {
-            toast.error('Failed to add expense');
-            setPasted(true);
-          });
+          },
+          {
+            onSuccess: () => toast.success('Expense added from paste'),
+            onError: () =>
+              toast.error('Failed to add expense — removed from list'),
+          }
+        );
+        resetForm();
       } else {
         setPasted(true);
         toast.info('Pasted — fill in the missing fields and press Enter');
@@ -118,9 +117,11 @@ export function ExpenseQuickAdd() {
       return;
     }
 
-    Promise.all(
-      valid.map((p) =>
-        upsert.mutateAsync({
+    // Fire each valid row optimistically (onMutate inserts, onError rolls back);
+    // a failing row surfaces its own error toast. Clear the form right away.
+    valid.forEach((p) =>
+      upsert.mutate(
+        {
           id: generateId(),
           date: p.date!,
           type: p.type ?? type,
@@ -129,31 +130,34 @@ export function ExpenseQuickAdd() {
           amount: parseFloat(p.amount!),
           splitType: 'self',
           splits: [],
-        })
+        },
+        {
+          onError: () =>
+            toast.error('A pasted expense failed to save — removed from list'),
+        }
       )
-    )
-      .then(() => {
-        const msg =
-          skipped > 0
-            ? `${valid.length} expense${valid.length > 1 ? 's' : ''} added, ${skipped} skipped (missing date or amount)`
-            : `${valid.length} expense${valid.length > 1 ? 's' : ''} added`;
-        toast.success(msg);
-        resetForm();
-      })
-      .catch(() => {
-        toast.error('Some expenses failed to save');
-      });
+    );
+
+    const msg =
+      skipped > 0
+        ? `${valid.length} expense${valid.length > 1 ? 's' : ''} added, ${skipped} skipped (missing date or amount)`
+        : `${valid.length} expense${valid.length > 1 ? 's' : ''} added`;
+    toast.success(msg);
+    resetForm();
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     const amountNum = parseFloat(amount);
     if (!date || !amountNum || amountNum <= 0) {
       toast.error('Date and amount are required');
       return;
     }
 
-    try {
-      await upsert.mutateAsync({
+    // Fire-and-forget: the hook's `onMutate` inserts the row optimistically and
+    // `onError` rolls it back, so we clear the form immediately for the next row
+    // instead of waiting on the server round-trip.
+    upsert.mutate(
+      {
         id: generateId(),
         date,
         type,
@@ -162,12 +166,13 @@ export function ExpenseQuickAdd() {
         amount: amountNum,
         splitType: 'self',
         splits: [],
-      });
-      toast.success('Expense added');
-      resetForm();
-    } catch {
-      toast.error('Failed to add expense');
-    }
+      },
+      {
+        onSuccess: () => toast.success('Expense added'),
+        onError: () => toast.error('Failed to add expense — removed from list'),
+      }
+    );
+    resetForm();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
