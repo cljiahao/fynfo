@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useId } from 'react';
 
 const PAGE_SIZES = [10, 25, 50] as const;
 
@@ -29,6 +30,7 @@ export function PaginationControls({
   onPageChange,
   onPageSizeChange,
 }: PaginationControlsProps) {
+  const pageInputId = useId();
   const totalPages = Math.max(Math.ceil(total / pageSize), 1);
   const from = page * pageSize + 1;
   const to = Math.min((page + 1) * pageSize, total);
@@ -60,11 +62,11 @@ export function PaginationControls({
           </SelectContent>
         </Select>
         <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
-          <span>Page</span>
+          <label htmlFor={pageInputId}>Page</label>
           <input
             key={page}
+            id={pageInputId}
             type="number"
-            aria-label="Page number"
             defaultValue={page + 1}
             min={1}
             max={totalPages}
