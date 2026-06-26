@@ -8,6 +8,7 @@ export const PAGE_ROUTES = {
   SALARY: '/dashboard/salary',
   EQUITY: '/dashboard/equity',
   EXPENSES: '/dashboard/expenses',
+  HOUSEHOLD: '/dashboard/household',
   PROFILE: '/dashboard/profile',
 } as const;
 

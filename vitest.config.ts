@@ -165,6 +165,19 @@ export default defineConfig({
           functions: 100,
           branches: 55,
         },
+        // Spec 054 — household MVP goals.
+        'src/features/household/lib/goal-progress.ts': {
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 85,
+        },
+        'src/features/household/actions/goal-actions.ts': {
+          lines: 85,
+          statements: 85,
+          functions: 100,
+          branches: 55,
+        },
       },
     },
   },

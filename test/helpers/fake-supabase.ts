@@ -13,6 +13,9 @@
  */
 export interface FakeSupabaseOptions {
   selectData?: unknown;
+  // Per-table select data (keyed by from() table name); falls back to selectData.
+  // Lets a multi-read action return different rows per table.
+  selectDataByTable?: Record<string, unknown>;
   selectError?: { message: string; code?: string } | null;
   upsertError?: { message: string; code?: string } | null;
   upsertData?: unknown;
@@ -41,10 +44,13 @@ export function makeFakeSupabase(opts: FakeSupabaseOptions = {}) {
     rpc: [],
   };
 
-  const selectResult = {
-    data: opts.selectData ?? null,
-    error: opts.selectError ?? null,
-  };
+  let currentTable = '';
+  function selectResult() {
+    const data = opts.selectDataByTable
+      ? (opts.selectDataByTable[currentTable] ?? opts.selectData ?? null)
+      : (opts.selectData ?? null);
+    return { data, error: opts.selectError ?? null };
+  }
 
   const builder: Record<string, unknown> = {};
   Object.assign(builder, {
@@ -52,7 +58,7 @@ export function makeFakeSupabase(opts: FakeSupabaseOptions = {}) {
     eq: () => builder,
     in: () => builder,
     order: () => builder,
-    single: async () => selectResult,
+    single: async () => selectResult(),
     upsert: (payload: unknown) => {
       calls.upsert.push(payload);
       const res = {
@@ -78,11 +84,12 @@ export function makeFakeSupabase(opts: FakeSupabaseOptions = {}) {
       calls.delete += 1;
       return builder;
     },
-    then: (resolve: (v: unknown) => unknown) => resolve(selectResult),
+    then: (resolve: (v: unknown) => unknown) => resolve(selectResult()),
   });
 
   const client = {
     from: (table: string) => {
+      currentTable = table;
       calls.from.push(table);
       return builder;
     },

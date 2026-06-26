@@ -20,3 +20,24 @@ export interface InviteResult {
 export interface AcceptInviteResult {
   householdId: string;
 }
+
+export interface GoalContribution {
+  id: string;
+  amount: number;
+  note: string | null;
+  date: string;
+  /** True if the current caller logged this contribution ("you" vs "partner"). */
+  isSelf: boolean;
+}
+
+export interface HouseholdGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  targetDate: string | null;
+  createdAt: string;
+  contributions: GoalContribution[];
+  contributed: number;
+  remaining: number;
+  pct: number;
+}
