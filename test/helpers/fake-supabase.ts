@@ -17,6 +17,9 @@ export interface FakeSupabaseOptions {
   upsertError?: { message: string; code?: string } | null;
   upsertData?: unknown;
   insertError?: { message: string; code?: string } | null;
+  // RPC results keyed by function name (e.g. accept_household_invite).
+  rpcData?: Record<string, unknown>;
+  rpcError?: Record<string, { message: string; code?: string }>;
 }
 
 export interface FakeSupabaseCalls {
@@ -25,6 +28,7 @@ export interface FakeSupabaseCalls {
   insert: unknown[];
   update: unknown[];
   delete: number;
+  rpc: Array<{ name: string; args: unknown }>;
 }
 
 export function makeFakeSupabase(opts: FakeSupabaseOptions = {}) {
@@ -34,6 +38,7 @@ export function makeFakeSupabase(opts: FakeSupabaseOptions = {}) {
     insert: [],
     update: [],
     delete: 0,
+    rpc: [],
   };
 
   const selectResult = {
@@ -80,6 +85,16 @@ export function makeFakeSupabase(opts: FakeSupabaseOptions = {}) {
     from: (table: string) => {
       calls.from.push(table);
       return builder;
+    },
+    rpc: (name: string, args?: unknown) => {
+      calls.rpc.push({ name, args });
+      const res = {
+        data: opts.rpcData?.[name] ?? null,
+        error: opts.rpcError?.[name] ?? null,
+      };
+      return {
+        then: (resolve: (v: unknown) => unknown) => resolve(res),
+      };
     },
   };
 

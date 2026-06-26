@@ -146,6 +146,25 @@ export default defineConfig({
           functions: 100,
           branches: 85,
         },
+        // Spec 053 — household core: key-wrapping lib, session keystore, actions.
+        'src/lib/household-key.ts': {
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 85,
+        },
+        'src/lib/household-keystore.ts': {
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 85,
+        },
+        'src/features/household/actions/household-actions.ts': {
+          lines: 85,
+          statements: 85,
+          functions: 100,
+          branches: 55,
+        },
       },
     },
   },

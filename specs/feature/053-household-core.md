@@ -2,13 +2,13 @@
 id: 053
 slug: household-core
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude (Opus 4.8)
 approved_by: Clarence
 created: 2026-06-26
 approved: 2026-06-27
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr:
+shipped: 2026-06-27
+impl_pr: direct merge to main (no PR — owner waived)
 supersedes:
 constitution_satisfies:
   - '§1.1' # the two-account household authorized by gov-052
