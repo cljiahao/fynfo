@@ -1,6 +1,6 @@
 # Fynfo Constitution
 
-**Version:** 2.0
+**Version:** 3.0
 **Effective:** 2026-05-25
 **Owner:** Clarence (cljiahao27@gmail.com)
 **Status:** Living document. Amendments tracked in git history.
@@ -17,6 +17,8 @@ Rules tagged `HARD` are never broken. `SOFT` rules are defaults; overrides requi
 
 Personal wealth management dashboard for a single Singapore user. Tracks savings, investments, equity trades, salary, expenses. Self-hosted on Raspberry Pi via Docker.
 
+Fynfo MAY link **two** accounts into a **household** for household-scoped data only (joint goals, shared planning). Each linked account stays single-user and zero-knowledge for its **personal** vault; the household introduces no third party and no server-readable key. Household data is encrypted under a shared household key the server cannot read (§5.1). Authorized by `specs/governance/052-household-two-person.md`.
+
 ### §1.2 What Fynfo is NOT
 
 - Not a financial advisor. No automated trading, no recommendations.
@@ -24,7 +26,7 @@ Personal wealth management dashboard for a single Singapore user. Tracks savings
 - Not a bank or aggregator. No bank-login sync, no live multi-currency — best-effort, owner-entered snapshots by design.
 - Not a paid multi-tenant SaaS — yet. Billing, plans, and horizontal scale are out of scope until a future `specs/governance/` amendment opts in.
 
-It MAY have a public marketing storefront, anonymous non-PII operational telemetry (§2.2 carve-out), and open account signup (OAuth or email/password). Each account stays single-user and zero-knowledge — more accounts do not weaken the per-user RLS + PIN-derived encryption model.
+It MAY have a public marketing storefront, anonymous non-PII operational telemetry (§2.2 carve-out), and open account signup (OAuth or email/password). Each account stays single-user and zero-knowledge — more accounts do not weaken the per-user RLS + PIN-derived encryption model. **Exception (§1.1 household):** two accounts MAY share a household space whose data is encrypted under a shared household key the server cannot read; membership is capped at two and no personal vaults are merged.
 
 **Why:** The security model (zero-knowledge, per-user RLS — §2.1, §5) and the deployment model (single Pi / Vercel, no horizontal scale) must hold regardless of how many accounts exist. Monetisation is gated behind an explicit governance decision, not drifted into.
 
@@ -55,7 +57,11 @@ Two scoped exceptions, both non-financial and vault-free:
 1. Anonymous operational telemetry ingestion via the §2.2 `/api/track` carve-out (no identity, no vault — it stores no user data).
 2. Admin aggregate reads of non-encrypted operational data (e.g. visit/signup counts) require `requireUserId()` + an admin-allowlist check, but NOT `getVaultDekSession()` — there is no ciphertext to decrypt.
 
-Outside these two, public actions still don't exist.
+One scoped sibling-key exception (still identity-first, still zero-knowledge):
+
+3. Household-data actions call `requireUserId()` then `getHouseholdKhSession()` — which returns the shared household key `K_h` from the `fynfo_household_kh` cookie (§5.1) instead of the personal DEK — before touching household ciphertext. Membership-gated via RLS (§5.2), not public.
+
+Outside these three, public actions still don't exist.
 
 **Why:** Defense-in-depth. RLS is the floor, not the ceiling. Missing either call = data leak class bug.
 
@@ -159,6 +165,8 @@ Initial page load under 200KB JS gzipped per route. New dependency >50KB require
 - DEK lives only in HttpOnly cookie `fynfo_vault_dek` and process memory.
 - DEK derivation: PBKDF2 with Supabase user ID as salt. Iteration count is constitutional — changing it = migration spec + re-derivation flow.
 
+**§5.1a `HARD` Household key (`K_h`) invariant.** A per-household random AES-256 key `K_h` encrypts all household data. It is stored only **wrapped** (AES-256-GCM under each member's DEK) at rest, lives unwrapped only in the HttpOnly cookie `fynfo_household_kh` + process memory, and is never persisted raw nor sent to Supabase. No new PIN: `K_h` is unwrapped with the member's existing DEK. The one-time invite secret that bootstraps a second member's wrapped copy is high-entropy, hashed at rest, expiring, and consumed on accept.
+
 ### §5.2 `HARD` RLS is mandatory on every table
 
 New tables ship with RLS enabled and a policy in the same migration. No `GRANT ALL` shortcuts.
@@ -246,7 +254,8 @@ Any of the following = stop and ask Clarence:
 
 ## Amendment Log
 
-| Version | Date       | Change                                                                                                                                                                                                                                                                                                                                                           |
-| ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1.0     | 2026-05-25 | Initial ratification.                                                                                                                                                                                                                                                                                                                                            |
-| 2.0     | 2026-06-11 | §2.2/§2.3 telemetry carve-out: sanctioned anonymous, non-PII, non-financial operational telemetry via `/api/track` + admin aggregate reads without vault. Agent edit-scope widened (§8): rulebooks/specs are agent-editable with human approval; enforcement layer + secrets stay human-only. Authorized by `specs/governance/013-telemetry-write-exception.md`. |
+| Version | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1.0     | 2026-05-25 | Initial ratification.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 2.0     | 2026-06-11 | §2.2/§2.3 telemetry carve-out: sanctioned anonymous, non-PII, non-financial operational telemetry via `/api/track` + admin aggregate reads without vault. Agent edit-scope widened (§8): rulebooks/specs are agent-editable with human approval; enforcement layer + secrets stay human-only. Authorized by `specs/governance/013-telemetry-write-exception.md`.                                                                                                                                                   |
+| 3.0     | 2026-06-26 | Two-person household: §1.1/§1.2 allow linking two accounts into a household for household-scoped data only (personal vaults unchanged, server-readable key never introduced). §2.3 adds a third vault-gate exception — household actions do `requireUserId()`→`getHouseholdKhSession()`. §5.1a adds the household-key (`K_h`) invariant: stored only wrapped under each member's DEK, unwrapped only in the `fynfo_household_kh` cookie, no new PIN. Authorized by `specs/governance/052-household-two-person.md`. |
