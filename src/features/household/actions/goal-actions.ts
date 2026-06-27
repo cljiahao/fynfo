@@ -1,6 +1,6 @@
 'use server';
 
-import { requireHouseholdContext } from '@/lib/action-guard';
+import { requireDbContext, requireHouseholdContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
@@ -129,9 +129,13 @@ export async function addContribution(input: unknown): Promise<void> {
   throwIfSupabaseError(error, 'household contribution create');
 }
 
-/** Deletes a goal (RLS + household membership scoped); contributions cascade. */
+/**
+ * Deletes a goal (RLS + household membership scoped); contributions cascade.
+ * Uses requireDbContext — a delete decrypts nothing, so it needs identity + RLS
+ * but not the household key (works even if the household session has expired).
+ */
 export async function deleteGoal(id: string): Promise<void> {
-  const { supabase } = await requireHouseholdContext();
+  const { supabase } = await requireDbContext();
   const { error } = await supabase
     .from('household_goals')
     .delete()

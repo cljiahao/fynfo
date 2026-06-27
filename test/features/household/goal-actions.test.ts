@@ -13,6 +13,7 @@ let supabase: ReturnType<typeof makeFakeSupabase>['client'];
 
 vi.mock('@/lib/action-guard', () => ({
   requireHouseholdContext: async () => ({ userId: USER_ID, kh: KH, supabase }),
+  requireDbContext: async () => ({ userId: USER_ID, supabase }),
 }));
 
 function setSupabase(opts: FakeSupabaseOptions = {}) {
