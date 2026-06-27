@@ -89,21 +89,22 @@ src/
 
 ### Key files
 
-| File                                    | Purpose                                                                                                                   |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `src/proxy.ts`                          | Supabase session refresh + route protection (Next.js 16 proxy, not deprecated middleware)                                 |
-| `src/lib/auth-guard.ts`                 | `requireUserId()` — Supabase auth check for server actions                                                                |
-| `src/lib/crypto.ts`                     | `encryptPayload` / `decryptPayload` — AES-256-GCM field encryption                                                        |
-| `src/lib/keystore.ts`                   | `getVaultDekSession()` — reads DEK from HttpOnly cookie; `deriveKeyFromPinV2()` (600k iters, user-id salt) — PBKDF2       |
-| `src/lib/crypto-constants.ts`           | Shared PBKDF2 + AES constants used by both server keystore and client `client-crypto.ts` so derivations stay in lock-step |
-| `src/lib/logger.ts`                     | Pino server-side structured logger with PII / secret redaction                                                            |
-| `src/lib/utils/with-logging.ts`         | API route handler wrapper — request id, structured log of method/path/status/duration                                     |
-| `src/lib/validation/parse-or-throw.ts`  | `parseOrThrow(schema, input, label)` — safe boundary parse for server actions; throws opaque `AppError('VALIDATION')`     |
-| `src/app/api/vault/route.ts`            | PIN → DEK derivation; sets `fynfo_vault_dek` HttpOnly cookie                                                              |
-| `src/integrations/clients/supabase.ts`  | Browser-side Supabase client                                                                                              |
-| `src/integrations/services/supabase.ts` | Server-side Supabase client (uses cookies)                                                                                |
-| `supabase/migrations/`                  | SQL schema + RLS policies                                                                                                 |
-| `src/features/salary/lib/tax-cpf.ts`    | Singapore tax/CPF calculation logic                                                                                       |
+| File                                    | Purpose                                                                                                                                                                |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/proxy.ts`                          | Supabase session refresh + route protection (Next.js 16 proxy, not deprecated middleware)                                                                              |
+| `src/lib/auth-guard.ts`                 | `requireUserId()` — Supabase auth check for server actions                                                                                                             |
+| `src/lib/crypto.ts`                     | `encryptPayload` / `decryptPayload` — AES-256-GCM field encryption                                                                                                     |
+| `src/lib/keystore.ts`                   | `getVaultDekSession()` — reads the DEK from the HttpOnly cookie `fynfo_vault_dek` (the server no longer derives the DEK)                                               |
+| `src/lib/client-crypto.ts`              | `deriveKeyClient(pin, userId)` / `deriveKeyLegacy(pin)` — client-side WebCrypto PBKDF2 (600k iters, user-id salt); the only PIN→DEK derivation, POSTed to `/api/vault` |
+| `src/lib/crypto-constants.ts`           | Shared PBKDF2 + AES constants used by both the server field-encryption and client `client-crypto.ts` so derivations stay in lock-step                                  |
+| `src/lib/logger.ts`                     | Pino server-side structured logger with PII / secret redaction                                                                                                         |
+| `src/lib/utils/with-logging.ts`         | API route handler wrapper — request id, structured log of method/path/status/duration                                                                                  |
+| `src/lib/validation/parse-or-throw.ts`  | `parseOrThrow(schema, input, label)` — safe boundary parse for server actions; throws opaque `AppError('VALIDATION')`                                                  |
+| `src/app/api/vault/route.ts`            | Verifies the client-derived DEK against the vault canary (rate-limited); sets the `fynfo_vault_dek` HttpOnly cookie                                                    |
+| `src/integrations/clients/supabase.ts`  | Browser-side Supabase client                                                                                                                                           |
+| `src/integrations/services/supabase.ts` | Server-side Supabase client (uses cookies)                                                                                                                             |
+| `supabase/migrations/`                  | SQL schema + RLS policies                                                                                                                                              |
+| `src/features/salary/lib/tax-cpf.ts`    | Singapore tax/CPF calculation logic                                                                                                                                    |
 
 ### Required env (see `.env.example`)
 
