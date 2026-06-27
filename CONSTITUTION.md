@@ -1,6 +1,6 @@
 # Fynfo Constitution
 
-**Version:** 3.0
+**Version:** 3.0.1
 **Effective:** 2026-05-25
 **Owner:** Clarence (cljiahao27@gmail.com)
 **Status:** Living document. Amendments tracked in git history.
@@ -233,10 +233,10 @@ Weekly: `auditor` agent scans repo against `HARD` rules, reports violations. Vio
 ### §8.2 What agents may NEVER do unsupervised
 
 - Force-push, rewrite history, delete branches.
-- Edit the enforcement layer or secrets: `.claude/settings.json`, `.claude/hooks/**`, `.claude/harness.json`, `.claude/skills/**`, `.env*`, `.github/workflows/**`, `scripts/build-push.sh`, or any cert/key file. This is the lock-on-the-lock — never agent-editable.
+- Edit the enforcement layer or secrets: `.claude/settings.json`, `.claude/hooks/**`, `.claude/harness.json`, `.claude/skills/**`, real secret env files (`.env`, `.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.production.*`, `.env.staging`), `.github/workflows/**`, `scripts/build-push.sh`, or any cert/key file. This is the lock-on-the-lock — never agent-editable. (`.env.example`, the committed placeholder template per §5.3, is NOT a secret and IS agent-editable.)
 - Commit changes to `CONSTITUTION.md`, `AGENTS.md`, `CLAUDE.md`, or `specs/governance/*` without explicit human approval (drafting is allowed; the human reviews the diff and approves before commit).
 - Run destructive migrations.
-- Touch `.env*` files.
+- Touch real secret env files (`.env`, `.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.production.*`, `.env.staging`). `.env.example` is editable.
 - Push images to Docker Hub.
 - Approve their own specs.
 
@@ -259,3 +259,4 @@ Any of the following = stop and ask Clarence:
 | 1.0     | 2026-05-25 | Initial ratification.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | 2.0     | 2026-06-11 | §2.2/§2.3 telemetry carve-out: sanctioned anonymous, non-PII, non-financial operational telemetry via `/api/track` + admin aggregate reads without vault. Agent edit-scope widened (§8): rulebooks/specs are agent-editable with human approval; enforcement layer + secrets stay human-only. Authorized by `specs/governance/013-telemetry-write-exception.md`.                                                                                                                                                   |
 | 3.0     | 2026-06-26 | Two-person household: §1.1/§1.2 allow linking two accounts into a household for household-scoped data only (personal vaults unchanged, server-readable key never introduced). §2.3 adds a third vault-gate exception — household actions do `requireUserId()`→`getHouseholdKhSession()`. §5.1a adds the household-key (`K_h`) invariant: stored only wrapped under each member's DEK, unwrapped only in the `fynfo_household_kh` cookie, no new PIN. Authorized by `specs/governance/052-household-two-person.md`. |
+| 3.0.1   | 2026-06-27 | §8.2 clarification: narrow the `.env*` hard-stop to real secret env files (`.env`, `.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.production.*`, `.env.staging`); `.env.example` (committed placeholder template per §5.3) is NOT a secret and IS agent-editable. No expansion of secret access. Authorized by `specs/governance/055-env-example-editable.md`.                                                                                                                         |

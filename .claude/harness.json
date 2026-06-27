@@ -4,7 +4,7 @@
   "seeded_at": "2026-06-27",
   "seeded_files": {
     "AGENTS.md": {
-      "origin_hash": "d991c2a5e3fc2952d2b83f00801afe35c2a46dc2ae451f4eeedc17957296f7e7",
+      "origin_hash": "ea3c27384e8ffe35c56ed0a20cd244f771c1911c300cdec693d470b4732d07f8",
       "path": "AGENTS.md"
     },
     "CLAUDE.md": {
@@ -12,7 +12,7 @@
       "path": "CLAUDE.md"
     },
     ".claude/settings.json": {
-      "origin_hash": "08ef667745e4291c61e6a3e1c7c3a8ca4bfae09ceb84ee31bd7e8798962c5ed4",
+      "origin_hash": "1260af5e572aa6e9d1e18b3fee7f710bd9fdf5c7f71b42f3323efe9c67e7946a",
       "path": ".claude/settings.json"
     },
     ".claude/skills/next-verify/SKILL.md": {
@@ -28,7 +28,7 @@
       "path": ".claude/hooks/guard-destructive-bash.mjs"
     },
     ".claude/hooks/guard-protected-paths.mjs": {
-      "origin_hash": "d6b960e33b68835c3074074071ad2936026a4e0d376477cc18f51e66bbe382a0",
+      "origin_hash": "1e34eb2866a24a6a33ad409b738b9d5a2e7b029bb148c44f1487adf4959334cc",
       "path": ".claude/hooks/guard-protected-paths.mjs"
     },
     ".claude/hooks/injection-guard.mjs": {

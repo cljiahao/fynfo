@@ -10,7 +10,7 @@ const protectedPatterns = [
   /\/\.claude\/harness\.json$/,
   /\/\.claude\/hooks\//,
   /\/\.claude\/skills\//,
-  /\/\.env(\.|$)/,
+  /\/\.env(?!\.example(\.|$))(\.|$)/,
   /\/scripts\/build-push\.sh$/,
   /\/\.github\/workflows\//,
   /\.(pem|key|p12|pfx|secret)$/,

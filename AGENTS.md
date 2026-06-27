@@ -16,7 +16,7 @@ You MUST stop and surface to the human owner if any of these are true:
 
 1. There is no approved spec in `specs/**` for the change you are being asked to make.
 2. The change would violate any `HARD` rule in `CONSTITUTION.md`.
-3. The change would touch the **enforcement layer or secrets**: `.claude/settings.json`, `.claude/hooks/**`, `.claude/harness.json`, `.claude/skills/**`, `.env*`, `.github/workflows/**`, `scripts/build-push.sh`, any cert/key file, or destructive `supabase/migrations/**`. (As of gov-013 / constitution v2.0, the rulebooks — `CONSTITUTION.md`, `AGENTS.md`, `CLAUDE.md` — and `specs/**` are agent-editable, but governance changes still require explicit human approval before commit per `CONSTITUTION.md` §8.2.)
+3. The change would touch the **enforcement layer or secrets**: `.claude/settings.json`, `.claude/hooks/**`, `.claude/harness.json`, `.claude/skills/**`, real secret env files (`.env`, `.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.production.*`, `.env.staging`), `.github/workflows/**`, `scripts/build-push.sh`, any cert/key file, or destructive `supabase/migrations/**`. (As of gov-013 / constitution v2.0, the rulebooks — `CONSTITUTION.md`, `AGENTS.md`, `CLAUDE.md` — and `specs/**` are agent-editable, but governance changes still require explicit human approval before commit per `CONSTITUTION.md` §8.2. As of gov-055, `.env.example` — the committed placeholder template — is NOT a secret and IS agent-editable; only real secret env files are gated.)
 4. A new dependency is required.
 5. Confidence in the approach is below "I'd bet money on this".
 
