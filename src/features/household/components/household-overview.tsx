@@ -17,8 +17,10 @@ import { InvitePanel } from './invite-panel';
 
 export function HouseholdOverview() {
   const household = useHousehold();
-  const hasHousehold = !!household.data;
-  const goals = useGoals(hasHousehold);
+  // Lock state is authoritative from the session (cookie), not inferred from a
+  // failed goals read — so a real DB error doesn't masquerade as "locked".
+  const locked = !!household.data && household.data.locked;
+  const goals = useGoals(!!household.data && !locked);
   const unlock = useUnlockHousehold();
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -44,7 +46,6 @@ export function HouseholdOverview() {
     );
   }
 
-  const locked = goals.isError;
   const isOwner = household.data.role === 'owner';
 
   const doUnlock = () =>
@@ -68,7 +69,16 @@ export function HouseholdOverview() {
         )}
       </div>
 
-      {goals.isLoading && !locked && <HouseholdSkeleton />}
+      {!locked && goals.isLoading && <HouseholdSkeleton />}
+
+      {!locked && goals.isError && (
+        <div className="rounded-xl border border-dashed py-14 text-center">
+          <p className="font-medium">Couldn&apos;t load your goals</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Something went wrong reading this household. Refresh to try again.
+          </p>
+        </div>
+      )}
 
       {locked && (
         <div className="rounded-xl border py-14 text-center">

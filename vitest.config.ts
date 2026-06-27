@@ -54,6 +54,13 @@ export default defineConfig({
           functions: 100,
           branches: 85,
         },
+        // Client-side DEK derivation — the only PIN->DEK path (spec 057).
+        'src/lib/client-crypto.ts': {
+          lines: 100,
+          statements: 100,
+          functions: 100,
+          branches: 90,
+        },
         // Server-action layer (spec 035). Floors sit a few points below the
         // measured coverage so the gain can't silently regress.
         'src/features/equity/actions/price-actions.ts': {

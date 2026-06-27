@@ -10,7 +10,10 @@ import {
   unwrapKh,
   wrapKh,
 } from '@/lib/household-key';
-import { setHouseholdKhSession } from '@/lib/household-keystore';
+import {
+  getHouseholdKhSession,
+  setHouseholdKhSession,
+} from '@/lib/household-keystore';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { INVITE_TTL_HOURS } from '../constants';
@@ -91,11 +94,16 @@ export async function getHousehold(): Promise<HouseholdSummary | null> {
     | undefined;
   if (!row?.households) return null;
 
+  // Lock state from the session key (cookie check, no DEK needed) — so the page
+  // distinguishes "locked" from a genuine read error instead of inferring it.
+  const kh = await getHouseholdKhSession();
+
   return {
     id: row.households.id,
     name: row.households.name,
     role: row.role,
     createdAt: row.households.created_at,
+    locked: kh === null,
   };
 }
 

@@ -133,6 +133,16 @@
   }
 }
 
+/* ---------- Charts ---------- */
+/* Stacked expense bars: a 1px surface-colored divider between segments. var(--card)
+   resolves white (light) / near-black (dark), so segment edges read crisply against
+   neighbours and the high-chroma dark-mode boundary "vibration" disappears. Scoped
+   to this chart only. Spec 056. */
+.expenses-bar-chart .recharts-rectangle {
+  stroke: var(--card);
+  stroke-width: 1px;
+}
+
 /* ---------- Utilities layer ---------- */
 @layer utilities {
   .hw-full {

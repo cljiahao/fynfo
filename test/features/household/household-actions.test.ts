@@ -15,6 +15,7 @@ const DEK = Buffer.alloc(32, 4);
 
 let supabase: ReturnType<typeof makeFakeSupabase>['client'];
 let lastSetKh: Buffer | null;
+let khSession: Buffer | null;
 
 vi.mock('@/lib/action-guard', () => ({
   requireActionContext: async () => ({ userId: USER_ID, dek: DEK, supabase }),
@@ -25,7 +26,7 @@ vi.mock('@/lib/household-keystore', () => ({
   setHouseholdKhSession: async (kh: Buffer) => {
     lastSetKh = kh;
   },
-  getHouseholdKhSession: async () => null,
+  getHouseholdKhSession: async () => khSession,
 }));
 
 function setSupabase(opts: FakeSupabaseOptions = {}) {
@@ -36,6 +37,7 @@ function setSupabase(opts: FakeSupabaseOptions = {}) {
 
 beforeEach(() => {
   lastSetKh = null;
+  khSession = null;
   setSupabase();
 });
 
@@ -72,7 +74,8 @@ describe('household-actions — createHousehold', () => {
 });
 
 describe('household-actions — getHousehold', () => {
-  it('returns the caller household summary when a membership exists', async () => {
+  it('returns the caller household summary, locked when no key in session', async () => {
+    khSession = null;
     setSupabase({
       selectData: [
         {
@@ -88,7 +91,25 @@ describe('household-actions — getHousehold', () => {
       name: 'Home',
       role: 'owner',
       createdAt: '2026-06-26',
+      locked: true,
     });
+  });
+
+  it('reports locked:false when the household key is in session', async () => {
+    khSession = Buffer.alloc(32, 1);
+    setSupabase({
+      selectData: [
+        {
+          role: 'member',
+          households: { id: 'h1', name: 'Home', created_at: '2026-06-26' },
+        },
+      ],
+    });
+    const { getHousehold } =
+      await import('@/features/household/actions/household-actions');
+    const summary = await getHousehold();
+    expect(summary?.locked).toBe(false);
+    expect(summary?.role).toBe('member');
   });
 
   it('returns null when the caller is in no household', async () => {

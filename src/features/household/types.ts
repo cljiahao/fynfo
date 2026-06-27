@@ -6,6 +6,8 @@ export interface HouseholdSummary {
   name: string;
   role: HouseholdRole;
   createdAt: string;
+  /** True when the household key is not in the session (needs unlock). */
+  locked: boolean;
 }
 
 export interface CreateHouseholdResult {

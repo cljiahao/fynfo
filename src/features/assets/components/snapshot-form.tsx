@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { formatSGD } from '@/lib/utils/currency';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
@@ -216,11 +217,7 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
                     {CATEGORY_LABELS[cat]}
                     {rows.length > 0 && (
                       <span className="text-muted-foreground text-sm font-normal">
-                        ($
-                        {catTotal.toLocaleString('en-SG', {
-                          minimumFractionDigits: 2,
-                        })}
-                        )
+                        ({formatSGD(catTotal)})
                       </span>
                     )}
                   </Label>
