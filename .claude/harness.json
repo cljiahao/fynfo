@@ -1,10 +1,10 @@
 {
   "templatecentral_version": "5.0.0",
   "stack": "nextjs",
-  "seeded_at": "2026-06-14",
+  "seeded_at": "2026-06-27",
   "seeded_files": {
     "AGENTS.md": {
-      "origin_hash": "dc2a651435064641df0c75c081537940899dfff10b7d052aa571afc187d7f8e1",
+      "origin_hash": "d991c2a5e3fc2952d2b83f00801afe35c2a46dc2ae451f4eeedc17957296f7e7",
       "path": "AGENTS.md"
     },
     "CLAUDE.md": {
@@ -12,36 +12,40 @@
       "path": "CLAUDE.md"
     },
     ".claude/settings.json": {
-      "origin_hash": "01cf7fd5f775bf966e3fcf0a17d0cb9452c798b07532638131ca912f3268b28a",
+      "origin_hash": "08ef667745e4291c61e6a3e1c7c3a8ca4bfae09ceb84ee31bd7e8798962c5ed4",
       "path": ".claude/settings.json"
     },
     ".claude/skills/next-verify/SKILL.md": {
-      "origin_hash": "7714d6f271863993565fc2f41ff0b4bdcc9d3a61f785353b8843c93ab106350f",
+      "origin_hash": "b192aec675c2c5a73c91522b749826ef08f7aa7ebf37e4436b78b36bdb09f51f",
       "path": ".claude/skills/next-verify/SKILL.md"
     },
     ".claude/skills/regen-harness/SKILL.md": {
-      "origin_hash": "fee788bf3cd018f4489625ef6020b7e4a7c27d324d14d9d5df316c3279c8bedd",
+      "origin_hash": "0813f097639a8c5e3bf0493f148ec1ed824355cf7bfcc9a11c4f4c90d568f9ef",
       "path": ".claude/skills/regen-harness/SKILL.md"
     },
-    ".claude/hooks/stop-tests.sh": {
-      "origin_hash": "674af1275b4dd43538edf17813695f56cd9d5d8f43af2c9e344b22644ea05242",
-      "path": ".claude/hooks/stop-tests.sh"
+    ".claude/hooks/guard-destructive-bash.mjs": {
+      "origin_hash": "97ce078f266969cf73b9c930fc0cca8262b6039284838140e9f1415a7a3cdb32",
+      "path": ".claude/hooks/guard-destructive-bash.mjs"
     },
-    ".claude/hooks/post-edit-tsc.sh": {
-      "origin_hash": "f6227547f92c1681566340dd0c62b5cf7eb3cb85d90afcd02d438609d5e56785",
-      "path": ".claude/hooks/post-edit-tsc.sh"
+    ".claude/hooks/guard-protected-paths.mjs": {
+      "origin_hash": "d6b960e33b68835c3074074071ad2936026a4e0d376477cc18f51e66bbe382a0",
+      "path": ".claude/hooks/guard-protected-paths.mjs"
     },
-    ".claude/hooks/injection-guard.sh": {
-      "origin_hash": "156d942b045bf5d2eb3a31cb811c72f21de20e7b5199a2bcd61c7e79b6fb119d",
-      "path": ".claude/hooks/injection-guard.sh"
+    ".claude/hooks/injection-guard.mjs": {
+      "origin_hash": "0f183987017c37ff95da3e265d1887ff4b56c30cf017d5ecb99b91167feef4e0",
+      "path": ".claude/hooks/injection-guard.mjs"
     },
-    ".claude/hooks/guard-protected-paths.sh": {
-      "origin_hash": "e66d42c3d6949683266451d44154a3bfa664948087bac59d16632d7e3440ff03",
-      "path": ".claude/hooks/guard-protected-paths.sh"
+    ".claude/hooks/post-edit-tsc.mjs": {
+      "origin_hash": "c8330eb5161c2de4f22e6003057c3ef279a5e85da5e6791b7ae33c90a05e4b9b",
+      "path": ".claude/hooks/post-edit-tsc.mjs"
     },
-    ".claude/hooks/guard-destructive-bash.sh": {
-      "origin_hash": "28e91a930bac34f6a95dc09087e8c43f30651b8e9c711c197a08ad0d5561dd03",
-      "path": ".claude/hooks/guard-destructive-bash.sh"
+    ".claude/hooks/session-banner.mjs": {
+      "origin_hash": "575e28000847c967c86db636841727296c9e1459302f427b2b2f0d746b207e49",
+      "path": ".claude/hooks/session-banner.mjs"
+    },
+    ".claude/hooks/stop-tests.mjs": {
+      "origin_hash": "ce4238ca04804b71cf884888529486c145723dbcb282edcdeb80c2c0330361da",
+      "path": ".claude/hooks/stop-tests.mjs"
     }
   }
 }

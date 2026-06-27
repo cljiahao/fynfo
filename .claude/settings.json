@@ -3,7 +3,6 @@
   "skillListingBudgetFraction": 0.02,
   "permissions": {
     "allow": [
-      "Bash(pnpm:*)",
       "Bash(npx shadcn@latest add:*)",
       "Bash(git status)",
       "Bash(git diff:*)",
@@ -22,7 +21,17 @@
       "Bash(ls:*)",
       "Read(//**)",
       "Grep(//**)",
-      "Glob(//**)"
+      "Glob(//**)",
+      "Bash(git push:*)",
+      "Bash(pnpm check)",
+      "Bash(pnpm build)",
+      "Bash(pnpm test:ci)",
+      "Bash(pnpm test:coverage)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm format:check)",
+      "Bash(pnpm test)",
+      "Bash(pnpm exec:*)"
     ],
     "deny": [
       "Bash(git push --force:*)",
@@ -57,7 +66,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c \"head -20 CONSTITUTION.md; head -30 AGENTS.md\""
+            "command": "node .claude/hooks/session-banner.mjs"
           }
         ]
       }
@@ -67,7 +76,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c \"[ ! -d specs ] && echo 'WARN: specs/ missing'\""
+            "command": "node -e \"const fs=require('fs');if(!fs.existsSync('specs'))console.log('WARN: specs/ missing - bootstrap before any impl work')\""
           }
         ]
       },
@@ -75,7 +84,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/injection-guard.sh"
+            "command": "node .claude/hooks/injection-guard.mjs"
           }
         ]
       }
@@ -86,7 +95,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/guard-protected-paths.sh"
+            "command": "node .claude/hooks/guard-protected-paths.mjs"
           }
         ]
       },
@@ -95,7 +104,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/guard-destructive-bash.sh"
+            "command": "node .claude/hooks/guard-destructive-bash.mjs"
           }
         ]
       }
@@ -106,7 +115,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/post-edit-tsc.sh"
+            "command": "node .claude/hooks/post-edit-tsc.mjs"
           }
         ]
       }
@@ -116,11 +125,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/stop-tests.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash -c \"echo 'Done. Gates green? Spec linked? Scope respected?'\""
+            "command": "node .claude/hooks/stop-tests.mjs"
           }
         ]
       }

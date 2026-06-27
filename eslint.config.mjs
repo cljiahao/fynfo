@@ -36,6 +36,9 @@ const eslintConfig = defineConfig([
     'build/**',
     'coverage/**',
     'next-env.d.ts',
+    // Claude Code harness hooks are tooling scripts (run by the CLI), not app
+    // code — never linted as .ps1/.sh, kept out of the app lint surface.
+    '.claude/**',
   ]),
 ]);
 

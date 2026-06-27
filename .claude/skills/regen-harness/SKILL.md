@@ -11,10 +11,12 @@ python - <<'PY'
 import hashlib, json, datetime
 files = ['AGENTS.md', 'CLAUDE.md', '.claude/settings.json',
          '.claude/skills/next-verify/SKILL.md', '.claude/skills/regen-harness/SKILL.md',
-         '.claude/hooks/post-edit-tsc.ps1', '.claude/hooks/stop-tests.ps1',
-         '.claude/hooks/injection-guard.ps1',
-         '.claude/hooks/guard-protected-paths.ps1',
-         '.claude/hooks/guard-destructive-bash.ps1']
+         '.claude/hooks/guard-destructive-bash.mjs',
+         '.claude/hooks/guard-protected-paths.mjs',
+         '.claude/hooks/injection-guard.mjs',
+         '.claude/hooks/post-edit-tsc.mjs',
+         '.claude/hooks/session-banner.mjs',
+         '.claude/hooks/stop-tests.mjs']
 out = {
     'templatecentral_version': '5.0.0',
     'stack': 'nextjs',
