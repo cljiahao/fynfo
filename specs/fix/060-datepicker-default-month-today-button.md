@@ -2,12 +2,12 @@
 id: 060
 slug: datepicker-default-month-today-button
 area: fix
-status: approved
+status: shipped
 author: Claude (Opus 4.8)
 created: 2026-07-04
 approved: 2026-07-04
-shipped:
-impl_pr:
+shipped: 2026-07-04
+impl_pr: ce8fc72
 supersedes:
 constitution_satisfies:
   - '§1.1'
