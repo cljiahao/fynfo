@@ -183,27 +183,29 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
             <CardTitle>{editId ? 'Edit' : 'New'} Monthly Snapshot</CardTitle>
-            <div className="flex shrink-0 items-center gap-2">
-              <Label
-                htmlFor="month"
-                className="text-muted-foreground text-sm whitespace-nowrap"
-              >
-                Select Month
-              </Label>
-              <Input
-                id="month"
-                type="month"
-                className="relative w-44 cursor-pointer pr-4 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
-                {...form.register('id')}
-                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-              />
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
+                <Label
+                  htmlFor="month"
+                  className="text-muted-foreground text-sm whitespace-nowrap"
+                >
+                  Select Month
+                </Label>
+                <Input
+                  id="month"
+                  type="month"
+                  className="relative w-44 cursor-pointer pr-4 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  {...form.register('id')}
+                  onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                />
+              </div>
               {form.formState.errors.id && (
                 <p className="text-destructive text-sm">
                   {form.formState.errors.id.message}
                 </p>
               )}
               {!form.formState.errors.id && isDuplicate && (
-                <p className="text-destructive text-sm whitespace-nowrap">
+                <p className="text-destructive text-sm">
                   A snapshot for this month already exists.
                 </p>
               )}
