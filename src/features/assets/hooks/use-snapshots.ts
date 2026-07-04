@@ -29,7 +29,13 @@ export function useSnapshot(id: string) {
 export function useUpsertSnapshot() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: SnapshotData) => upsertSnapshot(data),
+    mutationFn: ({
+      data,
+      originalId,
+    }: {
+      data: SnapshotData;
+      originalId?: string;
+    }) => upsertSnapshot(data, originalId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SNAPSHOTS_KEY });
     },

@@ -70,29 +70,51 @@ export async function getSnapshot(id: string): Promise<SnapshotData | null> {
   };
 }
 
-export async function upsertSnapshot(data: SnapshotData): Promise<void> {
+export async function upsertSnapshot(
+  data: SnapshotData,
+  originalId?: string
+): Promise<void> {
   parseOrThrow(snapshotFormSchema, data, 'snapshot.upsert.input');
   const { userId, dek, supabase } = await requireActionContext();
 
-  const { error: snapErr, data: snapData } = await supabase
-    .from('monthly_snapshots')
-    .upsert(
-      {
-        id: randomUUID(),
+  let snapshotId: string;
+
+  if (originalId && originalId !== data.id) {
+    // Move the existing row so the old month and its entries aren't orphaned;
+    // UNIQUE(user_id, month) rejects a collision.
+    const { error: renameErr, data: renamedData } = await supabase
+      .from('monthly_snapshots')
+      .update({
         month: data.id,
-        user_id: userId,
         updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: 'user_id, month',
-      }
-    )
-    .select('id')
-    .single();
+      })
+      .eq('user_id', userId)
+      .eq('month', originalId)
+      .select('id')
+      .single();
 
-  throwIfSupabaseError(snapErr, 'snapshot upsert');
+    throwIfSupabaseError(renameErr, 'snapshot rename');
+    snapshotId = renamedData.id;
+  } else {
+    const { error: snapErr, data: snapData } = await supabase
+      .from('monthly_snapshots')
+      .upsert(
+        {
+          id: randomUUID(),
+          month: data.id,
+          user_id: userId,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'user_id, month',
+        }
+      )
+      .select('id')
+      .single();
 
-  const snapshotId = snapData.id;
+    throwIfSupabaseError(snapErr, 'snapshot upsert');
+    snapshotId = snapData.id;
+  }
 
   await supabase.from('asset_entries').delete().eq('snapshot_id', snapshotId);
 

@@ -166,6 +166,44 @@ describe('snapshot-actions — upsertSnapshot', () => {
       'asset_entries insert failed'
     );
   });
+
+  it('renames the existing row when originalId differs from the new month', async () => {
+    const fake = setSupabase({ selectData: { id: 'snap-1' } });
+    const { upsertSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    await upsertSnapshot({ ...VALID_SNAPSHOT, id: '2026-04' }, '2026-03');
+
+    expect(fake.calls.upsert).toHaveLength(0);
+    const moved = fake.calls.update[0] as Record<string, unknown>;
+    expect(moved.month).toBe('2026-04');
+
+    const entries = fake.calls.insert[0] as Array<Record<string, string>>;
+    expect(entries[0].snapshot_id).toBe('snap-1');
+    expect(await decryptPayload(entries[0].account, DEK)).toBe('DBS');
+  });
+
+  it('surfaces an opaque error when a rename collides with an existing month', async () => {
+    const fake = setSupabase({
+      selectError: {
+        message: 'duplicate key value violates unique constraint',
+      },
+    });
+    const { upsertSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    await expect(
+      upsertSnapshot({ ...VALID_SNAPSHOT, id: '2026-04' }, '2026-03')
+    ).rejects.toThrow('snapshot rename failed');
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+
+  it('upserts in place (no rename) when the edited month is unchanged', async () => {
+    const fake = setSupabase({ upsertData: { id: 'snap-1' } });
+    const { upsertSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    await upsertSnapshot(VALID_SNAPSHOT, '2026-03');
+    expect(fake.calls.update).toHaveLength(0);
+    expect(fake.calls.upsert).toHaveLength(1);
+  });
 });
 
 describe('snapshot-actions — deleteSnapshot', () => {

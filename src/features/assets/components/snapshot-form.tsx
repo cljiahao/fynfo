@@ -83,6 +83,11 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
     name: 'entries',
   });
 
+  const selectedMonth = form.watch('id');
+  const isDuplicate = !!allSnapshots?.some(
+    (s) => s.id === selectedMonth && s.id !== editId
+  );
+
   // Pre-fill from latest snapshot for new entries
   useEffect(() => {
     if (!editId && allSnapshots) {
@@ -151,8 +156,11 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
           category: e.category as AssetCategory,
         }));
       await upsert.mutateAsync({
-        id: values.id,
-        entries: filledEntries,
+        data: {
+          id: values.id,
+          entries: filledEntries,
+        },
+        originalId: editId,
       });
       toast.success(`Snapshot ${values.id} saved`);
       router.push('/dashboard');
@@ -187,12 +195,16 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
                 type="month"
                 className="relative w-44 cursor-pointer pr-4 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
                 {...form.register('id')}
-                disabled={!!editId}
                 onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               />
               {form.formState.errors.id && (
                 <p className="text-destructive text-sm">
                   {form.formState.errors.id.message}
+                </p>
+              )}
+              {!form.formState.errors.id && isDuplicate && (
+                <p className="text-destructive text-sm whitespace-nowrap">
+                  A snapshot for this month already exists.
                 </p>
               )}
             </div>
@@ -294,7 +306,7 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
           })}
 
           <div className="flex gap-3">
-            <Button type="submit" disabled={upsert.isPending}>
+            <Button type="submit" disabled={upsert.isPending || isDuplicate}>
               {upsert.isPending && (
                 <Loader2 className="mr-2 size-4 animate-spin" />
               )}
