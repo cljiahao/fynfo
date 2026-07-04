@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/widgets';
 import { Lock, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -40,7 +41,10 @@ export function HouseholdOverview() {
   if (!household.data) {
     return (
       <div className="space-y-6">
-        <Header subtitle="Save toward big purchases together." />
+        <PageHeader
+          title="Household"
+          description="Save toward big purchases together."
+        />
         <HouseholdSetup />
       </div>
     );
@@ -56,18 +60,18 @@ export function HouseholdOverview() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <Header
-          title={household.data.name}
-          subtitle="Shared goals for your household."
-        />
-        {goals.data && (
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-1.5 size-4" />
-            New goal
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title={household.data.name}
+        description="Shared goals for your household."
+        action={
+          goals.data && (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-1.5 size-4" />
+              New goal
+            </Button>
+          )
+        }
+      />
 
       {!locked && goals.isLoading && <HouseholdSkeleton />}
 
@@ -107,17 +111,6 @@ export function HouseholdOverview() {
           <CreateGoalDialog open={createOpen} onOpenChange={setCreateOpen} />
         </>
       )}
-    </div>
-  );
-}
-
-function Header({ title, subtitle }: { title?: string; subtitle: string }) {
-  return (
-    <div>
-      <h1 className="text-3xl font-bold tracking-tight">
-        {title ?? 'Household'}
-      </h1>
-      <p className="text-muted-foreground mt-1">{subtitle}</p>
     </div>
   );
 }

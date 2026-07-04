@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@/components/widgets';
 import {
   ExpenseChart,
   ExpenseQuickAdd,
@@ -16,12 +17,10 @@ export default function ExpensesPage() {
 
   return (
     <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Expenses</h1>
-        <p className="text-muted-foreground mt-1">
-          Track your expenses and split shared costs
-        </p>
-      </div>
+      <PageHeader
+        title="Expenses"
+        description="Track your expenses and split shared costs"
+      />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <ExpenseChart expenses={expenses ?? []} />

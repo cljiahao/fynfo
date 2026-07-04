@@ -73,7 +73,7 @@ export function MonthlyInvestmentTable({
                         }
                       />
                     </td>
-                    <td className="py-2 text-right">
+                    <td className="py-2 text-right tabular-nums">
                       {formatSGD(row.monthly)}
                     </td>
                   </tr>
@@ -83,11 +83,11 @@ export function MonthlyInvestmentTable({
                 <tr className="border-t">
                   <td className="py-2 font-semibold">Total</td>
                   <td
-                    className={`py-2 text-center font-semibold ${totalRatio !== 100 ? 'text-loss' : ''}`}
+                    className={`py-2 text-center font-semibold tabular-nums ${totalRatio !== 100 ? 'text-loss' : ''}`}
                   >
                     {totalRatio}%
                   </td>
-                  <td className="py-2 text-right font-semibold">
+                  <td className="py-2 text-right font-semibold tabular-nums">
                     {formatSGD(investmentAmount)}
                   </td>
                 </tr>

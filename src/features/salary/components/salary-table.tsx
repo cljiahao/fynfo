@@ -103,13 +103,13 @@ export function SalaryTable({ onEdit }: SalaryTableProps) {
                   {paged.map((r) => (
                     <tr key={r.id} className="border-b last:border-0">
                       <td className="py-2 font-medium">{r.id}</td>
-                      <td className="py-2 text-center">
+                      <td className="py-2 text-center tabular-nums">
                         {formatSGD(r.salary)}
                       </td>
-                      <td className="py-2 text-center">
+                      <td className="py-2 text-center tabular-nums">
                         {r.bonus > 0 ? formatSGD(r.bonus) : '-'}
                       </td>
-                      <td className="py-2 text-center font-semibold">
+                      <td className="py-2 text-center font-semibold tabular-nums">
                         {formatSGD(r.salary + r.bonus)}
                       </td>
                       <td className="py-2 text-center">

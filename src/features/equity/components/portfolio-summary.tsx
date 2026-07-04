@@ -84,7 +84,9 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
             <DollarSign className="text-muted-foreground size-4" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatSGD(totalCost)}</div>
+            <div className="text-2xl font-bold tabular-nums">
+              {formatSGD(totalCost)}
+            </div>
             <div className="text-muted-foreground mt-1 space-y-0.5 text-xs">
               <div className="flex-between">
                 <span>SG</span>
@@ -119,7 +121,7 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
               </p>
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold tabular-nums">
                   {formatSGD(totalValue)}
                 </div>
                 <div className="text-muted-foreground mt-1 space-y-0.5 text-xs">
@@ -151,7 +153,7 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
           </CardHeader>
           <CardContent>
             <div
-              className={`text-2xl font-bold ${totalPnl >= 0 ? 'text-gain' : 'text-loss'}`}
+              className={`text-2xl font-bold tabular-nums ${totalPnl >= 0 ? 'text-gain' : 'text-loss'}`}
             >
               {totalPnl >= 0 ? '+' : ''}
               {formatSGD(totalPnl)}
@@ -189,7 +191,7 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
             ) : (
               <>
                 <div
-                  className={`text-2xl font-bold ${mwrPct >= 0 ? 'text-gain' : 'text-loss'}`}
+                  className={`text-2xl font-bold tabular-nums ${mwrPct >= 0 ? 'text-gain' : 'text-loss'}`}
                 >
                   {mwrPct >= 0 ? '+' : ''}
                   {mwrPct.toFixed(2)}%

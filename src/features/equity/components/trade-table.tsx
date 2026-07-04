@@ -126,12 +126,16 @@ export function TradeTable({ trades, onEdit }: TradeTableProps) {
                         {t.action.toUpperCase()}
                       </span>
                     </td>
-                    <td className="py-2 text-center">{t.shares}</td>
-                    <td className="py-2 text-center">{formatSGD(t.price)}</td>
-                    <td className="py-2 text-center">
+                    <td className="py-2 text-center tabular-nums">
+                      {t.shares}
+                    </td>
+                    <td className="py-2 text-center tabular-nums">
+                      {formatSGD(t.price)}
+                    </td>
+                    <td className="py-2 text-center tabular-nums">
                       {t.fees > 0 ? formatSGD(t.fees) : '-'}
                     </td>
-                    <td className="py-2 text-center font-semibold">
+                    <td className="py-2 text-center font-semibold tabular-nums">
                       {formatSGD(total)}
                     </td>
                     <td className="py-2 text-center">

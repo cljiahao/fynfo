@@ -244,6 +244,11 @@
   .max-w-content {
     @apply max-w-[1000px];
   }
+
+  /* Wordmark: real sky->emerald gradient echoing the storefront brand */
+  .text-brand-gradient {
+    @apply from-brand to-gain bg-linear-to-r bg-clip-text text-transparent;
+  }
 }
 
 /* ---------- Scrollbar ---------- */

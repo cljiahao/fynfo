@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/widgets';
 import type { MarketBudgets, PlannerValues } from '@/features/assets';
 import {
   calculateTotal,
@@ -54,20 +55,18 @@ export function DashboardOverview() {
 
   return (
     <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
-      <div className="flex-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Overview of your financial health
-          </p>
-        </div>
-        <Link href={PAGE_ROUTES.ENTRY}>
-          <Button>
-            <Plus className="mr-2 size-4" />
-            Add Snapshot
-          </Button>
-        </Link>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="Overview of your financial health"
+        action={
+          <Link href={PAGE_ROUTES.ENTRY}>
+            <Button>
+              <Plus className="mr-2 size-4" />
+              Add Snapshot
+            </Button>
+          </Link>
+        }
+      />
 
       <SummaryCards snapshots={snapshotsWithTotals} />
 

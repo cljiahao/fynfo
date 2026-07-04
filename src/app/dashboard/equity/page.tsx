@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/widgets';
 import {
   DistributionsSection,
   EquityTradeData,
@@ -33,18 +34,16 @@ export default function EquityPage() {
 
   return (
     <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
-      <div className="flex-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Equity Tracker</h1>
-          <p className="text-muted-foreground mt-1">
-            Record and track your stock trades
-          </p>
-        </div>
-        <Button onClick={handleAdd}>
-          <Plus className="mr-2 size-4" />
-          Add Trade
-        </Button>
-      </div>
+      <PageHeader
+        title="Equity Tracker"
+        description="Record and track your stock trades"
+        action={
+          <Button onClick={handleAdd}>
+            <Plus className="mr-2 size-4" />
+            Add Trade
+          </Button>
+        }
+      />
 
       <PortfolioSummary trades={trades ?? []} />
 

@@ -184,7 +184,7 @@ export function MarketAllocationTable({
                 {sorted.map((r) => (
                   <tr key={r.ticker} className="border-b last:border-0">
                     <td className="py-2 font-mono font-medium">{r.ticker}</td>
-                    <td className="py-2 text-center">
+                    <td className="py-2 text-center tabular-nums">
                       {r.price > 0
                         ? formatCurrency(r.currentValue, currency)
                         : '-'}
@@ -206,13 +206,13 @@ export function MarketAllocationTable({
                         }
                       />
                     </td>
-                    <td className="py-2 text-center">
+                    <td className="py-2 text-center tabular-nums">
                       {r.alloc > 0
                         ? formatCurrency(r.tickerTarget, currency)
                         : '-'}
                     </td>
                     <td
-                      className={`py-2 text-center ${
+                      className={`py-2 text-center tabular-nums ${
                         r.alloc > 0 && r.tickerTarget > 0
                           ? r.lacking <= 0
                             ? 'text-gain'
@@ -224,7 +224,7 @@ export function MarketAllocationTable({
                     >
                       {r.alloc > 0 ? formatCurrency(r.lacking, currency) : '-'}
                     </td>
-                    <td className="py-2 text-center font-mono">
+                    <td className="py-2 text-center font-mono tabular-nums">
                       {r.alloc > 0 && r.sharesToBuy > 0
                         ? r.sharesToBuy.toLocaleString()
                         : '-'}
@@ -239,7 +239,7 @@ export function MarketAllocationTable({
                       Total
                     </td>
                     <td
-                      className={`py-2 text-center font-medium ${totalAllocPct !== 100 ? 'text-loss' : ''}`}
+                      className={`py-2 text-center font-medium tabular-nums ${totalAllocPct !== 100 ? 'text-loss' : ''}`}
                     >
                       {totalAllocPct}%
                     </td>

@@ -90,7 +90,7 @@ export function DashboardNavbar({ userMenu }: { userMenu?: React.ReactNode }) {
             <SheetContent side="right" className="w-64">
               <SheetHeader>
                 <SheetTitle>
-                  <span className="text-primary">Fyn</span>
+                  <span className="text-brand-gradient">Fyn</span>
                   <span>fo</span>
                 </SheetTitle>
               </SheetHeader>

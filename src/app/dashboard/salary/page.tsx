@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/widgets';
 import {
   SalaryChart,
   SalaryFormDialog,
@@ -31,18 +32,16 @@ export default function SalaryPage() {
 
   return (
     <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
-      <div className="flex-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Salary</h1>
-          <p className="text-muted-foreground mt-1">
-            Track your salary growth, tax, and CPF contributions
-          </p>
-        </div>
-        <Button onClick={handleAdd}>
-          <Plus className="mr-2 size-4" />
-          Add Record
-        </Button>
-      </div>
+      <PageHeader
+        title="Salary"
+        description="Track your salary growth, tax, and CPF contributions"
+        action={
+          <Button onClick={handleAdd}>
+            <Plus className="mr-2 size-4" />
+            Add Record
+          </Button>
+        }
+      />
 
       <SalarySummary records={records ?? []} />
 

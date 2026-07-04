@@ -155,12 +155,12 @@ export function SnapshotTable({ snapshots }: SnapshotTableProps) {
                     {CATEGORIES.map((cat) => {
                       const amount = sumCategory(s.entries, cat);
                       return (
-                        <td key={cat} className="py-2 text-center">
+                        <td key={cat} className="py-2 text-center tabular-nums">
                           {amount > 0 ? formatSGDWhole(amount) : '-'}
                         </td>
                       );
                     })}
-                    <td className="py-2 text-center font-semibold">
+                    <td className="py-2 text-center font-semibold tabular-nums">
                       {formatSGDWhole(total)}
                     </td>
                     <td className="py-2 text-center">
@@ -197,12 +197,15 @@ export function SnapshotTable({ snapshots }: SnapshotTableProps) {
                     {COMPACT_COLUMNS.map((col) => {
                       const amount = col.getValue(s.entries);
                       return (
-                        <td key={col.label} className="py-2 text-center">
+                        <td
+                          key={col.label}
+                          className="py-2 text-center tabular-nums"
+                        >
                           {amount > 0 ? formatSGDWhole(amount) : '-'}
                         </td>
                       );
                     })}
-                    <td className="py-2 text-center font-semibold">
+                    <td className="py-2 text-center font-semibold tabular-nums">
                       {formatSGDWhole(total)}
                     </td>
                     <td className="py-2 text-center">

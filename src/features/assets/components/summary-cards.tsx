@@ -1,8 +1,8 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatCard } from '@/components/widgets';
 import { formatSGDWhole } from '@/lib/utils/currency';
-import { ArrowDown, ArrowUp, Wallet } from 'lucide-react';
+import { Wallet } from 'lucide-react';
 import { INVESTMENT_CATEGORIES } from '../constants';
 import {
   calculateMoMChange,
@@ -40,29 +40,17 @@ function ChangeCard({
     previous
   );
   return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        {change >= 0 ? (
-          <ArrowUp className="text-gain size-4" />
-        ) : (
-          <ArrowDown className="text-loss size-4" />
-        )}
-      </CardHeader>
-      <CardContent>
-        <div
-          className={`text-2xl font-bold ${change >= 0 ? 'text-gain' : 'text-loss'}`}
-        >
-          {change >= 0 ? '+' : ''}
-          {formatSGDWhole(change)}
-        </div>
-        <p className="text-muted-foreground text-xs">
-          {previousId
-            ? `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% from ${previousId}`
-            : 'No previous month'}
-        </p>
-      </CardContent>
-    </Card>
+    <StatCard
+      label={title}
+      value={`${change >= 0 ? '+' : ''}${formatSGDWhole(change)}`}
+      tone={change >= 0 ? 'gain' : 'loss'}
+      trend={change >= 0 ? 'up' : 'down'}
+      hint={
+        previousId
+          ? `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% from ${previousId}`
+          : 'No previous month'
+      }
+    />
   );
 }
 
@@ -91,43 +79,24 @@ export function SummaryCards({ snapshots }: SummaryCardsProps) {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <Card>
-        <CardHeader className="flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium">Total Assets</CardTitle>
-          <Wallet className="text-muted-foreground size-4" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {formatSGDWhole(currentTotal)}
-          </div>
-          <p className="text-muted-foreground text-xs">
-            {latest?.id ?? 'No data'}
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium">Excl. Pension</CardTitle>
-          <Wallet className="text-muted-foreground size-4" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
-            {formatSGDWhole(latestExPension)}
-          </div>
-          <p className="text-muted-foreground text-xs">
-            {latest?.id ?? 'No data'}
-          </p>
-        </CardContent>
-      </Card>
-
+      <StatCard
+        label="Total Assets"
+        value={formatSGDWhole(currentTotal)}
+        icon={Wallet}
+        hint={latest?.id ?? 'No data'}
+      />
+      <StatCard
+        label="Excl. Pension"
+        value={formatSGDWhole(latestExPension)}
+        icon={Wallet}
+        hint={latest?.id ?? 'No data'}
+      />
       <ChangeCard
         title="Savings Change"
         current={currentSavings}
         previous={previousSavings}
         previousId={previous?.id}
       />
-
       <ChangeCard
         title="Investment Change"
         current={currentInvestment}
