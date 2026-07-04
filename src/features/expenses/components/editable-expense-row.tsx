@@ -169,6 +169,7 @@ export function EditableRow({
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
+                defaultMonth={data.date ? new Date(data.date) : undefined}
                 selected={data.date ? new Date(data.date) : undefined}
                 onSelect={(date) => {
                   if (date) {
@@ -178,6 +179,19 @@ export function EditableRow({
                 }}
                 initialFocus
               />
+              <div className="border-border border-t p-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    update({ date: format(new Date(), 'yyyy-MM-dd') });
+                    setDateOpen(false);
+                  }}
+                >
+                  Today
+                </Button>
+              </div>
             </PopoverContent>
           </Popover>
         </td>

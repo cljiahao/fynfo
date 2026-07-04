@@ -225,6 +225,7 @@ export function ExpenseQuickAdd() {
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
+                defaultMonth={date ? new Date(date) : undefined}
                 selected={date ? new Date(date) : undefined}
                 onSelect={(d) => {
                   if (d) {
@@ -234,6 +235,19 @@ export function ExpenseQuickAdd() {
                 }}
                 initialFocus
               />
+              <div className="border-border border-t p-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    setDate(format(new Date(), 'yyyy-MM-dd'));
+                    setDateOpen(false);
+                  }}
+                >
+                  Today
+                </Button>
+              </div>
             </PopoverContent>
           </Popover>
         </div>
