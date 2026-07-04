@@ -31,10 +31,20 @@ function RowActions({
 
   return (
     <div className="flex justify-end gap-1">
-      <Button variant="outline" size="sm" onClick={() => onEdit?.(dividend)}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onEdit?.(dividend)}
+        aria-label="Edit distribution"
+      >
         <Pencil className="size-4" />
       </Button>
-      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setOpen(true)}
+        aria-label="Delete distribution"
+      >
         <Trash2 className="text-destructive size-4" />
       </Button>
       <ConfirmDeleteDialog

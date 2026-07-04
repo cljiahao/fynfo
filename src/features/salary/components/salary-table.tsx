@@ -35,10 +35,20 @@ function SalaryActionButtons({
 
   return (
     <div className="flex justify-center gap-1">
-      <Button variant="outline" size="sm" onClick={() => onEdit?.(id)}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onEdit?.(id)}
+        aria-label="Edit salary record"
+      >
         <Pencil className="size-4" />
       </Button>
-      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setOpen(true)}
+        aria-label="Delete salary record"
+      >
         <Trash2 className="text-destructive size-4" />
       </Button>
       <ConfirmDeleteDialog

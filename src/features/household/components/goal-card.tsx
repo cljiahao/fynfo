@@ -34,7 +34,7 @@ export function GoalCard({ goal, onContribute, onDelete }: GoalCardProps) {
   const funded = goal.pct >= 100;
 
   return (
-    <Card className={cn(funded && 'border-emerald-500/50')}>
+    <Card className={cn(funded && 'border-gain/50')}>
       <CardContent className="space-y-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -57,7 +57,7 @@ export function GoalCard({ goal, onContribute, onDelete }: GoalCardProps) {
           )}
         </div>
 
-        {/* Two-tone joint progress: primary = you, emerald = partner */}
+        {/* Two-tone joint progress: primary = you, gain = partner */}
         <div className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
           <div className="flex h-full">
             <div
@@ -65,7 +65,7 @@ export function GoalCard({ goal, onContribute, onDelete }: GoalCardProps) {
               style={{ width: `${selfPct}%` }}
             />
             <div
-              className="h-full bg-emerald-500"
+              className="bg-gain h-full"
               style={{ width: `${partnerPct}%` }}
             />
           </div>
@@ -89,7 +89,7 @@ export function GoalCard({ goal, onContribute, onDelete }: GoalCardProps) {
             You {formatSGD(self)}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-emerald-500" />
+            <span className="bg-gain size-2 rounded-full" />
             Partner {formatSGD(partner)}
           </span>
         </div>

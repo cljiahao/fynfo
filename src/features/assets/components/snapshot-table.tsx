@@ -80,10 +80,16 @@ function SnapshotActionButtons({ id }: { id: string }) {
         variant="outline"
         size="sm"
         onClick={() => router.push(`/dashboard/entry?edit=${id}`)}
+        aria-label="Edit snapshot"
       >
         <Pencil className="size-4" />
       </Button>
-      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setOpen(true)}
+        aria-label="Delete snapshot"
+      >
         <Trash2 className="text-destructive size-4" />
       </Button>
       <ConfirmDeleteDialog

@@ -187,7 +187,7 @@ export function TradeFormDialog({
                   variant={action === 'buy' ? 'default' : 'outline'}
                   className={
                     action === 'buy'
-                      ? 'flex-1 bg-emerald-600 hover:bg-emerald-700'
+                      ? 'bg-gain hover:bg-gain/90 flex-1'
                       : 'flex-1'
                   }
                   onClick={() => {
@@ -202,7 +202,7 @@ export function TradeFormDialog({
                   variant={action === 'sell' ? 'default' : 'outline'}
                   className={
                     action === 'sell'
-                      ? 'flex-1 bg-red-600 hover:bg-red-700'
+                      ? 'bg-loss hover:bg-loss/90 flex-1'
                       : 'flex-1'
                   }
                   onClick={() => {

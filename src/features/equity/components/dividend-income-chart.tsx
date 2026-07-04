@@ -50,7 +50,7 @@ export function DividendIncomeChart({
             ]}
             {...CHART_TOOLTIP_PROPS}
           />
-          <Bar dataKey="total" fill="#10b981" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="total" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

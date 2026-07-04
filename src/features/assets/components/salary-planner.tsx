@@ -209,7 +209,7 @@ function SalaryPlannerInner({
       ? [{ name: 'Tithe', value: titheAmt, fill: '#8b5cf6' }]
       : []),
     ...(allowanceEnabled
-      ? [{ name: 'Allowance', value: allowanceAmt, fill: '#92400e' }]
+      ? [{ name: 'Allowance', value: allowanceAmt, fill: '#b45309' }]
       : []),
   ];
 
@@ -248,7 +248,7 @@ function SalaryPlannerInner({
           {
             label: `Allowance (${(allowancePct * 100).toFixed(0)}%)`,
             value: allowanceAmt,
-            color: '#92400e',
+            color: '#b45309',
           },
         ]
       : []),
