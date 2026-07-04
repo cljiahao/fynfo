@@ -181,8 +181,8 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
-      <div className="flex w-full max-w-md flex-col items-center rounded-2xl border border-zinc-800 bg-zinc-950 p-8 shadow-2xl">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/10 text-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+      <div className="border-border bg-card flex w-full max-w-md flex-col items-center rounded-2xl border p-8 shadow-2xl">
+        <div className="bg-brand-subtle text-brand mb-4 flex h-16 w-16 items-center justify-center rounded-full">
           {isSubmitting ? (
             <Loader2 className="h-8 w-8 animate-spin" />
           ) : (
@@ -191,16 +191,16 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
         </div>
 
         {isSubmitting && (
-          <div className="mb-4 h-1 w-full overflow-hidden rounded-full bg-zinc-800">
+          <div className="bg-muted mb-4 h-1 w-full overflow-hidden rounded-full">
             <div
-              className="h-full rounded-full bg-blue-500 transition-all duration-100 ease-linear"
+              className="bg-brand h-full rounded-full transition-all duration-100 ease-linear"
               style={{ width: `${progress}%` }}
             />
           </div>
         )}
 
-        <h2 className="mb-2 text-2xl font-bold text-white">Vault Locked</h2>
-        <p className="mb-8 min-h-[3rem] text-center text-zinc-400">
+        <h2 className="mb-2 text-2xl font-bold">Vault Locked</h2>
+        <p className="text-muted-foreground mb-8 min-h-[3rem] text-center">
           {isSubmitting ? (
             <span className="animate-pulse">
               {loadingData ? LOADING_DATA_MESSAGE : UNLOCK_MESSAGES[msgIndex]}
@@ -243,7 +243,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
                   }}
                   placeholder="••••••"
                   aria-invalid={fieldState.invalid}
-                  className="border-zinc-800 bg-zinc-900 py-4 text-center font-mono text-3xl tracking-[1em] text-white focus-visible:ring-blue-500"
+                  className="border-input bg-background py-4 text-center font-mono text-3xl tracking-[1em]"
                   autoFocus
                   disabled={isSubmitting}
                 />
@@ -260,7 +260,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 text-lg font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+            className="bg-brand text-brand-foreground hover:bg-brand/90 flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-semibold disabled:opacity-50"
           >
             {isSubmitting ? 'Unlocking…' : 'Unlock Vault'}
             {!isSubmitting && <Unlock className="h-5 w-5" />}
