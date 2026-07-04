@@ -1,10 +1,10 @@
 {
   "templatecentral_version": "5.0.0",
   "stack": "nextjs",
-  "seeded_at": "2026-06-27",
+  "seeded_at": "2026-07-04",
   "seeded_files": {
     "AGENTS.md": {
-      "origin_hash": "ea3c27384e8ffe35c56ed0a20cd244f771c1911c300cdec693d470b4732d07f8",
+      "origin_hash": "57fa920072985cb3dca63bd8d5bcd95d6a2cb6fbc4d00523bce6e634484303fb",
       "path": "AGENTS.md"
     },
     "CLAUDE.md": {
@@ -12,7 +12,7 @@
       "path": "CLAUDE.md"
     },
     ".claude/settings.json": {
-      "origin_hash": "1260af5e572aa6e9d1e18b3fee7f710bd9fdf5c7f71b42f3323efe9c67e7946a",
+      "origin_hash": "13f8d12b6eb0d03e7ac6c7fa9ad30179c0d988948f0fcbc399b21e0c34e3d0a3",
       "path": ".claude/settings.json"
     },
     ".claude/skills/next-verify/SKILL.md": {
