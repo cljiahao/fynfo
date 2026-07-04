@@ -120,7 +120,7 @@ export function YieldOnCostTable({
           <tr key={r.ticker} className="border-b last:border-0">
             <td className="py-2 font-medium">{r.ticker}</td>
             <td className="py-2 text-right tabular-nums">{formatSGD(r.ttm)}</td>
-            <td className="py-2 text-right font-semibold text-emerald-600 tabular-nums">
+            <td className="text-gain py-2 text-right font-semibold tabular-nums">
               {(r.yoc * 100).toFixed(2)}%
             </td>
           </tr>

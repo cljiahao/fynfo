@@ -83,7 +83,7 @@ export function MonthlyInvestmentTable({
                 <tr className="border-t">
                   <td className="py-2 font-semibold">Total</td>
                   <td
-                    className={`py-2 text-center font-semibold ${totalRatio !== 100 ? 'text-red-500' : ''}`}
+                    className={`py-2 text-center font-semibold ${totalRatio !== 100 ? 'text-loss' : ''}`}
                   >
                     {totalRatio}%
                   </td>
@@ -94,7 +94,7 @@ export function MonthlyInvestmentTable({
               </tfoot>
             </table>
             {totalRatio !== 100 && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-red-500">
+              <p className="text-loss mt-1 flex items-center gap-1 text-xs">
                 <AlertCircle className="size-3" />
                 Must sum to 100%
               </p>

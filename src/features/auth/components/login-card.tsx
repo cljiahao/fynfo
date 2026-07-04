@@ -10,7 +10,7 @@ export function LoginCard() {
     <CustomCard
       header={
         <>
-          <span className="text-brand-gradient">Fyn</span>
+          <span className="text-primary">Fyn</span>
           <span>fo</span>
         </>
       }

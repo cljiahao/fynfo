@@ -58,21 +58,25 @@ function MarketTable({
           return (
             <tr key={h.ticker} className="border-b last:border-0">
               <td className="py-2 font-mono font-medium">{h.ticker}</td>
-              <td className="py-2 text-center">
+              <td className="py-2 text-center tabular-nums">
                 {price > 0
                   ? formatCurrency(price * rate, displayCurrency)
                   : '-'}
               </td>
-              <td className="py-2 text-center">{h.shares.toLocaleString()}</td>
-              <td className="py-2 text-center">
+              <td className="py-2 text-center tabular-nums">
+                {h.shares.toLocaleString()}
+              </td>
+              <td className="py-2 text-center tabular-nums">
                 {formatCurrency(h.avgBuyPrice * rate, displayCurrency)}
               </td>
               <td
-                className={`py-2 text-center font-medium ${
-                  winLose >= 0 ? 'text-emerald-600' : 'text-red-500'
+                className={`py-2 text-center font-medium tabular-nums ${
+                  winLose >= 0 ? 'text-gain' : 'text-loss'
                 }`}
               >
-                {price > 0 ? formatPct(winLose) : '-'}
+                {price > 0
+                  ? `${winLose >= 0 ? '▲' : '▼'} ${formatPct(winLose)}`
+                  : '-'}
               </td>
             </tr>
           );

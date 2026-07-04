@@ -190,7 +190,7 @@ export function InvestmentBreakdown({
         <CardContent className="space-y-5">
           {/* Warning banner — top for visibility */}
           {hasUndeployed && qDaysLeft <= 30 && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+            <div className="border-warning/30 bg-warning-subtle text-warning-strong rounded-md border p-3 text-xs">
               <p className="font-semibold">
                 {qDaysLeft} days left in {qLabel}
               </p>

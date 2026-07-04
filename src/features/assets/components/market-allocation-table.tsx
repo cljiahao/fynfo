@@ -163,7 +163,7 @@ export function MarketAllocationTable({
               {targetInCurrency > 0 && (
                 <span>
                   <span className="text-muted-foreground">Target: </span>
-                  <span className="font-semibold text-blue-500">
+                  <span className="text-chart-1 font-semibold">
                     {formatCurrency(targetInCurrency, currency)}
                   </span>
                 </span>
@@ -215,10 +215,10 @@ export function MarketAllocationTable({
                       className={`py-2 text-center ${
                         r.alloc > 0 && r.tickerTarget > 0
                           ? r.lacking <= 0
-                            ? 'text-emerald-600'
+                            ? 'text-gain'
                             : r.lacking / r.tickerTarget > 0.2
-                              ? 'bg-red-50 text-red-600 dark:bg-red-950'
-                              : 'bg-amber-50 text-amber-600 dark:bg-amber-950'
+                              ? 'bg-loss-subtle text-loss-strong'
+                              : 'bg-warning-subtle text-warning-strong'
                           : ''
                       }`}
                     >
@@ -239,7 +239,7 @@ export function MarketAllocationTable({
                       Total
                     </td>
                     <td
-                      className={`py-2 text-center font-medium ${totalAllocPct !== 100 ? 'text-red-500' : ''}`}
+                      className={`py-2 text-center font-medium ${totalAllocPct !== 100 ? 'text-loss' : ''}`}
                     >
                       {totalAllocPct}%
                     </td>

@@ -45,6 +45,30 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /* Brand accent (sky end of the marketing gradient) */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-subtle: var(--brand-subtle);
+
+  /* Financial semantics */
+  --color-gain: var(--gain);
+  --color-gain-strong: var(--gain-strong);
+  --color-gain-subtle: var(--gain-subtle);
+  --color-loss: var(--loss);
+  --color-loss-strong: var(--loss-strong);
+  --color-loss-subtle: var(--loss-subtle);
+  --color-warning: var(--warning);
+  --color-warning-strong: var(--warning-strong);
+  --color-warning-subtle: var(--warning-subtle);
+
+  /* Chart series ramp (theme-aware) */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
 }
 
 :root {
@@ -72,24 +96,48 @@
   --accent-foreground: var(--color-neutral-900);
   --accent-hover: var(--color-neutral-200);
 
-  /* Utility */
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* Utility — neutrals carry a faint cool bias (chosen, not defaulted) */
+  --muted: oklch(0.968 0.004 240);
+  --muted-foreground: oklch(0.53 0.02 240);
   --destructive: oklch(0.577 0.245 27.325);
 
+  /* Brand accent — sky end of the marketing gradient, used sparingly */
+  --brand: oklch(0.55 0.13 240);
+  --brand-foreground: oklch(0.99 0 0);
+  --brand-subtle: oklch(0.95 0.03 240);
+
+  /* Financial semantics — *-strong is contrast-safe for text, *-subtle for tints */
+  --gain: oklch(0.55 0.14 158);
+  --gain-strong: oklch(0.48 0.14 158);
+  --gain-subtle: oklch(0.95 0.04 158);
+  --loss: oklch(0.55 0.22 27);
+  --loss-strong: oklch(0.5 0.22 27);
+  --loss-subtle: oklch(0.95 0.04 27);
+  --warning: oklch(0.62 0.14 70);
+  --warning-strong: oklch(0.5 0.13 65);
+  --warning-subtle: oklch(0.96 0.05 85);
+
+  /* Chart series ramp */
+  --chart-1: oklch(0.55 0.13 240);
+  --chart-2: oklch(0.6 0.14 158);
+  --chart-3: oklch(0.7 0.15 75);
+  --chart-4: oklch(0.55 0.16 300);
+  --chart-5: oklch(0.6 0.2 27);
+  --chart-6: oklch(0.62 0.1 195);
+
   /* Form */
-  --border: var(--color-neutral-300);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: oklch(0.91 0.005 240);
+  --input: oklch(0.922 0.004 240);
+  --ring: var(--brand);
 }
 
 .dark {
-  /* Surface */
+  /* Surface — card/popover lifted above background for real depth */
   --background: var(--black);
   --foreground: var(--white);
-  --card: var(--black);
+  --card: oklch(0.215 0.006 240);
   --card-foreground: var(--white);
-  --popover: var(--black);
+  --popover: oklch(0.215 0.006 240);
   --popover-foreground: var(--white);
 
   /* Actions — neutral palette (customize per project) */
@@ -104,14 +152,38 @@
   --accent-hover: var(--color-neutral-700);
 
   /* Utility */
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
+  --muted: oklch(0.27 0.006 240);
+  --muted-foreground: oklch(0.7 0.02 240);
   --destructive: oklch(0.704 0.191 22.216);
+
+  /* Brand accent */
+  --brand: oklch(0.7 0.13 240);
+  --brand-foreground: oklch(0.16 0.02 240);
+  --brand-subtle: oklch(0.32 0.06 240);
+
+  /* Financial semantics */
+  --gain: oklch(0.74 0.15 158);
+  --gain-strong: oklch(0.78 0.15 158);
+  --gain-subtle: oklch(0.31 0.06 158);
+  --loss: oklch(0.72 0.19 22);
+  --loss-strong: oklch(0.76 0.19 22);
+  --loss-subtle: oklch(0.31 0.08 22);
+  --warning: oklch(0.8 0.14 80);
+  --warning-strong: oklch(0.84 0.14 82);
+  --warning-subtle: oklch(0.33 0.06 80);
+
+  /* Chart series ramp */
+  --chart-1: oklch(0.72 0.13 240);
+  --chart-2: oklch(0.76 0.15 158);
+  --chart-3: oklch(0.82 0.15 80);
+  --chart-4: oklch(0.7 0.16 300);
+  --chart-5: oklch(0.72 0.19 22);
+  --chart-6: oklch(0.75 0.11 195);
 
   /* Form */
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: var(--brand);
 }
 
 /* ---------- Base layer ---------- */
@@ -171,14 +243,6 @@
 
   .max-w-content {
     @apply max-w-[1000px];
-  }
-
-  .bg-brand-gradient {
-    @apply from-primary via-primary to-primary bg-linear-to-r;
-  }
-
-  .text-brand-gradient {
-    @apply from-primary via-primary to-primary bg-linear-to-r bg-clip-text text-transparent;
   }
 }
 

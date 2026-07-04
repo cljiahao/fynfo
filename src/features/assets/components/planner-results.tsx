@@ -170,7 +170,7 @@ export function PlannerResults({
               </span>
               <span
                 className={
-                  item.value < 0 ? 'font-medium text-red-500' : 'font-medium'
+                  item.value < 0 ? 'text-loss font-medium' : 'font-medium'
                 }
               >
                 {formatSGD(item.value)}
@@ -195,7 +195,7 @@ export function PlannerResults({
                 Current (Savings)
               </span>
               <span
-                className={`text-xs ${currentSavings >= emergencyFundGoal ? 'text-emerald-500' : 'text-amber-500'}`}
+                className={`text-xs ${currentSavings >= emergencyFundGoal ? 'text-gain' : 'text-warning'}`}
               >
                 {formatSGD(currentSavings)}{' '}
                 {currentSavings >= emergencyFundGoal
@@ -212,7 +212,7 @@ export function PlannerResults({
                 Current (Bonds)
               </span>
               <span
-                className={`text-xs ${currentBonds >= warChestGoal ? 'text-emerald-500' : 'text-amber-500'}`}
+                className={`text-xs ${currentBonds >= warChestGoal ? 'text-gain' : 'text-warning'}`}
               >
                 {formatSGD(currentBonds)}{' '}
                 {currentBonds >= warChestGoal
@@ -221,7 +221,7 @@ export function PlannerResults({
               </span>
             </div>
             {goalsFulfilled && (
-              <p className="text-xs font-medium text-emerald-500">
+              <p className="text-gain text-xs font-medium">
                 All goals fulfilled — surplus goes to investment
               </p>
             )}

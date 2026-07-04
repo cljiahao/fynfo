@@ -119,7 +119,7 @@ export function SalaryChart({ records }: SalaryChartProps) {
                 yAxisId="left"
                 type="monotone"
                 dataKey="salary"
-                stroke="#3b82f6"
+                stroke="var(--chart-1)"
                 strokeWidth={2}
                 dot={{ r: 3 }}
                 activeDot={{ r: 5 }}
@@ -128,7 +128,7 @@ export function SalaryChart({ records }: SalaryChartProps) {
                 yAxisId="left"
                 type="monotone"
                 dataKey="bonus"
-                stroke="#f59e0b"
+                stroke="var(--chart-3)"
                 strokeWidth={2}
                 dot={{ r: 3 }}
                 activeDot={{ r: 5 }}
@@ -137,7 +137,7 @@ export function SalaryChart({ records }: SalaryChartProps) {
                 yAxisId="right"
                 type="monotone"
                 dataKey="cumulative"
-                stroke="#10b981"
+                stroke="var(--chart-2)"
                 strokeWidth={2.5}
                 strokeDasharray="6 3"
                 dot={false}

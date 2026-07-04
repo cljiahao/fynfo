@@ -61,7 +61,7 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
           <Receipt className="text-muted-foreground size-4" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-red-500">
+          <div className="text-loss text-2xl font-bold">
             {formatSGDWhole(estSummary.taxPayable)}
           </div>
           <p className="text-muted-foreground text-xs">

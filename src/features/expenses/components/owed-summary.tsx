@@ -49,7 +49,7 @@ export function OwedSummary({ expenses }: OwedSummaryProps) {
             Who Owes You
           </CardTitle>
           {totalUnsettled > 0 && (
-            <span className="text-lg font-bold text-emerald-600">
+            <span className="text-gain text-lg font-bold">
               {formatSGD(totalUnsettled)}
             </span>
           )}
@@ -67,7 +67,7 @@ export function OwedSummary({ expenses }: OwedSummaryProps) {
                 <div className="flex-between w-full pr-2">
                   <span className="text-sm font-medium">{group.person}</span>
                   {group.totalOwed > 0 ? (
-                    <span className="text-sm font-semibold text-emerald-600">
+                    <span className="text-gain text-sm font-semibold">
                       {formatSGD(group.totalOwed)}
                     </span>
                   ) : (
@@ -87,7 +87,7 @@ export function OwedSummary({ expenses }: OwedSummaryProps) {
                       <Button
                         variant={m.settled ? 'default' : 'outline'}
                         size="icon"
-                        className={`size-6 shrink-0 ${m.settled ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
+                        className={`size-6 shrink-0 ${m.settled ? 'bg-gain hover:bg-gain/90' : ''}`}
                         onClick={() =>
                           handleSettle(m.expenseIds, group.person, !m.settled)
                         }

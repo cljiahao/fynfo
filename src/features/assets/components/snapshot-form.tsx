@@ -278,7 +278,7 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
                           size="sm"
                           onClick={() => remove(idx)}
                         >
-                          <Trash2 className="size-4 text-red-500" />
+                          <Trash2 className="text-destructive size-4" />
                         </Button>
                         {form.formState.errors.entries?.[idx]?.account && (
                           <p className="text-destructive col-span-3 text-sm">

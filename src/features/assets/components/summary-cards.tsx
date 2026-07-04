@@ -44,14 +44,14 @@ function ChangeCard({
       <CardHeader className="flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         {change >= 0 ? (
-          <ArrowUp className="size-4 text-emerald-500" />
+          <ArrowUp className="text-gain size-4" />
         ) : (
-          <ArrowDown className="size-4 text-red-500" />
+          <ArrowDown className="text-loss size-4" />
         )}
       </CardHeader>
       <CardContent>
         <div
-          className={`text-2xl font-bold ${change >= 0 ? 'text-emerald-500' : 'text-red-500'}`}
+          className={`text-2xl font-bold ${change >= 0 ? 'text-gain' : 'text-loss'}`}
         >
           {change >= 0 ? '+' : ''}
           {formatSGDWhole(change)}

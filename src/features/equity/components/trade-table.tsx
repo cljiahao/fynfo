@@ -42,7 +42,7 @@ function TradeActionButtons({
         <Pencil className="size-4" />
       </Button>
       <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
-        <Trash2 className="size-4 text-red-500" />
+        <Trash2 className="text-destructive size-4" />
       </Button>
       <ConfirmDeleteDialog
         open={open}
@@ -119,8 +119,8 @@ export function TradeTable({ trades, onEdit }: TradeTableProps) {
                       <span
                         className={`rounded px-2 py-0.5 text-xs font-medium ${
                           t.action === 'buy'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-red-100 text-red-700'
+                            ? 'bg-gain-subtle text-gain-strong'
+                            : 'bg-loss-subtle text-loss-strong'
                         }`}
                       >
                         {t.action.toUpperCase()}

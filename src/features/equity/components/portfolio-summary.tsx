@@ -107,7 +107,7 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
                 <Loader2 className="ml-2 inline size-3 animate-spin" />
               )}
               {pricesError && (
-                <AlertCircle className="ml-2 inline size-3 text-amber-500" />
+                <AlertCircle className="text-warning ml-2 inline size-3" />
               )}
             </CardTitle>
             <TrendingUp className="text-muted-foreground size-4" />
@@ -144,14 +144,14 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
               Unrealised P&L
             </CardTitle>
             {totalPnl >= 0 ? (
-              <ArrowUp className="size-4 text-emerald-500" />
+              <ArrowUp className="text-gain size-4" />
             ) : (
-              <ArrowDown className="size-4 text-red-500" />
+              <ArrowDown className="text-loss size-4" />
             )}
           </CardHeader>
           <CardContent>
             <div
-              className={`text-2xl font-bold ${totalPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}
+              className={`text-2xl font-bold ${totalPnl >= 0 ? 'text-gain' : 'text-loss'}`}
             >
               {totalPnl >= 0 ? '+' : ''}
               {formatSGD(totalPnl)}
@@ -159,18 +159,14 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
             <div className="text-muted-foreground mt-1 space-y-0.5 text-xs">
               <div className="flex-between">
                 <span>SG</span>
-                <span
-                  className={sgPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}
-                >
+                <span className={sgPnl >= 0 ? 'text-gain' : 'text-loss'}>
                   {sgPnl >= 0 ? '+' : ''}
                   {formatSGD(sgPnl)}
                 </span>
               </div>
               <div className="flex-between">
                 <span>US</span>
-                <span
-                  className={usPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}
-                >
+                <span className={usPnl >= 0 ? 'text-gain' : 'text-loss'}>
                   {usPnl >= 0 ? '+' : ''}
                   {formatUSD(usPnl)}
                 </span>
@@ -193,7 +189,7 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
             ) : (
               <>
                 <div
-                  className={`text-2xl font-bold ${mwrPct >= 0 ? 'text-emerald-500' : 'text-red-500'}`}
+                  className={`text-2xl font-bold ${mwrPct >= 0 ? 'text-gain' : 'text-loss'}`}
                 >
                   {mwrPct >= 0 ? '+' : ''}
                   {mwrPct.toFixed(2)}%
@@ -201,22 +197,14 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
                 <div className="text-muted-foreground mt-1 space-y-0.5 text-xs">
                   <div className="flex-between">
                     <span>SG</span>
-                    <span
-                      className={
-                        sgMwrPct >= 0 ? 'text-emerald-500' : 'text-red-500'
-                      }
-                    >
+                    <span className={sgMwrPct >= 0 ? 'text-gain' : 'text-loss'}>
                       {sgMwrPct >= 0 ? '+' : ''}
                       {sgMwrPct.toFixed(2)}%
                     </span>
                   </div>
                   <div className="flex-between">
                     <span>US</span>
-                    <span
-                      className={
-                        usMwrPct >= 0 ? 'text-emerald-500' : 'text-red-500'
-                      }
-                    >
+                    <span className={usMwrPct >= 0 ? 'text-gain' : 'text-loss'}>
                       {usMwrPct >= 0 ? '+' : ''}
                       {usMwrPct.toFixed(2)}%
                     </span>

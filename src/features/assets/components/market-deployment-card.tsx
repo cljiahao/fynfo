@@ -77,7 +77,7 @@ export function MarketDeploymentCard({
         </div>
         <div className="bg-muted h-1.5 overflow-hidden rounded-full">
           <div
-            className={`h-full rounded-full ${qPct >= 100 ? 'bg-emerald-500' : 'bg-blue-500'}`}
+            className={`h-full rounded-full ${qPct >= 100 ? 'bg-gain' : 'bg-chart-1'}`}
             style={{ width: `${qPct}%` }}
           />
         </div>
@@ -109,7 +109,7 @@ export function MarketDeploymentCard({
         </div>
         <div className="bg-muted h-1.5 overflow-hidden rounded-full">
           <div
-            className={`h-full rounded-full ${targetPct >= 100 ? 'bg-emerald-500' : 'bg-violet-500'}`}
+            className={`h-full rounded-full ${targetPct >= 100 ? 'bg-gain' : 'bg-chart-4'}`}
             style={{ width: `${targetPct}%` }}
           />
         </div>
@@ -162,9 +162,7 @@ export function MarketDeploymentCard({
             </Tooltip>
           </span>
           <span
-            className={
-              m.available > 0 ? 'text-emerald-600' : 'text-muted-foreground'
-            }
+            className={m.available > 0 ? 'text-gain' : 'text-muted-foreground'}
           >
             {formatSGD(m.available)}
           </span>

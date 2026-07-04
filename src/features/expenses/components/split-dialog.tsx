@@ -251,7 +251,7 @@ export function SplitDialog({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="size-6 text-red-500 hover:text-red-600"
+                            className="text-destructive hover:text-destructive size-6"
                             onClick={() => removePerson(s.person)}
                             aria-label={`Remove ${s.person}`}
                           >

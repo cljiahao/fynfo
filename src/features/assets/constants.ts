@@ -27,7 +27,7 @@ export const CATEGORY_COLORS: Record<AssetCategory, string> = {
   etf: '#f97316', // orange
   non_equity: '#ec4899', // pink
   crypto: '#8b5cf6', // violet
-  pension: '#92400e', // brown
+  pension: '#b45309', // bronze (lightened from #92400e for dark-mode legibility)
 };
 
 // Categories that roll up into "Total Investment" on the chart

@@ -62,9 +62,9 @@ export function getCurrentQuarter(now: Date = new Date()) {
 
 // Available % color: high = red (not investing), low = green (well deployed).
 export function deployPctColor(pct: number): string {
-  if (pct <= 20) return 'text-emerald-600';
-  if (pct <= 50) return 'text-amber-500';
-  return 'text-red-500';
+  if (pct <= 20) return 'text-gain';
+  if (pct <= 50) return 'text-warning';
+  return 'text-loss';
 }
 
 /** Market-value of held equity per market, at the given prices. */

@@ -39,8 +39,8 @@ function Row({
   const valueClass = {
     default: 'font-medium',
     muted: 'text-muted-foreground',
-    negative: 'text-red-500 font-medium',
-    positive: 'text-emerald-600 font-bold',
+    negative: 'text-loss font-medium',
+    positive: 'text-gain font-bold',
     bold: 'font-bold text-lg',
   }[variant];
 

@@ -80,13 +80,13 @@ export function DeployableCashBreakdown({
                 <span>{formatSGD(warChestGoal)}</span>
               </div>
               {bondsShortfall > 0 && (
-                <div className="flex-between text-xs text-amber-500">
+                <div className="flex-between text-warning text-xs">
                   <span>− War chest shortfall</span>
                   <span>{formatSGD(bondsShortfall)}</span>
                 </div>
               )}
               {bondsSurplus > 0 && (
-                <div className="flex-between text-xs text-emerald-600">
+                <div className="flex-between text-gain text-xs">
                   <span>+ Bonds surplus</span>
                   <span>{formatSGD(bondsSurplus)}</span>
                 </div>
@@ -94,9 +94,7 @@ export function DeployableCashBreakdown({
               <div className="flex-between border-t pt-1.5 font-semibold">
                 <span>Total Deployable</span>
                 <span
-                  className={
-                    totalDeployable > 0 ? 'text-emerald-600' : 'text-red-500'
-                  }
+                  className={totalDeployable > 0 ? 'text-gain' : 'text-loss'}
                 >
                   {formatSGD(totalDeployable)}
                 </span>

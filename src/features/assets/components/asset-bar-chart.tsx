@@ -46,17 +46,22 @@ const AGGREGATE_LINES: {
   color: string;
   strokeWidth: number;
 }[] = [
-  { key: 'total', label: 'Total Assets', color: '#171717', strokeWidth: 3 },
+  {
+    key: 'total',
+    label: 'Total Assets',
+    color: 'var(--foreground)',
+    strokeWidth: 3,
+  },
   {
     key: 'excl_pension',
     label: 'Excl. Pension',
-    color: '#737373',
+    color: 'var(--muted-foreground)',
     strokeWidth: 2.5,
   },
   {
     key: 'total_investment',
     label: 'Total Investment',
-    color: '#ef4444',
+    color: 'var(--chart-1)',
     strokeWidth: 2.5,
   },
 ];

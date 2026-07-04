@@ -84,7 +84,7 @@ export function UserMenuDropdown({
             await supabase.auth.signOut();
             window.location.href = '/login';
           }}
-          className="text-red-600 focus:text-red-600"
+          className="text-destructive focus:text-destructive"
         >
           <LogOut className="mr-2 size-4" />
           Log out

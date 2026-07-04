@@ -21,7 +21,7 @@ function AccordionItem({
 }) {
   if (variant === 'gradient') {
     return (
-      <div className="bg-brand-gradient rounded-lg p-px">
+      <div className="bg-primary rounded-lg p-px">
         <AccordionPrimitive.Item
           data-slot="accordion-item"
           className={cn('bg-card rounded-lg', className)}

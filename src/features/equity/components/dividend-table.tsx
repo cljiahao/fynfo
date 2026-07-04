@@ -35,7 +35,7 @@ function RowActions({
         <Pencil className="size-4" />
       </Button>
       <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
-        <Trash2 className="size-4 text-red-500" />
+        <Trash2 className="text-destructive size-4" />
       </Button>
       <ConfirmDeleteDialog
         open={open}

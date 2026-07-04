@@ -68,7 +68,7 @@ export function MarketingTrendChart({ daily }: MarketingTrendChartProps) {
                   type="monotone"
                   dataKey="pageViews"
                   name="Page views"
-                  stroke="#34d399"
+                  stroke="var(--chart-2)"
                   strokeWidth={2}
                   dot={false}
                 />
@@ -76,7 +76,7 @@ export function MarketingTrendChart({ daily }: MarketingTrendChartProps) {
                   type="monotone"
                   dataKey="ctaClicks"
                   name="CTA clicks"
-                  stroke="#38bdf8"
+                  stroke="var(--chart-1)"
                   strokeWidth={2}
                   dot={false}
                 />

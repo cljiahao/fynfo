@@ -46,7 +46,7 @@ export function GoalCard({ goal, onContribute, onDelete }: GoalCardProps) {
             )}
           </div>
           {funded ? (
-            <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+            <span className="bg-gain-subtle text-gain-strong flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium">
               <Check className="size-3" />
               Funded
             </span>

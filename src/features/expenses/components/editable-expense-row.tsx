@@ -284,7 +284,7 @@ export function EditableRow({
               <Button
                 variant="outline"
                 size="icon"
-                className="size-8 text-red-500 hover:bg-red-50 hover:text-red-600"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive size-8"
                 onMouseDown={() => {
                   skipNextBlurRef.current = true;
                   if (saveTimerRef.current) {

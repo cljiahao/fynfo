@@ -42,11 +42,11 @@ describe('getCurrentQuarter', () => {
 });
 
 describe('deployPctColor', () => {
-  it('maps deploy % to a tone (low=green, high=red)', () => {
-    expect(deployPctColor(0)).toContain('emerald');
-    expect(deployPctColor(20)).toContain('emerald');
-    expect(deployPctColor(40)).toContain('amber');
-    expect(deployPctColor(80)).toContain('red');
+  it('maps deploy % to a semantic tone (low=gain, mid=warning, high=loss)', () => {
+    expect(deployPctColor(0)).toBe('text-gain');
+    expect(deployPctColor(20)).toBe('text-gain');
+    expect(deployPctColor(40)).toBe('text-warning');
+    expect(deployPctColor(80)).toBe('text-loss');
   });
 });
 

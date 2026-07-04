@@ -206,7 +206,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
               />
               <ReferenceLine
                 y={avgExpense}
-                stroke="#94a3b8"
+                stroke="var(--muted-foreground)"
                 strokeDasharray="4 4"
                 label={{
                   value: `Avg ${formatSGDWhole(avgExpense)}`,
