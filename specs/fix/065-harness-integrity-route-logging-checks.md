@@ -71,6 +71,21 @@ Consequence, intended: after a legitimate enforcement/rulebook edit, `pnpm check
 fails until a human runs `/regen-harness`. That coincides with the §8.2 human
 approval step for such edits, so it adds no new friction — it _is_ the guard.
 
+## Known limitation (post-ship, CI-discovered)
+
+`verify-harness.mjs` was initially wired into `pnpm check` but broke CI: it hashed
+raw bytes, and `harness.json`'s hashes were regenerated on a **CRLF** Windows
+working copy while git stores + CI checks out **LF** — so AGENTS.md and
+`next-verify/SKILL.md` mis-hashed on Linux. **Backed out of the gate**;
+`check` now runs `check:routes` only. The verifier now normalizes CRLF→LF before
+hashing (cross-platform), and stays runnable manually via `pnpm check:harness`.
+
+To **re-enable it in the gate** (all human-only enforcement steps):
+
+1. Update the `regen-harness` skill to hash LF-normalized bytes (match the script).
+2. Run `/regen-harness` so `harness.json` holds normalized hashes.
+3. Re-add `pnpm check:harness &&` to the front of the `check` script.
+
 ## Out of scope
 
 - Installing `verify-harness.mjs` as a `.claude/hooks/` lifecycle hook — human-only.

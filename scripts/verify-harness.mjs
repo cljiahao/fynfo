@@ -2,12 +2,15 @@
 // Harness integrity verifier (templateCentral 5.2 concept, Node port for Fynfo).
 // Recomputes SHA-256 of every file tracked in .claude/harness.json and compares
 // to its recorded origin_hash. Exit 1 on any drift or missing file, 0 if clean.
-// Hashing matches /regen-harness exactly (raw file bytes -> sha256 hex).
 //
-// Runs as the first step of `pnpm check` (see package.json), so husky pre-commit
-// and CI both fail when the enforcement layer (settings.json, hooks/**, rulebooks,
-// skills) drifts from the last human-blessed manifest. The baseline is only
-// re-blessed by a HUMAN running /regen-harness — this script never rewrites it.
+// Line endings are normalized to LF before hashing so a CRLF Windows working copy
+// and an LF git/CI checkout of the same content hash identically. NOTE: for this to
+// match the manifest, /regen-harness must hash the SAME normalized bytes — until the
+// regen skill is updated to normalize, this script is NOT wired into `pnpm check`
+// (see spec 065 "Known limitation"). Run it manually: `pnpm check:harness`.
+//
+// The baseline is only re-blessed by a HUMAN running /regen-harness — this script
+// never rewrites it.
 /* eslint-disable no-console -- spec 065: standalone CLI validator; stdout + exit code is its interface, not app code */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -28,7 +31,8 @@ for (const { path, origin_hash } of entries) {
     drift.push(`  MISSING  ${path}`);
     continue;
   }
-  const actual = createHash('sha256').update(readFileSync(path)).digest('hex');
+  const normalized = readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
+  const actual = createHash('sha256').update(normalized, 'utf8').digest('hex');
   if (actual !== origin_hash) drift.push(`  DRIFTED  ${path}`);
 }
 
