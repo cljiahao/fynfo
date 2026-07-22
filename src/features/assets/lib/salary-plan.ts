@@ -1,4 +1,5 @@
 import type { ExpenseData } from '@/features/expenses';
+import { isCountedInExpenseTotals } from '@/features/expenses';
 import type { AssetCategory, SnapshotData } from '../types';
 
 export function ceilToThousand(value: number): number {
@@ -24,6 +25,7 @@ export function calcAllTimeAvgExpense(
   if (!expenses?.length) return 0;
   const monthTotals = new Map<string, number>();
   for (const e of expenses) {
+    if (!isCountedInExpenseTotals(e.type)) continue;
     const key = e.date.slice(0, 7);
     let userAmount = e.amount;
     if (e.splitType === 'shared' && e.splits.length > 0) {

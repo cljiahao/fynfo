@@ -34,6 +34,16 @@ export const EXPENSE_TYPE_LABELS: Record<ExpenseType, string> = {
   travel: 'Travel',
 };
 
+/**
+ * Types excluded from "total expenses" aggregates (chart headline/avg, salary
+ * planner's expensesPct) — insurance is modelled separately by the salary
+ * planner as its own fixed slice, so folding it into "expenses" too would
+ * double-count it. Still loggable and still shown per-category.
+ */
+export const EXPENSE_TOTAL_EXCLUDED_TYPES: readonly ExpenseType[] = [
+  'insurance',
+];
+
 export const EXPENSE_TYPE_COLORS: Record<ExpenseType, string> = {
   bills: '#6366f1',
   charity: '#a855f7',

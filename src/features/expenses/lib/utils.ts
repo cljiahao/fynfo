@@ -1,4 +1,10 @@
+import { EXPENSE_TOTAL_EXCLUDED_TYPES } from '../constants';
 import type { ExpenseData, ExpenseSplitData, ExpenseType } from '../types';
+
+/** Whether an expense type counts toward "total expenses" aggregates. */
+export function isCountedInExpenseTotals(type: ExpenseType): boolean {
+  return !EXPENSE_TOTAL_EXCLUDED_TYPES.includes(type);
+}
 
 export function generateId(): string {
   return `exp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

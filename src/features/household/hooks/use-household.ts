@@ -51,7 +51,10 @@ export function useUnlockHousehold() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: unlockHousehold,
-    onSuccess: () => qc.invalidateQueries({ queryKey: GOALS_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: HOUSEHOLD_KEY });
+      qc.invalidateQueries({ queryKey: GOALS_KEY });
+    },
   });
 }
 
