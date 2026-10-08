@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { createSupabaseBrowserClient } from '@/integrations/clients/supabase';
+import { useSignOut } from '@/features/auth';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { CircleHelp, LogOut, UserRound } from 'lucide-react';
 import Link from 'next/link';
@@ -26,6 +26,7 @@ export function UserMenuDropdown({
   email,
   image,
 }: UserMenuDropdownProps) {
+  const { signOut, isSigningOut } = useSignOut();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -79,11 +80,8 @@ export function UserMenuDropdown({
         <DropdownMenuSeparator />
 
         <DropdownMenuItem
-          onClick={async () => {
-            const supabase = createSupabaseBrowserClient();
-            await supabase.auth.signOut();
-            window.location.href = '/login';
-          }}
+          onClick={signOut}
+          disabled={isSigningOut}
           className="text-destructive focus:text-destructive"
         >
           <LogOut className="mr-2 size-4" />

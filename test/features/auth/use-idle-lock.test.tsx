@@ -66,6 +66,19 @@ describe('useIdleLock', () => {
     expect(result.current.locked).toBe(true);
   });
 
+  it('locks and clears decrypted cache even when the cookie request never settles', async () => {
+    fetchMock.mockReturnValue(new Promise(() => {}));
+    const { Wrapper, clearSpy } = makeWrapper(true);
+    const { result } = renderHook(useProbe, { wrapper: Wrapper });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(IDLE_LIMIT_MS + ONE_MINUTE);
+    });
+
+    expect(clearSpy).toHaveBeenCalledOnce();
+    expect(result.current.locked).toBe(true);
+  });
+
   it('activity before the limit resets the timer (no lock)', async () => {
     const { Wrapper } = makeWrapper(true);
     const { result } = renderHook(useProbe, { wrapper: Wrapper });

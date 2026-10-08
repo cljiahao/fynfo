@@ -25,6 +25,85 @@ afterEach(() => {
 });
 
 describe('price-actions — fetchStockPrices', () => {
+  it('rejects oversized ticker arrays before issuing requests', async () => {
+    fetchMock.mockResolvedValue(chartResponse({ regularMarketPrice: 1 }));
+    const { fetchStockPrices } =
+      await import('@/features/equity/actions/price-actions');
+    const out = await fetchStockPrices(
+      Array.from({ length: 101 }, (_, i) => `T${i}`)
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(out).toEqual({});
+  });
+
+  it.each([['../AAPL'], ['A'.repeat(17)], [''], ['AAPL', 42]])(
+    'rejects malformed ticker input %j before any fetch',
+    async (...tickers) => {
+      fetchMock.mockResolvedValue(chartResponse({ regularMarketPrice: 1 }));
+      const { fetchStockPrices } =
+        await import('@/features/equity/actions/price-actions');
+      expect(await fetchStockPrices(tickers as string[])).toEqual({});
+      expect(fetchMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it('canonicalizes whitespace and case to stable ticker keys', async () => {
+    fetchMock.mockResolvedValue(chartResponse({ regularMarketPrice: 5 }));
+    const { fetchStockPrices } =
+      await import('@/features/equity/actions/price-actions');
+    const out = await fetchStockPrices([' dbs ', 'DBS']);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(Object.keys(out)).toEqual(['DBS']);
+    expect(out.DBS.symbol).toBe('D05.SI');
+  });
+
+  it.each([
+    { regularMarketPrice: '110' },
+    { regularMarketPrice: Infinity },
+    { regularMarketPrice: -1 },
+    { regularMarketPrice: 1, previousClose: '0' },
+    { regularMarketPrice: 1, previousClose: NaN },
+    { regularMarketPrice: 1, currency: { code: 'USD' } },
+    { regularMarketPrice: 1e308, previousClose: 1e-300 },
+  ])('drops malformed quote metadata %j', async (meta) => {
+    fetchMock.mockResolvedValue(chartResponse(meta));
+    const { fetchStockPrices } =
+      await import('@/features/equity/actions/price-actions');
+    expect(await fetchStockPrices(['AAPL'])).toEqual({});
+  });
+
+  it('limits simultaneous quote requests and returns every valid result', async () => {
+    let inFlight = 0;
+    let peak = 0;
+    fetchMock.mockImplementation(async () => {
+      inFlight++;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      inFlight--;
+      return chartResponse({ regularMarketPrice: 10 });
+    });
+    const { fetchStockPrices } =
+      await import('@/features/equity/actions/price-actions');
+    const tickers = Array.from({ length: 12 }, (_, i) => `T${i}`);
+    expect(Object.keys(await fetchStockPrices(tickers))).toEqual(tickers);
+    expect(peak).toBeLessThanOrEqual(5);
+    expect(peak).toBeGreaterThan(1);
+  });
+
+  it('attaches a deadline signal and handles an aborted quote as empty', async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+    fetchMock.mockRejectedValue(new DOMException('Timed out', 'TimeoutError'));
+    const { fetchStockPrices } =
+      await import('@/features/equity/actions/price-actions');
+    try {
+      expect(await fetchStockPrices(['AAPL'])).toEqual({});
+      expect(timeoutSpy).toHaveBeenCalledWith(10_000);
+      expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+    } finally {
+      timeoutSpy.mockRestore();
+    }
+  });
+
   it('requires auth before any fetch', async () => {
     fetchMock.mockResolvedValue(chartResponse({ regularMarketPrice: 1 }));
     const { fetchStockPrices } =
@@ -62,8 +141,8 @@ describe('price-actions — fetchStockPrices', () => {
       await import('@/features/equity/actions/price-actions');
     const out = await fetchStockPrices(['DBS']);
     expect(out.DBS.symbol).toBe('D05.SI');
-    expect(out.DBS.currency).toBe('USD'); // default when meta omits currency
-    expect(out.DBS.changePercent).toBe(0); // prevClose === price
+    expect(out.DBS.currency).toBe('USD');
+    expect(out.DBS.changePercent).toBe(0);
   });
 
   it('dedupes and upper-cases tickers (one fetch per unique symbol)', async () => {
@@ -114,6 +193,32 @@ describe('price-actions — fetchStockPrices', () => {
 });
 
 describe('price-actions — fetchExchangeRate', () => {
+  it('rejects path/query fragments in currency input before any fetch', async () => {
+    fetchMock.mockResolvedValue(chartResponse({ regularMarketPrice: 1.35 }));
+    const { fetchExchangeRate } =
+      await import('@/features/equity/actions/price-actions');
+    expect(await fetchExchangeRate('USD?range=5y&', 'SGD')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('canonicalizes currency codes and encodes the FX path', async () => {
+    fetchMock.mockResolvedValue(chartResponse({ regularMarketPrice: 1.35 }));
+    const { fetchExchangeRate } =
+      await import('@/features/equity/actions/price-actions');
+    expect(await fetchExchangeRate('usd', 'sgd')).toBe(1.35);
+    expect(fetchMock.mock.calls[0][0]).toContain('/USDSGD%3DX?');
+    expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('rejects a nonfinite upstream exchange rate', async () => {
+    fetchMock.mockResolvedValue(
+      chartResponse({ regularMarketPrice: Infinity })
+    );
+    const { fetchExchangeRate } =
+      await import('@/features/equity/actions/price-actions');
+    expect(await fetchExchangeRate('USD', 'SGD')).toBeNull();
+  });
+
   it('returns the rate on success', async () => {
     fetchMock.mockResolvedValue(chartResponse({ regularMarketPrice: 1.35 }));
     const { fetchExchangeRate } =
@@ -155,6 +260,33 @@ function dividendsResponse(
 }
 
 describe('price-actions — fetchDividends', () => {
+  it('rejects malformed ticker input before any request', async () => {
+    fetchMock.mockResolvedValue(dividendsResponse({}));
+    const { fetchDividends } =
+      await import('@/features/equity/actions/price-actions');
+    expect(await fetchDividends('../AAPL')).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('retains valid dividends while rejecting malformed entries', async () => {
+    const date = Math.floor(Date.UTC(2026, 1, 15) / 1000);
+    fetchMock.mockResolvedValue(
+      dividendsResponse({
+        valid: { amount: 0.02, date },
+        negative: { amount: -1, date },
+        nonfinite: { amount: Infinity, date },
+        invalidDate: { amount: 1, date: 1e20 },
+        expandedYear: { amount: 1, date: 253_402_300_800 },
+      })
+    );
+    const { fetchDividends } =
+      await import('@/features/equity/actions/price-actions');
+    expect(await fetchDividends('MLT')).toEqual([
+      { exDate: '2026-02-15', dpu: 0.02 },
+    ]);
+    expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+  });
+
   it('requires auth and parses ex-date + DPU, sorted ascending', async () => {
     const t1 = Math.floor(Date.UTC(2026, 1, 15) / 1000);
     const t2 = Math.floor(Date.UTC(2026, 4, 30) / 1000);

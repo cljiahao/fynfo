@@ -53,15 +53,12 @@ export function useIdleLock(): void {
       if (lockingRef.current) return;
       if (Date.now() - lastActivityRef.current < IDLE_LIMIT_MS) return;
       lockingRef.current = true;
-      void fetch('/api/vault/lock', { method: 'POST' })
-        .catch(() => {
-          // Network failure still locks client-side: fail safe, never leave the
-          // dashboard unlocked. The cookie's 6h ceiling is the server backstop.
-        })
-        .finally(() => {
-          queryClient.clear();
-          lock();
-        });
+      queryClient.clear();
+      lock();
+      void fetch('/api/vault/lock', { method: 'POST' }).catch(() => {
+        // Network failure still locks client-side: fail safe, never leave the
+        // dashboard unlocked. The cookie's 6h ceiling is the server backstop.
+      });
     }, IDLE_CHECK_MS);
 
     return () => {

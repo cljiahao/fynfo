@@ -113,6 +113,15 @@ const VALID_TRADE = {
 };
 
 describe('equity-actions — createTrade', () => {
+  it('persists the schema-normalized ticker for whitespace-padded input', async () => {
+    const fake = setSupabase();
+    const { createTrade } =
+      await import('@/features/equity/actions/equity-actions');
+    await createTrade({ ...VALID_TRADE, ticker: ' dbs ' });
+    const row = fake.calls.insert[0] as Record<string, string>;
+    expect(decryptPayload(row.ticker, DEK)).toBe('DBS');
+  });
+
   it('encrypts ticker/shares/price/fees (upper-cased) before insert', async () => {
     const fake = setSupabase();
     const { createTrade } =
@@ -128,7 +137,7 @@ describe('equity-actions — createTrade', () => {
     expect(await decryptPayload(row.shares, DEK)).toBe('10');
     expect(await decryptPayload(row.price, DEK)).toBe('190.5');
     expect(await decryptPayload(row.fees, DEK)).toBe('1.2');
-    expect(row.is_cdp).toBe(false); // defaults when not provided
+    expect(row.is_cdp).toBe(false);
     expect(row.is_po).toBe(false);
   });
 
@@ -161,11 +170,26 @@ describe('equity-actions — createTrade', () => {
 });
 
 describe('equity-actions — updateTrade', () => {
+  it('persists the schema-normalized ticker for whitespace-padded input', async () => {
+    const fake = setSupabase();
+    const { updateTrade } =
+      await import('@/features/equity/actions/equity-actions');
+    await updateTrade('trade-1', { ...VALID_TRADE, ticker: ' dbs ' });
+    const row = fake.calls.update[0] as Record<string, string>;
+    expect(decryptPayload(row.ticker, DEK)).toBe('DBS');
+  });
+
   it('encrypts fields (upper-cased ticker) before the scoped update', async () => {
     const fake = setSupabase();
     const { updateTrade } =
       await import('@/features/equity/actions/equity-actions');
     await updateTrade('trade-1', VALID_TRADE);
+    expect(
+      fake.calls.queries.find((query) => query.operation === 'update')?.eq
+    ).toEqual([
+      { column: 'id', value: 'trade-1' },
+      { column: 'user_id', value: USER_ID },
+    ]);
 
     const row = fake.calls.update[0] as Record<string, string>;
     expect(await decryptPayload(row.ticker, DEK)).toBe('AAPL');
@@ -202,6 +226,15 @@ describe('equity-actions — deleteTrade', () => {
     await deleteTrade('trade-1');
     expect(fake.calls.from).toContain('equity_trades');
     expect(fake.calls.delete).toBe(1);
+    expect(
+      fake.calls.queries.find(
+        (query) =>
+          query.table === 'equity_trades' && query.operation === 'delete'
+      )?.eq
+    ).toEqual([
+      { column: 'id', value: 'trade-1' },
+      { column: 'user_id', value: USER_ID },
+    ]);
   });
 
   it('surfaces an opaque error on a delete failure', async () => {

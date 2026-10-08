@@ -10,9 +10,12 @@ export interface FeeResult {
 }
 
 // SGX regulatory fees (apply to all SG brokers)
-const SGX_CLEARING_FEE_PCT = 0.000325; // 0.0325%
-const SGX_TRADING_FEE_PCT = 0.000075; // 0.0075%
-const SGX_SETTLEMENT_FEE = 0.35; // SGD per transaction
+// 0.0325%
+const SGX_CLEARING_FEE_PCT = 0.000325;
+// 0.0075%
+const SGX_TRADING_FEE_PCT = 0.000075;
+// SGD per transaction
+const SGX_SETTLEMENT_FEE = 0.35;
 
 function sgxFees(tradeValue: number): number {
   return (

@@ -5,3 +5,14 @@ node_modules/
 coverage/
 pnpm-lock.yaml
 .claude/harness.json
+.impeccable/
+.env*
+!.env.example
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.secret
+**/credentials.json
+.netrc
+.secrets/

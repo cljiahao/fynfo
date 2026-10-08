@@ -1,5 +1,7 @@
 'use client';
 
+import { SignOutButton } from './signout-button';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Lock, Unlock } from 'lucide-react';
@@ -23,8 +25,7 @@ const UNLOCK_MESSAGES = [
 
 const PROGRESS_DURATION_MS = 1800;
 const MESSAGE_INTERVAL_MS = 600;
-// Cap on how long the overlay waits for the unlocked page's data to settle before
-// revealing the dashboard. Past this, the page's own skeletons take over.
+// Bound surviving-query invalidation; freshly mounted pages own their skeletons.
 const DATA_WAIT_TIMEOUT_MS = 6000;
 const LOADING_DATA_MESSAGE = 'Loading your dashboard…';
 
@@ -51,7 +52,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
   // Progress + message state updated only from interval callbacks (not effect body).
   const [progress, setProgress] = useState(0);
   const [msgIndex, setMsgIndex] = useState(0);
-  // Phase 2: DEK cookie set, now holding the overlay until the page's data settles.
+  // Phase 2: DEK cookie set, invalidate before mounting the financial subtree.
   const [loadingData, setLoadingData] = useState(false);
 
   useEffect(() => {
@@ -90,8 +91,8 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
     return () => clearInterval(timer);
   }, [isSubmitting, loadingData]);
 
-  // After the DEK cookie is set, hold the overlay until the unlocked page's active
-  // queries settle (capped) so the dashboard reveals populated, not blank.
+  // Invalidate surviving queries before mounting the unlocked dashboard. With
+  // the financial subtree unmounted, its queries fetch fresh data on mount.
   const revealWhenReady = useCallback(async () => {
     setLoadingData(true);
     setProgress(95);
@@ -180,7 +181,12 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="vault-lock-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md"
+    >
       <div className="border-border bg-card flex w-full max-w-md flex-col items-center rounded-2xl border p-8 shadow-2xl">
         <div className="bg-brand-subtle text-brand mb-4 flex h-16 w-16 items-center justify-center rounded-full">
           {isSubmitting ? (
@@ -199,7 +205,9 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
           </div>
         )}
 
-        <h2 className="mb-2 text-2xl font-bold">Vault Locked</h2>
+        <h2 id="vault-lock-title" className="mb-2 text-2xl font-bold">
+          Vault Locked
+        </h2>
         <p className="text-muted-foreground mb-8 min-h-[3rem] text-center">
           {isSubmitting ? (
             <span className="animate-pulse">
@@ -225,6 +233,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
                 <Input
                   ref={ref}
                   type="password"
+                  aria-label="6-digit vault PIN"
                   inputMode="numeric"
                   maxLength={6}
                   value={value}
@@ -266,6 +275,9 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
             {!isSubmitting && <Unlock className="h-5 w-5" />}
           </Button>
         </form>
+        <div className="mt-4 w-full">
+          <SignOutButton />
+        </div>
       </div>
     </div>
   );

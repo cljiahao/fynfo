@@ -43,3 +43,27 @@ describe('parsePastedRow', () => {
     expect(row.amount).toBeUndefined();
   });
 });
+
+it.each([
+  ['04/27/2026', '2026-04-27'],
+  ['Apr 7, 2026', '2026-04-07'],
+  ['2026-99-99', null],
+  ['99/99/2026', null],
+  ['food & drink', 'food_drink'],
+  ['trans', 'transport'],
+])('handles date/category boundary %s', (value, expected) => {
+  if (value === 'food & drink' || value === 'trans')
+    expect(tryParseCategory(value)).toBe(expected);
+  else expect(tryParseDate(value)).toBe(expected);
+});
+it('parses reordered category, currency amount, item and notes without confusing headers', () => {
+  expect(
+    parsePastedRow('category\t$1,200.50\tShopping\t2026-10-08\tStore\tGifts')
+  ).toEqual({
+    date: '2026-10-08',
+    amount: '1200.5',
+    type: 'shopping',
+    item: 'Store',
+    info: 'Gifts',
+  });
+});

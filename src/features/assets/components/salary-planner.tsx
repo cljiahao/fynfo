@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -46,10 +47,24 @@ const DEFAULT_SETTINGS: PlannerSettingsData = {
 };
 
 export function SalaryPlanner(props: SalaryPlannerProps) {
-  const { data: salaryRecords, isLoading: salaryLoading } = useSalaryRecords();
-  const { data: savedSettings, isLoading: settingsLoading } =
-    usePlannerSettings();
-  const { data: expenses, isLoading: expensesLoading } = useExpenses();
+  const {
+    data: salaryRecords,
+    isLoading: salaryLoading,
+    isError: salaryError,
+    refetch: retrySalary,
+  } = useSalaryRecords();
+  const {
+    data: savedSettings,
+    isLoading: settingsLoading,
+    isError: settingsError,
+    refetch: retrySettings,
+  } = usePlannerSettings();
+  const {
+    data: expenses,
+    isLoading: expensesLoading,
+    isError: expensesError,
+    refetch: retryExpenses,
+  } = useExpenses();
 
   if (salaryLoading || settingsLoading || expensesLoading) {
     return (
@@ -62,6 +77,27 @@ export function SalaryPlanner(props: SalaryPlannerProps) {
             <Skeleton className="h-16 rounded-lg" />
             <Skeleton className="h-16 rounded-lg" />
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (salaryError || settingsError || expensesError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Couldn&apos;t load your planner</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={() => {
+              void retrySalary();
+              void retrySettings();
+              void retryExpenses();
+            }}
+          >
+            Retry
+          </Button>
         </CardContent>
       </Card>
     );
@@ -119,6 +155,12 @@ function SalaryPlannerInner({
 
   // Debounced auto-save using ref to avoid unstable dependency
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    },
+    []
+  );
   const isFirstRender = useRef(true);
   const debouncedSave = useCallback((data: PlannerSettingsData) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);

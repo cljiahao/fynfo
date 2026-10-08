@@ -68,8 +68,12 @@ function TradeActionButtons({
         isPending={deleteMutation.isPending}
         onConfirm={async () => {
           if (!trade.id) return;
-          await deleteMutation.mutateAsync(trade.id);
-          toast.success('Trade deleted');
+          try {
+            await deleteMutation.mutateAsync(trade.id);
+            toast.success('Trade deleted');
+          } catch {
+            toast.error('Failed to delete trade');
+          }
         }}
       />
     </div>

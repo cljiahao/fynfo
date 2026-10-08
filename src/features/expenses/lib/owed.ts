@@ -2,10 +2,13 @@ import { format, subYears } from 'date-fns';
 import type { ExpenseData } from '../types';
 
 export interface MonthGroup {
-  monthKey: string; // "2026-03" for sorting
-  month: string; // "Mar 2026" for display
+  // "2026-03" for sorting
+  monthKey: string;
+  // "Mar 2026" for display
+  month: string;
   total: number;
-  settled: boolean; // all expenses in this month are settled
+  // all expenses in this month are settled
+  settled: boolean;
   expenseIds: string[];
 }
 
@@ -29,6 +32,7 @@ export function buildPersonGroups(
       {
         month: string;
         total: number;
+        unpaid: number;
         allSettled: boolean;
         expenseIds: string[];
       }
@@ -45,13 +49,17 @@ export function buildPersonGroups(
         monthMap.set(monthKey, {
           month: format(new Date(e.date), 'MMM yyyy'),
           total: 0,
+          unpaid: 0,
           allSettled: true,
           expenseIds: [],
         });
       }
       const entry = monthMap.get(monthKey)!;
       entry.total += s.amount;
-      if (!s.settled) entry.allSettled = false;
+      if (!s.settled) {
+        entry.unpaid += s.amount;
+        entry.allSettled = false;
+      }
       if (!entry.expenseIds.includes(e.id)) entry.expenseIds.push(e.id);
     }
   }
@@ -72,9 +80,10 @@ export function buildPersonGroups(
 
     if (months.length === 0) continue;
 
-    const totalOwed = months
-      .filter((m) => !m.settled)
-      .reduce((sum, m) => sum + m.total, 0);
+    const totalOwed = Array.from(monthMap.values()).reduce(
+      (sum, entry) => sum + entry.unpaid,
+      0
+    );
 
     groups.push({ person, totalOwed, months });
   }

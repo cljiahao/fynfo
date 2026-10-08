@@ -1,6 +1,6 @@
 'use server';
 
-import { requireActionContext, requireDbContext } from '@/lib/action-guard';
+import { requireActionContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { decryptNumber, decryptOptionalNumber } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
@@ -39,21 +39,25 @@ export async function getTrades(): Promise<EquityTradeData[]> {
 export async function createTrade(
   data: Omit<EquityTradeData, 'id'>
 ): Promise<void> {
-  parseOrThrow(equityTradeInputSchema, data, 'equity.trade.input');
+  const parsed = parseOrThrow(
+    equityTradeInputSchema,
+    data,
+    'equity.trade.input'
+  );
   const { userId, dek, supabase } = await requireActionContext();
 
   const { error } = await supabase.from('equity_trades').insert({
     id: randomUUID(),
     user_id: userId,
-    date: new Date(data.date).toISOString(),
-    broker: data.broker,
-    ticker: await encryptPayload(data.ticker.toUpperCase(), dek),
-    action: data.action,
-    shares: await encryptPayload(data.shares.toString(), dek),
-    price: await encryptPayload(data.price.toString(), dek),
-    fees: await encryptPayload(data.fees.toString(), dek),
-    is_cdp: data.isCdp ?? false,
-    is_po: data.isPO ?? false,
+    date: new Date(parsed.date).toISOString(),
+    broker: parsed.broker,
+    ticker: await encryptPayload(parsed.ticker, dek),
+    action: parsed.action,
+    shares: await encryptPayload(parsed.shares.toString(), dek),
+    price: await encryptPayload(parsed.price.toString(), dek),
+    fees: await encryptPayload(parsed.fees.toString(), dek),
+    is_cdp: parsed.isCdp ?? false,
+    is_po: parsed.isPO ?? false,
   });
 
   throwIfSupabaseError(error, 'equity trade write');
@@ -63,21 +67,25 @@ export async function updateTrade(
   id: string,
   data: Omit<EquityTradeData, 'id'>
 ): Promise<void> {
-  parseOrThrow(equityTradeInputSchema, data, 'equity.trade.input');
+  const parsed = parseOrThrow(
+    equityTradeInputSchema,
+    data,
+    'equity.trade.input'
+  );
   const { userId, dek, supabase } = await requireActionContext();
 
   const { error } = await supabase
     .from('equity_trades')
     .update({
-      date: new Date(data.date).toISOString(),
-      broker: data.broker,
-      ticker: await encryptPayload(data.ticker.toUpperCase(), dek),
-      action: data.action,
-      shares: await encryptPayload(data.shares.toString(), dek),
-      price: await encryptPayload(data.price.toString(), dek),
-      fees: await encryptPayload(data.fees.toString(), dek),
-      is_cdp: data.isCdp ?? false,
-      is_po: data.isPO ?? false,
+      date: new Date(parsed.date).toISOString(),
+      broker: parsed.broker,
+      ticker: await encryptPayload(parsed.ticker, dek),
+      action: parsed.action,
+      shares: await encryptPayload(parsed.shares.toString(), dek),
+      price: await encryptPayload(parsed.price.toString(), dek),
+      fees: await encryptPayload(parsed.fees.toString(), dek),
+      is_cdp: parsed.isCdp ?? false,
+      is_po: parsed.isPO ?? false,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
@@ -87,7 +95,7 @@ export async function updateTrade(
 }
 
 export async function deleteTrade(id: string): Promise<void> {
-  const { userId, supabase } = await requireDbContext();
+  const { userId, supabase } = await requireActionContext();
 
   const { error } = await supabase
     .from('equity_trades')

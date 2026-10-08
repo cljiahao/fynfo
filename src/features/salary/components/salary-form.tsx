@@ -34,9 +34,12 @@ export function SalaryFormDialog({
   onOpenChange,
   editId,
 }: SalaryFormDialogProps) {
-  const { data: existing, isLoading: loadingExisting } = useSalaryRecord(
-    editId ?? ''
-  );
+  const {
+    data: existing,
+    isLoading: loadingExisting,
+    isError,
+    refetch,
+  } = useSalaryRecord(editId ?? '');
   const upsert = useUpsertSalary();
 
   const defaultMonth = format(new Date(), 'yyyy-MM');
@@ -96,6 +99,17 @@ export function SalaryFormDialog({
         {editId && loadingExisting ? (
           <div className="flex-center py-8">
             <Loader2 className="size-6 animate-spin" />
+          </div>
+        ) : editId && (isError || !existing) ? (
+          <div className="space-y-3">
+            <p>Couldn&apos;t load your salary record</p>
+            <Button
+              onClick={() => {
+                void refetch();
+              }}
+            >
+              Retry
+            </Button>
           </div>
         ) : (
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

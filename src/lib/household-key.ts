@@ -38,15 +38,24 @@ export function unwrapKh(wrapped: string, key: Buffer): Buffer {
  * salt, using the same PBKDF2 parameters as the personal-vault DEK so the cost
  * floor is identical.
  */
-export function deriveInviteKey(secret: string, saltB64: string): Buffer {
+export function deriveInviteKey(
+  secret: string,
+  saltB64: string
+): Promise<Buffer> {
   const salt = Buffer.from(saltB64, 'base64');
-  return crypto.pbkdf2Sync(
-    secret,
-    salt,
-    V2_ITERATIONS,
-    KEY_LEN_BYTES,
-    PBKDF2_DIGEST
-  );
+  return new Promise((resolve, reject) => {
+    crypto.pbkdf2(
+      secret,
+      salt,
+      V2_ITERATIONS,
+      KEY_LEN_BYTES,
+      PBKDF2_DIGEST,
+      (error, key) => {
+        if (error) reject(error);
+        else resolve(key);
+      }
+    );
+  });
 }
 
 /** SHA-256 hex of the invite secret — the non-reversible lookup key stored at rest. */

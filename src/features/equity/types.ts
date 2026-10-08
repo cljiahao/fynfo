@@ -2,7 +2,8 @@ export type TradeAction = 'buy' | 'sell';
 
 export interface EquityTradeData {
   id?: string;
-  date: string; // ISO date string
+  // ISO date string
+  date: string;
   broker: string;
   ticker: string;
   action: TradeAction;
@@ -18,7 +19,9 @@ export type DividendCurrency = 'SGD' | 'USD';
 export interface DividendData {
   id?: string;
   ticker: string;
-  amount: number; // native-currency amount received
+  // native-currency amount received
+  amount: number;
   currency: DividendCurrency;
-  date: string; // ISO date (payment date)
+  // ISO date (payment date)
+  date: string;
 }

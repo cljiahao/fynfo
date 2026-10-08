@@ -12,7 +12,8 @@ interface YieldOnCostTableProps {
   trades: EquityTradeData[];
   dividends: DividendData[];
   usdSgdRate: number;
-  asOf: string; // ISO date
+  // ISO date
+  asOf: string;
 }
 
 type SortKey = 'ticker' | 'income' | 'yield';

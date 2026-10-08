@@ -6,12 +6,23 @@ export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url);
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? PAGE_ROUTES.DASHBOARD;
+  const destination = new URL(PAGE_ROUTES.DASHBOARD, origin);
+  if (
+    next.startsWith('/') &&
+    !next.startsWith('//') &&
+    !/[\\\u0000-\u001f\u007f]/.test(next)
+  ) {
+    const candidate = new URL(next, origin);
+    if (candidate.origin === origin) {
+      destination.href = candidate.href;
+    }
+  }
 
   if (code) {
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(destination);
     }
   }
 

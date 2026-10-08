@@ -63,15 +63,30 @@ describe('POST /api/vault/lock', () => {
       '',
       expect.objectContaining({ maxAge: 0, httpOnly: true, path: '/' })
     );
+    expect(cookieJar.set).toHaveBeenCalledWith(
+      'fynfo_household_kh',
+      '',
+      expect.objectContaining({ maxAge: 0, httpOnly: true, path: '/' })
+    );
   });
 
-  it('returns 401 and does not touch the cookie when unauthenticated', async () => {
+  it('clears both cookies even after authentication expires', async () => {
     getUserResult = { data: { user: null }, error: { message: 'no session' } };
     const POST = await freshPost();
 
     const res = await POST(makeRequest());
 
-    expect(res.status).toBe(401);
-    expect(cookieJar.set).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(cookieJar.set).toHaveBeenCalledTimes(2);
+    expect(cookieJar.set).toHaveBeenCalledWith(
+      'fynfo_vault_dek',
+      '',
+      expect.objectContaining({ maxAge: 0 })
+    );
+    expect(cookieJar.set).toHaveBeenCalledWith(
+      'fynfo_household_kh',
+      '',
+      expect.objectContaining({ maxAge: 0 })
+    );
   });
 });

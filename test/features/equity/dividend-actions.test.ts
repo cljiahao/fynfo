@@ -112,7 +112,7 @@ describe('dividend-actions — createDividends (bulk)', () => {
       { ticker: 'fct', amount: 50, currency: 'SGD', date: '2026-06-01' },
     ]);
 
-    expect(fake.calls.insert).toHaveLength(1); // single array insert
+    expect(fake.calls.insert).toHaveLength(1);
     const rows = fake.calls.insert[0] as Array<Record<string, string>>;
     expect(rows).toHaveLength(2);
     expect(await decryptPayload(rows[0].ticker, DEK)).toBe('MLT');
@@ -153,6 +153,12 @@ describe('dividend-actions — updateDividend', () => {
     const { updateDividend } =
       await import('@/features/equity/actions/dividend-actions');
     await updateDividend('d1', { ...VALID, amount: 200 });
+    expect(
+      fake.calls.queries.find((query) => query.operation === 'update')?.eq
+    ).toEqual([
+      { column: 'id', value: 'd1' },
+      { column: 'user_id', value: USER_ID },
+    ]);
     const row = fake.calls.update[0] as Record<string, string>;
     expect(await decryptPayload(row.amount, DEK)).toBe('200');
     expect(typeof row.updated_at).toBe('string');
@@ -176,6 +182,15 @@ describe('dividend-actions — deleteDividend', () => {
     await deleteDividend('d1');
     expect(fake.calls.from).toContain('equity_dividends');
     expect(fake.calls.delete).toBe(1);
+    expect(
+      fake.calls.queries.find(
+        (query) =>
+          query.table === 'equity_dividends' && query.operation === 'delete'
+      )?.eq
+    ).toEqual([
+      { column: 'id', value: 'd1' },
+      { column: 'user_id', value: USER_ID },
+    ]);
   });
 
   it('surfaces an opaque error on failure', async () => {

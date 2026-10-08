@@ -72,7 +72,8 @@ describe('applySplitSettlement', () => {
       { person: 'Alice', amount: 20, settled: true },
       { person: 'Bob', amount: 20, settled: false },
     ]);
-    expect(next[1].splits).toEqual(list[1].splits); // 'b' untouched
+    // 'b' untouched
+    expect(next[1].splits).toEqual(list[1].splits);
   });
 
   it('settles a person across many ids (month case)', () => {

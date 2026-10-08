@@ -8,6 +8,7 @@ let getUserResult: {
 };
 let dekResult: Buffer | null;
 let khResult: Buffer | null;
+const keyReads = vi.hoisted(() => ({ dek: vi.fn(), kh: vi.fn() }));
 
 vi.mock('@/integrations/services/supabase', () => ({
   createSupabaseServerClient: async () => ({
@@ -16,14 +17,21 @@ vi.mock('@/integrations/services/supabase', () => ({
 }));
 
 vi.mock('@/lib/keystore', () => ({
-  getVaultDekSession: async () => dekResult,
+  getVaultDekSession: async (userId: string) => {
+    keyReads.dek(userId);
+    return dekResult;
+  },
 }));
 
 vi.mock('@/lib/household-keystore', () => ({
-  getHouseholdKhSession: async () => khResult,
+  getHouseholdKhSession: async (userId: string) => {
+    keyReads.kh(userId);
+    return khResult;
+  },
 }));
 
 beforeEach(() => {
+  vi.clearAllMocks();
   getUserResult = { data: { user: { id: USER_ID } }, error: null };
   dekResult = Buffer.alloc(32, 1);
   khResult = Buffer.alloc(32, 2);
@@ -36,12 +44,14 @@ describe('action-guard — requireActionContext (auth + vault + db)', () => {
     expect(ctx.userId).toBe(USER_ID);
     expect(ctx.dek.length).toBe(32);
     expect(ctx.supabase).toBeTruthy();
+    expect(keyReads.dek).toHaveBeenCalledWith(USER_ID);
   });
 
   it('throws Unauthorized when there is no authenticated user', async () => {
     getUserResult = { data: { user: null }, error: { message: 'no session' } };
     const { requireActionContext } = await import('@/lib/action-guard');
     await expect(requireActionContext()).rejects.toThrow('Unauthorized');
+    expect(keyReads.dek).not.toHaveBeenCalled();
   });
 
   it('throws when the vault is locked (no DEK in session)', async () => {
@@ -72,6 +82,7 @@ describe('action-guard — requireHouseholdContext (auth + household key + db)',
     const ctx = await requireHouseholdContext();
     expect(ctx.userId).toBe(USER_ID);
     expect(ctx.kh.length).toBe(32);
+    expect(keyReads.kh).toHaveBeenCalledWith(USER_ID);
     expect(ctx.supabase).toBeTruthy();
   });
 
@@ -79,6 +90,7 @@ describe('action-guard — requireHouseholdContext (auth + household key + db)',
     getUserResult = { data: { user: null }, error: { message: 'no session' } };
     const { requireHouseholdContext } = await import('@/lib/action-guard');
     await expect(requireHouseholdContext()).rejects.toThrow('Unauthorized');
+    expect(keyReads.kh).not.toHaveBeenCalled();
   });
 
   it('throws when the household is locked (no K_h in session)', async () => {

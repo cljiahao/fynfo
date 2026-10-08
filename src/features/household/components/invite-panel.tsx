@@ -25,8 +25,12 @@ export function InvitePanel() {
 
   const copy = async () => {
     if (!secret) return;
-    await navigator.clipboard.writeText(secret);
-    toast.success('Invite code copied');
+    try {
+      await navigator.clipboard.writeText(secret);
+      toast.success('Invite code copied');
+    } catch {
+      toast.error('Could not copy the invite code');
+    }
   };
 
   return (

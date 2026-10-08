@@ -1,5 +1,6 @@
 export interface SalaryData {
-  id: string; // YYYY-MM
+  // YYYY-MM
+  id: string;
   salary: number;
   bonus: number;
 }

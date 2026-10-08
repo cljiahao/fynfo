@@ -1,8 +1,28 @@
 import { AppError } from '@/lib/errors/app-error';
 import { throwIfSupabaseError } from '@/lib/errors/supabase-error';
-import { describe, expect, it } from 'vitest';
+import { logger } from '@/lib/logger';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/lib/logger', () => ({ logger: { error: vi.fn() } }));
 
 describe('throwIfSupabaseError', () => {
+  it('logs classification without database text or private values', () => {
+    expect(() =>
+      throwIfSupabaseError(
+        {
+          code: '23505',
+          message: 'private@example.test',
+          details: 'salary=9000',
+          hint: 'account=1234',
+        },
+        'expense upsert'
+      )
+    ).toThrow();
+    expect(logger.error).toHaveBeenLastCalledWith(
+      { context: 'expense upsert', code: '23505' },
+      'supabase error'
+    );
+  });
   it('is a no-op for null / undefined', () => {
     expect(() => throwIfSupabaseError(null, 'ctx')).not.toThrow();
     expect(() => throwIfSupabaseError(undefined, 'ctx')).not.toThrow();

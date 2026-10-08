@@ -1,20 +1,15 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { createSupabaseBrowserClient } from '@/integrations/clients/supabase';
-import { PAGE_ROUTES } from '@/lib/constants/routes';
+import { useSignOut } from '../hooks/use-sign-out';
 
 export function SignOutButton() {
-  const supabase = createSupabaseBrowserClient();
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = PAGE_ROUTES.HOME;
-  };
+  const { signOut, isSigningOut } = useSignOut();
 
   return (
     <Button
-      onClick={handleSignOut}
+      onClick={signOut}
+      disabled={isSigningOut}
       className="bg-primary hover:bg-primary-hover h-12 w-full rounded-md font-bold text-white"
     >
       Log out

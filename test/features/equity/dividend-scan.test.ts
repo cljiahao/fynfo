@@ -50,7 +50,8 @@ describe('buildDividendCandidates', () => {
 
   it('skips ex-dates where no shares were held', () => {
     const out = buildDividendCandidates(
-      [trade({ date: '2025-06-01' })], // bought after the March ex-date
+      // bought after the March ex-date
+      [trade({ date: '2025-06-01' })],
       [holding({})],
       points,
       []

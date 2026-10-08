@@ -22,49 +22,123 @@ const PEOPLE_KEY = ['expense-people'] as const;
 
 type SettleVars = { expenseIds: string[]; person: string; settled: boolean };
 
+interface RowPatch {
+  id: string;
+  before?: ExpenseData;
+  after?: ExpenseData;
+  index: number;
+  previousPatch?: RowPatch;
+  failed?: boolean;
+}
+interface RollbackContext {
+  query: object | null;
+  patches: RowPatch[];
+}
+const rowVersions = new WeakMap<object, Map<string, RowPatch>>();
+
+async function applyOptimistic(
+  queryClient: QueryClient,
+  ids: string[],
+  transform: (rows: ExpenseData[]) => ExpenseData[]
+): Promise<RollbackContext> {
+  const cache = queryClient.getQueryCache();
+  if (!cache.find({ queryKey: EXPENSE_KEY, exact: true }))
+    queryClient.setQueryData(EXPENSE_KEY, []);
+  const originalQuery = cache.find({ queryKey: EXPENSE_KEY, exact: true });
+  await queryClient.cancelQueries({ queryKey: EXPENSE_KEY });
+  if (
+    originalQuery &&
+    cache.find({ queryKey: EXPENSE_KEY, exact: true }) !== originalQuery
+  )
+    return { query: null, patches: [] };
+  const before = queryClient.getQueryData<ExpenseData[]>(EXPENSE_KEY) ?? [];
+  queryClient.setQueryData<ExpenseData[]>(EXPENSE_KEY, transform(before));
+  const query = cache.find({ queryKey: EXPENSE_KEY, exact: true });
+  if (!query) return { query: null, patches: [] };
+  const after = queryClient.getQueryData<ExpenseData[]>(EXPENSE_KEY) ?? [];
+  const versions = rowVersions.get(query) ?? new Map<string, RowPatch>();
+  rowVersions.set(query, versions);
+  return {
+    query,
+    patches: ids.map((id) => {
+      const patch: RowPatch = {
+        id,
+        before: before.find((row) => row.id === id),
+        after: after.find((row) => row.id === id),
+        index: before.findIndex((row) => row.id === id),
+        previousPatch: versions.get(id),
+      };
+      versions.set(id, patch);
+      return patch;
+    }),
+  };
+}
+
+function rollbackOptimistic(
+  queryClient: QueryClient,
+  context: RollbackContext | undefined
+) {
+  if (
+    !context?.query ||
+    queryClient.getQueryCache().find({ queryKey: EXPENSE_KEY, exact: true }) !==
+      context.query
+  )
+    return;
+  const versions = rowVersions.get(context.query);
+  queryClient.setQueryData<ExpenseData[]>(EXPENSE_KEY, (rows) => {
+    if (!rows) return rows;
+    let next = [...rows];
+    for (const patch of context.patches) {
+      patch.failed = true;
+      if (
+        versions?.get(patch.id) !== patch ||
+        JSON.stringify(next.find((row) => row.id === patch.id)) !==
+          JSON.stringify(patch.after)
+      )
+        continue;
+      next = next.filter((row) => row.id !== patch.id);
+      let restore = patch;
+      while (restore.previousPatch?.failed) restore = restore.previousPatch;
+      if (restore.before)
+        next.splice(Math.max(0, restore.index), 0, restore.before);
+      if (restore.previousPatch) versions.set(patch.id, restore.previousPatch);
+      else versions.delete(patch.id);
+    }
+    return next;
+  });
+}
+
+function commitOptimistic(context: RollbackContext | undefined) {
+  for (const patch of context?.patches ?? []) patch.previousPatch = undefined;
+}
+
 /**
- * Mutation options for upserting an expense.
- *
- * `onMutate` optimistically writes the full row (incl. splits) into the cache,
- * so the row is correct on screen before the server responds. On the success
- * path we deliberately do NOT invalidate EXPENSE_KEY: a blanket refetch would
- * re-fetch and re-decrypt every expense on every quick-add keystroke, janking
- * the form between rows. `upsertExpense` derives no fields the client lacks, so
- * the optimistic cache already equals server truth; any drift self-heals on the
- * next natural getExpenses (page mount / refresh / other invalidating mutation).
- * PEOPLE_KEY is still refreshed — split `person` is stored plaintext, so that
- * query does no per-row decrypt and is cheap. On error we roll back.
- *
- * Extracted from the hook so the invalidation contract is unit-testable in the
- * node-env vitest setup (no jsdom/RTL in this repo).
+ * Avoid a full expense refetch/decrypt after quick-add: optimistic rows contain
+ * the server's complete values. Refresh only people suggestions; failures roll
+ * back mutation-owned rows without overwriting later edits or recreating a
+ * cache removed by vault lock.
  */
 export function buildUpsertMutationOptions(queryClient: QueryClient) {
   return {
     mutationFn: (data: ExpenseData) => upsertExpense(data),
-    onMutate: async (data: ExpenseData) => {
-      await queryClient.cancelQueries({ queryKey: EXPENSE_KEY });
-      const previous = queryClient.getQueryData<ExpenseData[]>(EXPENSE_KEY);
-      queryClient.setQueryData<ExpenseData[]>(EXPENSE_KEY, (old) => {
-        const list = old ?? [];
-        const idx = list.findIndex((e) => e.id === data.id);
-        if (idx !== -1) {
-          const next = [...list];
-          next[idx] = data;
-          return next;
-        }
-        return [data, ...list];
-      });
-      return { previous };
-    },
+    onSuccess: (
+      _result: void,
+      _data: ExpenseData,
+      context: RollbackContext | undefined
+    ) => commitOptimistic(context),
+    onMutate: (data: ExpenseData) =>
+      applyOptimistic(queryClient, [data.id], (list) => {
+        const idx = list.findIndex((row) => row.id === data.id);
+        if (idx === -1) return [data, ...list];
+        const next = [...list];
+        next[idx] = data;
+        return next;
+      }),
     onError: (
       _err: unknown,
       _data: ExpenseData,
-      context: { previous?: ExpenseData[] } | undefined
-    ) => {
-      if (context?.previous) {
-        queryClient.setQueryData(EXPENSE_KEY, context.previous);
-      }
-    },
+      context: RollbackContext | undefined
+    ) => rollbackOptimistic(queryClient, context),
     onSettled: () => {
       // No EXPENSE_KEY refetch on success — optimistic cache is the source of
       // truth. Only refresh the cheap, plaintext people-suggestions query.
@@ -94,23 +168,20 @@ export const useUpsertExpense = () => {
 export function buildDeleteMutationOptions(queryClient: QueryClient) {
   return {
     mutationFn: (id: string) => deleteExpense(id),
-    onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: EXPENSE_KEY });
-      const previous = queryClient.getQueryData<ExpenseData[]>(EXPENSE_KEY);
-      queryClient.setQueryData<ExpenseData[]>(EXPENSE_KEY, (old) =>
-        (old ?? []).filter((e) => e.id !== id)
-      );
-      return { previous };
-    },
+    onSuccess: (
+      _result: void,
+      _id: string,
+      context: RollbackContext | undefined
+    ) => commitOptimistic(context),
+    onMutate: (id: string) =>
+      applyOptimistic(queryClient, [id], (rows) =>
+        rows.filter((row) => row.id !== id)
+      ),
     onError: (
       _err: unknown,
       _id: string,
-      context: { previous?: ExpenseData[] } | undefined
-    ) => {
-      if (context?.previous) {
-        queryClient.setQueryData(EXPENSE_KEY, context.previous);
-      }
-    },
+      context: RollbackContext | undefined
+    ) => rollbackOptimistic(queryClient, context),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: PEOPLE_KEY });
     },
@@ -129,23 +200,20 @@ function buildSettleMutationOptions(
 ) {
   return {
     mutationFn,
-    onMutate: async ({ expenseIds, person, settled }: SettleVars) => {
-      await queryClient.cancelQueries({ queryKey: EXPENSE_KEY });
-      const previous = queryClient.getQueryData<ExpenseData[]>(EXPENSE_KEY);
-      queryClient.setQueryData<ExpenseData[]>(EXPENSE_KEY, (old) =>
-        applySplitSettlement(old ?? [], expenseIds, person, settled)
-      );
-      return { previous };
-    },
+    onSuccess: (
+      _result: void,
+      _vars: SettleVars,
+      context: RollbackContext | undefined
+    ) => commitOptimistic(context),
+    onMutate: ({ expenseIds, person, settled }: SettleVars) =>
+      applyOptimistic(queryClient, expenseIds, (rows) =>
+        applySplitSettlement(rows, expenseIds, person, settled)
+      ),
     onError: (
       _err: unknown,
       _vars: SettleVars,
-      context: { previous?: ExpenseData[] } | undefined
-    ) => {
-      if (context?.previous) {
-        queryClient.setQueryData(EXPENSE_KEY, context.previous);
-      }
-    },
+      context: RollbackContext | undefined
+    ) => rollbackOptimistic(queryClient, context),
   };
 }
 

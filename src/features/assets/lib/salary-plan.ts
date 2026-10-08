@@ -34,6 +34,7 @@ export function calcAllTimeAvgExpense(
     monthTotals.set(key, (monthTotals.get(key) ?? 0) + userAmount);
   }
   const totals = Array.from(monthTotals.values());
+  if (totals.length === 0) return 0;
   return totals.reduce((sum, v) => sum + v, 0) / totals.length;
 }
 

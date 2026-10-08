@@ -1,8 +1,9 @@
 import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 12; // Standard for GCM
-const TAG_LENGTH = 16; // AES-GCM auth tag
+// Standard for GCM
+const IV_LENGTH = 12;
+const TAG_LENGTH = 16;
 
 export class DecryptionError extends Error {
   constructor(message = 'decryption failed') {

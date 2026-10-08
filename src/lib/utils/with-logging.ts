@@ -14,7 +14,7 @@ export function withLogging(
   handler: RouteHandler
 ): RouteHandler {
   return async (req, ctx) => {
-    const requestId = req.headers.get('x-request-id') ?? randomUUID();
+    const requestId = randomUUID();
     const startedAt = Date.now();
     const method = req.method;
     const path = new URL(req.url).pathname;
@@ -42,7 +42,14 @@ export function withLogging(
     } catch (err) {
       const durationMs = Date.now() - startedAt;
       logger.error(
-        { label, requestId, method, path, durationMs, err },
+        {
+          label,
+          requestId,
+          method,
+          path,
+          durationMs,
+          errorType: err instanceof Error ? 'Error' : typeof err,
+        },
         'request errored'
       );
       throw err;

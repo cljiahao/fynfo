@@ -95,7 +95,7 @@ describe('computeHoldings', () => {
     ];
     const [holding] = computeHoldings(trades);
     // totalBuyCost = 1000, remaining shares = 5
-    expect(holding.costBasis).toBe(200); // 1000 / 5
+    expect(holding.costBasis).toBe(200);
     expect(holding.shares).toBe(5);
   });
 

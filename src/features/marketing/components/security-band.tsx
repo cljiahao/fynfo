@@ -4,18 +4,18 @@ import { Reveal } from './reveal';
 const POINTS = [
   {
     icon: Lock,
-    title: 'Encrypted on your device',
-    body: 'Your PIN derives the key in your browser. Plaintext never reaches our servers.',
+    title: 'Encrypted in storage',
+    body: 'Your browser derives a key from your PIN. The server uses that key to encrypt and decrypt your financial data.',
   },
   {
     icon: KeyRound,
-    title: 'Only you hold the key',
-    body: 'AES-256-GCM with a key we never see. Lose the PIN, lose access — by design.',
+    title: 'PIN-derived access',
+    body: 'The derived key is sent to the server for your unlocked session. Your PIN stays in your browser; keep it safe to retain access.',
   },
   {
     icon: ShieldCheck,
     title: 'Yours to take',
-    body: 'Download a full backup any time. No lock-in, no hostage data.',
+    body: 'Download your personal records as JSON from your profile. The export lists its included domains.',
   },
 ];
 
@@ -29,14 +29,15 @@ export function SecurityBand() {
         />
         <Reveal className="max-w-2xl">
           <p className="text-sm font-medium tracking-wide text-emerald-300 uppercase">
-            Zero-knowledge
+            Vault encryption
           </p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white md:text-4xl">
-            Encrypted before it ever leaves your device.
+            Encrypted in the database. Unlocked with your PIN.
           </h2>
           <p className="mt-4 text-lg text-white/55">
-            Fynfo holds your numbers, never your secrets. The key lives with you
-            — so even we can&apos;t read what you store.
+            Your PIN derives the key in your browser. During an unlocked
+            session, Fynfo&apos;s server receives that key and processes your
+            records to display and save them.
           </p>
         </Reveal>
 

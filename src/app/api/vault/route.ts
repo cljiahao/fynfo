@@ -1,10 +1,18 @@
+import {
+  finishVaultUnlock,
+  reserveVaultUnlock,
+} from '@/integrations/services/security-rpc';
 import { createSupabaseServerClient } from '@/integrations/services/supabase';
 import { sealCookie } from '@/lib/cookie-seal';
 import { DecryptionError, decryptPayload, encryptPayload } from '@/lib/crypto';
 import { AppError, handleApiError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
 import { withLogging } from '@/lib/utils/with-logging';
-import { VAULT_COOKIE_BASE_OPTS, VAULT_DEK_COOKIE } from '@/lib/vault-cookie';
+import {
+  VAULT_COOKIE_BASE_OPTS,
+  VAULT_COOKIE_MAX_AGE,
+  VAULT_DEK_COOKIE,
+} from '@/lib/vault-cookie';
 import crypto from 'crypto';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -14,11 +22,12 @@ const VAULT_CANARY = 'fynfo_vault_ok';
 
 const base64Dek = z
   .string()
-  .min(1)
+  .length(44)
   .refine(
     (v) => {
       try {
-        return Buffer.from(v, 'base64').length === 32;
+        const decoded = Buffer.from(v, 'base64');
+        return decoded.length === 32 && decoded.toString('base64') === v;
       } catch {
         return false;
       }
@@ -32,7 +41,7 @@ const VaultUnlockSchema = z.object({
 
 const COOKIE_OPTS = {
   ...VAULT_COOKIE_BASE_OPTS,
-  maxAge: 60 * 60 * 6,
+  maxAge: VAULT_COOKIE_MAX_AGE,
 };
 
 // Constant-time string compare on equal-length buffers (defense-in-depth;
@@ -56,33 +65,6 @@ async function verifyCanary(ciphertext: string, dek: Buffer): Promise<void> {
     }
     throw err;
   }
-}
-
-type ServerClient = Awaited<ReturnType<typeof createSupabaseServerClient>>;
-
-// Throttle helpers fail OPEN: if the rate-limit RPCs are not deployed yet
-// (migration not applied), log and allow, so unlock is never bricked.
-async function isUnlockLocked(supabase: ServerClient): Promise<boolean> {
-  const { data, error } = await supabase.rpc('vault_unlock_locked');
-  if (error) {
-    logger.warn({ code: error.code }, 'vault unlock rate-limit unavailable');
-    return false;
-  }
-  return data === true;
-}
-
-async function recordUnlockAttempt(
-  supabase: ServerClient,
-  success: boolean
-): Promise<boolean> {
-  const { data, error } = await supabase.rpc('vault_unlock_record', {
-    p_success: success,
-  });
-  if (error) {
-    logger.warn({ code: error.code }, 'vault unlock rate-limit unavailable');
-    return false;
-  }
-  return data === true;
 }
 
 const TOO_MANY = { error: 'Too many attempts. Try again later.' };
@@ -144,15 +126,15 @@ export const POST = withLogging('api.vault.unlock', async (req: Request) => {
       throw new AppError('UNAUTHORIZED', 'Unauthorized');
     }
 
-    // Parallelise: profile read and rate-limit check are independent once we have user.id.
-    const [{ data: profile, error: profileError }, alreadyLocked] =
+    // Reserve before verification so concurrent guesses share the same budget.
+    const [{ data: profile, error: profileError }, attemptId] =
       await Promise.all([
         supabase
           .from('users_profile')
           .select('vault_check_v2')
           .eq('id', user.id)
           .maybeSingle(),
-        isUnlockLocked(supabase),
+        reserveVaultUnlock(user.id),
       ]);
 
     // Fail closed: a read error must never fall through to first-unlock, which
@@ -162,55 +144,77 @@ export const POST = withLogging('api.vault.unlock', async (req: Request) => {
       throw new AppError('INTERNAL', 'Vault unavailable');
     }
 
-    // Returning user: verify canary against existing v2 vault, rate-limited.
-    if (profile?.vault_check_v2) {
-      if (alreadyLocked) {
-        return NextResponse.json(TOO_MANY, { status: 429 });
-      }
+    if (!attemptId) return NextResponse.json(TOO_MANY, { status: 429 });
 
-      try {
-        await verifyCanary(profile.vault_check_v2, dek);
-      } catch (err) {
-        if (err instanceof AppError && err.code === 'VAULT_REJECTED') {
-          const nowLocked = await recordUnlockAttempt(supabase, false);
-          return nowLocked
-            ? NextResponse.json(TOO_MANY, { status: 429 })
-            : NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
-        }
-        throw err;
+    let canary = profile?.vault_check_v2;
+    if (!canary) {
+      // Conflict-ignore preserves profile metadata; the null predicate admits
+      // only one initializer even when several requests read the same null.
+      const { error: insertError } = await supabase
+        .from('users_profile')
+        .upsert(
+          {
+            id: user.id,
+            email: user.email ?? '',
+            vault_check_v2: null,
+            vault_version: 1,
+          },
+          { onConflict: 'id', ignoreDuplicates: true }
+        );
+      if (insertError) {
+        logger.error(
+          { code: insertError.code },
+          'failed to create vault profile'
+        );
+        throw new AppError('INTERNAL', 'Failed to initialize vault');
       }
-
-      await recordUnlockAttempt(supabase, true);
-      const cookieStore = await cookies();
-      cookieStore.set(
-        VAULT_DEK_COOKIE,
-        sealCookie(dek.toString('base64')),
-        COOKIE_OPTS
-      );
-      return NextResponse.json({ success: true });
+      const { error: updateError } = await supabase
+        .from('users_profile')
+        .update({
+          vault_check_v2: encryptPayload(VAULT_CANARY, dek),
+          vault_version: 2,
+        })
+        .eq('id', user.id)
+        .is('vault_check_v2', null);
+      if (updateError) {
+        logger.error(
+          { code: updateError.code },
+          'failed to store vault canary'
+        );
+        throw new AppError('INTERNAL', 'Failed to initialize vault');
+      }
+      const { data: winner, error: winnerError } = await supabase
+        .from('users_profile')
+        .select('vault_check_v2')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (winnerError || !winner?.vault_check_v2) {
+        logger.error(
+          { code: winnerError?.code },
+          'failed to read initialized vault'
+        );
+        throw new AppError('INTERNAL', 'Vault unavailable');
+      }
+      canary = winner.vault_check_v2;
     }
 
-    // First unlock: write v2 canary, mark version 2.
-    const encryptedCanary = encryptPayload(VAULT_CANARY, dek);
-    const { error: upsertError } = await supabase.from('users_profile').upsert({
-      id: user.id,
-      email: user.email ?? '',
-      vault_check_v2: encryptedCanary,
-      vault_version: 2,
-    });
-
-    if (upsertError) {
-      logger.error(
-        { code: upsertError.code, details: upsertError.details },
-        'failed to store vault canary'
-      );
-      throw new AppError('INTERNAL', 'Failed to initialize vault');
+    try {
+      await verifyCanary(canary, dek);
+    } catch (err) {
+      if (err instanceof AppError && err.code === 'VAULT_REJECTED') {
+        const nowLocked = await finishVaultUnlock(user.id, attemptId, false);
+        return nowLocked
+          ? NextResponse.json(TOO_MANY, { status: 429 })
+          : NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
+      }
+      throw err;
     }
 
+    await finishVaultUnlock(user.id, attemptId, true);
     const cookieStore = await cookies();
     cookieStore.set(
       VAULT_DEK_COOKIE,
-      sealCookie(dek.toString('base64')),
+      sealCookie(dek.toString('base64'), user.id, 'vault-dek'),
       COOKIE_OPTS
     );
     return NextResponse.json({ success: true });

@@ -11,4 +11,5 @@ export const HOUSEHOLD_COOKIE_BASE_OPTS = {
 };
 
 // 6-hour session, matching the vault DEK cookie lifetime.
-export const HOUSEHOLD_COOKIE_MAX_AGE = 60 * 60 * 6;
+export const HOUSEHOLD_COOKIE_MAX_AGE = VAULT_COOKIE_MAX_AGE;
+import { VAULT_COOKIE_MAX_AGE } from '@/lib/vault-cookie';

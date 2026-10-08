@@ -1,4 +1,5 @@
 import type { ExpenseData } from '@/features/expenses/types';
+import * as fieldCrypto from '@/lib/crypto';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -34,10 +35,43 @@ const validExpense: ExpenseData = {
 };
 
 beforeEach(() => {
+  vi.restoreAllMocks();
   setSupabase();
 });
 
 describe('expense-actions — getExpenses', () => {
+  it('returns no expenses for null data and defaults missing optional fields and splits', async () => {
+    const { getExpenses } =
+      await import('@/features/expenses/actions/expense-actions');
+    setSupabase({ selectData: null });
+    expect(await getExpenses()).toEqual([]);
+    setSupabase({
+      selectData: [
+        {
+          id: 'minimal',
+          date: '2026-10-08',
+          type: 'shopping',
+          item: null,
+          info: null,
+          amount: await encryptPayload('12', DEK),
+          split_type: 'self',
+          splits: null,
+        },
+      ],
+    });
+    expect(await getExpenses()).toEqual([
+      {
+        id: 'minimal',
+        date: '2026-10-08',
+        type: 'shopping',
+        item: '',
+        info: '',
+        amount: 12,
+        splitType: 'self',
+        splits: [],
+      },
+    ]);
+  });
   it('decrypts records and their splits', async () => {
     const rows = [
       {
@@ -86,6 +120,43 @@ describe('expense-actions — getExpenses', () => {
 });
 
 describe('expense-actions — upsertExpense', () => {
+  it('stops replacement when child deletion fails', async () => {
+    const fake = setSupabase({
+      upsertData: { id: 'snap-1' },
+      selectError: { message: 'permission denied' },
+    });
+    const { upsertExpense } =
+      await import('@/features/expenses/actions/expense-actions');
+    await expect(upsertExpense(validExpense)).rejects.toThrow(
+      'expense splits delete failed'
+    );
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+  it('does not delete children after a parent failure', async () => {
+    const fake = setSupabase({ upsertError: { message: 'parent failed' } });
+    const { upsertExpense } =
+      await import('@/features/expenses/actions/expense-actions');
+    await expect(upsertExpense(validExpense)).rejects.toThrow();
+    expect(fake.calls.delete).toBe(0);
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+  it('prepares child ciphertext before any replacement mutation', async () => {
+    const fake = setSupabase({ upsertData: { id: 'snap-1' } });
+    const encrypt = fieldCrypto.encryptPayload;
+    vi.spyOn(fieldCrypto, 'encryptPayload').mockImplementation((text, dek) => {
+      if (text === '20') throw new Error('child encryption failed');
+      return encrypt(text, dek);
+    });
+    const { upsertExpense } =
+      await import('@/features/expenses/actions/expense-actions');
+    await expect(upsertExpense(validExpense)).rejects.toThrow(
+      'child encryption failed'
+    );
+    expect(fake.calls.delete).toBe(0);
+    expect(fake.calls.upsert).toHaveLength(0);
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+
   it('encrypts sensitive fields and inserts encrypted splits with plaintext person', async () => {
     const fake = setSupabase();
     const { upsertExpense } =
@@ -98,17 +169,17 @@ describe('expense-actions — upsertExpense', () => {
       amount: string;
       split_type: string;
     };
-    expect(row.item).not.toBe('Dinner'); // ciphertext, not plaintext
+    expect(row.item).not.toBe('Dinner');
     expect(await decryptPayload(row.item, DEK)).toBe('Dinner');
     expect(await decryptPayload(row.amount, DEK)).toBe('40');
     expect(row.split_type).toBe('shared');
-    expect(fake.calls.delete).toBe(1); // stale splits cleared
+    expect(fake.calls.delete).toBe(1);
 
     const splits = fake.calls.insert[0] as Array<{
       person: string;
       amount: string;
     }>;
-    expect(splits[0].person).toBe('Alice'); // person is plaintext by design
+    expect(splits[0].person).toBe('Alice');
     expect(splits[0].amount).not.toBe('20');
     expect(await decryptPayload(splits[0].amount, DEK)).toBe('20');
   });
@@ -117,7 +188,7 @@ describe('expense-actions — upsertExpense', () => {
     const fake = setSupabase();
     const { upsertExpense } =
       await import('@/features/expenses/actions/expense-actions');
-    const invalid = { ...validExpense, amount: 0 }; // amount must be positive
+    const invalid = { ...validExpense, amount: 0 };
     await expect(upsertExpense(invalid)).rejects.toThrow();
     expect(fake.calls.from).toHaveLength(0);
   });
@@ -157,6 +228,15 @@ describe('expense-actions — deleteExpense', () => {
     await deleteExpense('exp1');
     expect(fake.calls.from).toContain('expense_records');
     expect(fake.calls.delete).toBe(1);
+    expect(
+      fake.calls.queries.find(
+        (query) =>
+          query.table === 'expense_records' && query.operation === 'delete'
+      )?.eq
+    ).toEqual([
+      { column: 'id', value: 'exp1' },
+      { column: 'user_id', value: USER_ID },
+    ]);
   });
 
   it('surfaces an opaque error on a delete failure', async () => {
@@ -175,6 +255,12 @@ describe('expense-actions — settleSplit', () => {
     const { settleSplit } =
       await import('@/features/expenses/actions/expense-actions');
     await settleSplit('exp1', 'Alice', true);
+    expect(
+      fake.calls.queries.find((query) => query.operation === 'update')?.eq
+    ).toEqual([
+      { column: 'expense_id', value: 'exp1' },
+      { column: 'person', value: 'Alice' },
+    ]);
     expect(fake.calls.from).toContain('expense_splits');
     expect(fake.calls.update[0]).toEqual({ settled: true });
   });
@@ -195,6 +281,12 @@ describe('expense-actions — settleMonthSplits', () => {
     const { settleMonthSplits } =
       await import('@/features/expenses/actions/expense-actions');
     await settleMonthSplits(['exp1', 'exp2'], 'Alice', true);
+    expect(
+      fake.calls.queries.find((query) => query.operation === 'update')
+    ).toMatchObject({
+      eq: [{ column: 'person', value: 'Alice' }],
+      in: [{ column: 'expense_id', values: ['exp1', 'exp2'] }],
+    });
     expect(fake.calls.update[0]).toEqual({ settled: true });
   });
 

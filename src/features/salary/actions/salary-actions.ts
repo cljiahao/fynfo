@@ -1,6 +1,6 @@
 'use server';
 
-import { requireActionContext, requireDbContext } from '@/lib/action-guard';
+import { requireActionContext } from '@/lib/action-guard';
 import { encryptPayload } from '@/lib/crypto';
 import { decryptNumber } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
@@ -37,9 +37,10 @@ export async function getSalaryRecord(id: string): Promise<SalaryData | null> {
     .select('*')
     .eq('user_id', userId)
     .eq('month', id)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) return null;
+  throwIfSupabaseError(error, 'salary record read');
+  if (!data) return null;
 
   return {
     id: data.month,
@@ -76,7 +77,7 @@ export async function upsertSalaryRecord(data: SalaryData): Promise<void> {
 }
 
 export async function deleteSalaryRecord(id: string): Promise<void> {
-  const { userId, supabase } = await requireDbContext();
+  const { userId, supabase } = await requireActionContext();
 
   const { error } = await supabase
     .from('salary_records')

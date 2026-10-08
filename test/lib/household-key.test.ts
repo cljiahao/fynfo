@@ -7,7 +7,8 @@ import {
   unwrapKh,
   wrapKh,
 } from '@/lib/household-key';
-import { describe, expect, it } from 'vitest';
+import crypto from 'crypto';
+import { describe, expect, it, vi } from 'vitest';
 
 const MEMBER_DEK = Buffer.alloc(32, 7);
 const OTHER_DEK = Buffer.alloc(32, 9);
@@ -26,7 +27,7 @@ describe('household-key — wrap/unwrap round-trip', () => {
   it('recovers the original K_h with the correct key', () => {
     const kh = generateKh();
     const wrapped = wrapKh(kh, MEMBER_DEK);
-    expect(wrapped).not.toContain(kh.toString('base64')); // ciphertext, not plaintext
+    expect(wrapped).not.toContain(kh.toString('base64'));
     expect(unwrapKh(wrapped, MEMBER_DEK).equals(kh)).toBe(true);
   });
 
@@ -47,9 +48,9 @@ describe('household-key — wrap/unwrap round-trip', () => {
 });
 
 describe('household-key — invite secret + derivation', () => {
-  it('generateInviteSecret returns a url-safe secret and a base64 salt', () => {
+  it('generateInviteSecret returns a url-safe secret and a base64 salt', async () => {
     const { secret, saltB64 } = generateInviteSecret();
-    expect(secret).toMatch(/^[A-Za-z0-9_-]+$/); // base64url, no padding chars
+    expect(secret).toMatch(/^[A-Za-z0-9_-]+$/);
     expect(Buffer.from(saltB64, 'base64')).toHaveLength(16);
   });
 
@@ -59,27 +60,29 @@ describe('household-key — invite secret + derivation', () => {
     );
   });
 
-  it('deriveInviteKey is deterministic for the same secret + salt', () => {
+  it('deriveInviteKey is deterministic for the same secret + salt', async () => {
     const { secret, saltB64 } = generateInviteSecret();
     expect(
-      deriveInviteKey(secret, saltB64).equals(deriveInviteKey(secret, saltB64))
+      (await deriveInviteKey(secret, saltB64)).equals(
+        await deriveInviteKey(secret, saltB64)
+      )
     ).toBe(true);
   });
 
-  it('deriveInviteKey differs across salts for the same secret', () => {
+  it('deriveInviteKey differs across salts for the same secret', async () => {
     const { secret } = generateInviteSecret();
-    const a = deriveInviteKey(secret, generateInviteSecret().saltB64);
-    const b = deriveInviteKey(secret, generateInviteSecret().saltB64);
+    const a = await deriveInviteKey(secret, generateInviteSecret().saltB64);
+    const b = await deriveInviteKey(secret, generateInviteSecret().saltB64);
     expect(a.equals(b)).toBe(false);
   });
 
-  it('the invite path round-trips K_h (derive -> wrap -> derive -> unwrap)', () => {
+  it('the invite path round-trips K_h (derive -> wrap -> derive -> unwrap)', async () => {
     const kh = generateKh();
     const { secret, saltB64 } = generateInviteSecret();
-    const inviteKey = deriveInviteKey(secret, saltB64);
+    const inviteKey = await deriveInviteKey(secret, saltB64);
     const wrapped = wrapKh(kh, inviteKey);
     // Accepter re-derives from the same secret + salt and recovers K_h.
-    const recovered = unwrapKh(wrapped, deriveInviteKey(secret, saltB64));
+    const recovered = unwrapKh(wrapped, await deriveInviteKey(secret, saltB64));
     expect(recovered.equals(kh)).toBe(true);
   });
 
@@ -87,5 +90,50 @@ describe('household-key — invite secret + derivation', () => {
     const { secret } = generateInviteSecret();
     expect(hashInviteCode(secret)).toMatch(/^[0-9a-f]{64}$/);
     expect(hashInviteCode(secret)).toBe(hashInviteCode(secret));
+  });
+});
+
+describe('asynchronous invite derivation compatibility', () => {
+  it('rejects when the key derivation provider reports a failure', async () => {
+    const providerError = new Error('fixture PBKDF2 provider failure');
+    const spy = vi
+      .spyOn(crypto, 'pbkdf2')
+      .mockImplementation(
+        (_password, _salt, _iterations, _keylen, _digest, callback) => {
+          callback(providerError, Buffer.alloc(0));
+        }
+      );
+    try {
+      await expect(
+        deriveInviteKey('fixture-secret', 'AAECAwQFBgcICQoLDA0ODw==')
+      ).rejects.toBe(providerError);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('returns a promise without blocking scheduled event-loop work and preserves fixture bytes', async () => {
+    let loopRan = false;
+    const scheduled = new Promise<void>((resolve) =>
+      setImmediate(() => {
+        loopRan = true;
+        resolve();
+      })
+    );
+    const result = deriveInviteKey(
+      'audit-invite-fixture',
+      'AAECAwQFBgcICQoLDA0ODw=='
+    );
+    expect(result).toBeInstanceOf(Promise);
+    let derivationSettled = false;
+    void result.then(() => {
+      derivationSettled = true;
+    });
+    await scheduled;
+    expect(derivationSettled).toBe(false);
+    expect(loopRan).toBe(true);
+    expect((await result).toString('hex')).toBe(
+      'ae89c6be9426fd81662901f0f92f276f4a47a1805265e2423904750e3eda1d61'
+    );
   });
 });

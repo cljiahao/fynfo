@@ -50,16 +50,17 @@ describe('buildUpsertMutationOptions', () => {
 
     const cached = qc.getQueryData<ExpenseData[]>(EXPENSE_KEY);
     expect(cached?.map((e) => e.id)).toEqual(['b', 'a']);
-    expect(ctx.previous?.map((e) => e.id)).toEqual(['a']);
+    expect(ctx?.patches.map((e) => e.id)).toEqual(['b']);
   });
 
-  it('rolls the cache back to the previous snapshot on error', () => {
+  it('rolls the affected row back on error', async () => {
     const qc = new QueryClient();
     const previous = [row('a', 10)];
-    qc.setQueryData(EXPENSE_KEY, [row('a', 10), row('b', 20)]);
+    qc.setQueryData(EXPENSE_KEY, previous);
 
     const opts = buildUpsertMutationOptions(qc);
-    opts.onError(new Error('boom'), row('b', 20), { previous });
+    const context = await opts.onMutate(row('b', 20));
+    opts.onError(new Error('boom'), row('b', 20), context);
 
     expect(qc.getQueryData<ExpenseData[]>(EXPENSE_KEY)).toEqual(previous);
   });
@@ -78,18 +79,20 @@ describe('buildDeleteMutationOptions', () => {
     expect(
       qc.getQueryData<ExpenseData[]>(EXPENSE_KEY)?.map((e) => e.id)
     ).toEqual(['b']);
-    expect(ctx.previous?.map((e) => e.id)).toEqual(['a', 'b']);
+    expect(ctx?.patches.map((e) => e.before?.id)).toEqual(['a']);
     const keys = spy.mock.calls.map((c) => c[0]?.queryKey);
     expect(keys).toContainEqual(PEOPLE_KEY);
     expect(keys).not.toContainEqual(EXPENSE_KEY);
   });
 
-  it('rolls back the deleted row on error', () => {
+  it('rolls back the deleted row on error', async () => {
     const qc = new QueryClient();
     const previous = [row('a', 10)];
-    qc.setQueryData(EXPENSE_KEY, []);
+    qc.setQueryData(EXPENSE_KEY, previous);
 
-    buildDeleteMutationOptions(qc).onError(new Error('x'), 'a', { previous });
+    const opts = buildDeleteMutationOptions(qc);
+    const context = await opts.onMutate('a');
+    opts.onError(new Error('x'), 'a', context);
 
     expect(qc.getQueryData<ExpenseData[]>(EXPENSE_KEY)).toEqual(previous);
   });
@@ -121,20 +124,18 @@ describe('settle mutation options', () => {
     }
   });
 
-  it('rolls back the settle on error', () => {
+  it('rolls back the settle on error', async () => {
     const qc = new QueryClient();
     const previous = [shared('a')];
-    qc.setQueryData(EXPENSE_KEY, [
-      {
-        ...shared('a'),
-        splits: [{ person: 'Alice', amount: 20, settled: true }],
-      },
-    ]);
+    qc.setQueryData(EXPENSE_KEY, previous);
+    const opts = buildSettleSplitMutationOptions(qc);
+    const vars = { expenseIds: ['a'], person: 'Alice', settled: true };
+    const context = await opts.onMutate(vars);
 
-    buildSettleSplitMutationOptions(qc).onError(
+    opts.onError(
       new Error('x'),
       { expenseIds: ['a'], person: 'Alice', settled: true },
-      { previous }
+      context
     );
 
     expect(qc.getQueryData<ExpenseData[]>(EXPENSE_KEY)).toEqual(previous);

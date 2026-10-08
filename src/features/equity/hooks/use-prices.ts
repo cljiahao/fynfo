@@ -9,7 +9,7 @@ import {
 
 export function useStockPrices(tickers: string[]) {
   return useQuery<Record<string, StockPrice>>({
-    queryKey: ['stock-prices', tickers.sort().join(',')],
+    queryKey: ['stock-prices', [...tickers].sort().join(',')],
     queryFn: () => fetchStockPrices(tickers),
     enabled: tickers.length > 0,
     staleTime: 5 * 60 * 1000,

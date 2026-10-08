@@ -56,7 +56,7 @@ export const MOAT_POINTS: MoatPoint[] = [
     icon: Unplug,
     title: 'No bank logins, ever',
     description:
-      'Fynfo never connects to your bank or brokerage. There is no third party holding the keys to your accounts — nothing to breach, nothing to leak. You capture what matters, when it matters.',
+      'Fynfo does not connect to your bank or brokerage accounts or collect their login credentials. You capture the figures you want to track, when it matters.',
   },
   {
     icon: PenLine,
@@ -73,7 +73,7 @@ export const MOAT_POINTS: MoatPoint[] = [
 ];
 
 export const TRUST_BADGES: string[] = [
-  'Zero-knowledge',
+  'PIN-derived vault key',
   'AES-256 encrypted',
   'Built for Singapore',
 ];
@@ -92,17 +92,17 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'Why does not Fynfo sync my bank accounts?',
     answer:
-      'By design. Connecting bank logins means trusting a third party with the keys to your accounts — exactly the risk Fynfo exists to avoid. You enter snapshots yourself, so there is nothing to breach and every number is one you understand.',
+      'You enter snapshots yourself, so Fynfo does not need your bank or brokerage login credentials. Each number is one you choose to track.',
   },
   {
     question: 'How secure is my financial data?',
     answer:
-      'Your data is encrypted on your device with a key derived from a PIN only you know (AES-256-GCM). It is stored encrypted in the database — even we cannot read it. This is zero-knowledge by design.',
+      'Your browser derives an encryption key from your PIN and sends the key to the server for your unlocked session. The server encrypts and decrypts your financial records using AES-256-GCM; the database stores their encrypted payloads. Your PIN stays in your browser. This is not client-only or zero-knowledge encryption.',
   },
   {
     question: 'Can I get my data out?',
     answer:
-      'Any time. From your profile you can download a complete JSON backup of everything — snapshots, expenses, salary, tax reliefs, trades, and settings — decrypted on your own device.',
+      'From your profile, download a JSON export of your profile, snapshots, expenses, salary, tax reliefs, trades, dividends, and planner settings. Records are decrypted on the server during your unlocked session and the saved file is plaintext. Household data is not included.',
   },
   {
     question: 'Is this only for Singapore residents?',

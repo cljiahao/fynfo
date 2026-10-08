@@ -1,6 +1,6 @@
 'use server';
 
-import { requireActionContext, requireDbContext } from '@/lib/action-guard';
+import { requireActionContext } from '@/lib/action-guard';
 import { encryptPayload } from '@/lib/crypto';
 import { decryptNumber, decryptOptionalString } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
@@ -57,35 +57,37 @@ export async function upsertExpense(data: ExpenseData): Promise<void> {
     encryptPayload(data.amount.toString(), dek),
   ]);
 
-  // Upsert the expense record and clear stale splits in parallel
-  const [{ error: expErr }] = await Promise.all([
-    supabase.from('expense_records').upsert({
-      id: data.id,
-      user_id: userId,
-      date: new Date(data.date).toISOString(),
-      type: data.type,
-      item: encItem,
-      info: encInfo,
-      amount: encAmount,
-      split_type: data.splitType,
-      updated_at: new Date().toISOString(),
-    }),
-    supabase.from('expense_splits').delete().eq('expense_id', data.id),
-  ]);
+  const encSplits = await Promise.all(
+    (data.splitType === 'shared' ? data.splits : []).map(async (s) => ({
+      id: randomUUID(),
+      expense_id: data.id,
+      person: s.person,
+      amount: await encryptPayload(s.amount.toString(), dek),
+      settled: s.settled,
+    }))
+  );
+
+  const { error: expErr } = await supabase.from('expense_records').upsert({
+    id: data.id,
+    user_id: userId,
+    date: new Date(data.date).toISOString(),
+    type: data.type,
+    item: encItem,
+    info: encInfo,
+    amount: encAmount,
+    split_type: data.splitType,
+    updated_at: new Date().toISOString(),
+  });
 
   throwIfSupabaseError(expErr, 'expense upsert');
 
-  if (data.splitType === 'shared' && data.splits.length > 0) {
-    const encSplits = await Promise.all(
-      data.splits.map(async (s) => ({
-        id: randomUUID(),
-        expense_id: data.id,
-        person: s.person,
-        amount: await encryptPayload(s.amount.toString(), dek),
-        settled: s.settled,
-      }))
-    );
+  const { error: deleteErr } = await supabase
+    .from('expense_splits')
+    .delete()
+    .eq('expense_id', data.id);
+  throwIfSupabaseError(deleteErr, 'expense splits delete');
 
+  if (encSplits.length > 0) {
     const { error: splitErr } = await supabase
       .from('expense_splits')
       .insert(encSplits);
@@ -94,7 +96,7 @@ export async function upsertExpense(data: ExpenseData): Promise<void> {
 }
 
 export async function deleteExpense(id: string): Promise<void> {
-  const { userId, supabase } = await requireDbContext();
+  const { userId, supabase } = await requireActionContext();
 
   const { error } = await supabase
     .from('expense_records')
@@ -110,7 +112,7 @@ export async function settleSplit(
   person: string,
   settled: boolean
 ): Promise<void> {
-  const { supabase } = await requireDbContext();
+  const { supabase } = await requireActionContext();
 
   // RLS limits our mutations automatically to expenses we own.
   const { error } = await supabase
@@ -127,7 +129,7 @@ export async function settleMonthSplits(
   person: string,
   settled: boolean
 ): Promise<void> {
-  const { supabase } = await requireDbContext();
+  const { supabase } = await requireActionContext();
 
   const { error } = await supabase
     .from('expense_splits')
@@ -139,7 +141,7 @@ export async function settleMonthSplits(
 }
 
 export async function getDistinctPeople(): Promise<string[]> {
-  const { userId, supabase } = await requireDbContext();
+  const { userId, supabase } = await requireActionContext();
 
   const { data, error } = await supabase
     .from('expense_records')

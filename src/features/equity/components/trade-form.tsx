@@ -123,8 +123,13 @@ export function TradeFormDialog({
   };
 
   async function onSubmit(values: TradeFormValues) {
+    const date = new Date(values.date);
+    if (!Number.isFinite(date.getTime())) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
     const data = {
-      date: new Date(values.date).toISOString(),
+      date: date.toISOString(),
       broker: values.broker.trim(),
       ticker: values.ticker.trim().toUpperCase(),
       action: values.action,

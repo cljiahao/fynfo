@@ -1,19 +1,10 @@
+import { readMarketingAggregates } from '@/integrations/services/security-rpc';
 import { createSupabaseServerClient } from '@/integrations/services/supabase';
 import { isAdminEmail } from '@/lib/admin';
 import { logger } from '@/lib/logger';
 import { notFound } from 'next/navigation';
 import type { DailyPoint, MarketingStats } from '../types';
 import { computeClickRate } from './compute-click-rate';
-
-interface EventStatRow {
-  day: string;
-  event_type: string;
-  events: number;
-}
-interface SignupStatRow {
-  day: string;
-  signups: number;
-}
 
 /**
  * Admin-only aggregate telemetry read. Per CONSTITUTION §2.3 carve-out: requires
@@ -24,29 +15,21 @@ export async function getMarketingStats(): Promise<MarketingStats> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
-  if (!user || !isAdminEmail(user.email, process.env.ADMIN_EMAILS)) {
+  if (
+    userError ||
+    !user ||
+    !isAdminEmail(user.email, process.env.ADMIN_EMAILS)
+  ) {
     notFound();
   }
 
-  const [eventsRes, signupsRes] = await Promise.all([
-    supabase.rpc('get_marketing_event_stats'),
-    supabase.rpc('get_signup_stats'),
-  ]);
-
-  if (eventsRes.error || signupsRes.error) {
-    logger.error(
-      {
-        eventsCode: eventsRes.error?.code,
-        signupsCode: signupsRes.error?.code,
-      },
-      'failed to read marketing stats'
-    );
-    throw new Error('Failed to load telemetry');
-  }
-
-  const eventRows = (eventsRes.data ?? []) as EventStatRow[];
-  const signupRows = (signupsRes.data ?? []) as SignupStatRow[];
+  const { events: eventRows, signups: signupRows } =
+    await readMarketingAggregates().catch(() => {
+      logger.error('failed to read marketing stats');
+      throw new Error('Failed to load telemetry');
+    });
 
   const byDay = new Map<string, DailyPoint>();
   let pageViews = 0;

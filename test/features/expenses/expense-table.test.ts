@@ -68,7 +68,7 @@ describe('sortExpenses', () => {
     const desc = sortExpenses(list, 'amount', 'desc').map((e) => e.id);
     expect(asc).toEqual(['b', 'c', 'a']);
     expect(desc).toEqual(['a', 'c', 'b']);
-    expect(list.map((e) => e.id)).toEqual(['a', 'b', 'c']); // unmutated
+    expect(list.map((e) => e.id)).toEqual(['a', 'b', 'c']);
   });
 
   it('sorts by item label', () => {

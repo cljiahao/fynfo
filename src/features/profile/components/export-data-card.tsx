@@ -19,9 +19,10 @@ export function ExportDataCard() {
       <CardHeader>
         <CardTitle>Export your data</CardTitle>
         <CardDescription>
-          Download a complete JSON backup of your vault — snapshots, expenses,
-          salary, tax reliefs, trades, and planner settings. Decrypted on your
-          device; nothing leaves the browser except the file you save.
+          Download a JSON export of your profile, snapshots, expenses, salary,
+          tax reliefs, trades, dividends, and planner settings. The server
+          decrypts these records during your unlocked session; the downloaded
+          file contains plaintext. Household data is not included.
         </CardDescription>
       </CardHeader>
       <CardContent>

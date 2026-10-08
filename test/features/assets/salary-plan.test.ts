@@ -44,15 +44,25 @@ describe('calcAllTimeAvgExpense', () => {
     expect(calcAllTimeAvgExpense([])).toBe(0);
   });
 
+  it('returns zero when every expense is excluded insurance', () => {
+    expect(
+      calcAllTimeAvgExpense([
+        exp({ type: 'insurance', amount: 100, date: '2026-05-10' }),
+        exp({ type: 'insurance', amount: 200, date: '2026-06-10' }),
+      ])
+    ).toBe(0);
+  });
+
   it('averages per-month user-share, subtracting others split portions', () => {
     const list = [
-      exp({ date: '2026-05-10', amount: 100 }), // May: 100
+      exp({ date: '2026-05-10', amount: 100 }),
       exp({
         date: '2026-06-05',
         amount: 200,
         splitType: 'shared',
         splits: [{ person: 'A', amount: 120, settled: false }],
-      }), // June user-share: 80
+        // June user-share: 80
+      }),
     ];
     // (100 + 80) / 2 months = 90
     expect(calcAllTimeAvgExpense(list)).toBe(90);
@@ -61,7 +71,7 @@ describe('calcAllTimeAvgExpense', () => {
 
 describe('computeSalaryPlan', () => {
   const base = {
-    salary: 10000, // net = 8000
+    salary: 10000,
     expenses: 2000,
     emergencyMonths: 3,
     warChestMonths: 9,
@@ -76,8 +86,8 @@ describe('computeSalaryPlan', () => {
   it('computes net after a flat 20% CPF and the goal amounts', () => {
     const p = computeSalaryPlan(base);
     expect(p.netAfterCpf).toBe(8000);
-    expect(p.emergencyFundGoal).toBe(6000); // ceil(2000*3)
-    expect(p.warChestGoal).toBe(18000); // ceil(2000*9)
+    expect(p.emergencyFundGoal).toBe(6000);
+    expect(p.warChestGoal).toBe(18000);
   });
 
   it('routes the capped remainder to savings while goals are unmet', () => {
@@ -98,7 +108,7 @@ describe('computeSalaryPlan', () => {
     });
     expect(p.goalsFulfilled).toBe(true);
     expect(p.savingsPct).toBe(0);
-    expect(p.investmentPct).toBeCloseTo(0.6, 6); // full capped remainder
+    expect(p.investmentPct).toBeCloseTo(0.6, 6);
   });
 
   it('zeroes all allocations when salary is 0', () => {
