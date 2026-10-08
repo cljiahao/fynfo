@@ -171,20 +171,31 @@ it('prefills account names without copying balances and saves trimmed positive e
       undefined
     )
   );
-  expect(external.push).toHaveBeenCalledWith('/dashboard');
+  expect(external.push).toHaveBeenCalledWith('/dashboard/assets');
 });
 
 it('blocks duplicate month writes, supports adding/removing rows, and cancels without saving', async () => {
   external.getSnapshots.mockResolvedValue([snapshot]);
   mount(<SnapshotForm />);
   await screen.findByRole('button', { name: 'Save Snapshot' });
+  await waitFor(() =>
+    expect(screen.getAllByPlaceholderText('Account name')[0]).toHaveProperty(
+      'value',
+      'Bank'
+    )
+  );
   fireEvent.change(screen.getByLabelText('Select Month'), {
     target: { value: '2026-01' },
   });
-  expect(
-    (screen.getByRole('button', { name: 'Save Snapshot' }) as HTMLButtonElement)
-      .disabled
-  ).toBe(true);
+  await waitFor(() =>
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Save Snapshot',
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(true)
+  );
   expect(
     screen.getByText('A snapshot for this month already exists.')
   ).toBeTruthy();
@@ -198,8 +209,26 @@ it('blocks duplicate month writes, supports adding/removing rows, and cancels wi
   fireEvent.click(within(added).getByRole('button'));
   expect(screen.getAllByPlaceholderText('Account name')).toHaveLength(count);
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-  expect(external.push).toHaveBeenCalledWith('/dashboard');
+  expect(external.push).toHaveBeenCalledWith('/dashboard/assets');
   expect(external.upsertSnapshot).not.toHaveBeenCalled();
+});
+
+it('returns to assets after successfully updating an existing snapshot', async () => {
+  external.getSnapshot.mockResolvedValue(snapshot);
+  external.getSnapshots.mockResolvedValue([snapshot]);
+  mount(<SnapshotForm editId="2026-01" />);
+  await screen.findByRole('button', { name: 'Update Snapshot' });
+  fireEvent.change(screen.getAllByRole('spinbutton')[0], {
+    target: { value: '150' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Update Snapshot' }));
+  await waitFor(() =>
+    expect(external.push).toHaveBeenCalledWith('/dashboard/assets')
+  );
+  expect(external.upsertSnapshot).toHaveBeenCalledWith(
+    expect.objectContaining({ id: '2026-01' }),
+    '2026-01'
+  );
 });
 
 it('retains original snapshot identity when month is edited and does not navigate on failed write', async () => {

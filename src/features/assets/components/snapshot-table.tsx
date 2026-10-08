@@ -1,5 +1,7 @@
 'use client';
 
+import { PAGE_ROUTES } from '@/lib/constants/routes';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -79,7 +81,9 @@ function SnapshotActionButtons({ id }: { id: string }) {
       <Button
         variant="outline"
         size="sm"
-        onClick={() => router.push(`/dashboard/entry?edit=${id}`)}
+        onClick={() =>
+          router.push(`${PAGE_ROUTES.ENTRY}?edit=${encodeURIComponent(id)}`)
+        }
         aria-label="Edit snapshot"
       >
         <Pencil className="size-4" />

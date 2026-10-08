@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { formatSGD } from '@/lib/utils/currency';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
@@ -179,7 +180,7 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
         originalId: editId,
       });
       toast.success(`Snapshot ${values.id} saved`);
-      router.push('/dashboard');
+      router.push(PAGE_ROUTES.ASSETS);
     } catch {
       toast.error('Failed to save snapshot');
     }
@@ -353,7 +354,7 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push(PAGE_ROUTES.ASSETS)}
             >
               Cancel
             </Button>

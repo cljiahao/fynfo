@@ -70,19 +70,32 @@ export async function proxy(req: NextRequest) {
 
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
-  const isAuthenticated = !!user;
+  const isAuthenticated = !authError && !!user;
+
+  function withSessionCookies(response: NextResponse) {
+    // Redirects and denied requests must carry Supabase's refresh or expiry.
+    for (const cookie of supabaseResponse.cookies.getAll()) {
+      response.cookies.set(cookie);
+    }
+    return response;
+  }
 
   if (!isAuthenticated && !isPublicRoute(pathname)) {
     if (isApiRoute(pathname)) {
-      return new Response(null, { status: 401 });
+      return withSessionCookies(new NextResponse(null, { status: 401 }));
     }
-    return NextResponse.redirect(new URL(PAGE_ROUTES.LOGIN, req.url));
+    return withSessionCookies(
+      NextResponse.redirect(new URL(PAGE_ROUTES.LOGIN, req.url))
+    );
   }
 
   // Prevent logged-in users from hitting the login page
   if (isAuthenticated && pathname === PAGE_ROUTES.LOGIN) {
-    return NextResponse.redirect(new URL(PAGE_ROUTES.DASHBOARD, req.url));
+    return withSessionCookies(
+      NextResponse.redirect(new URL(PAGE_ROUTES.DASHBOARD, req.url))
+    );
   }
 
   return supabaseResponse;
