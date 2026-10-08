@@ -9,7 +9,7 @@ import {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
-  // getMarketingStats gates on requireUserId() + ADMIN_USER_IDS and 404s for
+  // getMarketingStats gates on requireUserId() + ADMIN_EMAILS and 404s for
   // non-admins (CONSTITUTION §2.3 admin-read carve-out — no vault required).
   const stats = await getMarketingStats();
 

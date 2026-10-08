@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QueryContent } from '@/components/widgets';
 import { useExpenses } from '@/features/expenses';
 import { useSalaryRecords } from '@/features/salary/hooks/use-salary';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -34,6 +35,7 @@ export interface PlannerValues {
 
 interface SalaryPlannerProps {
   snapshot?: SnapshotData;
+  isSnapshotReady?: boolean;
   onPlannerValuesChange?: (values: PlannerValues) => void;
 }
 
@@ -66,53 +68,56 @@ export function SalaryPlanner(props: SalaryPlannerProps) {
     refetch: retryExpenses,
   } = useExpenses();
 
-  if (salaryLoading || settingsLoading || expensesLoading) {
-    return (
-      <Card>
-        <CardContent className="space-y-4 py-6">
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-32 w-full rounded-lg" />
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Skeleton className="h-16 rounded-lg" />
-            <Skeleton className="h-16 rounded-lg" />
-            <Skeleton className="h-16 rounded-lg" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (salaryError || settingsError || expensesError) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Couldn&apos;t load your planner</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Button
-            onClick={() => {
-              void retrySalary();
-              void retrySettings();
-              void retryExpenses();
-            }}
-          >
-            Retry
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  const isLoading = salaryLoading || settingsLoading || expensesLoading;
+  const isError = salaryError || settingsError || expensesError;
+  const statusContent = isLoading ? (
+    <Card>
+      <CardContent className="space-y-4 py-6">
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-32 w-full rounded-lg" />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Skeleton className="h-16 rounded-lg" />
+          <Skeleton className="h-16 rounded-lg" />
+          <Skeleton className="h-16 rounded-lg" />
+        </div>
+      </CardContent>
+    </Card>
+  ) : isError ? (
+    <Card>
+      <CardHeader>
+        <CardTitle>Couldn&apos;t load your planner</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Button
+          onClick={() => {
+            void retrySalary();
+            void retrySettings();
+            void retryExpenses();
+          }}
+        >
+          Retry
+        </Button>
+      </CardContent>
+    </Card>
+  ) : null;
 
   const latestSalary = salaryRecords?.[salaryRecords.length - 1];
   const avgExpenses = calcAllTimeAvgExpense(expenses);
 
   return (
-    <SalaryPlannerInner
-      {...props}
-      initialSalary={latestSalary?.salary ?? 0}
-      initialSettings={savedSettings ?? DEFAULT_SETTINGS}
-      avgExpenses={avgExpenses}
-    />
+    <>
+      {statusContent}
+      <QueryContent
+        ready={!isLoading && !isError && props.isSnapshotReady !== false}
+      >
+        <SalaryPlannerInner
+          {...props}
+          initialSalary={latestSalary?.salary ?? 0}
+          initialSettings={savedSettings ?? DEFAULT_SETTINGS}
+          avgExpenses={avgExpenses}
+        />
+      </QueryContent>
+    </>
   );
 }
 

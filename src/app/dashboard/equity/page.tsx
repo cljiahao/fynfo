@@ -1,5 +1,6 @@
 'use client';
 
+import { DashboardError } from '@/components/layout/dashboard-error';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/widgets';
 import {
@@ -16,11 +17,12 @@ import { useState } from 'react';
 import { EquitySkeleton } from './equity-skeleton';
 
 export default function EquityPage() {
-  const { data: trades, isLoading } = useTrades();
+  const { data: trades, isLoading, isError, refetch } = useTrades();
   const [formOpen, setFormOpen] = useState(false);
   const [editTrade, setEditTrade] = useState<EquityTradeData | undefined>();
 
   if (isLoading) return <EquitySkeleton />;
+  if (isError) return <DashboardError reset={() => void refetch()} />;
 
   function handleAdd() {
     setEditTrade(undefined);

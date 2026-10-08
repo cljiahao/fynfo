@@ -1,5 +1,6 @@
 'use client';
 
+import { DashboardError } from '@/components/layout/dashboard-error';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/widgets';
 import {
@@ -16,7 +17,7 @@ import Link from 'next/link';
 import { AssetsSkeleton } from './assets-skeleton';
 
 export default function AssetsPage() {
-  const { data: snapshots, isLoading } = useSnapshots();
+  const { data: snapshots, isLoading, isError, refetch } = useSnapshots();
 
   const snapshotsWithTotals = (snapshots ?? []).map((s) => ({
     ...s,
@@ -28,6 +29,7 @@ export default function AssetsPage() {
   const latest = snapshotsWithTotals[snapshotsWithTotals.length - 1];
 
   if (isLoading) return <AssetsSkeleton />;
+  if (isError) return <DashboardError reset={() => void refetch()} />;
 
   return (
     <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">

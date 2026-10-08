@@ -1,5 +1,6 @@
 'use client';
 
+import { DashboardError } from '@/components/layout/dashboard-error';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/widgets';
 import {
@@ -14,11 +15,12 @@ import { useState } from 'react';
 import { SalarySkeleton } from './salary-skeleton';
 
 export default function SalaryPage() {
-  const { data: records, isLoading } = useSalaryRecords();
+  const { data: records, isLoading, isError, refetch } = useSalaryRecords();
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState<string | undefined>();
 
   if (isLoading) return <SalarySkeleton />;
+  if (isError) return <DashboardError reset={() => void refetch()} />;
 
   function handleAdd() {
     setEditId(undefined);

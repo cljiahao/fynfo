@@ -1,7 +1,9 @@
 'use client';
 
+import { DashboardError } from '@/components/layout/dashboard-error';
 import { Button } from '@/components/ui/button';
-import { PageHeader } from '@/components/widgets';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader, QueryContent } from '@/components/widgets';
 import type { MarketBudgets, PlannerValues } from '@/features/assets';
 import {
   calculateTotal,
@@ -12,6 +14,7 @@ import {
   usePlannerSettings,
   useSnapshots,
 } from '@/features/assets';
+import { useTrades } from '@/features/equity';
 import { useExpenses } from '@/features/expenses';
 import { SalarySummaryCards, useSalaryRecords } from '@/features/salary';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
@@ -20,12 +23,21 @@ import Link from 'next/link';
 import { useCallback, useState } from 'react';
 
 export function DashboardOverview() {
-  const { data: snapshots } = useSnapshots();
-  const { data: salaryRecords } = useSalaryRecords();
-  // Planner + expenses are prefetched on the server (page.tsx) and hydrated, so
-  // these read from cache on first paint instead of triggering a client fetch.
-  usePlannerSettings();
-  useExpenses();
+  const {
+    data: snapshots,
+    isPending: assetsPending,
+    isError: assetsError,
+    refetch: retryAssets,
+  } = useSnapshots();
+  const {
+    data: salaryRecords,
+    isPending: salaryPending,
+    isError: salaryError,
+    refetch: retrySalary,
+  } = useSalaryRecords();
+  const { isSuccess: settingsReady } = usePlannerSettings();
+  const { isSuccess: expensesReady } = useExpenses();
+  useTrades();
 
   const [plannerValues, setPlannerValues] = useState<PlannerValues>({
     investmentAmount: 0,
@@ -46,7 +58,7 @@ export function DashboardOverview() {
     setMarketBudgets(budgets);
   }, []);
 
-  const snapshotsWithTotals = (snapshots ?? []).map((s) => ({
+  const snapshotsWithTotals = (snapshots ?? []).slice(-2).map((s) => ({
     ...s,
     total: calculateTotal(s.entries),
   }));
@@ -68,24 +80,70 @@ export function DashboardOverview() {
         }
       />
 
-      <SummaryCards snapshots={snapshotsWithTotals} />
+      {assetsPending ? (
+        <SummarySkeleton label="Loading assets" />
+      ) : assetsError ? (
+        <DashboardError
+          compact
+          title="Couldn’t load assets"
+          reset={() => void retryAssets()}
+        />
+      ) : (
+        <SummaryCards snapshots={snapshotsWithTotals} />
+      )}
 
-      <SalarySummaryCards records={salaryRecords ?? []} />
+      {salaryPending ? (
+        <SummarySkeleton label="Loading salary" />
+      ) : salaryError ? (
+        <DashboardError
+          compact
+          title="Couldn’t load salary"
+          reset={() => void retrySalary()}
+        />
+      ) : (
+        <SalarySummaryCards records={salaryRecords ?? []} />
+      )}
 
       <SalaryPlanner
+        isSnapshotReady={!assetsPending && !assetsError}
         snapshot={latest ? snapshots?.[snapshots.length - 1] : undefined}
         onPlannerValuesChange={handlePlannerValuesChange}
       />
 
-      <InvestmentBreakdown
-        investmentAmount={plannerValues.investmentAmount}
-        emergencyFundGoal={plannerValues.emergencyFundGoal}
-        warChestGoal={plannerValues.warChestGoal}
-        snapshot={latest ? snapshots?.[snapshots.length - 1] : undefined}
-        onBudgetsChange={handleBudgetsChange}
-      />
+      <QueryContent
+        ready={
+          !assetsPending &&
+          !assetsError &&
+          !salaryPending &&
+          !salaryError &&
+          settingsReady &&
+          expensesReady
+        }
+      >
+        <InvestmentBreakdown
+          investmentAmount={plannerValues.investmentAmount}
+          emergencyFundGoal={plannerValues.emergencyFundGoal}
+          warChestGoal={plannerValues.warChestGoal}
+          snapshot={latest ? snapshots?.[snapshots.length - 1] : undefined}
+          onBudgetsChange={handleBudgetsChange}
+        />
 
-      <InvestmentAllocation budgets={marketBudgets} />
+        <InvestmentAllocation budgets={marketBudgets} />
+      </QueryContent>
+    </div>
+  );
+}
+
+function SummarySkeleton({ label }: { label: string }) {
+  return (
+    <div
+      role="status"
+      aria-label={label}
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+    >
+      {Array.from({ length: 4 }, (_, index) => (
+        <Skeleton key={index} className="h-28 rounded-xl" />
+      ))}
     </div>
   );
 }
