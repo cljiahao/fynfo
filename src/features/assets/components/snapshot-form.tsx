@@ -33,10 +33,18 @@ interface SnapshotFormProps {
 
 export function SnapshotForm({ editId }: SnapshotFormProps) {
   const router = useRouter();
-  const { data: existing, isLoading: loadingExisting } = useSnapshot(
-    editId ?? ''
-  );
-  const { data: allSnapshots } = useSnapshots();
+  const {
+    data: existing,
+    isLoading: loadingExisting,
+    isError: existingError,
+    refetch: retryExisting,
+  } = useSnapshot(editId ?? '');
+  const {
+    data: allSnapshots,
+    isLoading: snapshotsLoading,
+    isError: snapshotsError,
+    refetch: retrySnapshots,
+  } = useSnapshots();
   const upsert = useUpsertSnapshot();
 
   const defaultMonth = format(new Date(), 'yyyy-MM');
@@ -147,6 +155,14 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
   }
 
   async function onSubmit(values: SnapshotFormValues) {
+    if (
+      allSnapshots?.some(
+        (snapshot) => snapshot.id === values.id && snapshot.id !== editId
+      )
+    ) {
+      toast.error('A snapshot for this month already exists.');
+      return;
+    }
     try {
       const filledEntries = values.entries
         .filter((e) => e.amount > 0 || e.account.trim() !== '')
@@ -169,11 +185,31 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
     }
   }
 
-  if (editId && loadingExisting) {
+  if ((editId && loadingExisting) || snapshotsLoading) {
     return (
       <div className="flex-center py-12">
         <Loader2 className="size-6 animate-spin" />
       </div>
+    );
+  }
+
+  if (snapshotsError || (editId && (existingError || !existing))) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Couldn&apos;t load your snapshot</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={() => {
+              void retrySnapshots();
+              if (editId) void retryExisting();
+            }}
+          >
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 

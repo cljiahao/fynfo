@@ -80,7 +80,7 @@ describe('computeAutoReliefs', () => {
       { birthYear: 1969, isNsman: false, residencyStatus: 'resident' },
       2026
     );
-    expect(result.earnedIncomeRelief).toBe(6000); // age 57
+    expect(result.earnedIncomeRelief).toBe(6000);
   });
 });
 

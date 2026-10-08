@@ -2,11 +2,12 @@
 
 import { getPlannerSettings } from '@/features/assets/actions/planner-actions';
 import { getSnapshots } from '@/features/assets/actions/snapshot-actions';
+import { getDividends } from '@/features/equity/actions/dividend-actions';
 import { getTrades } from '@/features/equity/actions/equity-actions';
 import { getExpenses } from '@/features/expenses/actions/expense-actions';
 import { getAllTaxReliefs } from '@/features/salary/actions/relief-actions';
 import { getSalaryRecords } from '@/features/salary/actions/salary-actions';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { getProfile } from '../actions/profile-actions';
 import {
@@ -34,6 +35,13 @@ function downloadJson(content: string, filename: string): void {
  */
 export function useExportData() {
   const [isExporting, setIsExporting] = useState(false);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const exportData = async () => {
     setIsExporting(true);
@@ -45,6 +53,7 @@ export function useExportData() {
         salary,
         taxReliefs,
         trades,
+        dividends,
         plannerSettings,
       ] = await Promise.all([
         getProfile(),
@@ -53,9 +62,11 @@ export function useExportData() {
         getSalaryRecords(),
         getAllTaxReliefs(),
         getTrades(),
+        getDividends(),
         getPlannerSettings(),
       ]);
 
+      if (!mounted.current) return;
       const envelope = buildExportEnvelope(
         {
           profile,
@@ -64,6 +75,7 @@ export function useExportData() {
           salary,
           taxReliefs,
           trades,
+          dividends,
           plannerSettings,
         },
         new Date().toISOString()
@@ -72,9 +84,10 @@ export function useExportData() {
       downloadJson(serializeExport(envelope), exportFileName(new Date()));
       toast.success('Data exported');
     } catch {
-      toast.error('Export failed. Make sure your vault is unlocked.');
+      if (mounted.current)
+        toast.error('Export failed. Make sure your vault is unlocked.');
     } finally {
-      setIsExporting(false);
+      if (mounted.current) setIsExporting(false);
     }
   };
 

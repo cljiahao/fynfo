@@ -25,7 +25,16 @@ export interface FakeSupabaseOptions {
   rpcError?: Record<string, { message: string; code?: string }>;
 }
 
+export interface FakeSupabaseQuery {
+  table: string;
+  operation: 'read' | 'upsert' | 'insert' | 'update' | 'delete';
+  eq: Array<{ column: string; value: unknown }>;
+  in: Array<{ column: string; values: unknown }>;
+  order: Array<{ column: string; options: unknown }>;
+}
+
 export interface FakeSupabaseCalls {
+  queries: FakeSupabaseQuery[];
   from: string[];
   upsert: unknown[];
   insert: unknown[];
@@ -36,6 +45,7 @@ export interface FakeSupabaseCalls {
 
 export function makeFakeSupabase(opts: FakeSupabaseOptions = {}) {
   const calls: FakeSupabaseCalls = {
+    queries: [],
     from: [],
     upsert: [],
     insert: [],
@@ -44,54 +54,78 @@ export function makeFakeSupabase(opts: FakeSupabaseOptions = {}) {
     rpc: [],
   };
 
-  let currentTable = '';
-  function selectResult() {
-    const data = opts.selectDataByTable
-      ? (opts.selectDataByTable[currentTable] ?? opts.selectData ?? null)
-      : (opts.selectData ?? null);
-    return { data, error: opts.selectError ?? null };
-  }
+  function buildQuery(table: string) {
+    const query: FakeSupabaseQuery = {
+      table,
+      operation: 'read',
+      eq: [],
+      in: [],
+      order: [],
+    };
+    calls.queries.push(query);
+    function selectResult() {
+      const data = opts.selectDataByTable
+        ? (opts.selectDataByTable[table] ?? opts.selectData ?? null)
+        : (opts.selectData ?? null);
+      return { data, error: opts.selectError ?? null };
+    }
 
-  const builder: Record<string, unknown> = {};
-  Object.assign(builder, {
-    select: () => builder,
-    eq: () => builder,
-    in: () => builder,
-    order: () => builder,
-    single: async () => selectResult(),
-    upsert: (payload: unknown) => {
-      calls.upsert.push(payload);
-      const res = {
-        data: opts.upsertData ?? null,
-        error: opts.upsertError ?? null,
-      };
-      const chain: Record<string, unknown> = {
-        select: () => chain,
-        single: async () => res,
-        then: (resolve: (v: unknown) => unknown) => resolve(res),
-      };
-      return chain;
-    },
-    insert: (payload: unknown) => {
-      calls.insert.push(payload);
-      return { error: opts.insertError ?? null };
-    },
-    update: (payload: unknown) => {
-      calls.update.push(payload);
-      return builder;
-    },
-    delete: () => {
-      calls.delete += 1;
-      return builder;
-    },
-    then: (resolve: (v: unknown) => unknown) => resolve(selectResult()),
-  });
+    const builder: Record<string, unknown> = {};
+    Object.assign(builder, {
+      select: () => builder,
+      eq: (column: string, value: unknown) => {
+        query.eq.push({ column, value });
+        return builder;
+      },
+      in: (column: string, values: unknown) => {
+        query.in.push({ column, values });
+        return builder;
+      },
+      order: (column: string, options?: unknown) => {
+        query.order.push({ column, options });
+        return builder;
+      },
+      single: async () => selectResult(),
+      maybeSingle: async () => selectResult(),
+      upsert: (payload: unknown) => {
+        query.operation = 'upsert';
+        calls.upsert.push(payload);
+        const res = {
+          data: opts.upsertData ?? null,
+          error: opts.upsertError ?? null,
+        };
+        const chain: Record<string, unknown> = {
+          select: () => chain,
+          single: async () => res,
+          then: (resolve: (v: unknown) => unknown) => resolve(res),
+        };
+        return chain;
+      },
+      insert: (payload: unknown) => {
+        query.operation = 'insert';
+        calls.insert.push(payload);
+        return { error: opts.insertError ?? null };
+      },
+      update: (payload: unknown) => {
+        query.operation = 'update';
+        calls.update.push(payload);
+        return builder;
+      },
+      delete: () => {
+        query.operation = 'delete';
+        calls.delete += 1;
+        return builder;
+      },
+      then: (resolve: (v: unknown) => unknown) => resolve(selectResult()),
+    });
+
+    return builder;
+  }
 
   const client = {
     from: (table: string) => {
-      currentTable = table;
       calls.from.push(table);
-      return builder;
+      return buildQuery(table);
     },
     rpc: (name: string, args?: unknown) => {
       calls.rpc.push({ name, args });

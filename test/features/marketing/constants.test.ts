@@ -9,13 +9,19 @@ describe('marketing FAQ copy', () => {
   it('drops the stale broker + JSON-import claims', () => {
     expect(faqText).not.toContain('tiger');
     expect(faqText).not.toContain('ibkr');
-    expect(faqText).not.toContain('import'); // no import feature exists
+    // no import feature exists
+    expect(faqText).not.toContain('import');
   });
 
   it('states the actual supported brokers and the export capability', () => {
     expect(faqText).toContain('dbs vickers');
     expect(faqText).toContain('moomoo');
-    expect(faqText).toContain('backup'); // data export is real
+    // data export is real
+    expect(faqText).toContain('json export of your profile');
+    expect(faqText).toContain('trades, dividends, and planner settings');
+    expect(faqText).toContain('decrypted on the server');
+    expect(faqText).toContain('saved file is plaintext');
+    expect(faqText).toContain('household data is not included');
   });
 
   it('every FAQ entry has a question and an answer', () => {

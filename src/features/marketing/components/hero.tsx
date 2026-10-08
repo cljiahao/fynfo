@@ -49,7 +49,7 @@ export function Hero() {
           <m.div {...child}>
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/70 backdrop-blur">
               <ShieldCheck className="size-3.5 text-emerald-300" />
-              Zero-knowledge personal wealth
+              PIN-protected personal wealth
             </span>
           </m.div>
 
@@ -69,7 +69,7 @@ export function Hero() {
             className="mt-6 max-w-md text-lg leading-relaxed text-white/60"
           >
             Track your assets, salary, taxes, CPF, and portfolio in one private
-            place. Encrypted on your device — even we can&apos;t read it.
+            place. Stored encrypted, with a key derived from your PIN.
           </m.p>
 
           <m.div {...child} className="mt-9 flex flex-wrap items-center gap-3">

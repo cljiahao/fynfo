@@ -152,7 +152,7 @@ function ProfileFormInner({ initial }: { initial: ProfileData }) {
 }
 
 export function ProfileForm() {
-  const { data: profile, isLoading } = useProfile();
+  const { data: profile, isLoading, isError, refetch } = useProfile();
 
   if (isLoading) {
     return (
@@ -169,6 +169,22 @@ export function ProfileForm() {
             </div>
           ))}
           <Skeleton className="h-12 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Couldn&apos;t load your profile</CardTitle>
+          <CardDescription>
+            Retry before editing your personal details.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => void refetch()}>Retry</Button>
         </CardContent>
       </Card>
     );

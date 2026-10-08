@@ -13,8 +13,7 @@ import {
   useStockPrices,
 } from '@/features/equity/hooks/use-prices';
 import { computeHoldings } from '@/features/equity/lib/holdings';
-import { loadLocal, saveLocal } from '@/lib/utils/local-store';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { MarketBudgets } from './investment-breakdown';
 import { MarketAllocationTable } from './market-allocation-table';
 
@@ -33,16 +32,19 @@ export function InvestmentAllocation({ budgets }: InvestmentAllocationProps) {
     useStockPrices(heldTickers);
   const { data: usdToSgd } = useExchangeRate('USD', 'SGD');
 
-  const [allocations, setAllocations] = useState<Record<string, number>>(() =>
-    loadLocal<Record<string, number>>(STORAGE_KEY, {})
-  );
+  const [allocations, setAllocations] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    // Ticker-keyed preferences are sensitive; remove the legacy plaintext copy.
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Storage may be disabled; financial targets still remain in memory only.
+    }
+  }, []);
 
   const handleAllocationChange = (ticker: string, pct: number) => {
-    setAllocations((prev) => {
-      const next = { ...prev, [ticker]: pct };
-      saveLocal(STORAGE_KEY, next);
-      return next;
-    });
+    setAllocations((prev) => ({ ...prev, [ticker]: pct }));
   };
 
   const sgHoldings = holdings.filter((h) => h.market === 'SG');

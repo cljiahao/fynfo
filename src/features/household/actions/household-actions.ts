@@ -72,7 +72,7 @@ export async function createHousehold(
   });
   throwIfSupabaseError(mError, 'household member create');
 
-  await setHouseholdKhSession(kh);
+  await setHouseholdKhSession(kh, userId);
   return { householdId };
 }
 
@@ -96,7 +96,7 @@ export async function getHousehold(): Promise<HouseholdSummary | null> {
 
   // Lock state from the session key (cookie check, no DEK needed) — so the page
   // distinguishes "locked" from a genuine read error instead of inferring it.
-  const kh = await getHouseholdKhSession();
+  const kh = await getHouseholdKhSession(userId);
 
   return {
     id: row.households.id,
@@ -115,7 +115,7 @@ export async function unlockHousehold(): Promise<{ ok: true }> {
   if (!member) throw new AppError('NOT_FOUND', 'No household to unlock');
 
   const kh = unwrapKh(member.wrapped_kh, dek);
-  await setHouseholdKhSession(kh);
+  await setHouseholdKhSession(kh, userId);
   return { ok: true };
 }
 
@@ -130,7 +130,7 @@ export async function createInvite(): Promise<InviteResult> {
 
   const kh = unwrapKh(member.wrapped_kh, dek);
   const { secret, saltB64 } = generateInviteSecret();
-  const inviteKey = deriveInviteKey(secret, saltB64);
+  const inviteKey = await deriveInviteKey(secret, saltB64);
 
   const expiresAt = new Date(
     Date.now() + INVITE_TTL_HOURS * 60 * 60 * 1000
@@ -172,7 +172,7 @@ export async function acceptInvite(
 
   let kh: Buffer;
   try {
-    const inviteKey = deriveInviteKey(secret, invite.kdf_salt);
+    const inviteKey = await deriveInviteKey(secret, invite.kdf_salt);
     kh = unwrapKh(invite.wrapped_kh_under_invite, inviteKey);
   } catch {
     throw new AppError('VALIDATION', 'Invite not valid');
@@ -184,10 +184,11 @@ export async function acceptInvite(
       p_invite_id: invite.invite_id,
       p_user_id: userId,
       p_wrapped_kh: wrapKh(kh, dek),
+      p_code_hash: hashInviteCode(secret),
     }
   );
   throwIfSupabaseError(consumeError, 'household invite consume');
 
-  await setHouseholdKhSession(kh);
+  await setHouseholdKhSession(kh, userId);
   return { householdId: householdId as string };
 }

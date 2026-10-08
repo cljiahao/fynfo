@@ -8,17 +8,18 @@ const PUBLIC_PATHS = new Set<string>([
   PAGE_ROUTES.LOGIN,
   PAGE_ROUTES.AUTH_CALLBACK,
 ]);
-const PUBLIC_API_PREFIXES = [API_ROUTES.HEALTH];
+const PUBLIC_API_PATHS = new Set<string>([
+  API_ROUTES.HEALTH,
+  API_ROUTES.TRACK,
+  `${API_ROUTES.VAULT}/lock`,
+]);
 
 function isApiRoute(pathname: string): boolean {
   return pathname.startsWith('/api/');
 }
 
 function isPublicRoute(pathname: string): boolean {
-  return (
-    PUBLIC_PATHS.has(pathname) ||
-    PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p))
-  );
+  return PUBLIC_PATHS.has(pathname) || PUBLIC_API_PATHS.has(pathname);
 }
 
 /**
@@ -36,8 +37,12 @@ export function isServerActionRequest(
 }
 
 export async function proxy(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  if (PUBLIC_API_PATHS.has(pathname)) {
+    return NextResponse.next({ request: req });
+  }
   // Skip the redundant auth/refresh pass on self-guarded server actions.
-  if (isServerActionRequest(req.method, req.headers)) {
+  if (!isApiRoute(pathname) && isServerActionRequest(req.method, req.headers)) {
     return NextResponse.next({ request: req });
   }
 
@@ -67,7 +72,6 @@ export async function proxy(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
   const isAuthenticated = !!user;
-  const { pathname } = req.nextUrl;
 
   if (!isAuthenticated && !isPublicRoute(pathname)) {
     if (isApiRoute(pathname)) {

@@ -29,8 +29,10 @@ import {
 import type { ExpenseData, ExpenseType } from '../types';
 
 interface ChartDataPoint {
-  month: string; // "Mar 2026"
-  monthKey: string; // "2026-03"
+  // "Mar 2026"
+  month: string;
+  // "2026-03"
+  monthKey: string;
   total: number;
   [key: string]: number | string;
 }
@@ -53,7 +55,8 @@ function buildChartData(expenses: ExpenseData[]): ChartDataPoint[] {
 
   // Fill in expenses
   for (const e of expenses) {
-    const key = e.date.slice(0, 7); // "2026-03"
+    // "2026-03"
+    const key = e.date.slice(0, 7);
     const point = months.find((m) => m.monthKey === key);
     if (!point) continue;
 

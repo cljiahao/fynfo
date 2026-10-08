@@ -14,15 +14,15 @@ This file is the single entry point. Read it before doing anything in this repo.
 
 You MUST stop and surface to the human owner if any of these are true:
 
-1. There is no approved spec in `specs/**` for the change you are being asked to make.
+1. There is no approved spec for an implementation change and no explicit owner-authorized audit/remediation scope under `CONSTITUTION.md` §7.4. Read-only investigation and drafting specs never require an approved implementation spec.
 2. The change would violate any `HARD` rule in `CONSTITUTION.md`.
-3. The change would touch the **enforcement layer or secrets**: `.claude/settings.json`, `.claude/hooks/**`, `.claude/harness.json`, `.claude/skills/**`, real secret env files (`.env`, `.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.production.*`, `.env.staging`), `.github/workflows/**`, `scripts/build-push.sh`, any cert/key file, or destructive `supabase/migrations/**`. (As of gov-013 / constitution v2.0, the rulebooks — `CONSTITUTION.md`, `AGENTS.md`, `CLAUDE.md` — and `specs/**` are agent-editable, but governance changes still require explicit human approval before commit per `CONSTITUTION.md` §8.2. As of gov-055, `.env.example` — the committed placeholder template — is NOT a secret and IS agent-editable; only real secret env files are gated.)
+3. The operation would read or modify real secret env files, private keys, credentials, or live vault secrets; perform destructive migrations; or edit permission-protected files without explicit owner authorization. Permission-protected files are `CONSTITUTION.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/settings.json`, `.claude/hooks/**`, `.claude/harness.json`, `.claude/skills/**`, `.github/workflows/**`, and `scripts/build-push.sh`. Draft governance specs may be written for review but need owner approval before commit. `.env.example` is editable with placeholders only. Exclude secret contents from searches, tool output, and audit tooling. Never bypass an active hook or tool denial.
 4. A new dependency is required.
-5. Confidence in the approach is below "I'd bet money on this".
+5. Confidence in an implementation approach is below "I'd bet money on this" after investigation. Continue read-only research to resolve uncertainty before editing.
 
 **§0.3 standing exemption (2026-05-27, Clarence-approved):** templateCentral v4 alignment edits — adding v4 plugin marker, the §9 Skills sections, `.claude/skills/<v4-skill>` files, and the one-line `CLAUDE.md = @AGENTS.md` form — are pre-authorized as a single bounded amendment. Any further changes to the listed files still require a `specs/governance/` spec.
 
-Stopping looks like: a short message naming the trigger, the affected rule/file, and the question you need answered. Do not proceed.
+Stopping looks like: a short message naming the trigger, affected paths, proposed change, risk, and approval or information needed. Pause the affected operation; continue independent authorized work. Use permission already given for the same paths and scope rather than asking again.
 
 ---
 
@@ -32,7 +32,7 @@ Stopping looks like: a short message naming the trigger, the affected rule/file,
 
 1. Read `CONSTITUTION.md` (full).
 2. Look for an existing spec in `specs/**` matching this task. If found and `status: approved`, proceed to §1.3.
-3. If no spec exists, go to §1.2.
+3. For an explicit owner-requested audit and improvement, use §1.5. Otherwise, if no spec exists, go to §1.2. Read-only reviews may proceed immediately under §5.
 
 ### 1.2 Spec-first
 
@@ -52,6 +52,21 @@ Stopping looks like: a short message naming the trigger, the affected rule/file,
 ### 1.4 Closing
 
 After merge, update spec frontmatter: `status: shipped`, `shipped: YYYY-MM-DD`, `impl_pr: <url>`. Commit on `main` directly (single-line trivial change) or in the impl PR's final commit.
+
+### 1.5 Owner-authorized audit and remediation
+
+1. Record the owner's request and scope in `specs/` as an audit record. Mark it as owner-authorized remediation under constitution §7.4; do not claim approval of findings the owner has not reviewed.
+2. Inventory tracked source, tests, tooling, docs, and assets. For each file, record its purpose and consumers or why it is required by a framework/tool. Treat generated files, historical migrations, and governance records according to their lifecycle; absence of imports alone is not proof a file is unused. Never read secret files.
+3. Review authentication, authorization/RLS, validation, encryption, cookies, error/log redaction, dependency risks, and OWASP attack surfaces. Review duplication, SRP/SOC, DRY, YAGNI, and SOLID against actual consumers rather than creating speculative abstractions. Research uncertain claims with authoritative sources and record supporting links.
+4. Before each reversible remediation batch, record affected paths, evidence, proposed changes, acceptance checks, and rollback in the audit record. Ordinary code, tests, README/comments, `.env.example`, and lint/config fixes may proceed within the owner's scope without a new approval per finding. Separate approval remains required for §0 protected operations, new dependencies/features, migrations, and crypto protocol changes.
+5. Prove behavior changes with meaningful regression tests; measure latency/bundle changes before claiming performance gains. Check security-critical coverage and untested error/authorization paths, not only the aggregate percentage. Review README and inline comments per batch: retain contracts, constraints, tooling directives, and non-obvious rationale; remove stale narration and commented-out code. Constitutional suppression citations remain required.
+6. Run applicable quality gates and fix failures within scope. Perform a second independent review pass over the resulting code and findings. Record residual risks and blocked operations explicitly; do not claim exhaustive security or file coverage without an inventory proving what was reviewed.
+
+Keep commits focused on one coherent batch. Use `impl/<audit-id>-<slug>` when
+branching, and link the audit record in PRs. Do not rewrite prior approvals or
+mark work shipped until it is merged. Documentation-only governance amendments
+may use formatting and diff review under constitution §7.4; executable changes
+still require all §3 gates.
 
 ---
 
@@ -117,18 +132,19 @@ src/
 
 ## 3. Quality gates (what "done" means)
 
-A PR is mergeable only if ALL pass:
+A PR changing executable behavior is mergeable only if ALL pass. Documentation-only
+changes use formatting and diff review under constitution §7.4:
 
 - [ ] `pnpm format:check` green
 - [ ] `pnpm lint` green (max-warnings=0)
 - [ ] `pnpm typecheck` green
 - [ ] `pnpm test:ci` green
 - [ ] `pnpm build` green
-- [ ] Spec linked, `status: approved`, hash unchanged since approval
+- [ ] Approved spec linked with unchanged approval hash, or owner authorization and scoped audit record linked under constitution §7.4
 - [ ] Constitution sections cited in spec; no uncited `HARD` rule touched
 - [ ] No `any`, no `console.log`, no `@ts-ignore`/`eslint-disable` without inline spec citation
 - [ ] No new dependency unless spec approves it explicitly
-- [ ] No file outside scope listed in spec
+- [ ] No file outside the approved spec or recorded owner-authorized audit batch
 
 The `/next-verify` project skill (§9) runs all five `pnpm` gates in one shot.
 
@@ -168,7 +184,10 @@ When unsure, investigate. Acceptable read-only actions without a spec:
 - Database read queries against a local dev DB (not prod).
 - Searching docs / Supabase / Next.js documentation.
 
-Not acceptable without a spec: edits, new files, dependency changes, schema changes, env edits, migrations, branch deletion, force push.
+Ordinary edits and new files require an approved spec or owner-authorized audit
+record under §1.5. Dependency changes, schema/data migrations, and protected
+operations need separate scoped approval. Branch deletion and force push remain
+prohibited. Reading secret contents is prohibited even during an investigation.
 
 ---
 
@@ -188,13 +207,16 @@ If you are a sub-agent (heph coder, argus reviewer, etc.):
 Found something in the repo that violates the constitution? Two options:
 
 - Small, in-scope of current spec → fix as part of the impl PR; note it in the PR body.
-- Out of scope → open `specs/fix/<NNN>-<slug>.md` documenting the drift. Do not silently fix.
+- Out of scope → document the drift in a proposed spec. During an owner-authorized audit, record and fix it only if it fits the audit's scope under §1.5. Do not silently expand an approved spec.
 
 ---
 
 ## 8. Amendment of this file
 
-`AGENTS.md` itself is governed by `CONSTITUTION.md` §7.1. Amendments require a `governance/` spec, except for the §0.3 standing exemption noted above.
+`AGENTS.md` itself is governed by `CONSTITUTION.md` §7.1. Amendments require a
+`governance/` spec and explicit owner permission before editing or committing,
+except for the §0.3 standing exemption noted above. Record conversational
+permission with its date and scope; agents cannot approve their own amendments.
 
 ---
 
@@ -234,7 +256,17 @@ Intentional and load-bearing — do NOT "fix" toward the template:
 - **Auth**: Supabase (`@supabase/ssr`) replaces NextAuth — no `src/auth.ts`, no `SessionProvider`.
 - **Database**: Supabase + raw SQL migrations replace Prisma — no `prisma/schema.prisma`, no `integrations/database/`.
 - **Feature data layer**: `actions/` server actions replace `templatecentral`'s `api/` service + route handler pattern.
-- **Governance**: `CONSTITUTION.md` + spec-first gate is the fynfo authority; templateCentral conventions are subordinate.
+- **Governance**: `CONSTITUTION.md` + spec-first and owner-authorized audit paths are the Fynfo authority; templateCentral conventions are subordinate.
+
+### Skill use during audits
+
+Use templateCentral standards and its comment guidance for Next.js review;
+apply frontend-design to frontend concerns within the existing design system.
+Read the relevant skill and references, record which guidance was used in the
+audit record, and preserve the Fynfo deviations above. Skills must not expand
+the requested scope or create redundant approval stages for authorized work.
+Project skill edits require the specific permission in §0; documentation of
+skill use in the audit record does not require installing or modifying skills.
 
 ---
 
@@ -242,8 +274,8 @@ Intentional and load-bearing — do NOT "fix" toward the template:
 
 - Review every `SKILL.md` (and its referenced reference files) before installing a third-party skill — treat skills like packages.
 - Scope `allowed-tools:` in skill frontmatter to the minimum required (e.g. `Bash(pnpm format:check), Bash(pnpm lint), Bash(pnpm typecheck), Bash(pnpm test:ci), Bash(pnpm build)`, never bare `Bash`).
-- Reject any skill that hardcodes secrets, references env var names (`SESSION_SECRET`, `NEXT_PUBLIC_SUPABASE_*`) directly in the body, or makes outbound network calls without an explicit allow-list. The zero-knowledge encryption posture means a skill with unrestricted `Bash` could exfiltrate the vault cookie or `SESSION_SECRET` trivially.
-- `.claude/settings.json` and `hooks/**` are protected per `CONSTITUTION.md` §8.2; the `PreToolUse` guards block raw edits to those files, but they do NOT block skill _execution_. Vet skills before invoking them.
+- Reject skills that hardcode secrets, read or expose secret files, dump environment/session values, or make outbound network calls without an explicit allow-list. Mentioning an environment variable's name for configuration documentation or `.env.example` guidance is not secret access. Review commands and data access rather than blocking harmless names; unrestricted shell access can expose vault or environment secrets.
+- `.claude/settings.json`, hooks, manifest, and project skills require explicit scoped permission per `CONSTITUTION.md` §8.2. Existing `PreToolUse` guards still block raw edits to them and do not block skill execution. Vet skills before invoking them; use supported approvals or owner action for blocked edits.
 
 ---
 
@@ -263,6 +295,15 @@ Intentional and load-bearing — do NOT "fix" toward the template:
 Cross-platform note: hooks are **Node `.mjs`** so they run identically on the Windows dev host and any macOS/Linux teammate — there is no per-OS `.ps1`/`.sh` split (the earlier PowerShell fork was migrated to Node; older `specs/governance/*` and `§12` notes that reference `.ps1` describe that historical state). CI runs the gates directly (`pnpm check`, `pnpm test:ci`, `pnpm build`) — it does not need these hooks.
 
 Project skill manifest: `.claude/harness.json` records SHA-256 hashes of seeded files so `templatecentral:standards` / drift-check can detect tampering.
+
+Permission policy and mechanical enforcement are separate. These rulebooks do
+not themselves change hooks or grant a bypass. Audit the harness for narrow,
+reliable protection of secrets and destructive operations; propose specific
+permission-gated changes for other files. After an approved tracked-file edit,
+report manifest drift and request a scoped baseline update. Do not rehash
+unrelated drift into acceptance. The existing verifier normalizes LF while the
+regen skill hashes raw bytes (spec 065); reconcile that difference through a
+separately authorized harness change before claiming integrity is green.
 
 Context load order (context only — not enforcement, broad → specific): managed policy → `~/.claude/CLAUDE.md` → `CLAUDE.md` (`@AGENTS.md`, optional) → this file → `.claude/rules/*.md`. Hard enforcement lives only in the `settings.json` PreToolUse hooks.
 

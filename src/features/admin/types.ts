@@ -1,5 +1,6 @@
 export interface DailyPoint {
-  day: string; // ISO date "2026-06-11"
+  // ISO date "2026-06-11"
+  day: string;
   pageViews: number;
   ctaClicks: number;
 }
@@ -7,7 +8,8 @@ export interface DailyPoint {
 export interface MarketingTotals {
   pageViews: number;
   ctaClicks: number;
-  clickRate: number; // 0..1
+  // 0..1
+  clickRate: number;
   signups: number;
 }
 

@@ -7,5 +7,6 @@
 // Per-user salt = Supabase user id.
 export const V2_ITERATIONS = 600000;
 
-export const KEY_LEN_BYTES = 32; // 256 bits for AES-256
+// 256 bits for AES-256
+export const KEY_LEN_BYTES = 32;
 export const PBKDF2_DIGEST = 'sha256';

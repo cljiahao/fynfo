@@ -9,7 +9,7 @@ interface SupabaseLikeError {
 }
 
 /**
- * Logs the raw Supabase / Postgrest error server-side and throws an opaque
+ * Logs database classification without private values and throws an opaque
  * AppError so client responses never include table names, constraint names,
  * SQL fragments, or other internal detail.
  */
@@ -22,9 +22,6 @@ export function throwIfSupabaseError(
     {
       context,
       code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
     },
     'supabase error'
   );

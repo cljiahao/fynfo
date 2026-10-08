@@ -61,8 +61,12 @@ function RowActions({
         isPending={deleteMutation.isPending}
         onConfirm={async () => {
           if (!dividend.id) return;
-          await deleteMutation.mutateAsync(dividend.id);
-          toast.success('Distribution deleted');
+          try {
+            await deleteMutation.mutateAsync(dividend.id);
+            toast.success('Distribution deleted');
+          } catch {
+            toast.error('Failed to delete distribution');
+          }
         }}
       />
     </div>

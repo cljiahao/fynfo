@@ -33,10 +33,13 @@ describe('sumCat', () => {
 
 describe('getCurrentQuarter', () => {
   it('derives Q2 bounds for a mid-May date', () => {
-    const q = getCurrentQuarter(new Date(2026, 4, 15)); // May 2026
+    // May 2026
+    const q = getCurrentQuarter(new Date(2026, 4, 15));
     expect(q.label).toBe('Q2 2026');
-    expect(q.start).toEqual(new Date(2026, 3, 1)); // Apr 1
-    expect(q.end.getMonth()).toBe(5); // June
+    // Apr 1
+    expect(q.start).toEqual(new Date(2026, 3, 1));
+    // June
+    expect(q.end.getMonth()).toBe(5);
     expect(q.daysLeft).toBeGreaterThan(0);
   });
 });
@@ -115,10 +118,12 @@ describe('computeQuarterSpend', () => {
 
   it('sums buy cost per market inside the window, ignoring sells/out-of-range', () => {
     const trades = [
-      trade({ ticker: 'AAPL', shares: 2, price: 100, fees: 5 }), // US 205
-      trade({ ticker: 'D05', shares: 10, price: 40, fees: 1 }), // SG 401
-      trade({ ticker: 'AAPL', action: 'sell', shares: 1, price: 999 }), // ignored
-      trade({ date: '2026-01-01' }), // out of window
+      trade({ ticker: 'AAPL', shares: 2, price: 100, fees: 5 }),
+      trade({ ticker: 'D05', shares: 10, price: 40, fees: 1 }),
+      // ignored
+      trade({ ticker: 'AAPL', action: 'sell', shares: 1, price: 999 }),
+      // out of window
+      trade({ date: '2026-01-01' }),
     ];
     const r = computeQuarterSpend(
       trades,
@@ -149,9 +154,9 @@ describe('computeInvestmentBreakdown', () => {
   it('derives monthly/quarterly splits floored to 100', () => {
     const r = computeInvestmentBreakdown(base);
     expect(r.totalRatio).toBe(100);
-    expect(r.sgMonthly).toBe(500); // 1000 * 0.5
-    expect(r.sgQuarterly).toBe(1500); // floorH(1500)
-    expect(r.usQuarterly).toBe(600); // floorH(200*3)
+    expect(r.sgMonthly).toBe(500);
+    expect(r.sgQuarterly).toBe(1500);
+    expect(r.usQuarterly).toBe(600);
   });
 
   it('computes deployable cash from savings surplus + bonds surplus', () => {

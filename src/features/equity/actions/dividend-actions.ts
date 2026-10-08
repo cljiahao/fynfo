@@ -1,6 +1,6 @@
 'use server';
 
-import { requireActionContext, requireDbContext } from '@/lib/action-guard';
+import { requireActionContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { decryptNumber } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
@@ -92,7 +92,7 @@ export async function updateDividend(
 }
 
 export async function deleteDividend(id: string): Promise<void> {
-  const { userId, supabase } = await requireDbContext();
+  const { userId, supabase } = await requireActionContext();
 
   const { error } = await supabase
     .from('equity_dividends')

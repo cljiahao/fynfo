@@ -18,7 +18,8 @@ export function computeIRR(cashFlows: CashFlow[]): number {
     (cf) => (cf.date.getTime() - t0) / (365.25 * 24 * 60 * 60 * 1000)
   );
 
-  let r = 0.1; // initial guess 10%
+  // initial guess 10%
+  let r = 0.1;
   for (let iter = 0; iter < 200; iter++) {
     let npv = 0;
     let dnpv = 0;
@@ -51,10 +52,10 @@ export function buildCashFlows(
     const market = getMarket(t.ticker.toUpperCase());
     if (marketFilter && market !== marketFilter) continue;
 
-    const total = t.shares * t.price + t.fees;
+    const gross = t.shares * t.price;
     flows.push({
       date: new Date(t.date),
-      amount: t.action === 'buy' ? -total : total - t.fees, // sell: proceeds minus fees
+      amount: t.action === 'buy' ? -(gross + t.fees) : gross - t.fees,
     });
   }
 

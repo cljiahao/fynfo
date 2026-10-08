@@ -48,6 +48,16 @@ describe('salary-actions — getSalaryRecords', () => {
 });
 
 describe('salary-actions — getSalaryRecord', () => {
+  it('throws an opaque error on a failed single-record read', async () => {
+    setSupabase({
+      selectError: { message: 'permission denied for salary_records' },
+    });
+    const { getSalaryRecord } =
+      await import('@/features/salary/actions/salary-actions');
+    await expect(getSalaryRecord('2026-03')).rejects.toThrow(
+      'salary record read failed'
+    );
+  });
   it('returns null when the record is absent', async () => {
     setSupabase({ selectData: null });
     const { getSalaryRecord } =

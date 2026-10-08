@@ -1,6 +1,12 @@
 'use server';
 
 import { requireUserId } from '@/lib/auth-guard';
+import { z } from 'zod';
+import {
+  MAX_PRICE_CONCURRENCY,
+  MAX_PRICE_TICKERS,
+  PRICE_FETCH_TIMEOUT_MS,
+} from '../constants';
 import { getYahooSymbol } from '../lib/ticker-map';
 
 export interface StockPrice {
@@ -12,61 +18,114 @@ export interface StockPrice {
   changePercent: number;
 }
 
+const tickerSchema = z
+  .string()
+  .max(64)
+  .transform((value) => value.trim().toUpperCase())
+  .pipe(z.string().regex(/^[A-Z0-9.\-:]{1,16}$/))
+  .refine((value) => value !== '.' && value !== '..');
+const tickersSchema = z.array(tickerSchema).max(MAX_PRICE_TICKERS);
+const currencySchema = z
+  .string()
+  .regex(/^[A-Za-z]{3}$/)
+  .transform((value) => value.toUpperCase());
+const quoteMetaSchema = z.object({
+  regularMarketPrice: z.number().nonnegative().finite().nullish(),
+  previousClose: z.number().nonnegative().finite().nullish(),
+  chartPreviousClose: z.number().nonnegative().finite().nullish(),
+  currency: z
+    .string()
+    .regex(/^[A-Z]{3}$/)
+    .nullish(),
+});
+const quoteResponseSchema = z.object({
+  chart: z.object({
+    result: z.array(z.object({ meta: quoteMetaSchema })).min(1),
+  }),
+});
+const dividendResponseSchema = z.object({
+  chart: z.object({
+    result: z
+      .array(
+        z.object({
+          events: z
+            .object({ dividends: z.record(z.string(), z.unknown()).optional() })
+            .optional(),
+        })
+      )
+      .min(1),
+  }),
+});
+const dividendPointSchema = z.object({
+  amount: z.number().positive().finite(),
+  // Keep ex-dates within four-digit ISO years before conversion.
+  date: z.number().int().min(0).max(253_402_300_799).finite(),
+});
+
+async function readQuote(ticker: string): Promise<StockPrice | null> {
+  const symbol = getYahooSymbol(ticker);
+  try {
+    const res = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`,
+      {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        next: { revalidate: 300 },
+        signal: AbortSignal.timeout(PRICE_FETCH_TIMEOUT_MS),
+      }
+    );
+    if (!res.ok) return null;
+
+    const data: unknown = await res.json();
+    const parsed = quoteResponseSchema.safeParse(data);
+    if (!parsed.success) return null;
+    const meta = parsed.data.chart.result[0].meta;
+    const price = meta.regularMarketPrice ?? 0;
+    const prevClose = meta.previousClose ?? meta.chartPreviousClose ?? price;
+    const change = price - prevClose;
+    const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0;
+    if (!Number.isFinite(change) || !Number.isFinite(changePercent))
+      return null;
+
+    return {
+      ticker,
+      symbol,
+      price,
+      currency: meta.currency ?? 'USD',
+      change,
+      changePercent,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchStockPrices(
   tickers: string[]
 ): Promise<Record<string, StockPrice>> {
   await requireUserId();
+  const parsed = tickersSchema.safeParse(tickers);
+  if (!parsed.success) return {};
+  const unique = [...new Set(parsed.data)];
+  const quotes: Array<StockPrice | null> = Array(unique.length).fill(null);
+  let cursor = 0;
 
-  const unique = [...new Set(tickers.map((t) => t.toUpperCase()))];
-  const symbols = unique.map((t) => getYahooSymbol(t));
-  const symbolToTicker = Object.fromEntries(
-    unique.map((t, i) => [symbols[i], t])
+  const worker = async () => {
+    while (cursor < unique.length) {
+      const index = cursor++;
+      quotes[index] = await readQuote(unique[index]);
+    }
+  };
+  await Promise.all(
+    Array.from(
+      { length: Math.min(MAX_PRICE_CONCURRENCY, unique.length) },
+      worker
+    )
   );
 
   const results: Record<string, StockPrice> = {};
-
-  const allResults = await Promise.all(
-    symbols.map(async (symbol) => {
-      try {
-        const res = await fetch(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`,
-          {
-            headers: { 'User-Agent': 'Mozilla/5.0' },
-            next: { revalidate: 300 },
-          }
-        );
-
-        if (!res.ok) return null;
-
-        const data = await res.json();
-        const meta = data?.chart?.result?.[0]?.meta;
-        if (!meta) return null;
-
-        const price = meta.regularMarketPrice ?? 0;
-        const prevClose =
-          meta.previousClose ?? meta.chartPreviousClose ?? price;
-        const change = price - prevClose;
-        const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0;
-        const ticker = symbolToTicker[symbol] ?? symbol;
-
-        return {
-          ticker,
-          symbol,
-          price,
-          currency: meta.currency ?? 'USD',
-          change,
-          changePercent,
-        } satisfies StockPrice;
-      } catch {
-        return null;
-      }
-    })
-  );
-
-  for (const result of allResults) {
-    if (result) results[result.ticker] = result;
+  for (const quote of quotes) {
+    if (quote) results[quote.ticker] = quote;
   }
-
   return results;
 }
 
@@ -75,66 +134,71 @@ export async function fetchExchangeRate(
   to: string
 ): Promise<number | null> {
   await requireUserId();
+  const parsed = z
+    .object({ from: currencySchema, to: currencySchema })
+    .safeParse({
+      from,
+      to,
+    });
+  if (!parsed.success) return null;
 
   try {
-    const symbol = `${from}${to}=X`;
+    const symbol = `${parsed.data.from}${parsed.data.to}=X`;
     const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`,
       {
         headers: { 'User-Agent': 'Mozilla/5.0' },
         next: { revalidate: 300 },
+        signal: AbortSignal.timeout(PRICE_FETCH_TIMEOUT_MS),
       }
     );
     if (!res.ok) return null;
-    const data = await res.json();
-    const rate = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    const data: unknown = await res.json();
+    const quote = quoteResponseSchema.safeParse(data);
+    if (!quote.success) return null;
+    const rate = quote.data.chart.result[0].meta.regularMarketPrice;
     return typeof rate === 'number' && rate > 0 ? rate : null;
   } catch {
     return null;
   }
 }
 
-/**
- * Historical distributions (per-unit amount + ex-date) for a ticker, from the
- * Yahoo chart `events=div` feed. Public market data — same trust level and
- * defensive shape as the quote fetch. Returns [] on any failure.
- */
+/** Historical per-unit distributions, sorted by ex-date. Empty on failure. */
 export async function fetchDividends(
   ticker: string
 ): Promise<Array<{ exDate: string; dpu: number }>> {
   await requireUserId();
+  const parsedTicker = tickerSchema.safeParse(ticker);
+  if (!parsedTicker.success) return [];
 
   try {
-    const symbol = getYahooSymbol(ticker);
+    const symbol = getYahooSymbol(parsedTicker.data);
     const res = await fetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5y&events=div`,
       {
         headers: { 'User-Agent': 'Mozilla/5.0' },
         next: { revalidate: 86400 },
+        signal: AbortSignal.timeout(PRICE_FETCH_TIMEOUT_MS),
       }
     );
     if (!res.ok) return [];
 
-    const data = await res.json();
-    const dividends = data?.chart?.result?.[0]?.events?.dividends;
-    if (!dividends || typeof dividends !== 'object') return [];
+    const data: unknown = await res.json();
+    const parsed = dividendResponseSchema.safeParse(data);
+    if (!parsed.success) return [];
+    const dividends = parsed.data.chart.result[0].events?.dividends;
+    if (!dividends) return [];
 
-    return Object.values(dividends as Record<string, unknown>)
-      .map((d) => {
-        const entry = d as { amount?: number; date?: number };
-        if (
-          typeof entry.amount !== 'number' ||
-          typeof entry.date !== 'number'
-        ) {
-          return null;
-        }
-        return {
-          exDate: new Date(entry.date * 1000).toISOString().slice(0, 10),
-          dpu: entry.amount,
-        };
-      })
-      .filter((p): p is { exDate: string; dpu: number } => p !== null)
-      .sort((a, b) => a.exDate.localeCompare(b.exDate));
+    const points: Array<{ exDate: string; dpu: number }> = [];
+    for (const entry of Object.values(dividends)) {
+      const point = dividendPointSchema.safeParse(entry);
+      if (!point.success) continue;
+      points.push({
+        exDate: new Date(point.data.date * 1000).toISOString().slice(0, 10),
+        dpu: point.data.amount,
+      });
+    }
+    return points.sort((a, b) => a.exDate.localeCompare(b.exDate));
   } catch {
     return [];
   }

@@ -80,20 +80,20 @@ export function ExpenseQuickAdd() {
 
       const amountNum = parseFloat(nextAmount);
       if (nextDate && amountNum > 0) {
-        upsert.mutate(
-          buildSelfExpense({
-            date: nextDate,
-            type: nextType,
-            item: nextItem,
-            info: nextInfo,
-            amount: amountNum,
-          }),
-          {
-            onSuccess: () => toast.success('Expense added from paste'),
-            onError: () =>
-              toast.error('Failed to add expense — removed from list'),
-          }
-        );
+        void upsert
+          .mutateAsync(
+            buildSelfExpense({
+              date: nextDate,
+              type: nextType,
+              item: nextItem,
+              info: nextInfo,
+              amount: amountNum,
+            })
+          )
+          .then(() => toast.success('Expense added from paste'))
+          .catch(() =>
+            toast.error('Failed to add expense — removed from list')
+          );
         resetForm();
       } else {
         setPasted(true);
@@ -116,20 +116,21 @@ export function ExpenseQuickAdd() {
 
     // Fire each valid row optimistically (onMutate inserts, onError rolls back);
     // a failing row surfaces its own error toast. Clear the form right away.
-    valid.forEach((p) =>
-      upsert.mutate(
-        buildSelfExpense({
-          date: p.date!,
-          type: p.type ?? type,
-          item: p.item ?? '',
-          info: p.info ?? '',
-          amount: parseFloat(p.amount!),
-        }),
-        {
-          onError: () =>
-            toast.error('A pasted expense failed to save — removed from list'),
-        }
-      )
+    valid.forEach(
+      (p) =>
+        void upsert
+          .mutateAsync(
+            buildSelfExpense({
+              date: p.date!,
+              type: p.type ?? type,
+              item: p.item ?? '',
+              info: p.info ?? '',
+              amount: parseFloat(p.amount!),
+            })
+          )
+          .catch(() =>
+            toast.error('A pasted expense failed to save — removed from list')
+          )
     );
 
     const msg =
@@ -150,13 +151,12 @@ export function ExpenseQuickAdd() {
     // Fire-and-forget: the hook's `onMutate` inserts the row optimistically and
     // `onError` rolls it back, so we clear the form immediately for the next row
     // instead of waiting on the server round-trip.
-    upsert.mutate(
-      buildSelfExpense({ date, type, item, info, amount: amountNum }),
-      {
-        onSuccess: () => toast.success('Expense added'),
-        onError: () => toast.error('Failed to add expense — removed from list'),
-      }
-    );
+    void upsert
+      .mutateAsync(
+        buildSelfExpense({ date, type, item, info, amount: amountNum })
+      )
+      .then(() => toast.success('Expense added'))
+      .catch(() => toast.error('Failed to add expense — removed from list'));
     resetForm();
   };
 

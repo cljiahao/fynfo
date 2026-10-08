@@ -2,6 +2,7 @@ import { sealCookie } from '@/lib/cookie-seal';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 process.env.SESSION_SECRET = 'x'.repeat(32);
+const USER = 'fixture-user-a';
 
 interface CookieJar {
   get: (name: string) => { value: string } | undefined;
@@ -26,24 +27,25 @@ beforeEach(() => {
 describe('household-keystore — getHouseholdKhSession', () => {
   it('returns null when no household cookie is present', async () => {
     const { getHouseholdKhSession } = await import('@/lib/household-keystore');
-    expect(await getHouseholdKhSession()).toBeNull();
+    expect(await getHouseholdKhSession(USER)).toBeNull();
   });
 
   it('returns the original K_h for a validly sealed cookie', async () => {
     const kh = Buffer.alloc(32, 3);
-    const blob = sealCookie(kh.toString('base64'));
+    const blob = sealCookie(kh.toString('base64'), USER, 'household-kh');
     cookieJar.get = (n) =>
       n === 'fynfo_household_kh' ? { value: blob } : undefined;
 
     const { getHouseholdKhSession } = await import('@/lib/household-keystore');
-    const result = await getHouseholdKhSession();
+    const result = await getHouseholdKhSession(USER);
     expect(result).not.toBeNull();
     expect((result as Buffer).equals(kh)).toBe(true);
+    expect(await getHouseholdKhSession('fixture-user-b')).toBeNull();
   });
 
   it('returns null for a tampered cookie blob', async () => {
     const kh = Buffer.alloc(32, 3);
-    const blob = sealCookie(kh.toString('base64'));
+    const blob = sealCookie(kh.toString('base64'), USER, 'household-kh');
     const decoded = JSON.parse(Buffer.from(blob, 'base64').toString('utf8'));
     const tag = Buffer.from(decoded.tag, 'base64');
     tag[0] ^= 0xff;
@@ -53,7 +55,7 @@ describe('household-keystore — getHouseholdKhSession', () => {
       n === 'fynfo_household_kh' ? { value: tampered } : undefined;
 
     const { getHouseholdKhSession } = await import('@/lib/household-keystore');
-    expect(await getHouseholdKhSession()).toBeNull();
+    expect(await getHouseholdKhSession(USER)).toBeNull();
   });
 });
 
@@ -62,7 +64,7 @@ describe('household-keystore — setHouseholdKhSession', () => {
     const kh = Buffer.alloc(32, 8);
     const { setHouseholdKhSession, getHouseholdKhSession } =
       await import('@/lib/household-keystore');
-    await setHouseholdKhSession(kh);
+    await setHouseholdKhSession(kh, USER);
 
     expect(setCalls).toHaveLength(1);
     expect(setCalls[0].name).toBe('fynfo_household_kh');
@@ -72,7 +74,15 @@ describe('household-keystore — setHouseholdKhSession', () => {
     // feed the sealed value back through get to prove the round-trip
     cookieJar.get = (n) =>
       n === 'fynfo_household_kh' ? { value: setCalls[0].value } : undefined;
-    const result = await getHouseholdKhSession();
+    const result = await getHouseholdKhSession(USER);
     expect((result as Buffer).equals(kh)).toBe(true);
+  });
+  it('does not write a cookie for a missing identity or wrong-length key', async () => {
+    const { setHouseholdKhSession } = await import('@/lib/household-keystore');
+    await expect(
+      setHouseholdKhSession(Buffer.alloc(31), USER)
+    ).rejects.toThrow();
+    await expect(setHouseholdKhSession(Buffer.alloc(32), '')).rejects.toThrow();
+    expect(setCalls).toEqual([]);
   });
 });

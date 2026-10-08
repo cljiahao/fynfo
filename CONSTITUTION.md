@@ -1,6 +1,6 @@
 # Fynfo Constitution
 
-**Version:** 3.0.1
+**Version:** 4.0.0
 **Effective:** 2026-05-25
 **Owner:** Clarence (cljiahao27@gmail.com)
 **Status:** Living document. Amendments tracked in git history.
@@ -205,7 +205,7 @@ No destructive migrations without a backup spec citing the backup procedure exec
 
 1. Open spec under `specs/governance/` proposing the amendment.
 2. Spec cites: section, rationale, blast radius, migration plan (if breaking).
-3. Self-approve as owner. Commit constitution + spec together. Bump version (semver: MAJOR for HARD changes, MINOR for SOFT changes, PATCH for clarifications).
+3. The owner approves the affected paths and scope, including by explicit conversational instruction recorded in the spec. Agents cannot self-approve. Commit constitution + spec together only with owner approval. Bump version (semver: MAJOR for HARD changes, MINOR for SOFT changes, PATCH for clarifications).
 4. Update `CLAUDE.md` and `AGENTS.md` pointers if surface changed.
 
 ### §7.2 Override protocol (per-spec)
@@ -216,27 +216,54 @@ A spec may request a SOFT rule override by citing the section and reason. HARD r
 
 Weekly: `auditor` agent scans repo against `HARD` rules, reports violations. Violations either get fixed or get a backdated spec acknowledging the exception.
 
+### §7.4 Owner-authorized audit and remediation
+
+An explicit owner request to review and improve the codebase authorizes read-only
+investigation and reversible remediation within that request. A separate approved
+spec is not required for each ordinary code, test, documentation, `.env.example`,
+or lint/configuration fix. Record the owner's request, affected paths, findings,
+acceptance checks, and results in a scoped audit record under `specs/` before
+implementing each batch. This record documents owner authorization; agents must
+not invent approval or expand the scope of an approved spec.
+
+This path covers evidence-backed bug fixes, security hardening that preserves
+the security invariants, deduplication, unused-code removal, maintainability,
+comment hygiene, and measured performance improvements. Preserve product scope
+and public contracts. Verify consumers before deleting files; require meaningful
+regression tests for behavior changes and measurements for performance claims.
+Review README and comments against each batch's resulting behavior, and run a
+second review pass after remediation. Follow §4 quality gates before commits or
+PRs; documentation-only edits may use formatting and diff review without an
+application build or runtime tests when no executable behavior changed.
+
+The exception does not authorize new features, new dependencies, schema or data
+migrations, cryptographic protocol changes, deployment, or changes to protected
+files under §8.2. These require a scoped spec and explicit owner approval.
+All other HARD rules remain binding. Stop only the affected work when approval
+is missing; continue independent authorized work. Approval requests must name
+the affected paths, concrete proposed change, and risk.
+
 ---
 
 ## §8. Agent Scope
 
 ### §8.1 What agents may do unsupervised
 
-- Write specs (require human approval before impl).
-- Draft amendments to `CONSTITUTION.md`, `AGENTS.md`, `CLAUDE.md`, and `specs/governance/*` (git-reviewable; require explicit human approval before commit).
+- Write specs (require human approval before impl, except the owner-authorized audit path in §7.4).
+- Draft amendment proposals in `specs/governance/` for review. Editing rulebooks and committing governance changes require explicit owner permission under §8.2.
 - Implement approved specs.
 - Run quality gates and iterate until green.
 - Open PRs.
 - Review other agents' PRs (post-gates).
 - Run read-only investigations.
+- Implement and document ordinary remediation authorized under §7.4.
 
 ### §8.2 What agents may NEVER do unsupervised
 
 - Force-push, rewrite history, delete branches.
-- Edit the enforcement layer or secrets: `.claude/settings.json`, `.claude/hooks/**`, `.claude/harness.json`, `.claude/skills/**`, real secret env files (`.env`, `.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.production.*`, `.env.staging`), `.github/workflows/**`, `scripts/build-push.sh`, or any cert/key file. This is the lock-on-the-lock — never agent-editable. (`.env.example`, the committed placeholder template per §5.3, is NOT a secret and IS agent-editable.)
-- Commit changes to `CONSTITUTION.md`, `AGENTS.md`, `CLAUDE.md`, or `specs/governance/*` without explicit human approval (drafting is allowed; the human reviews the diff and approves before commit).
+- Edit or commit rulebooks (`CONSTITUTION.md`, `AGENTS.md`, `CLAUDE.md`), governance specs, enforcement files (`.claude/settings.json`, `.claude/hooks/**`, `.claude/harness.json`, `.claude/skills/**`), CI workflows (`.github/workflows/**`), or `scripts/build-push.sh` without explicit owner permission for the affected paths and scope. A general audit request is not that permission. Draft governance proposals in `specs/governance/` for review; obtain permission before editing rulebooks or enforcement files. Record permission already given in the conversation rather than asking for it again. Never bypass an active tool or hook denial; report it and request the supported approval or owner action.
 - Run destructive migrations.
-- Touch real secret env files (`.env`, `.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.production.*`, `.env.staging`). `.env.example` is editable.
+- Read, search contents of, copy, print, or edit real secret env files (`.env`, `.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.production.*`, `.env.staging`), private keys, credential files, or live vault secrets. Audit tooling must exclude them and must not dump process environment or session cookies. Certificates and key files remain protected. `.env.example` is editable with placeholders only.
 - Push images to Docker Hub.
 - Approve their own specs.
 
@@ -250,6 +277,10 @@ Any of the following = stop and ask Clarence:
 - Cost projection > $5 for the task.
 - Confidence below "I'd bet money on this".
 
+Escalate the affected operation, not independent authorized work. For uncertain
+findings, investigate and research authoritative sources before proposing an
+edit; uncertainty alone does not prohibit read-only investigation.
+
 ---
 
 ## Amendment Log
@@ -260,3 +291,4 @@ Any of the following = stop and ask Clarence:
 | 2.0     | 2026-06-11 | §2.2/§2.3 telemetry carve-out: sanctioned anonymous, non-PII, non-financial operational telemetry via `/api/track` + admin aggregate reads without vault. Agent edit-scope widened (§8): rulebooks/specs are agent-editable with human approval; enforcement layer + secrets stay human-only. Authorized by `specs/governance/013-telemetry-write-exception.md`.                                                                                                                                                   |
 | 3.0     | 2026-06-26 | Two-person household: §1.1/§1.2 allow linking two accounts into a household for household-scoped data only (personal vaults unchanged, server-readable key never introduced). §2.3 adds a third vault-gate exception — household actions do `requireUserId()`→`getHouseholdKhSession()`. §5.1a adds the household-key (`K_h`) invariant: stored only wrapped under each member's DEK, unwrapped only in the `fynfo_household_kh` cookie, no new PIN. Authorized by `specs/governance/052-household-two-person.md`. |
 | 3.0.1   | 2026-06-27 | §8.2 clarification: narrow the `.env*` hard-stop to real secret env files (`.env`, `.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.production.*`, `.env.staging`); `.env.example` (committed placeholder template per §5.3) is NOT a secret and IS agent-editable. No expansion of secret access. Authorized by `specs/governance/055-env-example-editable.md`.                                                                                                                         |
+| 4.0.0   | 2026-10-08 | Owner-authorized audit/remediation path (§7.4); scoped permission for rulebooks and enforcement/CI edits (§8.2); explicit prohibition on secret reads; independent work continues while protected operations await approval. Authorized by `specs/governance/069-owner-authorized-audit-remediation.md`.                                                                                                                                                                                                           |

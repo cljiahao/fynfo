@@ -8,7 +8,7 @@ import { AppError } from './app-error';
  * Canonical error responder for Next.js route handlers.
  *
  * Maps internal exception types to safe HTTP responses with no leakage of
- * stack traces, DB text, or internal paths. Logs full detail server-side.
+ * stack traces, DB text, or internal paths. Logs controlled classifications.
  *
  * Usage in route handlers:
  *
@@ -36,7 +36,9 @@ export function handleApiError(label: string, error: unknown): NextResponse {
     );
   }
 
-  // Unknown — log full detail server-side, return opaque 500.
-  logger.error({ label, err: error }, 'unhandled error');
+  logger.error(
+    { label, errorType: error instanceof Error ? 'Error' : typeof error },
+    'unhandled error'
+  );
   return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
 }

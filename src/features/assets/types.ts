@@ -14,7 +14,8 @@ export interface AssetEntryData {
 }
 
 export interface SnapshotData {
-  id: string; // YYYY-MM
+  // YYYY-MM
+  id: string;
   entries: AssetEntryData[];
 }
 

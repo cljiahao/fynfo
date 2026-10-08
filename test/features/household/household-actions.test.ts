@@ -15,6 +15,7 @@ const DEK = Buffer.alloc(32, 4);
 
 let supabase: ReturnType<typeof makeFakeSupabase>['client'];
 let lastSetKh: Buffer | null;
+let lastSessionUserId: string | null;
 let khSession: Buffer | null;
 
 vi.mock('@/lib/action-guard', () => ({
@@ -23,8 +24,9 @@ vi.mock('@/lib/action-guard', () => ({
 }));
 
 vi.mock('@/lib/household-keystore', () => ({
-  setHouseholdKhSession: async (kh: Buffer) => {
+  setHouseholdKhSession: async (kh: Buffer, userId: string) => {
     lastSetKh = kh;
+    lastSessionUserId = userId;
   },
   getHouseholdKhSession: async () => khSession,
 }));
@@ -37,6 +39,7 @@ function setSupabase(opts: FakeSupabaseOptions = {}) {
 
 beforeEach(() => {
   lastSetKh = null;
+  lastSessionUserId = null;
   khSession = null;
   setSupabase();
 });
@@ -160,7 +163,7 @@ describe('household-actions — createInvite', () => {
     expect(JSON.stringify(row)).not.toContain(secret);
     expect(row.invite_code_hash).toBe(hashInviteCode(secret));
     // the wrapped blob recovers K_h when re-derived from the secret + salt
-    const inviteKey = deriveInviteKey(secret, row.kdf_salt);
+    const inviteKey = await deriveInviteKey(secret, row.kdf_salt);
     expect(unwrapKh(row.wrapped_kh_under_invite, inviteKey).equals(kh)).toBe(
       true
     );
@@ -184,9 +187,10 @@ describe('household-actions — createInvite', () => {
 describe('household-actions — acceptInvite', () => {
   it('re-wraps K_h under the accepter DEK, consumes the invite, opens session', async () => {
     const kh = Buffer.alloc(32, 6);
-    const secret = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'; // base64url-shaped
+    // base64url-shaped
+    const secret = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
     const saltB64 = Buffer.alloc(16, 1).toString('base64');
-    const inviteKey = deriveInviteKey(secret, saltB64);
+    const inviteKey = await deriveInviteKey(secret, saltB64);
 
     const fake = setSupabase({
       rpcData: {
@@ -210,8 +214,14 @@ describe('household-actions — acceptInvite', () => {
     const consume = fake.calls.rpc.find(
       (c) => c.name === 'consume_household_invite'
     );
-    const args = consume?.args as { p_user_id: string; p_wrapped_kh: string };
+    const args = consume?.args as {
+      p_user_id: string;
+      p_wrapped_kh: string;
+      p_code_hash: string;
+    };
     expect(args.p_user_id).toBe(USER_ID);
+    expect(args.p_code_hash).toBe(hashInviteCode(secret));
+    expect(lastSessionUserId).toBe(USER_ID);
     expect(unwrapKh(args.p_wrapped_kh, DEK).equals(kh)).toBe(true);
     expect((lastSetKh as Buffer).equals(kh)).toBe(true);
   });

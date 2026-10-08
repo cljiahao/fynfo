@@ -17,7 +17,8 @@ const div = (over: Partial<DividendData>): DividendData => ({
   ...over,
 });
 
-const RATE = 1.35; // USD -> SGD
+// USD -> SGD
+const RATE = 1.35;
 
 describe('toSGD', () => {
   it('passes SGD through unchanged', () => {
@@ -61,11 +62,16 @@ describe('incomeByYear', () => {
 describe('ttmDistributionsSGD', () => {
   it('sums only the ticker within the trailing 12 months of asOf', () => {
     const dividends = [
-      div({ ticker: 'MLT', date: '2025-07-01', amount: 30 }), // in window
-      div({ ticker: 'MLT', date: '2026-05-01', amount: 40 }), // in window
-      div({ ticker: 'MLT', date: '2025-05-01', amount: 99 }), // >12mo old
-      div({ ticker: 'MLT', date: '2026-07-01', amount: 99 }), // future
-      div({ ticker: 'FCT', date: '2026-05-01', amount: 99 }), // other ticker
+      // in window
+      div({ ticker: 'MLT', date: '2025-07-01', amount: 30 }),
+      // in window
+      div({ ticker: 'MLT', date: '2026-05-01', amount: 40 }),
+      // >12mo old
+      div({ ticker: 'MLT', date: '2025-05-01', amount: 99 }),
+      // future
+      div({ ticker: 'MLT', date: '2026-07-01', amount: 99 }),
+      // other ticker
+      div({ ticker: 'FCT', date: '2026-05-01', amount: 99 }),
     ];
     expect(ttmDistributionsSGD(dividends, 'MLT', RATE, '2026-06-15')).toBe(70);
   });

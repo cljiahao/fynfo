@@ -1,6 +1,6 @@
 'use server';
 
-import { requireActionContext, requireDbContext } from '@/lib/action-guard';
+import { requireActionContext } from '@/lib/action-guard';
 import { encryptPayload } from '@/lib/crypto';
 import { decryptNumber, decryptOptionalString } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
@@ -52,9 +52,10 @@ export async function getSnapshot(id: string): Promise<SnapshotData | null> {
     .select('*, entries:asset_entries(*)')
     .eq('user_id', userId)
     .eq('month', id)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) return null;
+  throwIfSupabaseError(error, 'snapshot read');
+  if (!data) return null;
 
   const decryptedEntries = await Promise.all(
     (data.entries || []).map(async (e: AssetEntryRow) => ({
@@ -77,11 +78,21 @@ export async function upsertSnapshot(
   parseOrThrow(snapshotFormSchema, data, 'snapshot.upsert.input');
   const { userId, dek, supabase } = await requireActionContext();
 
+  const validEntries = data.entries.filter((e) => e.amount > 0);
+  const encEntries = await Promise.all(
+    validEntries.map(async (e) => ({
+      id: randomUUID(),
+      category: e.category,
+      account: await encryptPayload(e.account || '', dek),
+      amount: await encryptPayload(e.amount.toString(), dek),
+    }))
+  );
+
   let snapshotId: string;
 
-  if (originalId && originalId !== data.id) {
-    // Move the existing row so the old month and its entries aren't orphaned;
-    // UNIQUE(user_id, month) rejects a collision.
+  if (originalId) {
+    // Preserve the parent ID referenced by saved entries; month collisions
+    // are rejected by UNIQUE(user_id, month).
     const { error: renameErr, data: renamedData } = await supabase
       .from('monthly_snapshots')
       .update({
@@ -116,29 +127,24 @@ export async function upsertSnapshot(
     snapshotId = snapData.id;
   }
 
-  await supabase.from('asset_entries').delete().eq('snapshot_id', snapshotId);
+  const { error: deleteErr } = await supabase
+    .from('asset_entries')
+    .delete()
+    .eq('snapshot_id', snapshotId);
+  throwIfSupabaseError(deleteErr, 'asset_entries delete');
 
-  const validEntries = data.entries.filter((e) => e.amount > 0);
-  if (validEntries.length > 0) {
-    const encEntries = await Promise.all(
-      validEntries.map(async (e) => ({
-        id: randomUUID(),
-        snapshot_id: snapshotId,
-        category: e.category,
-        account: await encryptPayload(e.account || '', dek),
-        amount: await encryptPayload(e.amount.toString(), dek),
-      }))
-    );
-
+  if (encEntries.length > 0) {
     const { error: insErr } = await supabase
       .from('asset_entries')
-      .insert(encEntries);
+      .insert(
+        encEntries.map((entry) => ({ ...entry, snapshot_id: snapshotId }))
+      );
     throwIfSupabaseError(insErr, 'asset_entries insert');
   }
 }
 
 export async function deleteSnapshot(id: string): Promise<void> {
-  const { userId, supabase } = await requireDbContext();
+  const { userId, supabase } = await requireActionContext();
 
   const { error } = await supabase
     .from('monthly_snapshots')

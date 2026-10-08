@@ -30,7 +30,8 @@ describe('buildInitialState', () => {
   });
 
   it('recovers count for a count-based relief from the saved amount', () => {
-    if (!countDef) return; // catalog has no count-based relief
+    expect(countDef).toBeDefined();
+    if (!countDef) throw new Error('Expected count relief fixture');
     const saved: TaxReliefData[] = [
       { reliefKey: countDef.key, amount: countDef.defaultAmount * 3 },
     ];
@@ -38,7 +39,9 @@ describe('buildInitialState', () => {
   });
 
   it('recovers the variant for a variant-based relief from the saved amount', () => {
-    if (!variantDef?.variants) return;
+    expect(variantDef?.variants?.length).toBeGreaterThan(0);
+    if (!variantDef?.variants)
+      throw new Error('Expected variant relief fixture');
     const v = variantDef.variants[variantDef.variants.length - 1];
     const saved: TaxReliefData[] = [
       { reliefKey: variantDef.key, amount: v.amount },
@@ -67,7 +70,8 @@ describe('buildReliefItems', () => {
   });
 
   it('decorates the label with the count for a count-based relief', () => {
-    if (!countDef) return; // catalog has no count-based relief
+    expect(countDef).toBeDefined();
+    if (!countDef) throw new Error('Expected count relief fixture');
     const state = buildInitialState(null);
     state.set(countDef.key, {
       enabled: true,
@@ -82,7 +86,9 @@ describe('buildReliefItems', () => {
   });
 
   it('decorates the label with the variant for a variant-based relief', () => {
-    if (!variantDef?.variants) return;
+    expect(variantDef?.variants?.length).toBeGreaterThan(0);
+    if (!variantDef?.variants)
+      throw new Error('Expected variant relief fixture');
     const v = variantDef.variants[0];
     const state = buildInitialState(null);
     state.set(variantDef.key, {

@@ -13,6 +13,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { formatSGD } from '@/lib/utils/currency';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { RELIEF_CATALOG } from '../constants';
 import { useTaxReliefs, useUpsertTaxReliefs } from '../hooks/use-tax-reliefs';
 import {
@@ -56,9 +57,9 @@ function TaxReliefsDialogInner({
   }
 
   // Stable mutate ref
-  const mutateRef = useRef(upsertReliefs.mutate);
+  const mutateRef = useRef(upsertReliefs.mutateAsync);
   useEffect(() => {
-    mutateRef.current = upsertReliefs.mutate;
+    mutateRef.current = upsertReliefs.mutateAsync;
   });
 
   const updateRelief = (key: string, update: Partial<ReliefState>) => {
@@ -75,7 +76,7 @@ function TaxReliefsDialogInner({
     });
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     // Save to DB
     const reliefs: TaxReliefData[] = [];
     reliefState.forEach((v, key) => {
@@ -83,12 +84,13 @@ function TaxReliefsDialogInner({
         reliefs.push({ reliefKey: key, amount: v.amount });
       }
     });
-    mutateRef.current(reliefs);
-
-    // Notify parent with named items
-    onConfirm?.(buildReliefItems(reliefState));
-
-    onOpenChange(false);
+    try {
+      await mutateRef.current(reliefs);
+      onConfirm?.(buildReliefItems(reliefState));
+      onOpenChange(false);
+    } catch {
+      toast.error('Could not save your tax reliefs');
+    }
   };
 
   const additionalTotal = computeTotal(reliefState);
@@ -189,9 +191,28 @@ function TaxReliefsDialogInner({
 
 export function TaxReliefsDialog(props: TaxReliefsDialogProps) {
   const currentYear = new Date().getFullYear();
-  const { data: savedReliefs, isLoading } = useTaxReliefs(currentYear);
+  const {
+    data: savedReliefs,
+    isLoading,
+    isError,
+    refetch,
+  } = useTaxReliefs(currentYear);
 
   if (isLoading) return null;
+
+  if (isError) {
+    return (
+      <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Couldn&apos;t load your tax reliefs</DialogTitle>
+            <DialogDescription>Retry before making changes.</DialogDescription>
+          </DialogHeader>
+          <Button onClick={() => void refetch()}>Retry</Button>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <TaxReliefsDialogInner

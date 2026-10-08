@@ -2,8 +2,10 @@ import type { EquityTradeData } from '../types';
 
 /** A historical distribution-per-unit point from the market-data feed. */
 export interface DividendPoint {
-  exDate: string; // ISO date
-  dpu: number; // distribution per unit/share
+  // ISO date
+  exDate: string;
+  // distribution per unit/share
+  dpu: number;
 }
 
 /**

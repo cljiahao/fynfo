@@ -19,7 +19,8 @@ const SG_TICKER_MAP: Record<string, string> = {
 export function getYahooSymbol(ticker: string): string {
   const upper = ticker.toUpperCase();
   if (SG_TICKER_MAP[upper]) return SG_TICKER_MAP[upper];
-  return upper; // US tickers work as-is
+  // US tickers work as-is
+  return upper;
 }
 
 export function getMarket(ticker: string): 'SG' | 'US' {

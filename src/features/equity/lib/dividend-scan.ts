@@ -5,10 +5,12 @@ import { getMarket } from './ticker-map';
 
 export interface DividendCandidate {
   ticker: string;
-  date: string; // ex-date (ISO)
+  // ex-date (ISO)
+  date: string;
   dpu: number;
   shares: number;
-  amount: number; // estimated = dpu * shares
+  // estimated = dpu * shares
+  amount: number;
   currency: DividendCurrency;
 }
 

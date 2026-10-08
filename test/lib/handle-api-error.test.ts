@@ -1,10 +1,20 @@
 import { DecryptionError } from '@/lib/crypto';
 import { AppError } from '@/lib/errors/app-error';
 import { handleApiError } from '@/lib/errors/handle-api-error';
-import { describe, expect, it } from 'vitest';
+import { logger } from '@/lib/logger';
+import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
+vi.mock('@/lib/logger', () => ({ logger: { warn: vi.fn(), error: vi.fn() } }));
+
 describe('handle-api-error — safe HTTP mapping', () => {
+  it('does not log private text embedded in unknown errors', () => {
+    handleApiError('test', new Error('private-account=123456 salary=9000'));
+    expect(logger.error).toHaveBeenLastCalledWith(
+      { label: 'test', errorType: 'Error' },
+      'unhandled error'
+    );
+  });
   it('maps ZodError to 400 with flattened issues', async () => {
     const parsed = z.object({ a: z.string() }).safeParse({ a: 1 });
     const res = handleApiError('test', parsed.error);

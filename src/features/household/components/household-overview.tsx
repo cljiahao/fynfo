@@ -64,6 +64,7 @@ export function HouseholdOverview() {
         title={household.data.name}
         description="Shared goals for your household."
         action={
+          !locked &&
           goals.data && (
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="mr-1.5 size-4" />
@@ -104,7 +105,7 @@ export function HouseholdOverview() {
         </div>
       )}
 
-      {goals.data && (
+      {!locked && goals.data && (
         <>
           {isOwner && <InvitePanel />}
           <GoalList goals={goals.data} />

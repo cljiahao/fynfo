@@ -2,14 +2,14 @@ import type {
   PlannerSettingsData,
   SnapshotData,
 } from '@/features/assets/types';
-import type { EquityTradeData } from '@/features/equity/types';
+import type { DividendData, EquityTradeData } from '@/features/equity/types';
 import type { ExpenseData } from '@/features/expenses/types';
 import type { SalaryData, TaxReliefData } from '@/features/salary/types';
 import type { ProfileData } from '../types';
 
 /** Envelope schema version. Bump when `ExportData` shape changes; a future
  *  import branches on this to migrate older backups. */
-export const EXPORT_VERSION = 1;
+export const EXPORT_VERSION = 2;
 
 /** A tax-relief row carrying its year (reliefs are stored per year). */
 export type TaxReliefExport = TaxReliefData & { year: number };
@@ -21,13 +21,15 @@ export interface ExportData {
   salary: SalaryData[];
   taxReliefs: TaxReliefExport[];
   trades: EquityTradeData[];
+  dividends: DividendData[];
   plannerSettings: PlannerSettingsData | null;
 }
 
 export interface ExportEnvelope {
   version: number;
   app: 'fynfo';
-  exportedAt: string; // ISO timestamp
+  // ISO timestamp
+  exportedAt: string;
   data: ExportData;
 }
 

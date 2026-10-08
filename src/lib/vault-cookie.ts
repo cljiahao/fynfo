@@ -2,6 +2,7 @@
 // the set (vault/route.ts) and clear (vault/lock/route.ts) stay in lock-step.
 // keystore.ts reads the same name. Only `maxAge` differs between set/clear.
 export const VAULT_DEK_COOKIE = 'fynfo_vault_dek';
+export const VAULT_COOKIE_MAX_AGE = 60 * 60 * 6;
 
 export const VAULT_COOKIE_BASE_OPTS = {
   httpOnly: true,

@@ -20,15 +20,14 @@ function pasteRows(node: Element, text: string) {
   fireEvent(node, event);
 }
 
-// `mutate` is fire-and-forget: it captures the call but never invokes its
-// onSuccess/onError callbacks, simulating an in-flight save that has NOT
-// settled. The form must still clear (spec 048 reset-on-submit). On the old
-// `await mutateAsync(...)` code the reset ran only after the promise resolved,
-// so the fields would still be filled here — this test fails on that code.
-const { mutate } = vi.hoisted(() => ({ mutate: vi.fn() }));
+// Keep the save pending: awaiting it before reset would leave the form filled
+// and fail the spec 048 immediate-reset contract.
+const { mutate } = vi.hoisted(() => ({
+  mutate: vi.fn(() => new Promise<void>(() => undefined)),
+}));
 
 vi.mock('@/features/expenses/hooks/use-expenses', () => ({
-  useUpsertExpense: () => ({ mutate, isPending: false }),
+  useUpsertExpense: () => ({ mutate, mutateAsync: mutate, isPending: false }),
 }));
 
 vi.mock('sonner', () => ({
@@ -60,13 +59,13 @@ describe('ExpenseQuickAdd reset-on-submit', () => {
         amount: 12,
         splitType: 'self',
         splits: [],
-      }),
-      expect.any(Object)
+      })
     );
 
     // ...and the fields are already clear even though the save never settled.
     expect(item).toHaveValue('');
-    expect(amount).toHaveValue(null); // empty number input
+    // empty number input
+    expect(amount).toHaveValue(null);
   });
 
   it('does not submit (or clear) when amount is missing', async () => {
@@ -78,7 +77,7 @@ describe('ExpenseQuickAdd reset-on-submit', () => {
     await userEvent.click(screen.getByRole('button', { name: /add expense/i }));
 
     expect(mutate).not.toHaveBeenCalled();
-    expect(item).toHaveValue('Grab'); // input preserved for correction
+    expect(item).toHaveValue('Grab');
   });
 
   it('submits a complete single pasted row and clears immediately', () => {
@@ -92,8 +91,7 @@ describe('ExpenseQuickAdd reset-on-submit', () => {
         date: '2026-04-01',
         item: 'Grab',
         amount: 12.5,
-      }),
-      expect.any(Object)
+      })
     );
     expect(screen.getByPlaceholderText('0.00')).toHaveValue(null);
   });

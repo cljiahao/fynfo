@@ -21,13 +21,13 @@ export const CATEGORY_LABELS: Record<AssetCategory, string> = {
 };
 
 export const CATEGORY_COLORS: Record<AssetCategory, string> = {
-  savings: '#3b82f6', // blue
-  bonds: '#f59e0b', // amber
-  stocks: '#10b981', // emerald
-  etf: '#f97316', // orange
-  non_equity: '#ec4899', // pink
-  crypto: '#8b5cf6', // violet
-  pension: '#b45309', // bronze (lightened from #92400e for dark-mode legibility)
+  savings: '#3b82f6',
+  bonds: '#f59e0b',
+  stocks: '#10b981',
+  etf: '#f97316',
+  non_equity: '#ec4899',
+  crypto: '#8b5cf6',
+  pension: '#b45309',
 };
 
 // Categories that roll up into "Total Investment" on the chart

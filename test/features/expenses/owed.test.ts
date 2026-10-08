@@ -18,6 +18,34 @@ const shared = (
 });
 
 describe('buildPersonGroups', () => {
+  it('excludes paid splits from the balance while retaining month history', () => {
+    const groups = buildPersonGroups(
+      [
+        shared({
+          id: 'paid',
+          splits: [{ person: 'Alice', amount: 20, settled: true }],
+        }),
+        shared({
+          id: 'unpaid',
+          splits: [{ person: 'Alice', amount: 5, settled: false }],
+        }),
+      ],
+      NOW
+    );
+    expect(groups[0].totalOwed).toBe(5);
+    expect(groups[0].months[0].total).toBe(25);
+    expect(groups[0].months[0].settled).toBe(false);
+    expect(groups[0].months[0].expenseIds).toEqual(['paid', 'unpaid']);
+
+    const settled = buildPersonGroups(
+      [shared({ splits: [{ person: 'Alice', amount: 25, settled: true }] })],
+      NOW
+    );
+    expect(settled[0].totalOwed).toBe(0);
+    expect(settled[0].months[0].total).toBe(25);
+    expect(settled[0].months[0].settled).toBe(true);
+  });
+
   it('ignores self (non-shared) expenses', () => {
     const groups = buildPersonGroups(
       [

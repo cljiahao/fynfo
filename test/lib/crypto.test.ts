@@ -52,7 +52,8 @@ describe('crypto — AES-256-GCM payload envelope', () => {
   it('throws DecryptionError for an invalid IV length', () => {
     const bad = Buffer.from(
       JSON.stringify({
-        iv: Buffer.alloc(4).toString('base64'), // not 12 bytes
+        // not 12 bytes
+        iv: Buffer.alloc(4).toString('base64'),
         data: 'AAAA',
         tag: Buffer.alloc(16).toString('base64'),
       })

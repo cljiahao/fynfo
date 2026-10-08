@@ -1,3 +1,4 @@
+import * as fieldCrypto from '@/lib/crypto';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -22,6 +23,7 @@ function setSupabase(opts: FakeSupabaseOptions = {}) {
 }
 
 beforeEach(() => {
+  vi.restoreAllMocks();
   setSupabase();
 });
 
@@ -71,6 +73,12 @@ describe('snapshot-actions — getSnapshots', () => {
 });
 
 describe('snapshot-actions — getSnapshot', () => {
+  it('returns null when the month is absent', async () => {
+    setSupabase({ selectData: null });
+    const { getSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    expect(await getSnapshot('2026-03')).toBeNull();
+  });
   it('decrypts a single month by id', async () => {
     setSupabase({
       selectData: {
@@ -92,11 +100,13 @@ describe('snapshot-actions — getSnapshot', () => {
     });
   });
 
-  it('returns null on a read error or missing row', async () => {
+  it('throws an opaque error on a failed single-record read', async () => {
     setSupabase({ selectError: { message: 'permission denied' } });
     const { getSnapshot } =
       await import('@/features/assets/actions/snapshot-actions');
-    expect(await getSnapshot('2026-03')).toBeNull();
+    await expect(getSnapshot('2026-03')).rejects.toThrow(
+      'snapshot read failed'
+    );
   });
 });
 
@@ -106,6 +116,43 @@ const VALID_SNAPSHOT = {
 };
 
 describe('snapshot-actions — upsertSnapshot', () => {
+  it('stops replacement when child deletion fails', async () => {
+    const fake = setSupabase({
+      upsertData: { id: 'snap-1' },
+      selectError: { message: 'permission denied' },
+    });
+    const { upsertSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    await expect(upsertSnapshot(VALID_SNAPSHOT)).rejects.toThrow(
+      'asset_entries delete failed'
+    );
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+  it('does not delete children after a parent failure', async () => {
+    const fake = setSupabase({ upsertError: { message: 'parent failed' } });
+    const { upsertSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    await expect(upsertSnapshot(VALID_SNAPSHOT)).rejects.toThrow();
+    expect(fake.calls.delete).toBe(0);
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+  it('prepares child ciphertext before any replacement mutation', async () => {
+    const fake = setSupabase({ upsertData: { id: 'snap-1' } });
+    const encrypt = fieldCrypto.encryptPayload;
+    vi.spyOn(fieldCrypto, 'encryptPayload').mockImplementation((text, dek) => {
+      if (text === '5000') throw new Error('child encryption failed');
+      return encrypt(text, dek);
+    });
+    const { upsertSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    await expect(upsertSnapshot(VALID_SNAPSHOT)).rejects.toThrow(
+      'child encryption failed'
+    );
+    expect(fake.calls.delete).toBe(0);
+    expect(fake.calls.upsert).toHaveLength(0);
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+
   it('upserts the month then encrypts entry account/amount before insert', async () => {
     const fake = setSupabase({ upsertData: { id: 'snap-1' } });
     const { upsertSnapshot } =
@@ -176,6 +223,18 @@ describe('snapshot-actions — upsertSnapshot', () => {
     expect(fake.calls.upsert).toHaveLength(0);
     const moved = fake.calls.update[0] as Record<string, unknown>;
     expect(moved.month).toBe('2026-04');
+    expect(
+      fake.calls.queries.find((query) => query.operation === 'update')?.eq
+    ).toEqual([
+      { column: 'user_id', value: USER_ID },
+      { column: 'month', value: '2026-03' },
+    ]);
+    expect(
+      fake.calls.queries.find(
+        (query) =>
+          query.table === 'asset_entries' && query.operation === 'delete'
+      )?.eq
+    ).toEqual([{ column: 'snapshot_id', value: 'snap-1' }]);
 
     const entries = fake.calls.insert[0] as Array<Record<string, string>>;
     expect(entries[0].snapshot_id).toBe('snap-1');
@@ -196,13 +255,38 @@ describe('snapshot-actions — upsertSnapshot', () => {
     expect(fake.calls.insert).toHaveLength(0);
   });
 
-  it('upserts in place (no rename) when the edited month is unchanged', async () => {
-    const fake = setSupabase({ upsertData: { id: 'snap-1' } });
+  it('preserves the parent ID and saves new values when the edited month is unchanged', async () => {
+    const fake = setSupabase({
+      selectData: { id: 'snap-1' },
+      upsertError: {
+        code: '23503',
+        message: 'existing child foreign key would be broken',
+      },
+    });
     const { upsertSnapshot } =
       await import('@/features/assets/actions/snapshot-actions');
-    await upsertSnapshot(VALID_SNAPSHOT, '2026-03');
-    expect(fake.calls.update).toHaveLength(0);
-    expect(fake.calls.upsert).toHaveLength(1);
+    await upsertSnapshot(
+      {
+        ...VALID_SNAPSHOT,
+        entries: [{ category: 'savings', account: 'DBS', amount: 7500 }],
+      },
+      '2026-03'
+    );
+    expect(fake.calls.upsert).toHaveLength(0);
+    expect(fake.calls.update).toHaveLength(1);
+    expect(fake.calls.update[0]).toEqual(
+      expect.objectContaining({ month: '2026-03' })
+    );
+    expect(fake.calls.update[0]).not.toHaveProperty('id');
+    expect(
+      fake.calls.queries.find((q) => q.operation === 'update')?.eq
+    ).toEqual([
+      { column: 'user_id', value: USER_ID },
+      { column: 'month', value: '2026-03' },
+    ]);
+    const entries = fake.calls.insert[0] as Array<Record<string, string>>;
+    expect(entries[0].snapshot_id).toBe('snap-1');
+    expect(decryptPayload(entries[0].amount, DEK)).toBe('7500');
   });
 });
 
@@ -214,6 +298,15 @@ describe('snapshot-actions — deleteSnapshot', () => {
     await deleteSnapshot('2026-03');
     expect(fake.calls.from).toContain('monthly_snapshots');
     expect(fake.calls.delete).toBe(1);
+    expect(
+      fake.calls.queries.find(
+        (query) =>
+          query.table === 'monthly_snapshots' && query.operation === 'delete'
+      )?.eq
+    ).toEqual([
+      { column: 'user_id', value: USER_ID },
+      { column: 'month', value: '2026-03' },
+    ]);
   });
 
   it('surfaces an opaque error on a delete failure', async () => {

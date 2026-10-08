@@ -64,16 +64,17 @@ describe('buildCashFlows', () => {
   it('records a buy as money out (negative, incl. fees)', () => {
     const flows = buildCashFlows([trade({ action: 'buy' })], [], {});
     expect(flows).toHaveLength(1);
-    expect(flows[0].amount).toBe(-51); // -(10*5 + 1)
+    // -(10*5 + 1)
+    expect(flows[0].amount).toBe(-51);
   });
 
-  it('records a sell as proceeds (shares*price)', () => {
+  it('records a sell as net proceeds after fees', () => {
     const flows = buildCashFlows(
       [trade({ action: 'sell', shares: 10, price: 6, fees: 1 })],
       [],
       {}
     );
-    expect(flows[0].amount).toBe(60); // 10*6 + 1 - 1
+    expect(flows[0].amount).toBe(59);
   });
 
   it('adds current holding value as a positive flow dated at `now`', () => {
@@ -102,7 +103,8 @@ describe('buildCashFlows', () => {
       {},
       'US'
     );
-    expect(flows).toHaveLength(1); // only the US (AAPL) trade
+    // only the US (AAPL) trade
+    expect(flows).toHaveLength(1);
   });
 
   it('sorts flows ascending by date', () => {

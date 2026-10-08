@@ -1,169 +1,152 @@
 # Fynfo
 
-Personal wealth management dashboard — track savings, investments, equity trades, and salary with Singapore tax/CPF calculations.
+Personal wealth management dashboard for savings, investments, equity trades,
+salary, Singapore tax/CPF calculations, and expenses. Two accounts can link a
+household for shared goals while keeping their personal vaults separate.
 
 ## Stack
 
-- **Next.js 16** with Turbopack dev server
-- **React 19** with Server Components
-- **TypeScript 5.9**
-- **Tailwind CSS 4** with shadcn/ui (new-york style)
-- **TanStack React Query** for server state
-- **NextAuth (Auth.js)** with Google OAuth + dev credentials
-- **Prisma 7** with PostgreSQL
-- **React Hook Form** + **Zod** for validation
-- **Recharts** for data visualization
-- **Docker** multi-stage build (standalone output)
+- Next.js 16 App Router, React 19, TypeScript 5.9
+- Supabase Auth and PostgreSQL with row-level security
+- AES-256-GCM encryption for financial payloads; browser PIN-derived vault keys
+- TanStack React Query, React Hook Form, Zod
+- Tailwind CSS 4, shadcn/ui, Recharts
+- Vitest with optional jsdom and Testing Library component tests
+- pnpm, ESLint, Prettier, Husky
 
-## Prerequisites
+## Local setup
 
-- **Node.js** 24+ (or via Docker)
-- **pnpm** (corepack enabled)
-- **PostgreSQL** 17+
+Use Node.js 22 or newer and pnpm 11, matching the CI toolchain. A Supabase
+project with the repository's reviewed SQL migrations is required. Migration
+history lives in `supabase/migrations/`; changes and production application follow
+[CONSTITUTION.md](CONSTITUTION.md) and [AGENTS.md](AGENTS.md).
 
-## Getting Started
+```powershell
+pnpm install --frozen-lockfile
+Copy-Item .env.example .env.local
+```
 
-```bash
-# 1. Install dependencies
-pnpm install
+Edit `.env.local` locally with your Supabase project URL and publishable key.
+Generate a random session secret, for example with `openssl rand -base64 32`, and
+set `SESSION_SECRET`. Keep this file uncommitted. Financial queries use the
+publishable key and each authenticated user's RLS-scoped session.
 
-# 2. Set up environment
-cp .env.example .env
-# Edit .env — fill in DATABASE_URL, AUTH_SECRET, Google OAuth keys
+Configure `SUPABASE_SECRET_KEY` only on the server for the trusted vault-throttle
+and telemetry RPCs introduced by spec071. This credential bypasses RLS; never
+prefix it with `NEXT_PUBLIC_`, expose it in browser code, or use it for financial
+queries. The RPC facade keeps its client private. Missing configuration or failed
+throttle RPCs prevent unlock; telemetry remains best-effort.
 
-# 3. Generate auth secret
-npx auth secret
+For Google login, enable the Google provider in Supabase Auth and configure the
+Supabase redirect allowlist for the app's `/auth/callback` URL (locally,
+`http://localhost:3000/auth/callback`). Email/password login uses an existing
+Supabase Auth account. There is no development authentication bypass.
 
-# 4. Set up database
-npx prisma db push
-npx prisma generate
-
-# 5. Start dev server
+```powershell
 pnpm dev
 ```
 
-Dev server runs at `http://localhost:3000` with Turbopack.
+Open `http://localhost:3000`. Sign in, then unlock your financial vault with your
+six-digit PIN. The browser derives the encryption key; the server seals it in an
+HttpOnly session cookie to encrypt and decrypt financial payloads. Keep your PIN
+safe: it protects the financial vault independently of your login account.
 
-In development, a "Dev login (bypass auth)" button appears on the login page — no Google OAuth setup needed for local work.
+## Environment variables
 
-## Project Structure
+See [.env.example](.env.example) for the placeholder template.
 
-```
+| Variable                               | Required | Purpose                                                                       |
+| -------------------------------------- | -------- | ----------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Yes      | Supabase project URL                                                          |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes      | Public Supabase publishable key                                               |
+| `SESSION_SECRET`                       | Yes      | Random secret sealing vault session cookies                                   |
+| `SUPABASE_SECRET_KEY`                  | Yes      | Server-only trusted throttle and telemetry RPC access; bypasses RLS           |
+| `ADMIN_EMAILS`                         | No       | Comma-separated allowlist for the telemetry admin page; blank disables access |
+
+`NEXT_PUBLIC_*` values are embedded in the browser build. Supply the intended
+public values before building. Keep `SESSION_SECRET` server-side and private.
+
+Deploy spec071's two forward SQL migrations, the server-only configuration and
+the matching application together. Do not deploy old application code against
+the revoked RPC grants. Household migration preflight stops on conflicting
+memberships instead of deleting data. Existing key cookies are rejected by the
+bound envelope format, so users must unlock again; encrypted records and PIN
+derivation remain unchanged. Production migration execution requires separate
+owner review and the local SQL checks described in spec071.
+
+## Project structure
+
+```text
 src/
-├── auth.ts                  # NextAuth config (providers, callbacks, PrismaAdapter)
-├── proxy.ts                 # Route protection (cookie-based session check)
-├── app/
-│   ├── layout.tsx           # Root layout (fonts, ThemeProvider, Providers, Toaster)
-│   ├── (public)/            # Public pages (home, login)
-│   ├── dashboard/           # Authenticated pages
-│   │   ├── assets/          # Asset snapshots & charts
-│   │   ├── equity/          # Equity trade tracking
-│   │   ├── salary/          # Salary & tax planning
-│   │   └── expenses/        # Expense tracking
-│   └── api/auth/            # NextAuth route handlers
-├── components/
-│   ├── layout/              # Navbar, Footer, Providers, ThemeProvider
-│   ├── ui/                  # shadcn/ui primitives
-│   └── widgets/             # Composed reusable components
-├── features/
-│   ├── auth/                # LoginCard, LoginButton, SignOutButton
-│   ├── assets/              # Asset management feature
-│   ├── equity/              # Equity trading feature
-│   └── salary/              # Salary tracking feature
-├── integrations/            # Third-party API clients
-└── lib/                     # Shared utilities, constants, Prisma client
+├── app/                       # App Router pages, auth callback, HTTP edges
+│   ├── (public)/              # Storefront and login
+│   ├── dashboard/             # Authenticated pages composed from features
+│   └── api/                   # Health, telemetry, vault lifecycle
+├── features/                  # Domain actions, hooks, components, schemas, math
+├── components/                # Layout, shadcn primitives, shared widgets
+├── integrations/              # Browser/server Supabase clients
+├── lib/                       # Guards, encryption, keystores, validation, logging
+└── proxy.ts                   # Session refresh and route protection
+supabase/migrations/            # Versioned schema and RLS policies
+test/                          # Unit, action, and component regression suites
+specs/                         # Specifications and scoped audit records
 ```
 
-## Development
+## Development checks
 
-### Quality Scripts
-
-```bash
-pnpm format          # Format with Prettier
-pnpm lint            # ESLint check
-pnpm typecheck       # TypeScript check
-pnpm check           # Run all checks (format + lint + typecheck)
-pnpm test            # Run tests (Vitest)
+```powershell
+pnpm check          # Route logging, formatting, lint, typecheck
+pnpm test:ci        # Vitest suite with coverage thresholds
+pnpm test:coverage  # Coverage reporting and configured thresholds
+pnpm build         # Production build
+pnpm check:harness # Read-only manifest comparison; known baseline drift tracked in spec 065
 ```
 
-### Database
+Use `pnpm format` to format files and `pnpm test` for watch mode. Both `test:ci`
+and `test:coverage` require at least 81% global line, statement, function and branch
+coverage, alongside stricter security-critical file thresholds. Empty test
+discovery fails. Four test workers limit memory pressure from browser suites.
+The project verification skill and quality gates are documented in
+[AGENTS.md](AGENTS.md).
 
-```bash
-# Push schema changes to database (dev)
-npx prisma db push
+With PostgreSQL 17 installed, verify database authorization and real concurrent
+transactions in a new, disposable local cluster:
 
-# Regenerate Prisma client after schema changes
-npx prisma generate
-
-# Open Prisma Studio (database GUI)
-npx prisma studio
+```powershell
+node scripts/test-security-sql.mjs --pg-bin "C:/Program Files/PostgreSQL/17/bin" --data-dir "C:/Temp/fynfo-security-fixture" --port 55472
 ```
 
-### Adding UI Components
+The data directory must not exist. The runner uses localhost fixture roles,
+replays relevant historical schema and both security migrations, and stops the
+cluster after testing. It retains fixture data and logs for inspection and does
+not connect to the configured Supabase database or read environment files.
 
-```bash
-npx shadcn@latest add <component-name>
-```
+ESLint includes SonarJS checks for commented-out code, identical functions and
+incorrect collection-size comparisons. The existing comment convention permits
+concise explanations where required; avoid redundant narration and temporary notes.
 
-## Docker
+Add shadcn primitives using `npx shadcn@latest add <component-name>`.
 
-### Build Locally
+## Personal data export
 
-```bash
-# Production image
-docker build --target prod -t fynfo:prod .
-docker run -p 3000:3000 --env-file .env fynfo:prod
+The profile page downloads a versioned JSON export of profile, snapshots,
+expenses, salary, tax reliefs, equity trades, dividends, and planner settings.
+The server decrypts these eight personal domains while the vault is unlocked.
+Household goals and contributions are excluded. Treat the downloaded file as
+sensitive plaintext; there is currently no import/restore workflow.
 
-# Development (hot reload)
-docker build --target dev -t fynfo:dev .
-docker run -p 3000:3000 -v $(pwd):/app fynfo:dev
-```
+## Production artifact
 
-### Build and Push to Docker Hub
+`next.config.ts` configures standalone output. Build with the intended public
+Supabase settings, then prepare the standalone folder using the existing
+`pnpm build:standalone` script in a shell that supports its `cp -a` commands.
+It copies `.next/static` and `public` alongside `.next/standalone/server.js`.
+For local verification, `pnpm start:standalone` runs that server with `.env.local`;
+a deployed runtime must receive its server secrets through the host's secret
+configuration.
 
-```bash
-# One-time setup for multi-arch builds
-docker buildx create --name multiarch --use
-
-# Build for arm64 (Raspberry Pi) + amd64 and push
-./scripts/build-push.sh              # pushes :latest
-./scripts/build-push.sh v1.0.0       # pushes :v1.0.0 + :latest
-```
-
-### Deploy on Raspberry Pi
-
-On the Pi, pull and run the image:
-
-```bash
-docker pull cljiahao/fynfo:latest
-docker run -d \
-  --name fynfo \
-  --restart unless-stopped \
-  -p 3000:3000 \
-  --env-file .env \
-  cljiahao/fynfo:latest
-```
-
-Use [Watchtower](https://containrrr.dev/watchtower/) for automatic updates when you push a new image:
-
-```bash
-docker run -d \
-  --name watchtower \
-  --restart unless-stopped \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  containrrr/watchtower \
-  --cleanup \
-  --interval 300 \
-  fynfo
-```
-
-## Environment Variables
-
-| Variable               | Required | Description                                          |
-| ---------------------- | -------- | ---------------------------------------------------- |
-| `DATABASE_URL`         | Yes      | PostgreSQL connection string                         |
-| `AUTH_SECRET`          | Yes      | NextAuth secret (generate with `npx auth secret`)    |
-| `AUTH_URL`             | Yes      | App URL (e.g., `https://your-domain.com`)            |
-| `AUTH_GOOGLE_ID`       | No       | Google OAuth client ID                               |
-| `AUTH_GOOGLE_SECRET`   | No       | Google OAuth client secret                           |
-| `NEXT_PUBLIC_BASE_URL` | No       | Public app URL (defaults to `http://localhost:3000`) |
+The constitution specifies Docker as the Raspberry Pi deployment artifact.
+This checkout currently contains neither a tracked Dockerfile nor a
+`scripts/build-push.sh` implementation. Building and publishing a container needs
+those separately approved deployment artifacts; the repository does not currently
+provide the Docker commands previously described here.

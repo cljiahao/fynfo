@@ -7,7 +7,7 @@ describe('TrackEventSchema', () => {
       TrackEventSchema.safeParse({ eventType: 'page_view', path: '/' }).success
     ).toBe(true);
     expect(
-      TrackEventSchema.safeParse({ eventType: 'cta_click', path: '/dashboard' })
+      TrackEventSchema.safeParse({ eventType: 'cta_click', path: '/login' })
         .success
     ).toBe(true);
   });

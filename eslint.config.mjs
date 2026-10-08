@@ -1,6 +1,7 @@
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
 import prettier from 'eslint-config-prettier/flat';
+import sonarjs from 'eslint-plugin-sonarjs';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
 const eslintConfig = defineConfig([
@@ -8,8 +9,19 @@ const eslintConfig = defineConfig([
   ...nextTs,
   prettier,
   {
+    plugins: { sonarjs },
     rules: {
+      'sonarjs/no-commented-code': 'error',
+      'sonarjs/no-identical-functions': 'error',
+      'sonarjs/no-collection-size-mischeck': 'error',
       'no-console': ['error', { allow: ['warn', 'error'] }],
+      'no-inline-comments': [
+        'error',
+        {
+          ignorePattern:
+            '^\\s*(?:eslint-|@ts-|prettier-|(?:istanbul|c8|v8) ignore)',
+        },
+      ],
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
@@ -36,8 +48,7 @@ const eslintConfig = defineConfig([
     'build/**',
     'coverage/**',
     'next-env.d.ts',
-    // Claude Code harness hooks are tooling scripts (run by the CLI), not app
-    // code — never linted as .ps1/.sh, kept out of the app lint surface.
+    // Harness scripts have a separate permission-protected review surface.
     '.claude/**',
   ]),
 ]);

@@ -3,14 +3,14 @@ import { getHouseholdKhSession } from '@/lib/household-keystore';
 import { getVaultDekSession } from '@/lib/keystore';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-async function getDekOrThrow(): Promise<Buffer> {
-  const dek = await getVaultDekSession();
+async function getDekOrThrow(userId: string): Promise<Buffer> {
+  const dek = await getVaultDekSession(userId);
   if (!dek) throw new Error('Vault is locked. Please unlock your vault.');
   return dek;
 }
 
-async function getKhOrThrow(): Promise<Buffer> {
-  const kh = await getHouseholdKhSession();
+async function getKhOrThrow(userId: string): Promise<Buffer> {
+  const kh = await getHouseholdKhSession(userId);
   if (!kh) throw new Error('Household is locked. Please unlock.');
   return kh;
 }
@@ -31,14 +31,12 @@ export async function requireActionContext(): Promise<{
   supabase: SupabaseClient;
 }> {
   const supabase = await createSupabaseServerClient();
-  const [userId, dek] = await Promise.all([
-    getVerifiedUserId(supabase),
-    getDekOrThrow(),
-  ]);
+  const userId = await getVerifiedUserId(supabase);
+  const dek = await getDekOrThrow(userId);
   return { userId, dek, supabase };
 }
 
-// For actions that only need auth + DB (deletes, non-encrypted data)
+// For non-financial metadata requiring identity without a key session.
 export async function requireDbContext(): Promise<{
   userId: string;
   supabase: SupabaseClient;
@@ -57,9 +55,7 @@ export async function requireHouseholdContext(): Promise<{
   supabase: SupabaseClient;
 }> {
   const supabase = await createSupabaseServerClient();
-  const [userId, kh] = await Promise.all([
-    getVerifiedUserId(supabase),
-    getKhOrThrow(),
-  ]);
+  const userId = await getVerifiedUserId(supabase);
+  const kh = await getKhOrThrow(userId);
   return { userId, kh, supabase };
 }

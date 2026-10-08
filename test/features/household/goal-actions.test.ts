@@ -174,6 +174,12 @@ describe('goal-actions — deleteGoal', () => {
     await deleteGoal('g1');
     expect(fake.calls.from).toContain('household_goals');
     expect(fake.calls.delete).toBe(1);
+    expect(
+      fake.calls.queries.find(
+        (query) =>
+          query.table === 'household_goals' && query.operation === 'delete'
+      )?.eq
+    ).toEqual([{ column: 'id', value: 'g1' }]);
   });
 
   it('surfaces an opaque error on a delete failure', async () => {

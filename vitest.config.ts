@@ -16,26 +16,21 @@ export default defineConfig({
   test: {
     globals: false,
     environment: 'node',
-    passWithNoTests: true,
+    maxWorkers: 4,
+    passWithNoTests: false,
     include: ['test/**/*.{test,spec}.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
       include: ['src/**/*.ts', 'src/**/*.tsx'],
       exclude: ['**/*.test.ts', '**/*.d.ts', '**/index.ts'],
-      // Enforced on `pnpm test:coverage`. Global is a low floor that prevents
-      // regression below today's baseline (most UI is still untested pending
-      // the jsdom/RTL decision); ratchet up as coverage grows. The security
-      // core + the server-action layer are gated per-file to keep the
-      // zero-knowledge + encrypt-on-write contracts locked down.
-      // Re-baselined after spec 037 (full action-layer coverage): all-files
-      // lines ~37 / stmts ~36 / funcs ~25 / branches ~25. Every server-action
-      // file is now per-file gated.
+      // Global floors require more than 80% coverage across the source tree.
+      // Per-file gates protect cryptography and server-action boundaries.
       thresholds: {
-        lines: 33,
-        statements: 33,
-        functions: 22,
-        branches: 22,
+        lines: 81,
+        statements: 81,
+        functions: 81,
+        branches: 81,
         'src/lib/crypto.ts': {
           lines: 100,
           statements: 100,

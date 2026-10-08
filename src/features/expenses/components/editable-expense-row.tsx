@@ -18,7 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { CalendarIcon, Trash2, Users, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { generateId, resolveSplitConfirm } from '../lib/utils';
 import type { ExpenseData, ExpenseSplitData } from '../types';
@@ -61,6 +61,12 @@ export function EditableRow({
   const splitSelectOpenRef = useRef(false);
   const skipNextBlurRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    },
+    []
+  );
 
   const update = (patch: Partial<ExpenseData>) => {
     setData((prev) => ({ ...prev, ...patch }));

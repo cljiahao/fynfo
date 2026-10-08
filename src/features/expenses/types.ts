@@ -22,7 +22,8 @@ export interface ExpenseSplitData {
 
 export interface ExpenseData {
   id: string;
-  date: string; // ISO string
+  // ISO string
+  date: string;
   type: ExpenseType;
   item: string;
   info: string;
