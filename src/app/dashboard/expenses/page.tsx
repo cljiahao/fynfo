@@ -1,5 +1,6 @@
 'use client';
 
+import { DashboardError } from '@/components/layout/dashboard-error';
 import { PageHeader } from '@/components/widgets';
 import {
   ExpenseChart,
@@ -11,9 +12,10 @@ import {
 import { ExpensesSkeleton } from './expenses-skeleton';
 
 export default function ExpensesPage() {
-  const { data: expenses, isLoading } = useExpenses();
+  const { data: expenses, isLoading, isError, refetch } = useExpenses();
 
   if (isLoading) return <ExpensesSkeleton />;
+  if (isError) return <DashboardError reset={() => void refetch()} />;
 
   return (
     <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
