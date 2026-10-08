@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { DashboardNavbar } from '@/components/layout/dashboard-navbar';
+import { SiteFooter } from '@/components/layout/site-footer';
 import { PaginationControls } from '@/components/widgets/pagination-controls';
 import {
   cleanup,
@@ -18,6 +19,23 @@ afterEach(() => {
 });
 
 describe('dashboard navigation', () => {
+  it.each([
+    ['Dashboard', '/dashboard'],
+    ['Assets', '/dashboard/assets'],
+    ['Salary', '/dashboard/salary'],
+    ['Equity', '/dashboard/equity'],
+    ['Expenses', '/dashboard/expenses'],
+    ['Household', '/dashboard/household'],
+  ])('links %s to its matching page', (name, href) => {
+    render(<DashboardNavbar />);
+    expect(screen.getByRole('link', { name }).getAttribute('href')).toBe(href);
+  });
+  it('provides a real help destination in the footer', () => {
+    render(<SiteFooter />);
+    expect(
+      screen.getByRole('link', { name: 'Help' }).getAttribute('href')
+    ).toBe('/#faq');
+  });
   it('opens the mobile menu and closes it after selecting a destination', async () => {
     render(<DashboardNavbar userMenu={<button>Fixture account</button>} />);
     expect(

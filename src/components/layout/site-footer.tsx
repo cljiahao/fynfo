@@ -11,7 +11,7 @@ interface SiteFooterProps {
   tone?: FooterTone;
 }
 
-const defaultLinks: LinkItem[] = [{ label: 'Contact Us', href: '#' }];
+const DEFAULT_LINKS: LinkItem[] = [{ label: 'Help', href: '/#faq' }];
 
 const TONES: Record<FooterTone, { footer: string; text: string }> = {
   app: { footer: 'bg-card border-t', text: 'text-muted-foreground' },
@@ -20,7 +20,7 @@ const TONES: Record<FooterTone, { footer: string; text: string }> = {
 
 export function SiteFooter({
   creditText = 'Fynfo - Personal Finance Tracker',
-  links = defaultLinks,
+  links = DEFAULT_LINKS,
   tone = 'app',
 }: SiteFooterProps) {
   const styles = TONES[tone];

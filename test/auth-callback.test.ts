@@ -18,6 +18,8 @@ describe('auth callback redirects', () => {
     '//evil.example',
     '/\\evil.example',
     'https://evil.example',
+    '/\n/evil.example',
+    '/\u007f/evil.example',
   ])(
     'rejects external redirect target %s after code exchange',
     async (next) => {
@@ -50,5 +52,16 @@ describe('auth callback redirects', () => {
     expect(response.headers.get('location')).toBe(
       'https://fynfo.example/login?error=auth_callback_failed'
     );
+  });
+
+  it('returns to login without exchanging a missing code', async () => {
+    exchange.mockClear();
+    const response = await GET(
+      new NextRequest('https://fynfo.example/auth/callback')
+    );
+    expect(response.headers.get('location')).toBe(
+      'https://fynfo.example/login?error=auth_callback_failed'
+    );
+    expect(exchange).not.toHaveBeenCalled();
   });
 });
