@@ -1,11 +1,11 @@
 ---
 id: '082'
 area: audit
-status: owner-authorized
+status: shipped
 created: 2026-10-09
 author: Codex
-shipped:
-impl_pr:
+shipped: 2026-10-09
+impl_pr: https://github.com/cljiahao/fynfo/pull/14
 constitution_satisfies: ['§2.4', '§2.5', '§4', '§7.4']
 ---
 

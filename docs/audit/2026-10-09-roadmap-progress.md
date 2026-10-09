@@ -160,3 +160,33 @@ CI/preview checks as89009a7c7750caa0217cfed7ba9c53612735e539. Production readine
 is owner-reported; no production records or credentials were accessed. Batch B
 starts with investigating snapshot stale-edit protection and safe failed-save
 handling; concrete schema approval remains required before implementation.
+
+## Snapshot draft preservation — spec082
+
+Dirty snapshot forms now retain month/account/amount edits across history and
+individual-query refreshes. Untouched cached editors still refresh, and explicit
+navigation initializes the intended new/existing context. RHF useWatch replaces
+the existing compiler-incompatible watch calls without a suppression. No layout,
+schema, dependency, crypto or protected files changed.
+
+Both draft-loss regressions failed before the fix. The full synthetic suite and
+unchanged pre-push hooks pass115files/889tests:92.92%lines,92.66%statements,
+90.17%functions,87.69%branches; stricter floors unchanged. Four workers reproduced
+two existing expense timeouts; two workers passed the identical suite with
+unchanged assertions, timeouts and isolation. This is a measured host comparison,
+not a universal speed claim. Second review corrected untouched-cache freshness
+and checked explicit context changes, subscriptions, totals and README/comments.
+PR14 merged after all required CI/preview checks were green on13f9ed5, as
+19a6122be3434d9a7adcbc313ae78e0b74519ac2 on2026-10-09.
+
+Clarence separately approved spec083 implementation after this merge; production
+SQL execution remains owner-only and requires distinct readiness confirmation.
+Read-only contract review found the delete/recreate ABA case: different parents
+can share month/revision1. The proposed addendum requires original parent ID plus
+revision in compare-save/delete calls, adding no further column. Its concrete
+owner decision is pending under constitution §8.3; no083implementation has begun.
+Research supports SELECT FOR UPDATE's current-row comparison under READ COMMITTED,
+text casts for lossless counters and returned expected errors for Server Actions:
+[PostgreSQL17](https://www.postgresql.org/docs/17/transaction-iso.html),
+[PostgREST column casting](https://docs.postgrest.org/en/stable/references/api/tables_views.html#casting-columns),
+[Next.js expected errors](https://nextjs.org/docs/app/getting-started/error-handling).
