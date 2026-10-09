@@ -6,12 +6,13 @@ import { ArrowDown, ArrowUp, ArrowUpDown, PiggyBank } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ttmDistributionsSGD, yieldOnCost } from '../lib/dividend-metrics';
 import { computeHoldings } from '../lib/holdings';
+import { finiteProduct, validExchangeRate } from '../lib/valuation';
 import type { DividendData, EquityTradeData } from '../types';
 
 interface YieldOnCostTableProps {
   trades: EquityTradeData[];
   dividends: DividendData[];
-  usdSgdRate: number;
+  usdSgdRate: number | null;
   // ISO date
   asOf: string;
 }
@@ -38,21 +39,57 @@ export function YieldOnCostTable({
   };
 
   const rows = useMemo(() => {
+    const end = new Date(asOf).getTime();
+    const start = new Date(asOf);
+    start.setFullYear(start.getFullYear() - 1);
     const base = computeHoldings(trades)
       .map((h) => {
-        const ttm = ttmDistributionsSGD(dividends, h.ticker, usdSgdRate, asOf);
-        return { ticker: h.ticker, ttm, yoc: yieldOnCost(ttm, h) };
+        const relevant = dividends.filter(
+          (dividend) =>
+            dividend.ticker.toUpperCase() === h.ticker &&
+            new Date(dividend.date).getTime() > start.getTime() &&
+            new Date(dividend.date).getTime() <= end
+        );
+        if (relevant.length === 0) return { ticker: h.ticker, ttm: 0, yoc: 0 };
+        const requiresRate =
+          h.market === 'US' ||
+          relevant.some(
+            (dividend) =>
+              dividend.ticker.toUpperCase() === h.ticker &&
+              dividend.currency === 'USD'
+          );
+        if (requiresRate && !validExchangeRate(usdSgdRate))
+          return { ticker: h.ticker, ttm: null, yoc: null };
+        const rate = usdSgdRate ?? 1;
+        const ttm = ttmDistributionsSGD(relevant, h.ticker, rate, asOf);
+        const costBasis =
+          h.market === 'US' ? finiteProduct(h.costBasis, rate) : h.costBasis;
+        if (
+          !Number.isFinite(ttm) ||
+          costBasis === null ||
+          finiteProduct(costBasis, h.shares) === null
+        )
+          return { ticker: h.ticker, ttm: null, yoc: null };
+        const yoc = yieldOnCost(ttm, { ...h, costBasis });
+        return {
+          ticker: h.ticker,
+          ttm,
+          yoc:
+            Number.isFinite(yoc) && finiteProduct(yoc, 100) !== null
+              ? yoc
+              : null,
+        };
       })
-      .filter((r) => r.ttm > 0);
+      .filter((row) => row.ttm === null || row.ttm > 0);
 
     const getValue = (r: (typeof base)[number]): string | number => {
       switch (sortKey) {
         case 'ticker':
           return r.ticker;
         case 'income':
-          return r.ttm;
+          return r.ttm ?? -1;
         case 'yield':
-          return r.yoc;
+          return r.yoc ?? -1;
       }
     };
 
@@ -120,9 +157,11 @@ export function YieldOnCostTable({
         {rows.map((r) => (
           <tr key={r.ticker} className="border-b last:border-0">
             <td className="py-2 font-medium">{r.ticker}</td>
-            <td className="py-2 text-right tabular-nums">{formatSGD(r.ttm)}</td>
+            <td className="py-2 text-right tabular-nums">
+              {r.ttm === null ? 'Calculation unavailable' : formatSGD(r.ttm)}
+            </td>
             <td className="text-gain py-2 text-right font-semibold tabular-nums">
-              {(r.yoc * 100).toFixed(2)}%
+              {r.yoc === null ? '—' : `${(r.yoc * 100).toFixed(2)}%`}
             </td>
           </tr>
         ))}

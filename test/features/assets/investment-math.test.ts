@@ -88,17 +88,17 @@ describe('computeMarketEquity', () => {
         changePercent: 0,
       },
     };
-    const r = computeMarketEquity(holdings, prices);
+    const r = computeMarketEquity(holdings, prices, 1.3);
     expect(r.sgEquity).toBe(400);
-    expect(r.usEquity).toBe(1000);
-    expect(r.totalEquity).toBe(1400);
+    expect(r.usEquity).toBe(1300);
+    expect(r.totalEquity).toBe(1700);
   });
 
-  it('treats missing prices as 0', () => {
+  it('withholds missing prices instead of substituting zero', () => {
     const holdings: Holding[] = [
       holding({ ticker: 'X', market: 'SG', shares: 10 }),
     ];
-    expect(computeMarketEquity(holdings, undefined).sgEquity).toBe(0);
+    expect(computeMarketEquity(holdings, undefined).sgEquity).toBeNull();
   });
 });
 
@@ -187,3 +187,13 @@ describe('computeInvestmentBreakdown', () => {
 function floorHRef(v: number): number {
   return Math.floor(v / 100) * 100;
 }
+
+it('requires real FX for combined equity and rejects converted overflow', () => {
+  const rows = [holding({ ticker: 'AAPL', market: 'US', shares: 5 })];
+  const prices = { AAPL: { price: 200, currency: 'USD' } };
+  expect(computeMarketEquity(rows, prices).usEquity).toBeNull();
+  expect(computeMarketEquity(rows, prices).totalEquity).toBeNull();
+  expect(
+    computeMarketEquity(rows, prices, Number.MAX_VALUE).usEquity
+  ).toBeNull();
+});

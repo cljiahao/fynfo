@@ -8,8 +8,13 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import {
+  finiteProduct,
+  useExchangeRate,
+  useStockPrices,
+  validExchangeRate,
+} from '@/features/equity';
 import { useTrades } from '@/features/equity/hooks/use-equity';
-import { useStockPrices } from '@/features/equity/hooks/use-prices';
 import { computeHoldings } from '@/features/equity/lib/holdings';
 import { getMarket } from '@/features/equity/lib/ticker-map';
 import { formatSGD } from '@/lib/utils/currency';
@@ -35,7 +40,7 @@ interface InvestmentBreakdownProps {
   emergencyFundGoal: number;
   warChestGoal: number;
   snapshot?: SnapshotData;
-  onBudgetsChange?: (budgets: MarketBudgets) => void;
+  onBudgetsChange?: (budgets: MarketBudgets | null) => void;
 }
 
 const CASH_ALLOC_KEY = 'fynfo-cash-allocation';
@@ -48,15 +53,25 @@ export function InvestmentBreakdown({
   snapshot,
   onBudgetsChange,
 }: InvestmentBreakdownProps) {
-  const { data: trades } = useTrades();
+  const { data: trades, isError: tradesError } = useTrades();
 
   // useMemo justified: iterates all trades to aggregate holdings by market
   const holdings = useMemo(() => computeHoldings(trades ?? []), [trades]);
 
   const heldTickers = holdings.map((h) => h.ticker);
-  const { data: prices } = useStockPrices(heldTickers);
+  const { data: prices, isError: pricesError } = useStockPrices(heldTickers);
+  const { data: exchangeRate, isError: rateError } = useExchangeRate(
+    'USD',
+    'SGD'
+  );
+  const rate =
+    !rateError && validExchangeRate(exchangeRate) ? exchangeRate : null;
 
-  const { sgEquity, usEquity } = computeMarketEquity(holdings, prices);
+  const { sgEquity, usEquity } = computeMarketEquity(
+    holdings,
+    pricesError ? undefined : prices,
+    rate
+  );
 
   const [ratios, setRatios] = useState(() =>
     loadLocal(RATIOS_KEY, { rsp: 30, us: 20, sg: 50 })
@@ -123,10 +138,15 @@ export function InvestmentBreakdown({
         bonds: currentBonds,
         emergencyFundGoal,
         warChestGoal,
-        sgEquity,
-        usEquity,
+        sgEquity: sgEquity ?? 0,
+        usEquity: usEquity ?? 0,
         sgSpent,
-        usSpent,
+        usSpent:
+          usSpent === 0
+            ? 0
+            : rate === null
+              ? 0
+              : (finiteProduct(usSpent, rate) ?? 0),
       }),
     [
       investmentAmount,
@@ -140,12 +160,23 @@ export function InvestmentBreakdown({
       usEquity,
       sgSpent,
       usSpent,
+      rate,
     ]
   );
 
+  const estimatesReady =
+    !tradesError &&
+    trades !== undefined &&
+    sgEquity !== null &&
+    usEquity !== null &&
+    (usSpent === 0 ||
+      (rate !== null && finiteProduct(usSpent, rate) !== null)) &&
+    Object.values(budgets).every((market) =>
+      Object.values(market).every(Number.isFinite)
+    );
   useEffect(() => {
-    onBudgetsChange?.(budgets);
-  }, [budgets, onBudgetsChange]);
+    onBudgetsChange?.(estimatesReady ? budgets : null);
+  }, [budgets, estimatesReady, onBudgetsChange]);
 
   if (investmentAmount <= 0) return null;
 
@@ -157,7 +188,7 @@ export function InvestmentBreakdown({
         label: 'SG',
         quarterly: sgQuarterly,
         spent: sgSpent,
-        equity: sgEquity,
+        equity: sgEquity ?? 0,
         target: sgTarget,
         available: sgAvailable,
         deployPct: sgDeployPct,
@@ -168,8 +199,13 @@ export function InvestmentBreakdown({
       market: {
         label: 'US',
         quarterly: usQuarterly,
-        spent: usSpent,
-        equity: usEquity,
+        spent:
+          usSpent === 0
+            ? 0
+            : rate === null
+              ? 0
+              : (finiteProduct(usSpent, rate) ?? 0),
+        equity: usEquity ?? 0,
         target: usTarget,
         available: usAvailable,
         deployPct: usDeployPct,
@@ -189,7 +225,7 @@ export function InvestmentBreakdown({
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Warning banner — top for visibility */}
-          {hasUndeployed && qDaysLeft <= 30 && (
+          {estimatesReady && hasUndeployed && qDaysLeft <= 30 && (
             <div className="border-warning/30 bg-warning-subtle text-warning-strong rounded-md border p-3 text-xs">
               <p className="font-semibold">
                 {qDaysLeft} days left in {qLabel}
@@ -203,17 +239,33 @@ export function InvestmentBreakdown({
           )}
 
           {/* SG & US Market Cards */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            {markets.map((m) => (
-              <MarketDeploymentCard
-                key={m.market.label}
-                market={m.market}
-                qLabel={qLabel}
-                qDaysLeft={qDaysLeft}
-                cashAllocPct={m.cashAllocPct}
-              />
-            ))}
-          </div>
+          {!estimatesReady && (
+            <p role="status" className="text-warning text-sm">
+              Investment targets unavailable until trade history, quotes and
+              exchange rates are complete.
+            </p>
+          )}
+          {estimatesReady &&
+            (usSpent !== 0 ||
+              holdings.some((holding) => holding.market === 'US')) && (
+              <p className="text-muted-foreground text-sm">
+                Deployment figures are SGD estimates using the current USD
+                exchange rate, including past quarter spending.
+              </p>
+            )}
+          {estimatesReady && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {markets.map((m) => (
+                <MarketDeploymentCard
+                  key={m.market.label}
+                  market={m.market}
+                  qLabel={qLabel}
+                  qDaysLeft={qDaysLeft}
+                  cashAllocPct={m.cashAllocPct}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Two columns: Category Ratios | Deployable Cash */}
           <div className="grid gap-6 sm:grid-cols-2">

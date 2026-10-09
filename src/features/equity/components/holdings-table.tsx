@@ -6,13 +6,19 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/utils/currency';
 import { Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useExchangeRate, useStockPrices } from '../hooks/use-prices';
 import { computeHoldings, type Holding } from '../lib/holdings';
+import {
+  finiteProduct,
+  holdingPrice,
+  marketValue,
+  validExchangeRate,
+  type ValuationQuote,
+} from '../lib/valuation';
 import type { EquityTradeData } from '../types';
 
 interface HoldingsTableProps {
@@ -30,9 +36,9 @@ function MarketTable({
   rate,
 }: {
   holdings: Holding[];
-  prices: Record<string, { price: number }> | undefined;
+  prices: Record<string, ValuationQuote> | undefined;
   displayCurrency: 'SGD' | 'USD';
-  rate: number;
+  rate: number | null;
 }) {
   const sorted = [...holdings].sort((a, b) => a.ticker.localeCompare(b.ticker));
 
@@ -49,32 +55,46 @@ function MarketTable({
       </thead>
       <tbody>
         {sorted.map((h) => {
-          const price = prices?.[h.ticker]?.price ?? 0;
-          const winLose =
-            h.avgBuyPrice > 0
+          const price = holdingPrice(h, prices);
+          const rawWinLose =
+            h.avgBuyPrice > 0 && price !== null
               ? ((price - h.avgBuyPrice) / h.avgBuyPrice) * 100
-              : 0;
+              : null;
+          const winLose =
+            rawWinLose !== null && Number.isFinite(rawWinLose)
+              ? rawWinLose
+              : null;
 
           return (
             <tr key={h.ticker} className="border-b last:border-0">
               <td className="py-2 font-mono font-medium">{h.ticker}</td>
               <td className="py-2 text-center tabular-nums">
-                {price > 0
-                  ? formatCurrency(price * rate, displayCurrency)
+                {price !== null && rate !== null
+                  ? finiteProduct(price, rate) === null
+                    ? '—'
+                    : formatCurrency(price * rate, displayCurrency)
                   : '-'}
               </td>
               <td className="py-2 text-center tabular-nums">
                 {h.shares.toLocaleString()}
               </td>
               <td className="py-2 text-center tabular-nums">
-                {formatCurrency(h.avgBuyPrice * rate, displayCurrency)}
+                {rate === null
+                  ? '—'
+                  : finiteProduct(h.avgBuyPrice, rate) === null
+                    ? '—'
+                    : formatCurrency(h.avgBuyPrice * rate, displayCurrency)}
               </td>
               <td
                 className={`py-2 text-center font-medium tabular-nums ${
-                  winLose >= 0 ? 'text-gain' : 'text-loss'
+                  winLose === null
+                    ? ''
+                    : winLose >= 0
+                      ? 'text-gain'
+                      : 'text-loss'
                 }`}
               >
-                {price > 0
+                {price !== null && rate !== null && winLose !== null
                   ? `${winLose >= 0 ? '▲' : '▼'} ${formatPct(winLose)}`
                   : '-'}
               </td>
@@ -99,12 +119,12 @@ function MarketCard({
   currencyToggle,
 }: {
   title: string;
-  total: number;
+  total: number | null;
   holdings: Holding[];
-  prices: Record<string, { price: number }> | undefined;
+  prices: Record<string, ValuationQuote> | undefined;
   pricesLoading: boolean;
   displayCurrency: 'SGD' | 'USD';
-  rate: number;
+  rate: number | null;
   expanded: boolean;
   onToggle: () => void;
   currencyToggle?: React.ReactNode;
@@ -112,37 +132,41 @@ function MarketCard({
   const accordionValue = expanded ? title : '';
 
   return (
-    <Accordion
-      type="single"
-      collapsible
-      value={accordionValue}
-      onValueChange={() => onToggle()}
-    >
-      <AccordionItem value={title} className="rounded-lg border">
-        <AccordionTrigger className="px-6 hover:no-underline">
-          <div className="flex w-full items-center gap-3">
-            <span className="text-lg font-semibold">{title}</span>
-            {currencyToggle}
-            <span className="text-muted-foreground text-sm font-normal">
-              {formatCurrency(total, displayCurrency)}
-              {pricesLoading && (
-                <Loader2 className="ml-2 inline size-3 animate-spin" />
-              )}
-            </span>
-          </div>
-        </AccordionTrigger>
-        <AccordionContent className="!px-0 pb-0">
-          <div className="overflow-x-auto px-6 pb-6">
-            <MarketTable
-              holdings={holdings}
-              prices={prices}
-              displayCurrency={displayCurrency}
-              rate={rate}
-            />
-          </div>
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+    <div className="space-y-2">
+      {currencyToggle}
+      <Accordion
+        type="single"
+        collapsible
+        value={accordionValue}
+        onValueChange={() => onToggle()}
+      >
+        <AccordionItem value={title} className="rounded-lg border">
+          <AccordionTrigger className="px-6 hover:no-underline">
+            <div className="flex w-full items-center gap-3">
+              <span className="text-lg font-semibold">{title}</span>
+              <span className="text-muted-foreground text-sm font-normal">
+                {total === null
+                  ? 'Prices or exchange rate unavailable'
+                  : formatCurrency(total, displayCurrency)}
+                {pricesLoading && (
+                  <Loader2 className="ml-2 inline size-3 animate-spin" />
+                )}
+              </span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="!px-0 pb-0">
+            <div className="overflow-x-auto px-6 pb-6">
+              <MarketTable
+                holdings={holdings}
+                prices={prices}
+                displayCurrency={displayCurrency}
+                rate={rate}
+              />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </div>
   );
 }
 
@@ -150,9 +174,12 @@ export function HoldingsTable({ trades }: HoldingsTableProps) {
   // useMemo justified: aggregates all trades into net holdings per ticker
   const holdings = useMemo(() => computeHoldings(trades), [trades]);
   const heldTickers = holdings.map((h) => h.ticker);
-  const { data: prices, isLoading: pricesLoading } =
-    useStockPrices(heldTickers);
-  const { data: usdToSgd } = useExchangeRate('USD', 'SGD');
+  const {
+    data: prices,
+    isLoading: pricesLoading,
+    isError: pricesError,
+  } = useStockPrices(heldTickers);
+  const { data: usdToSgd, isError: rateError } = useExchangeRate('USD', 'SGD');
 
   const [expanded, setExpanded] = useState(false);
   const [usDisplayCurrency, setUsDisplayCurrency] = useState<'SGD' | 'USD'>(
@@ -162,14 +189,15 @@ export function HoldingsTable({ trades }: HoldingsTableProps) {
   const sgHoldings = holdings.filter((h) => h.market === 'SG');
   const usHoldings = holdings.filter((h) => h.market === 'US');
 
-  const usRate = usDisplayCurrency === 'USD' ? 1 : (usdToSgd ?? 0);
+  const usRate =
+    usDisplayCurrency === 'USD'
+      ? 1
+      : !rateError && validExchangeRate(usdToSgd)
+        ? usdToSgd
+        : null;
 
-  const sgTotal = sgHoldings.reduce((s, h) => {
-    return s + h.shares * (prices?.[h.ticker]?.price ?? 0);
-  }, 0);
-  const usTotal = usHoldings.reduce((s, h) => {
-    return s + h.shares * (prices?.[h.ticker]?.price ?? 0);
-  }, 0);
+  const sgTotal = pricesError ? null : marketValue(sgHoldings, prices);
+  const usTotal = pricesError ? null : marketValue(usHoldings, prices);
 
   const toggle = () => setExpanded((p) => !p);
 
@@ -191,7 +219,11 @@ export function HoldingsTable({ trades }: HoldingsTableProps) {
       {usHoldings.length > 0 && (
         <MarketCard
           title="US Stocks"
-          total={usTotal * usRate}
+          total={
+            usTotal === null || usRate === null
+              ? null
+              : finiteProduct(usTotal, usRate)
+          }
           holdings={usHoldings}
           prices={prices}
           pricesLoading={pricesLoading}
@@ -200,26 +232,19 @@ export function HoldingsTable({ trades }: HoldingsTableProps) {
           expanded={expanded}
           onToggle={toggle}
           currencyToggle={
-            <span
-              role="button"
-              tabIndex={0}
-              className={cn(
-                buttonVariants({ variant: 'outline', size: 'sm' }),
-                'h-6 px-2 text-xs'
-              )}
-              onClick={(e) => {
-                e.stopPropagation();
-                setUsDisplayCurrency((c) => (c === 'USD' ? 'SGD' : 'USD'));
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.stopPropagation();
-                  setUsDisplayCurrency((c) => (c === 'USD' ? 'SGD' : 'USD'));
-                }
-              }}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 justify-self-start text-xs"
+              title="Switch US holdings display currency. SGD uses the current exchange-rate estimate."
+              onClick={() =>
+                setUsDisplayCurrency((currency) =>
+                  currency === 'USD' ? 'SGD' : 'USD'
+                )
+              }
             >
               {usDisplayCurrency}
-            </span>
+            </Button>
           }
         />
       )}

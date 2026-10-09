@@ -59,6 +59,13 @@ The dashboard's monthly review combines recorded gross income, your share of
 all expense categories and exact-month snapshot changes. It does not infer net
 savings, investment returns or zero activity from missing records.
 
+Investment quotes must include a reported price and currency; missing or mismatched
+quotes leave valuation and return estimates unavailable rather than becoming zero.
+SGD and USD portfolio amounts are shown separately. Capital return estimates exclude
+dividends and currency movements, and require usable dated cash flows and a verified
+solver result. Optional SGD conversions require an actual exchange rate. Converted
+historical income and spending use the current rate as a planning estimate, not the
+payment-date rate. Query refresh time does not establish the provider quote's age.
 Shared expense saves reject allocations exceeding the bill at cent precision.
 Equal splits distribute remainder cents in person order, with your share last
 when included. The dialog shows your actual remainder even in “Paid for” mode;

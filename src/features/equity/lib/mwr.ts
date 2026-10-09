@@ -71,3 +71,42 @@ export function buildCashFlows(
   flows.sort((a, b) => a.date.getTime() - b.date.getTime());
   return flows;
 }
+
+/** Reject solver guesses when timing, signed flows or the solved NPV cannot establish a return. */
+export function verifiedIRR(cashFlows: CashFlow[]): number | null {
+  if (
+    cashFlows.length < 2 ||
+    !cashFlows.some((flow) => flow.amount < 0) ||
+    !cashFlows.some((flow) => flow.amount > 0)
+  )
+    return null;
+  let first = Infinity;
+  let last = -Infinity;
+  for (const flow of cashFlows) {
+    const time = flow.date.getTime();
+    if (!Number.isFinite(time)) return null;
+    first = Math.min(first, time);
+    last = Math.max(last, time);
+  }
+  if (!Number.isFinite(first) || !Number.isFinite(last) || last <= first)
+    return null;
+  const result = computeIRR(cashFlows);
+  const rate = result / 100;
+  if (!Number.isFinite(result) || rate <= -1) return null;
+  let residual = 0;
+  let scale = 0;
+  for (const flow of cashFlows) {
+    const years =
+      (flow.date.getTime() - first) / (365.25 * 24 * 60 * 60 * 1000);
+    const discounted = flow.amount / Math.pow(1 + rate, years);
+    if (!Number.isFinite(discounted)) return null;
+    residual += discounted;
+    scale += Math.abs(discounted);
+  }
+  return Number.isFinite(scale) &&
+    scale > 0 &&
+    Number.isFinite(residual) &&
+    Math.abs(residual) <= scale * 0.00000001
+    ? result
+    : null;
+}
