@@ -90,7 +90,7 @@ export async function getExpenses(): Promise<ExpenseData[]> {
 
 export async function upsertExpense(data: ExpenseData): Promise<void> {
   parseOrThrow(expenseDataSchema, data, 'expense.upsert.input');
-  const { userId, dek, supabase } = await requireActionContext();
+  const { dek, supabase } = await requireActionContext();
 
   const [encItem, encInfo, encAmount] = await Promise.all([
     encryptPayload(data.item, dek),
@@ -101,39 +101,25 @@ export async function upsertExpense(data: ExpenseData): Promise<void> {
   const encSplits = await Promise.all(
     (data.splitType === 'shared' ? data.splits : []).map(async (s) => ({
       id: randomUUID(),
-      expense_id: data.id,
       person: s.person,
       amount: await encryptPayload(s.amount.toString(), dek),
       settled: s.settled,
     }))
   );
 
-  const { error: expErr } = await supabase.from('expense_records').upsert({
-    id: data.id,
-    user_id: userId,
-    date: new Date(data.date).toISOString(),
-    type: data.type,
-    item: encItem,
-    info: encInfo,
-    amount: encAmount,
-    split_type: data.splitType,
-    updated_at: new Date().toISOString(),
+  const { error } = await supabase.rpc('replace_expense_record', {
+    p_record: {
+      id: data.id,
+      date: new Date(data.date).toISOString(),
+      type: data.type,
+      item: encItem,
+      info: encInfo,
+      amount: encAmount,
+      split_type: data.splitType,
+    },
+    p_splits: encSplits,
   });
-
-  throwIfSupabaseError(expErr, 'expense upsert');
-
-  const { error: deleteErr } = await supabase
-    .from('expense_splits')
-    .delete()
-    .eq('expense_id', data.id);
-  throwIfSupabaseError(deleteErr, 'expense splits delete');
-
-  if (encSplits.length > 0) {
-    const { error: splitErr } = await supabase
-      .from('expense_splits')
-      .insert(encSplits);
-    throwIfSupabaseError(splitErr, 'expense splits insert');
-  }
+  throwIfSupabaseError(error, 'expense save');
 }
 
 export async function deleteExpense(id: string): Promise<void> {

@@ -6,6 +6,7 @@ import { decryptNumber, decryptOptionalString } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
+import { YYYY_MM } from '@/lib/zod-utils';
 import { randomUUID } from 'crypto';
 import { snapshotFormSchema } from '../schemas';
 import type { SnapshotData } from '../types';
@@ -108,7 +109,10 @@ export async function upsertSnapshot(
   originalId?: string
 ): Promise<void> {
   parseOrThrow(snapshotFormSchema, data, 'snapshot.upsert.input');
-  const { userId, dek, supabase } = await requireActionContext();
+  if (originalId !== undefined) {
+    parseOrThrow(YYYY_MM, originalId, 'snapshot.original-month');
+  }
+  const { dek, supabase } = await requireActionContext();
 
   const validEntries = data.entries.filter((e) => e.amount > 0);
   const encEntries = await Promise.all(
@@ -120,59 +124,13 @@ export async function upsertSnapshot(
     }))
   );
 
-  let snapshotId: string;
-
-  if (originalId) {
-    // Preserve the parent ID referenced by saved entries; month collisions
-    // are rejected by UNIQUE(user_id, month).
-    const { error: renameErr, data: renamedData } = await supabase
-      .from('monthly_snapshots')
-      .update({
-        month: data.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', userId)
-      .eq('month', originalId)
-      .select('id')
-      .single();
-
-    throwIfSupabaseError(renameErr, 'snapshot rename');
-    snapshotId = renamedData.id;
-  } else {
-    const { error: snapErr, data: snapData } = await supabase
-      .from('monthly_snapshots')
-      .upsert(
-        {
-          id: randomUUID(),
-          month: data.id,
-          user_id: userId,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'user_id, month',
-        }
-      )
-      .select('id')
-      .single();
-
-    throwIfSupabaseError(snapErr, 'snapshot upsert');
-    snapshotId = snapData.id;
-  }
-
-  const { error: deleteErr } = await supabase
-    .from('asset_entries')
-    .delete()
-    .eq('snapshot_id', snapshotId);
-  throwIfSupabaseError(deleteErr, 'asset_entries delete');
-
-  if (encEntries.length > 0) {
-    const { error: insErr } = await supabase
-      .from('asset_entries')
-      .insert(
-        encEntries.map((entry) => ({ ...entry, snapshot_id: snapshotId }))
-      );
-    throwIfSupabaseError(insErr, 'asset_entries insert');
-  }
+  const { error } = await supabase.rpc('replace_asset_snapshot', {
+    p_month: data.id,
+    p_original_month: originalId ?? null,
+    p_new_id: randomUUID(),
+    p_entries: encEntries,
+  });
+  throwIfSupabaseError(error, 'snapshot save');
 }
 
 export async function deleteSnapshot(id: string): Promise<void> {
