@@ -6,6 +6,7 @@ import { useChartData } from '@/features/assets/hooks/use-chart-data';
 import type { SnapshotData } from '@/features/assets/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -51,6 +52,133 @@ beforeEach(() => {
   external.deleteSnapshot.mockResolvedValue(undefined);
 });
 afterEach(cleanup);
+
+it('preserves a new draft when background snapshot history changes', async () => {
+  external.getSnapshots.mockResolvedValue([snapshot]);
+  const { client } = mount(<SnapshotForm />);
+  await screen.findByRole('button', { name: 'Save Snapshot' });
+  const month = screen.getByLabelText('Select Month') as HTMLInputElement;
+  const account = screen.getAllByPlaceholderText(
+    'Account name'
+  )[0] as HTMLInputElement;
+  const amount = screen.getAllByRole('spinbutton')[0] as HTMLInputElement;
+  fireEvent.change(month, { target: { value: '2026-03' } });
+  fireEvent.change(account, { target: { value: 'Draft account' } });
+  fireEvent.change(amount, { target: { value: '123' } });
+  await act(async () => {
+    client.setQueryData(
+      ['snapshots'],
+      [
+        {
+          ...snapshot,
+          id: '2026-02',
+          entries: [
+            { category: 'savings', account: 'Refreshed account', amount: 999 },
+          ],
+        },
+      ]
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  expect(
+    (screen.getByLabelText('Select Month') as HTMLInputElement).value
+  ).toBe('2026-03');
+  expect(
+    (screen.getAllByPlaceholderText('Account name')[0] as HTMLInputElement)
+      .value
+  ).toBe('Draft account');
+  expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe(
+    '123'
+  );
+});
+
+it('preserves an edited draft when the individual snapshot refreshes', async () => {
+  external.getSnapshot.mockResolvedValue(snapshot);
+  const { client } = mount(<SnapshotForm editId="2026-01" />);
+  await screen.findByRole('button', { name: 'Update Snapshot' });
+  fireEvent.change(screen.getAllByRole('spinbutton')[0], {
+    target: { value: '123' },
+  });
+  await act(async () => {
+    client.setQueryData(['snapshots', '2026-01'], {
+      ...snapshot,
+      entries: [
+        { category: 'savings', account: 'Refreshed account', amount: 999 },
+      ],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe(
+    '123'
+  );
+  expect(
+    (screen.getAllByPlaceholderText('Account name')[0] as HTMLInputElement)
+      .value
+  ).toBe('Bank');
+});
+
+it('initializes each explicitly selected editor context even after a dirty draft', async () => {
+  external.getSnapshots.mockResolvedValue([snapshot]);
+  external.getSnapshot.mockImplementation(async (id: string) => ({
+    id,
+    entries: [
+      {
+        category: 'savings',
+        account: id,
+        amount: id === '2026-01' ? 100 : 200,
+      },
+    ],
+  }));
+  const view = mount(<SnapshotForm editId="2026-01" />);
+  await screen.findByRole('button', { name: 'Update Snapshot' });
+  fireEvent.change(screen.getAllByRole('spinbutton')[0], {
+    target: { value: '123' },
+  });
+  const open = (editId?: string) =>
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <SnapshotForm editId={editId} />
+      </QueryClientProvider>
+    );
+  open('2026-02');
+  await waitFor(() =>
+    expect(screen.getAllByRole('spinbutton')[0]).toHaveProperty('value', '200')
+  );
+  expect(screen.getAllByPlaceholderText('Account name')[0]).toHaveProperty(
+    'value',
+    '2026-02'
+  );
+  open();
+  await waitFor(() =>
+    expect(screen.getAllByRole('spinbutton')[0]).toHaveProperty('value', '')
+  );
+  expect(screen.getAllByPlaceholderText('Account name')[0]).toHaveProperty(
+    'value',
+    'Bank'
+  );
+  open('2026-01');
+  await waitFor(() =>
+    expect(screen.getAllByRole('spinbutton')[0]).toHaveProperty('value', '100')
+  );
+});
+
+it('refreshes an untouched editor when fresh data replaces cached values', async () => {
+  external.getSnapshot.mockResolvedValue(snapshot);
+  const { client } = mount(<SnapshotForm editId="2026-01" />);
+  await screen.findByRole('button', { name: 'Update Snapshot' });
+  await act(async () => {
+    client.setQueryData(['snapshots', '2026-01'], {
+      ...snapshot,
+      entries: [{ category: 'savings', account: 'Fresh account', amount: 999 }],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  expect(screen.getAllByRole('spinbutton')[0]).toHaveProperty('value', '999');
+  expect(screen.getAllByPlaceholderText('Account name')[0]).toHaveProperty(
+    'value',
+    'Fresh account'
+  );
+});
 
 it('aggregates categories and limits chart history without modifying the input', () => {
   const records = [{ ...snapshot, id: '2025-12' }, snapshot];

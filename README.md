@@ -88,6 +88,9 @@ missing RPCs reject saves without falling back to partial writes. Same-record
 saves remain last-writer-wins; this does not provide conflict detection or a
 durable retry ledger. Relief replacements require READ COMMITTED isolation.
 RPC arrays accept up to 5,000 rows, with each JSON argument limited to 1 MiB.
+Snapshot editors refresh untouched fields from background queries while
+preserving dirty drafts. Navigating to a different record loads that record.
+This protects draft input but does not yet detect stale database edits.
 
 ## Environment variables
 
@@ -164,6 +167,7 @@ and concurrent first and existing snapshot, expense and relief replacements.
 ESLint includes SonarJS checks for commented-out code, identical functions and
 incorrect collection-size comparisons. The existing comment convention permits
 concise explanations where required; avoid redundant narration and temporary notes.
+Vitest uses two workers to limit CPU/memory contention during DOM and crypto tests.
 
 Add shadcn primitives using `npx shadcn@latest add <component-name>`.
 

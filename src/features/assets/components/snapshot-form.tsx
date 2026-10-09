@@ -16,8 +16,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useEffect, useRef } from 'react';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants';
 import {
@@ -50,30 +50,7 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
 
   const defaultMonth = format(new Date(), 'yyyy-MM');
   const emptyAmount = '' as unknown as number;
-
-  // Build initial entries: pre-fill account names from the latest snapshot
-  function buildInitialEntries() {
-    const latest = allSnapshots?.[allSnapshots.length - 1];
-    if (latest?.entries.length) {
-      const entries = latest.entries.map((e) => ({
-        category: e.category,
-        account: e.account,
-        amount: emptyAmount,
-      }));
-      // Ensure at least one row per category
-      for (const cat of CATEGORIES) {
-        if (!entries.some((e) => e.category === cat)) {
-          entries.push({ category: cat, account: '', amount: emptyAmount });
-        }
-      }
-      return entries;
-    }
-    return CATEGORIES.map((cat) => ({
-      category: cat,
-      account: '',
-      amount: emptyAmount,
-    }));
-  }
+  const initializedFor = useRef<string | null>(null);
 
   const form = useForm<SnapshotFormValues>({
     resolver: zodResolver(snapshotFormSchema),
@@ -92,29 +69,38 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
     name: 'entries',
   });
 
-  const selectedMonth = form.watch('id');
+  const selectedMonth = useWatch({ control: form.control, name: 'id' });
+  const currentEntries = useWatch({ control: form.control, name: 'entries' });
+  const isDirty = form.formState.isDirty;
   const isDuplicate = !!allSnapshots?.some(
     (s) => s.id === selectedMonth && s.id !== editId
   );
 
-  // Pre-fill from latest snapshot for new entries
+  // Refresh untouched editors; preserve dirty values until explicit navigation.
   useEffect(() => {
-    if (!editId && allSnapshots) {
-      form.reset({
-        id: defaultMonth,
-        entries: buildInitialEntries(),
-      });
+    if (
+      editId ||
+      !allSnapshots ||
+      (initializedFor.current === 'new' && isDirty)
+    )
+      return;
+    const latest = allSnapshots[allSnapshots.length - 1];
+    const entries = (latest?.entries ?? []).map((e) => ({
+      category: e.category,
+      account: e.account,
+      amount: emptyAmount,
+    }));
+    for (const cat of CATEGORIES) {
+      if (!entries.some((e) => e.category === cat)) {
+        entries.push({ category: cat, account: '', amount: emptyAmount });
+      }
     }
-    // Intentional limited deps: prefill must fire only when allSnapshots loads or
-    // editId flips. `form` (stable RHF ref) and buildInitialEntries (new identity
-    // each render) are omitted on purpose — including them would re-run form.reset
-    // and clobber in-progress user edits. Justified per specs/fix/030.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allSnapshots, editId]);
+    initializedFor.current = 'new';
+    form.reset({ id: defaultMonth, entries });
+  }, [allSnapshots, editId, form, defaultMonth, emptyAmount, isDirty]);
 
-  // Load existing data when editing
   useEffect(() => {
-    if (existing) {
+    if (editId && existing && (initializedFor.current !== editId || !isDirty)) {
       const existingEntries = existing.entries.map((e) => ({
         category: e.category,
         account: e.account,
@@ -129,12 +115,13 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
           });
         }
       }
+      initializedFor.current = editId;
       form.reset({
         id: existing.id,
         entries: existingEntries,
       });
     }
-  }, [existing, form]);
+  }, [existing, editId, form, emptyAmount, isDirty]);
 
   function addRow(category: AssetCategory) {
     append({ category, account: '', amount: '' as unknown as number });
@@ -143,14 +130,12 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
   function getRowsForCategory(category: AssetCategory) {
     return fields
       .map((field, idx) => ({ field, idx }))
-      .filter(
-        ({ idx }) => form.getValues(`entries.${idx}.category`) === category
-      );
+      .filter(({ idx }) => currentEntries[idx]?.category === category);
   }
 
   function getCategoryTotal(category: AssetCategory) {
     return getRowsForCategory(category).reduce((sum, { idx }) => {
-      const val = form.watch(`entries.${idx}.amount`);
+      const val = currentEntries[idx]?.amount;
       return sum + (Number(val) || 0);
     }, 0);
   }
