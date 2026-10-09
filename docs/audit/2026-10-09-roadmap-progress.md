@@ -13,7 +13,7 @@ when the roadmap is completed; do not use it to bypass pending scoped approvals.
 | Profile readiness and opaque optional-read failures                         | Merged/deployed in PR7                           | New failed-read tests proved red against prior profile/planner actions; missing rows remain null                                                                       |
 | Monthly financial review with sources and exact-month asset comparison      | Merged/deployed in PR7                           | Gross income explicitly before CPF/tax; no inferred savings rate; impossible shared splits hide spending total                                                         |
 | Complete histories and export reads                                         | Flat and nested merged in PR9/PR10               | Separate parent/child pages; bounded household ID filters; fixtures over1000rows; point-in-time backup remains pending                                                 |
-| Atomic saves, concurrent edit conflicts, retry idempotency                  | Pending concrete migration proposal              | Snapshot/expense/relief child replacement needs transaction and revision contract; scoped migration approval before executable migration changes                       |
+| Atomic saves, concurrent edit conflicts, retry idempotency                  | Draft spec077; approval pending                  | Snapshot/expense/relief child replacement needs transaction and revision contract; scoped migration approval before executable migration changes                       |
 | Quote/FX availability and financial rule accuracy                           | Pending                                          | Price currency/date and source status, mixed-currency cost basis and official tax/CPF fixtures; no silent defaults or advice                                           |
 | Dashboard latency measurement/aggregation                                   | Pending                                          | Unlock-to-ready request/decryption timings using synthetic fixtures; no production speed claim from reduced rendering work alone                                       |
 | Synthetic browser workflows                                                 | Pending                                          | Reuse available tooling first; new browser dependency/CI edits require separately scoped approval                                                                      |
@@ -113,7 +113,8 @@ This preserves ordinary successful saves and empty-list clearing. Full isolated
 gates pass111files/855tests:92.90%lines,92.67%statements,90.14%functions and
 87.44%branches with stricter floors unchanged. Second review checked validation,
 encryption ordering, owner/year scope, consumer failure handling and README.
-CI/preview checks remain required before merge. Database insertion failures and
+PR11 merged on2026-10-09 after all CI/preview checks passed as
+9d7f5a456a837be516727d064eaef0780e51da9c. Database insertion failures and
 concurrent writers still require the separate transaction contract in draft
 spec077. Scoped owner approval was requested for that additive migration and
 its callers; implementation and production execution have not occurred.

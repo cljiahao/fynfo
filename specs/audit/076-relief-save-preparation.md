@@ -1,6 +1,8 @@
 ---
 id: '076'
-status: implementing
+status: shipped
+shipped: 2026-10-09
+impl_pr: https://github.com/cljiahao/fynfo/pull/11
 created: 2026-10-09
 author: Codex
 ---
@@ -76,4 +78,5 @@ Spec077 is a draft proposal only. Its invoker/owner/RLS contract and transaction
 rollback behavior were researched with primary Supabase/PostgREST/PostgreSQL
 documentation. Migration implementation approval was requested separately; no
 SQL, RPC caller, service-role financial access or production operation occurred.
-CI and preview checks remain required before merge of this ordinary remediation.
+PR11 merged on2026-10-09 after all CI and preview checks passed, as
+9d7f5a456a837be516727d064eaef0780e51da9c. Spec077 remains draft and unimplemented.
