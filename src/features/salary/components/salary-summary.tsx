@@ -77,7 +77,6 @@ function SummaryColumn({
         <p className="text-muted-foreground text-sm">{subtitle}</p>
       </CardHeader>
       <CardContent className="space-y-1">
-        {/* Income */}
         <p className="text-muted-foreground pb-1 text-xs font-semibold tracking-wide uppercase">
           Income
         </p>
@@ -90,7 +89,6 @@ function SummaryColumn({
 
         <Separator className="my-2" />
 
-        {/* Deductions (CPF only) */}
         <p className="text-muted-foreground pb-1 text-xs font-semibold tracking-wide uppercase">
           Deductions
         </p>
@@ -103,7 +101,6 @@ function SummaryColumn({
 
         <Separator className="my-2" />
 
-        {/* Tax */}
         <div className="flex items-center gap-2">
           <p className="text-muted-foreground pb-1 text-xs font-semibold tracking-wide uppercase">
             Tax
@@ -129,7 +126,7 @@ function SummaryColumn({
             <AccordionContent className="!px-0 pt-1 pb-0">
               {summary.isNonResident ? (
                 <Row
-                  label="Non-resident (flat 22%)"
+                  label="Non-resident employment: higher of 15% or resident rates"
                   value="No personal reliefs"
                   variant="muted"
                 />
@@ -156,7 +153,7 @@ function SummaryColumn({
                     />
                   ))}
                   <Row
-                    label="Total Tax Reliefs"
+                    label="Requested reliefs (excluding CPF)"
                     value={`-${formatSGD(summary.taxReliefs)}`}
                     variant="muted"
                   />
@@ -185,7 +182,6 @@ function SummaryColumn({
 
         <Separator className="my-2" />
 
-        {/* Net */}
         <Row
           label="Net (after CPF + Tax)"
           value={formatSGD(summary.netAfterCpfAndTax)}
@@ -271,6 +267,12 @@ export function SalarySummary({ records }: SalarySummaryProps) {
           onOpenReliefs={() => setReliefDialogOpen(true)}
         />
       </div>
+
+      <p className="text-muted-foreground mt-3 text-xs">
+        Estimates use a fixed 20% employee CPF model, not age or PR-stage rates.
+        Resident personal reliefs, including CPF, are capped at SGD 80,000. Tax
+        is before rebates, eligible deductions and special exemptions.
+      </p>
 
       <TaxReliefsDialog
         open={reliefDialogOpen}

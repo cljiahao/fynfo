@@ -59,6 +59,14 @@ The dashboard's monthly review combines recorded gross income, your share of
 all expense categories and exact-month snapshot changes. It does not infer net
 savings, investment returns or zero activity from missing records.
 
+Salary tax estimates use the calendar income year (assessment in the next year),
+the higher of 15% or resident rates for non-resident employment, and the resident
+SGD 80,000 personal relief cap including CPF. They are before rebates, eligible
+deductions and special exemptions. CPF remains a fixed 20% employee model;
+citizenship/PR eligibility, age tiers, monthly rounding and historical intra-year
+ceiling changes are not modelled. These are planning estimates, not a filing or
+payroll calculation.
+
 ## Environment variables
 
 See [.env.example](.env.example) for the placeholder template.

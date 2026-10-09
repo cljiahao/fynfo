@@ -2,7 +2,9 @@ import {
   CPF_ANNUAL_CEILING,
   CPF_EMPLOYEE_RATE,
   CPF_MONTHLY_CEILING,
+  HISTORICAL_TAX_BRACKETS,
   NON_RESIDENT_RATE,
+  PERSONAL_RELIEF_CAP,
   TAX_BRACKETS,
 } from '../constants';
 
@@ -41,13 +43,21 @@ export function computeAutoReliefs(
   };
 }
 
-export function calculateTax(chargeableIncome: number): number {
+// Without a calendar income year, use the current resident rate table.
+export function calculateTax(
+  chargeableIncome: number,
+  incomeYear?: number
+): number {
   if (chargeableIncome <= 0) return 0;
 
   let tax = 0;
   let prev = 0;
 
-  for (const bracket of TAX_BRACKETS) {
+  const brackets =
+    incomeYear !== undefined && incomeYear < 2023
+      ? HISTORICAL_TAX_BRACKETS
+      : TAX_BRACKETS;
+  for (const bracket of brackets) {
     const taxable = Math.min(chargeableIncome, bracket.upTo) - prev;
     if (taxable <= 0) break;
     tax += taxable * bracket.rate;
@@ -125,15 +135,20 @@ export function calculateTaxSummary(
     ? 0
     : earnedIncomeRelief + nsmanRelief + additionalReliefs;
 
-  const chargeableIncome = Math.max(grossAnnual - totalCpf - taxReliefs, 0);
+  // CPF shares the overall relief cap, introduced in YA2018 (income year2017).
+  const reliefCap = year >= 2017 ? PERSONAL_RELIEF_CAP : Infinity;
+  const allowedReliefs = isNonResident
+    ? 0
+    : Math.min(totalCpf + taxReliefs, reliefCap);
+  const chargeableIncome = Math.max(grossAnnual - allowedReliefs, 0);
 
   let taxPayable: number;
   if (isNonResident) {
     const flatTax = grossAnnual * NON_RESIDENT_RATE;
-    const progressiveTax = calculateTax(Math.max(grossAnnual - totalCpf, 0));
+    const progressiveTax = calculateTax(chargeableIncome, year);
     taxPayable = Math.max(flatTax, progressiveTax);
   } else {
-    taxPayable = calculateTax(chargeableIncome);
+    taxPayable = calculateTax(chargeableIncome, year);
   }
 
   const effectiveRate = grossAnnual > 0 ? taxPayable / grossAnnual : 0;

@@ -110,7 +110,8 @@ function TaxReliefsDialogInner({
 
         {isNonResident ? (
           <p className="text-muted-foreground py-4 text-center text-sm">
-            Non-resident flat rate 22% applies — no personal reliefs.
+            Non-resident employment uses the higher of 15% or resident rates,
+            without personal reliefs.
           </p>
         ) : (
           <TooltipProvider delayDuration={200}>
@@ -168,6 +169,10 @@ function TaxReliefsDialogInner({
                 <span>Total Tax Reliefs</span>
                 <span>{formatSGD(grandTotal)}</span>
               </div>
+              <p className="text-muted-foreground text-xs">
+                The SGD 80,000 personal relief cap includes CPF. These requested
+                reliefs exclude CPF; the estimate applies the combined cap.
+              </p>
 
               {/* Confirm */}
               <div className="flex justify-end">

@@ -8,10 +8,10 @@ when the roadmap is completed; do not use it to bypass pending scoped approvals.
 
 | Work                                                                        | Status                                           | Next verification or dependency                                                                                                                                        |
 | --------------------------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| First-time/returning vault distinction, confirmed creation, truthful stages | Implemented in batch A; integration pending      | Existing race-safe POST remains authoritative; authenticated no-store metadata exposes only initialized state                                                          |
-| Skippable first-record prompt and optional reserve disclosure               | Implemented in batch A; integration pending      | Synthetic dismiss/remount, collapsed controls and existing workflow regressions                                                                                        |
-| Profile readiness and opaque optional-read failures                         | Implemented in batch A; integration pending      | New failed-read tests proved red against prior profile/planner actions; missing rows remain null                                                                       |
-| Monthly financial review with sources and exact-month asset comparison      | Implemented in batch B; integration pending      | Gross income explicitly before CPF/tax; no inferred savings rate; impossible shared splits hide spending total                                                         |
+| First-time/returning vault distinction, confirmed creation, truthful stages | Merged/deployed in PR7                           | Existing race-safe POST remains authoritative; authenticated no-store metadata exposes only initialized state                                                          |
+| Skippable first-record prompt and optional reserve disclosure               | Merged/deployed in PR7                           | Synthetic dismiss/remount, collapsed controls and existing workflow regressions                                                                                        |
+| Profile readiness and opaque optional-read failures                         | Merged/deployed in PR7                           | New failed-read tests proved red against prior profile/planner actions; missing rows remain null                                                                       |
+| Monthly financial review with sources and exact-month asset comparison      | Merged/deployed in PR7                           | Gross income explicitly before CPF/tax; no inferred savings rate; impossible shared splits hide spending total                                                         |
 | Complete histories and export reads                                         | Next hardening batch                             | Paginate top-level and nested relations; stable tie-break order; fixtures over1000rows; preserve owner RLS and opaque errors                                           |
 | Atomic saves, concurrent edit conflicts, retry idempotency                  | Pending concrete migration proposal              | Snapshot/expense/relief child replacement needs transaction and revision contract; scoped migration approval before executable migration changes                       |
 | Quote/FX availability and financial rule accuracy                           | Pending                                          | Price currency/date and source status, mixed-currency cost basis and official tax/CPF fixtures; no silent defaults or advice                                           |
@@ -57,3 +57,16 @@ or real environment files changed. Current financial formulas and historical
 pagination limitations are not marked resolved. DOM fixture tests do not replace
 a real browser viewport/accessibility walkthrough; authenticated production
 records remain excluded.
+
+## Integration and accuracy follow-up
+
+PR7 merged on2026-10-09 as d47faa7bf631f71f96bd7c079dce4e95c27a74a3 after
+all GitHub CI and preview checks passed. Vercel reported success for the merged
+commit. The umbrella roadmap remains open.
+
+Spec073 records the next reversible tax correction: non-resident employment
+uses15% or higher progressive tax without personal reliefs; modern top brackets
+start with calendar income year2023; the80000 combined personal relief cap
+includes CPF. Four regressions reproduced on original source. Fixed20% CPF,
+relief eligibility, historical intra-year ceilings and rebates remain explicit
+limitations. No citizenship/CPF eligibility is inferred from tax residency.

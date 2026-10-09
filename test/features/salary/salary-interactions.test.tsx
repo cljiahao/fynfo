@@ -87,6 +87,14 @@ describe('salary recording through real forms and queries', () => {
       await screen.findByRole('button', { name: 'Retry tax profile' })
     );
     expect(await screen.findByText('Estimated Annual')).toBeTruthy();
+    expect(
+      screen.getByText(/Estimates use a fixed 20% employee CPF model/)
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        /Resident personal reliefs, including CPF, are capped at SGD 80,000/
+      )
+    ).toBeTruthy();
     expect(screen.queryByText('private profile error')).toBeNull();
   });
   it('saves entered month and numeric salary, then closes only after the write finishes', async () => {
@@ -314,7 +322,11 @@ describe('salary calculations and relief controls', () => {
       screen.getAllByRole('button', { name: 'Relief breakdown' })[0]
     );
     expect(screen.getByText('No personal reliefs')).toBeTruthy();
-    expect(screen.getByText('Non-resident (flat 22%)')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Non-resident employment: higher of 15% or resident rates'
+      )
+    ).toBeTruthy();
   });
   it('excludes older years from YTD and annualizes only the current records', async () => {
     const year = new Date().getFullYear();
@@ -393,7 +405,9 @@ describe('salary calculations and relief controls', () => {
       />
     );
     expect(
-      await screen.findByText(/Non-resident flat rate 22% applies/)
+      await screen.findByText(
+        /Non-resident employment uses the higher of 15% or resident rates/
+      )
     ).toBeTruthy();
     expect(screen.queryByRole('checkbox')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
