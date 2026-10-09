@@ -16,7 +16,8 @@ export default defineConfig({
   test: {
     globals: false,
     environment: 'node',
-    maxWorkers: 4,
+    // Four workers caused DOM-test timeouts on the dev host (spec082).
+    maxWorkers: 2,
     passWithNoTests: false,
     include: ['test/**/*.{test,spec}.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],
     coverage: {
