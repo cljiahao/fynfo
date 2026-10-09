@@ -6,10 +6,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { formatSGD } from '@/lib/utils/currency';
 import { Plus } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 import { useSalaryYtdStats } from '../hooks/use-salary-ytd-stats';
 import { type TaxSummary } from '../lib/tax-cpf';
@@ -213,7 +216,38 @@ export function SalarySummary({ records }: SalarySummaryProps) {
     monthsRecorded,
     estSummary,
     trueSummary,
+    profileState,
+    retryProfile,
   } = useSalaryYtdStats(records, additionalReliefsTotal);
+
+  if (profileState !== 'ready') {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Tax and CPF estimates</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p
+            role={profileState === 'error' ? 'alert' : 'status'}
+            className="text-muted-foreground text-sm"
+          >
+            {profileState === 'loading'
+              ? 'Loading your tax profile…'
+              : profileState === 'error'
+                ? 'Couldn’t load your tax profile. Your income records are still available.'
+                : 'Add your birth year and confirm tax residency in Profile before viewing these estimates.'}
+          </p>
+          {profileState === 'error' ? (
+            <Button onClick={retryProfile}>Retry tax profile</Button>
+          ) : profileState === 'incomplete' ? (
+            <Button asChild>
+              <Link href={PAGE_ROUTES.PROFILE}>Complete profile</Link>
+            </Button>
+          ) : null}
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <>

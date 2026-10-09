@@ -15,16 +15,8 @@ import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { createSupabaseBrowserClient } from '@/integrations/clients/supabase';
 import { deriveKeyClient, deriveKeyLegacy } from '@/lib/client-crypto';
+import { useVaultStatus } from '../hooks/use-vault-status';
 
-const UNLOCK_MESSAGES = [
-  'Deriving encryption key…',
-  'Running 600k PBKDF2 iterations…',
-  'Verifying vault integrity…',
-  'Unlocking your dashboard…',
-] as const;
-
-const PROGRESS_DURATION_MS = 1800;
-const MESSAGE_INTERVAL_MS = 600;
 // Bound surviving-query invalidation; freshly mounted pages own their skeletons.
 const DATA_WAIT_TIMEOUT_MS = 6000;
 const LOADING_DATA_MESSAGE = 'Loading your dashboard…';
@@ -35,6 +27,7 @@ const pinSchema = z.object({
     .min(6, 'PIN must be 6 digits')
     .max(6, 'PIN must be 6 digits')
     .regex(/^\d{6}$/, 'PIN must be 6 digits'),
+  confirmation: z.string(),
 });
 
 type PinFormValues = z.infer<typeof pinSchema>;
@@ -49,11 +42,18 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
   const derivingRef = useRef<Promise<string> | null>(null);
   const userIdRef = useRef<string | null>(null);
 
-  // Progress + message state updated only from interval callbacks (not effect body).
-  const [progress, setProgress] = useState(0);
-  const [msgIndex, setMsgIndex] = useState(0);
   // Phase 2: DEK cookie set, invalidate before mounting the financial subtree.
   const [loadingData, setLoadingData] = useState(false);
+
+  const vaultStatus = useVaultStatus();
+  const vaultState =
+    vaultStatus.isFetching || vaultStatus.isPending
+      ? 'checking'
+      : vaultStatus.isError
+        ? 'error'
+        : vaultStatus.data.initialized
+          ? 'existing'
+          : 'new';
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -70,37 +70,17 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
     formState: { isSubmitting },
   } = useForm<PinFormValues>({
     resolver: zodResolver(pinSchema),
-    defaultValues: { pin: '' },
+    defaultValues: { pin: '', confirmation: '' },
   });
-
-  // Phase 1 — key derivation: animate 0→90 while submitting. Once we flip to
-  // loadingData (phase 2), this stops and the bar is pinned manually.
-  useEffect(() => {
-    if (!isSubmitting || loadingData) return;
-    const start = Date.now();
-    const timer = setInterval(() => {
-      const elapsed = Date.now() - start;
-      setProgress(Math.min(90, (elapsed / PROGRESS_DURATION_MS) * 90));
-      setMsgIndex(
-        Math.min(
-          Math.floor(elapsed / MESSAGE_INTERVAL_MS),
-          UNLOCK_MESSAGES.length - 1
-        )
-      );
-    }, 50);
-    return () => clearInterval(timer);
-  }, [isSubmitting, loadingData]);
 
   // Invalidate surviving queries before mounting the unlocked dashboard. With
   // the financial subtree unmounted, its queries fetch fresh data on mount.
   const revealWhenReady = useCallback(async () => {
     setLoadingData(true);
-    setProgress(95);
     await Promise.race([
       queryClient.invalidateQueries(),
       new Promise((resolve) => setTimeout(resolve, DATA_WAIT_TIMEOUT_MS)),
     ]);
-    setProgress(100);
     onUnlocked?.();
   }, [queryClient, onUnlocked]);
 
@@ -114,6 +94,11 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
 
   const onSubmit = useCallback(
     async (values: PinFormValues) => {
+      if (vaultState !== 'new' && vaultState !== 'existing') return;
+      if (vaultState === 'new' && values.pin !== values.confirmation) {
+        setError('confirmation', { message: 'PINs do not match.' });
+        return;
+      }
       try {
         const userId = await getUserId();
 
@@ -177,7 +162,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
         toast.error(message);
       }
     },
-    [getUserId, revealWhenReady, resetField, setError]
+    [getUserId, revealWhenReady, resetField, setError, vaultState]
   );
 
   return (
@@ -196,27 +181,45 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
           )}
         </div>
 
-        {isSubmitting && (
-          <div className="bg-muted mb-4 h-1 w-full overflow-hidden rounded-full">
-            <div
-              className="bg-brand h-full rounded-full transition-all duration-100 ease-linear"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        )}
-
         <h2 id="vault-lock-title" className="mb-2 text-2xl font-bold">
-          Vault Locked
+          {vaultState === 'new' ? 'Create your vault' : 'Vault Locked'}
         </h2>
         <p className="text-muted-foreground mb-8 min-h-[3rem] text-center">
           {isSubmitting ? (
             <span className="animate-pulse">
-              {loadingData ? LOADING_DATA_MESSAGE : UNLOCK_MESSAGES[msgIndex]}
+              {loadingData ? LOADING_DATA_MESSAGE : 'Unlocking your vault…'}
             </span>
+          ) : vaultState === 'new' ? (
+            'Choose a 6-digit PIN to protect your financial records.'
           ) : (
-            'Enter your secure 6-digit PIN to derive your encryption keys and unlock your financial dashboard.'
+            'Enter your 6-digit PIN to unlock your financial records.'
           )}
         </p>
+
+        {vaultState === 'checking' && (
+          <p role="status" className="text-muted-foreground mb-4 text-sm">
+            Checking your vault…
+          </p>
+        )}
+        {vaultState === 'error' && (
+          <div role="alert" className="mb-4 space-y-2 text-center text-sm">
+            <p>Couldn&apos;t check your vault. Retry to continue.</p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                void vaultStatus.refetch();
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        )}
+        {vaultState === 'new' && (
+          <p className="text-muted-foreground mb-4 text-sm">
+            Keep this PIN safe. Resetting your account password won&apos;t
+            recover records encrypted with a forgotten PIN.
+          </p>
+        )}
 
         <form
           ref={formRef}
@@ -240,7 +243,11 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
                   onChange={(e) => {
                     const clean = e.target.value.replace(/\D/g, '');
                     onChange(clean);
-                    if (clean.length === 6 && userIdRef.current) {
+                    if (
+                      clean.length === 6 &&
+                      userIdRef.current &&
+                      vaultState === 'existing'
+                    ) {
                       derivingRef.current = deriveKeyClient(
                         clean,
                         userIdRef.current
@@ -254,7 +261,11 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
                   aria-invalid={fieldState.invalid}
                   className="border-input bg-background py-4 text-center font-mono text-3xl tracking-[1em]"
                   autoFocus
-                  disabled={isSubmitting}
+                  disabled={
+                    isSubmitting ||
+                    vaultState === 'checking' ||
+                    vaultState === 'error'
+                  }
                 />
                 {fieldState.invalid && (
                   <FieldError
@@ -266,12 +277,47 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
             )}
           />
 
+          {vaultState === 'new' && (
+            <Controller
+              name="confirmation"
+              control={control}
+              render={({ field, fieldState }) => (
+                <div className="space-y-1">
+                  <Input
+                    {...field}
+                    type="password"
+                    aria-label="Confirm vault PIN"
+                    aria-invalid={fieldState.invalid}
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="Confirm your PIN"
+                    onChange={(event) =>
+                      field.onChange(event.target.value.replace(/\D/g, ''))
+                    }
+                    disabled={isSubmitting}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </div>
+              )}
+            />
+          )}
+
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={
+              isSubmitting ||
+              vaultState === 'checking' ||
+              vaultState === 'error'
+            }
             className="bg-brand text-brand-foreground hover:bg-brand/90 flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-semibold disabled:opacity-50"
           >
-            {isSubmitting ? 'Unlocking…' : 'Unlock Vault'}
+            {isSubmitting
+              ? 'Unlocking…'
+              : vaultState === 'new'
+                ? 'Create vault'
+                : 'Unlock Vault'}
             {!isSubmitting && <Unlock className="h-5 w-5" />}
           </Button>
         </form>

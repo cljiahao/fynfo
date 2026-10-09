@@ -69,6 +69,36 @@ async function verifyCanary(ciphertext: string, dek: Buffer): Promise<void> {
 
 const TOO_MANY = { error: 'Too many attempts. Try again later.' };
 
+export const GET = withLogging('api.vault.status', async () => {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new AppError('UNAUTHORIZED', 'Unauthorized');
+    }
+    const { data: profile, error } = await supabase
+      .from('users_profile')
+      .select('vault_check_v2')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (error) {
+      logger.error({ code: error.code }, 'failed to read vault status');
+      throw new AppError('INTERNAL', 'Vault unavailable');
+    }
+    return NextResponse.json(
+      { initialized: Boolean(profile?.vault_check_v2) },
+      { headers: { 'Cache-Control': 'private, no-store' } }
+    );
+  } catch (error) {
+    const response = handleApiError('api.vault.status', error);
+    response.headers.set('Cache-Control', 'private, no-store');
+    return response;
+  }
+});
+
 export const DELETE = withLogging('api.vault.reset', async () => {
   try {
     const supabase = await createSupabaseServerClient();

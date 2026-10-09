@@ -13,9 +13,10 @@ export async function getProfile(): Promise<ProfileData | null> {
     .from('users_profile')
     .select('*')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) return null;
+  throwIfSupabaseError(error, 'profile read');
+  if (!data) return null;
 
   return {
     birthYear: data.birth_year,

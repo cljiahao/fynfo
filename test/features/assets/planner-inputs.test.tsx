@@ -25,10 +25,19 @@ function renderInputs(overrides = {}) {
 }
 
 describe('PlannerInputs', () => {
-  it('renders the four labels (avg-expenses variant)', () => {
+  it('keeps core inputs visible and discloses reserve controls on demand', async () => {
     renderInputs();
     expect(screen.getByText('Gross Salary')).toBeInTheDocument();
     expect(screen.getByText('Avg. Expenses')).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText('Emergency Fund (months)')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Emergency fund: 3 months · War chest: 9 months')
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Adjust reserves' })
+    );
     expect(screen.getByText('Emergency Fund (months)')).toBeInTheDocument();
     expect(screen.getByText('War Chest (months)')).toBeInTheDocument();
   });

@@ -7,6 +7,7 @@ import { PageHeader, QueryContent } from '@/components/widgets';
 import type { MarketBudgets, PlannerValues } from '@/features/assets';
 import {
   calculateTotal,
+  FirstRecordPrompt,
   InvestmentAllocation,
   InvestmentBreakdown,
   SalaryPlanner,
@@ -16,6 +17,7 @@ import {
 } from '@/features/assets';
 import { useTrades } from '@/features/equity';
 import { useExpenses } from '@/features/expenses';
+import { MonthlyReview } from '@/features/review';
 import { SalarySummaryCards, useSalaryRecords } from '@/features/salary';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { Plus } from 'lucide-react';
@@ -36,8 +38,8 @@ export function DashboardOverview() {
     refetch: retrySalary,
   } = useSalaryRecords();
   const { isSuccess: settingsReady } = usePlannerSettings();
-  const { isSuccess: expensesReady } = useExpenses();
-  useTrades();
+  const { data: expenses, isSuccess: expensesReady } = useExpenses();
+  const { data: trades, isSuccess: tradesReady } = useTrades();
 
   const [plannerValues, setPlannerValues] = useState<PlannerValues>({
     investmentAmount: 0,
@@ -80,6 +82,17 @@ export function DashboardOverview() {
         }
       />
 
+      {!assetsPending &&
+        !assetsError &&
+        !salaryPending &&
+        !salaryError &&
+        expensesReady &&
+        tradesReady &&
+        snapshots?.length === 0 &&
+        salaryRecords?.length === 0 &&
+        expenses?.length === 0 &&
+        trades?.length === 0 && <FirstRecordPrompt />}
+
       {assetsPending ? (
         <SummarySkeleton label="Loading assets" />
       ) : assetsError ? (
@@ -109,6 +122,8 @@ export function DashboardOverview() {
         snapshot={latest ? snapshots?.[snapshots.length - 1] : undefined}
         onPlannerValuesChange={handlePlannerValuesChange}
       />
+
+      <MonthlyReview />
 
       <QueryContent
         ready={

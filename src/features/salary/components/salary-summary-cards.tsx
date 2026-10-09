@@ -19,6 +19,7 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
     ytdSalary,
     ytdBonus,
     estSummary,
+    profileState,
   } = useSalaryYtdStats(records);
 
   return (
@@ -41,13 +42,21 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
       />
       <StatCard
         label="Est. Tax"
-        value={formatSGDWhole(estSummary.taxPayable)}
+        value={
+          profileState === 'ready' ? formatSGDWhole(estSummary.taxPayable) : '—'
+        }
         icon={Receipt}
         tone="loss"
         hint={
-          estSummary.grossAnnual > 0
-            ? `Effective ${(estSummary.effectiveRate * 100).toFixed(1)}%`
-            : 'No records'
+          profileState === 'loading'
+            ? 'Loading tax profile'
+            : profileState === 'error'
+              ? 'Tax profile unavailable'
+              : profileState === 'incomplete'
+                ? 'Complete your profile for tax estimates'
+                : estSummary.grossAnnual > 0
+                  ? `Effective ${(estSummary.effectiveRate * 100).toFixed(1)}%`
+                  : 'No records'
         }
       />
       <StatCard
