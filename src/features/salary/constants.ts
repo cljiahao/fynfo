@@ -32,22 +32,13 @@ export const PERSONAL_RELIEF_CAP = 80000;
 // CPF employee contribution rate
 export const CPF_EMPLOYEE_RATE = 0.2;
 
-// CPF monthly ordinary wage ceiling by year
-export const CPF_MONTHLY_CEILING: Record<number, number> = {
+export const CPF_ANNUAL_WAGE_CEILING = 102_000;
+export const CPF_ORDINARY_WAGE_CEILINGS: Readonly<Record<number, number>> = {
   2023: 6300,
   2024: 6800,
   2025: 7400,
   2026: 8000,
 };
-
-// CPF annual wage ceiling by year
-export const CPF_ANNUAL_CEILING: Record<number, number> = {
-  2023: 102000,
-  2024: 102000,
-  2025: 102000,
-  2026: 102000,
-};
-
 // Additional tax relief catalog
 export const RELIEF_CATALOG: ReliefDefinition[] = [
   {

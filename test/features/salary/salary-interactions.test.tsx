@@ -88,7 +88,7 @@ describe('salary recording through real forms and queries', () => {
     );
     expect(await screen.findByText('Estimated Annual')).toBeTruthy();
     expect(
-      screen.getByText(/Estimates use a fixed 20% employee CPF model/)
+      screen.getByText(/CPF assumes age 55 and below and full employee rates/)
     ).toBeTruthy();
     expect(
       screen.getByText(
@@ -295,7 +295,7 @@ describe('salary calculations and relief controls', () => {
       screen.getByText(`No records for ${new Date().getFullYear()}`)
     ).toBeTruthy();
     expect(
-      screen.getByText('Based on 0 month(s) of actual records')
+      screen.getByText('Based on 0 recorded month(s); provisional AW ceiling')
     ).toBeTruthy();
   });
 
@@ -412,4 +412,74 @@ describe('salary calculations and relief controls', () => {
     expect(screen.queryByRole('checkbox')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
   });
+});
+
+it('calculates recorded CPF per month rather than annualising the OW ceiling', async () => {
+  const year = new Date().getFullYear();
+  mount(
+    <SalarySummary records={[{ id: `${year}-01`, salary: 20000, bonus: 0 }]} />
+  );
+  const title = await screen.findByText(`Recorded YTD (${year})`);
+  const card = title.closest('[data-slot="card"]');
+  expect(card).not.toBeNull();
+  expect(within(card as HTMLElement).getByText('-$1,600.00')).toBeTruthy();
+  expect(
+    screen.getByText(/eligibility and PR-stage rates are not established/)
+  ).toBeTruthy();
+  expect(screen.queryByText(`True Annual (${year})`)).toBeNull();
+});
+
+it('preserves gross income when the CPF rules for a future year are unsupported', async () => {
+  const year = vi.spyOn(Date.prototype, 'getFullYear').mockReturnValue(2030);
+  try {
+    mount(
+      <>
+        <SalarySummary records={[{ id: '2030-01', salary: 5000, bonus: 0 }]} />
+        <SalarySummaryCards
+          records={[{ id: '2030-01', salary: 5000, bonus: 0 }]}
+        />
+      </>
+    );
+    expect(
+      await screen.findByText('Tax and CPF estimates unavailable')
+    ).toBeTruthy();
+    expect(screen.getByText('CPF estimate unavailable')).toBeTruthy();
+    expect(screen.getByText('$60,000')).toBeTruthy();
+    expect(screen.queryByText('Infinity')).toBeNull();
+  } finally {
+    year.mockRestore();
+  }
+});
+
+it('withholds projected tax as well as recorded estimates for duplicate salary months', async () => {
+  const year = new Date().getFullYear();
+  const records = [
+    { id: `${year}-01`, salary: 5000, bonus: 0 },
+    { id: `${year}-01`, salary: 5000, bonus: 0 },
+  ];
+  mount(
+    <>
+      <SalarySummary records={records} />
+      <SalarySummaryCards records={records} />
+    </>
+  );
+  expect(
+    await screen.findByText('Tax and CPF estimates unavailable')
+  ).toBeTruthy();
+  expect(screen.getByText('CPF estimate unavailable')).toBeTruthy();
+  expect(screen.queryByText('Projected annual gross')).toBeNull();
+});
+
+it('withholds overflowing income projections rather than formatting infinity', async () => {
+  const year = new Date().getFullYear();
+  mount(
+    <SalarySummaryCards
+      records={[
+        { id: `${year}-01`, salary: Number.MAX_VALUE, bonus: Number.MAX_VALUE },
+      ]}
+    />
+  );
+  await screen.findByText('CPF estimate unavailable');
+  expect(screen.queryByText(/∞|Infinity/)).toBeNull();
+  expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
 });

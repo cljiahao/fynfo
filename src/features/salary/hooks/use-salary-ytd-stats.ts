@@ -1,4 +1,5 @@
 import { useProfile } from '@/features/profile/hooks/use-profile';
+import { estimateRecordedCpf } from '../lib/cpf-estimate';
 import {
   calculateTaxSummary,
   type TaxProfileContext,
@@ -17,8 +18,8 @@ export interface SalaryYtdStats {
   ytdBonus: number;
   estAnnualSalary: number;
   estAnnualBonus: number;
-  estSummary: TaxSummary;
-  trueSummary: TaxSummary;
+  estSummary: TaxSummary | null;
+  trueSummary: TaxSummary | null;
 }
 
 export function useSalaryYtdStats(
@@ -52,20 +53,28 @@ export function useSalaryYtdStats(
   const estAnnualBonus =
     monthsRecorded > 0 ? (ytdBonus / monthsRecorded) * 12 : 0;
 
-  const estSummary = calculateTaxSummary(
-    estAnnualSalary,
-    estAnnualBonus,
-    currentYear,
-    taxProfile,
-    additionalReliefsTotal
-  );
-  const trueSummary = calculateTaxSummary(
-    ytdSalary,
-    ytdBonus,
-    currentYear,
-    taxProfile,
-    additionalReliefsTotal
-  );
+  const recordedCpf = estimateRecordedCpf(currentYearRecords, currentYear);
+  const estSummary =
+    recordedCpf === null
+      ? null
+      : calculateTaxSummary(
+          estAnnualSalary,
+          estAnnualBonus,
+          currentYear,
+          taxProfile,
+          additionalReliefsTotal
+        );
+  const trueSummary =
+    recordedCpf === null
+      ? null
+      : calculateTaxSummary(
+          ytdSalary,
+          ytdBonus,
+          currentYear,
+          taxProfile,
+          additionalReliefsTotal,
+          recordedCpf
+        );
 
   return {
     profileState,
