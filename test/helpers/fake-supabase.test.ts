@@ -2,6 +2,26 @@ import { describe, expect, it } from 'vitest';
 import { makeFakeSupabase } from './fake-supabase';
 
 describe('fake Supabase query isolation', () => {
+  it('models an inclusive range below the server cap while counting the whole result', async () => {
+    const { client } = makeFakeSupabase({
+      selectData: [0, 1, 2, 3, 4],
+      apiMaxRows: 2,
+    });
+    const query = client.from('fixture');
+    (query.select as (columns: string, options: unknown) => unknown)('*', {
+      count: 'exact',
+    });
+    (query.range as (from: number, to: number) => unknown)(1, 4);
+    expect(await Promise.resolve(query)).toEqual({
+      data: [1, 2],
+      count: 5,
+      error: null,
+    });
+    expect(await Promise.resolve(client.from('fixture'))).toEqual({
+      data: [0, 1],
+      error: null,
+    });
+  });
   it('retains each query table when another query starts before resolution', async () => {
     const { client } = makeFakeSupabase({
       selectDataByTable: {

@@ -4,6 +4,7 @@ import { requireActionContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { decryptNumber, decryptOptionalNumber } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
+import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { equityTradeInputSchema } from '../schemas';
@@ -12,13 +13,17 @@ import type { EquityTradeData } from '../types';
 export async function getTrades(): Promise<EquityTradeData[]> {
   const { userId, dek, supabase } = await requireActionContext();
 
-  const { data, error } = await supabase
-    .from('equity_trades')
-    .select('*')
-    .eq('user_id', userId)
-    .order('date', { ascending: false });
-
-  throwIfSupabaseError(error, 'trades read');
+  const data = await readAllRows(
+    (from, to) =>
+      supabase
+        .from('equity_trades')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, to),
+    'trades read'
+  );
 
   return Promise.all(
     (data || []).map(async (t) => ({

@@ -17,6 +17,7 @@ export interface FakeSupabaseOptions {
   // Lets a multi-read action return different rows per table.
   selectDataByTable?: Record<string, unknown>;
   selectError?: { message: string; code?: string } | null;
+  apiMaxRows?: number;
   upsertError?: { message: string; code?: string } | null;
   upsertData?: unknown;
   insertError?: { message: string; code?: string } | null;
@@ -31,6 +32,7 @@ export interface FakeSupabaseQuery {
   eq: Array<{ column: string; value: unknown }>;
   in: Array<{ column: string; values: unknown }>;
   order: Array<{ column: string; options: unknown }>;
+  range?: { from: number; to: number };
 }
 
 export interface FakeSupabaseCalls {
@@ -63,16 +65,41 @@ export function makeFakeSupabase(opts: FakeSupabaseOptions = {}) {
       order: [],
     };
     calls.queries.push(query);
+    let exactCount = false;
     function selectResult() {
       const data = opts.selectDataByTable
         ? (opts.selectDataByTable[table] ?? opts.selectData ?? null)
         : (opts.selectData ?? null);
-      return { data, error: opts.selectError ?? null };
+      if (!Array.isArray(data)) {
+        return {
+          data,
+          error: opts.selectError ?? null,
+          ...(exactCount ? { count: 0 } : {}),
+        };
+      }
+      const from = query.range?.from ?? 0;
+      const requestedEnd = query.range ? query.range.to + 1 : data.length;
+      const end = Math.min(
+        requestedEnd,
+        from + (opts.apiMaxRows ?? data.length)
+      );
+      return {
+        data: data.slice(from, end),
+        error: opts.selectError ?? null,
+        ...(exactCount ? { count: data.length } : {}),
+      };
     }
 
     const builder: Record<string, unknown> = {};
     Object.assign(builder, {
-      select: () => builder,
+      select: (_columns?: string, options?: { count?: string }) => {
+        exactCount = options?.count === 'exact';
+        return builder;
+      },
+      range: (from: number, to: number) => {
+        query.range = { from, to };
+        return builder;
+      },
       eq: (column: string, value: unknown) => {
         query.eq.push({ column, value });
         return builder;

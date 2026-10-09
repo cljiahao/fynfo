@@ -4,6 +4,7 @@ import { requireActionContext } from '@/lib/action-guard';
 import { encryptPayload } from '@/lib/crypto';
 import { decryptNumber } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
+import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { salaryDataSchema } from '../schemas';
@@ -12,13 +13,17 @@ import type { SalaryData } from '../types';
 export async function getSalaryRecords(): Promise<SalaryData[]> {
   const { userId, dek, supabase } = await requireActionContext();
 
-  const { data, error } = await supabase
-    .from('salary_records')
-    .select('*')
-    .eq('user_id', userId)
-    .order('month', { ascending: true });
-
-  throwIfSupabaseError(error, 'salary read');
+  const data = await readAllRows(
+    (from, to) =>
+      supabase
+        .from('salary_records')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId)
+        .order('month', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    'salary read'
+  );
 
   return Promise.all(
     (data || []).map(async (r) => ({
