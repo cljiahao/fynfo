@@ -46,18 +46,20 @@ describe('expense-actions — getExpenses', () => {
     setSupabase({ selectData: null });
     expect(await getExpenses()).toEqual([]);
     setSupabase({
-      selectData: [
-        {
-          id: 'minimal',
-          date: '2026-10-08',
-          type: 'shopping',
-          item: null,
-          info: null,
-          amount: await encryptPayload('12', DEK),
-          split_type: 'self',
-          splits: null,
-        },
-      ],
+      selectDataByTable: {
+        expense_records: [
+          {
+            id: 'minimal',
+            date: '2026-10-08',
+            type: 'shopping',
+            item: null,
+            info: null,
+            amount: await encryptPayload('12', DEK),
+            split_type: 'self',
+          },
+        ],
+        expense_splits: [],
+      },
     });
     expect(await getExpenses()).toEqual([
       {
@@ -82,16 +84,21 @@ describe('expense-actions — getExpenses', () => {
         info: await encryptPayload('team', DEK),
         amount: await encryptPayload('40', DEK),
         split_type: 'shared',
-        splits: [
+      },
+    ];
+    setSupabase({
+      selectDataByTable: {
+        expense_records: rows,
+        expense_splits: [
           {
+            expense_id: 'exp1',
             person: 'Alice',
             amount: await encryptPayload('20', DEK),
             settled: false,
           },
         ],
       },
-    ];
-    setSupabase({ selectData: rows });
+    });
 
     const { getExpenses } =
       await import('@/features/expenses/actions/expense-actions');
@@ -303,10 +310,14 @@ describe('expense-actions — settleMonthSplits', () => {
 describe('expense-actions — getDistinctPeople', () => {
   it('dedupes and sorts split persons', async () => {
     setSupabase({
-      selectData: [
-        { splits: [{ person: 'Bob' }, { person: 'Alice' }] },
-        { splits: [{ person: 'Alice' }] },
-      ],
+      selectDataByTable: {
+        expense_splits: [
+          { person: 'Bob' },
+          { person: 'Alice' },
+          { person: 'Alice' },
+          { person: '' },
+        ],
+      },
     });
     const { getDistinctPeople } =
       await import('@/features/expenses/actions/expense-actions');

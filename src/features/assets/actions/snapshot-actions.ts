@@ -4,43 +4,72 @@ import { requireActionContext } from '@/lib/action-guard';
 import { encryptPayload } from '@/lib/crypto';
 import { decryptNumber, decryptOptionalString } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
+import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { snapshotFormSchema } from '../schemas';
 import type { SnapshotData } from '../types';
 
 type AssetEntryRow = {
+  snapshot_id: string;
   category: string;
   account: string | null;
   amount: string;
 };
 
+async function decryptEntries(entries: AssetEntryRow[], dek: Buffer) {
+  return Promise.all(
+    entries.map(async (entry) => ({
+      category: entry.category as SnapshotData['entries'][number]['category'],
+      account: await decryptOptionalString(entry.account, dek),
+      amount: await decryptNumber(entry.amount, dek),
+    }))
+  );
+}
+
 export async function getSnapshots(): Promise<SnapshotData[]> {
   const { userId, dek, supabase } = await requireActionContext();
 
-  const { data, error } = await supabase
-    .from('monthly_snapshots')
-    .select('*, entries:asset_entries(*)')
-    .eq('user_id', userId)
-    .order('month', { ascending: true });
-
-  throwIfSupabaseError(error, 'snapshots read');
-
+  const snapshots = await readAllRows<{ id: string; month: string }>(
+    (from, to) =>
+      supabase
+        .from('monthly_snapshots')
+        .select('id, month', { count: 'exact' })
+        .eq('user_id', userId)
+        .order('month', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    'snapshots read'
+  );
+  if (snapshots.length === 0) return [];
+  const entries = await readAllRows<AssetEntryRow>(
+    (from, to) =>
+      supabase
+        .from('asset_entries')
+        .select(
+          'snapshot_id, category, account, amount, parent:monthly_snapshots!inner(user_id)',
+          { count: 'exact' }
+        )
+        .eq('parent.user_id', userId)
+        .order('snapshot_id', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    'snapshot entries read'
+  );
+  const entriesBySnapshot = new Map<string, AssetEntryRow[]>();
+  for (const entry of entries) {
+    const group = entriesBySnapshot.get(entry.snapshot_id) ?? [];
+    group.push(entry);
+    entriesBySnapshot.set(entry.snapshot_id, group);
+  }
   return Promise.all(
-    (data || []).map(async (s) => {
-      const decryptedEntries = await Promise.all(
-        (s.entries || []).map(async (e: AssetEntryRow) => ({
-          category: e.category as SnapshotData['entries'][number]['category'],
-          account: await decryptOptionalString(e.account, dek),
-          amount: await decryptNumber(e.amount, dek),
-        }))
-      );
-
-      return {
-        id: s.month,
-        entries: decryptedEntries,
-      };
-    })
+    snapshots.map(async (snapshot) => ({
+      id: snapshot.month,
+      entries: await decryptEntries(
+        entriesBySnapshot.get(snapshot.id) ?? [],
+        dek
+      ),
+    }))
   );
 }
 
@@ -49,7 +78,7 @@ export async function getSnapshot(id: string): Promise<SnapshotData | null> {
 
   const { data, error } = await supabase
     .from('monthly_snapshots')
-    .select('*, entries:asset_entries(*)')
+    .select('id, month')
     .eq('user_id', userId)
     .eq('month', id)
     .maybeSingle();
@@ -57,17 +86,20 @@ export async function getSnapshot(id: string): Promise<SnapshotData | null> {
   throwIfSupabaseError(error, 'snapshot read');
   if (!data) return null;
 
-  const decryptedEntries = await Promise.all(
-    (data.entries || []).map(async (e: AssetEntryRow) => ({
-      category: e.category as SnapshotData['entries'][number]['category'],
-      account: await decryptOptionalString(e.account, dek),
-      amount: await decryptNumber(e.amount, dek),
-    }))
+  const entries = await readAllRows<AssetEntryRow>(
+    (from, to) =>
+      supabase
+        .from('asset_entries')
+        .select('snapshot_id, category, account, amount', { count: 'exact' })
+        .eq('snapshot_id', data.id)
+        .order('id', { ascending: true })
+        .range(from, to),
+    'snapshot entries read'
   );
 
   return {
     id: data.month,
-    entries: decryptedEntries,
+    entries: await decryptEntries(entries, dek),
   };
 }
 

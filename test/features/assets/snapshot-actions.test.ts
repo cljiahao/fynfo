@@ -30,18 +30,17 @@ beforeEach(() => {
 describe('snapshot-actions — getSnapshots', () => {
   it('decrypts entry account and amount on success', async () => {
     setSupabase({
-      selectData: [
-        {
-          month: '2026-03',
-          entries: [
-            {
-              category: 'savings',
-              account: await encryptPayload('DBS', DEK),
-              amount: await encryptPayload('5000', DEK),
-            },
-          ],
-        },
-      ],
+      selectDataByTable: {
+        monthly_snapshots: [{ id: 'snap-1', month: '2026-03' }],
+        asset_entries: [
+          {
+            snapshot_id: 'snap-1',
+            category: 'savings',
+            account: await encryptPayload('DBS', DEK),
+            amount: await encryptPayload('5000', DEK),
+          },
+        ],
+      },
     });
     const { getSnapshots } =
       await import('@/features/assets/actions/snapshot-actions');
@@ -81,10 +80,11 @@ describe('snapshot-actions — getSnapshot', () => {
   });
   it('decrypts a single month by id', async () => {
     setSupabase({
-      selectData: {
-        month: '2026-03',
-        entries: [
+      selectDataByTable: {
+        monthly_snapshots: { id: 'snap-1', month: '2026-03' },
+        asset_entries: [
           {
+            snapshot_id: 'snap-1',
             category: 'savings',
             account: await encryptPayload('OCBC', DEK),
             amount: await encryptPayload('8000', DEK),
