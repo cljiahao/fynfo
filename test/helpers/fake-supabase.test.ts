@@ -2,6 +2,24 @@ import { describe, expect, it } from 'vitest';
 import { makeFakeSupabase } from './fake-supabase';
 
 describe('fake Supabase query isolation', () => {
+  it('injects a later-page error on only the selected child table', async () => {
+    const { client, calls } = makeFakeSupabase({
+      selectData: [1, 2, 3],
+      selectErrorByTable: {
+        child: (from) => (from > 0 ? { message: 'late failure' } : null),
+      },
+    });
+    const child = client.from('child');
+    (child.select as (columns: string) => unknown)('id');
+    (child.range as (from: number, to: number) => unknown)(1, 2);
+    expect(await Promise.resolve(child)).toMatchObject({
+      error: { message: 'late failure' },
+    });
+    expect(await Promise.resolve(client.from('parent'))).toMatchObject({
+      error: null,
+    });
+    expect(calls.queries[0].select).toBe('id');
+  });
   it('models an inclusive range below the server cap while counting the whole result', async () => {
     const { client } = makeFakeSupabase({
       selectData: [0, 1, 2, 3, 4],

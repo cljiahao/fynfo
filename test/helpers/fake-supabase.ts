@@ -17,6 +17,10 @@ export interface FakeSupabaseOptions {
   // Lets a multi-read action return different rows per table.
   selectDataByTable?: Record<string, unknown>;
   selectError?: { message: string; code?: string } | null;
+  selectErrorByTable?: Record<
+    string,
+    (from: number) => { message: string; code?: string } | null
+  >;
   apiMaxRows?: number;
   upsertError?: { message: string; code?: string } | null;
   upsertData?: unknown;
@@ -33,6 +37,7 @@ export interface FakeSupabaseQuery {
   in: Array<{ column: string; values: unknown }>;
   order: Array<{ column: string; options: unknown }>;
   range?: { from: number; to: number };
+  select?: string;
 }
 
 export interface FakeSupabaseCalls {
@@ -67,13 +72,17 @@ export function makeFakeSupabase(opts: FakeSupabaseOptions = {}) {
     calls.queries.push(query);
     let exactCount = false;
     function selectResult() {
+      const error =
+        opts.selectErrorByTable?.[table]?.(query.range?.from ?? 0) ??
+        opts.selectError ??
+        null;
       const data = opts.selectDataByTable
         ? (opts.selectDataByTable[table] ?? opts.selectData ?? null)
         : (opts.selectData ?? null);
       if (!Array.isArray(data)) {
         return {
           data,
-          error: opts.selectError ?? null,
+          error,
           ...(exactCount ? { count: 0 } : {}),
         };
       }
@@ -85,14 +94,15 @@ export function makeFakeSupabase(opts: FakeSupabaseOptions = {}) {
       );
       return {
         data: data.slice(from, end),
-        error: opts.selectError ?? null,
+        error,
         ...(exactCount ? { count: data.length } : {}),
       };
     }
 
     const builder: Record<string, unknown> = {};
     Object.assign(builder, {
-      select: (_columns?: string, options?: { count?: string }) => {
+      select: (columns?: string, options?: { count?: string }) => {
+        query.select = columns;
         exactCount = options?.count === 'exact';
         return builder;
       },

@@ -67,11 +67,12 @@ citizenship/PR eligibility, age tiers, monthly rounding and historical intra-yea
 ceiling changes are not modelled. These are planning estimates, not a filing or
 payroll calculation.
 
-Salary, trade, dividend and tax-relief histories are paginated with stable
-ordering and exact counts, including when the API returns smaller pages.
-Failed pages or changed counts reject the read. Snapshot entries, expense splits
-and household histories still need separate pagination hardening; the current
-JSON export is not a proven point-in-time backup or restore mechanism.
+Financial histories are paginated with stable ordering and exact counts,
+including when the API returns smaller pages. Snapshot entries, expense splits
+and household contributions are paged independently from their parents.
+Failed pages or changed counts reject the read. Separate requests can still
+observe concurrent edits; JSON export is not a proven point-in-time backup or
+restore mechanism and excludes household data.
 
 ## Environment variables
 

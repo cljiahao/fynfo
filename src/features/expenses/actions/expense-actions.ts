@@ -4,29 +4,70 @@ import { requireActionContext } from '@/lib/action-guard';
 import { encryptPayload } from '@/lib/crypto';
 import { decryptNumber, decryptOptionalString } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
+import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { expenseDataSchema } from '../schemas';
 import type { ExpenseData } from '../types';
 
-type ExpenseSplitRow = { person: string; amount: string; settled: boolean };
-type ExpenseWithSplitsRow = { splits: Array<{ person: string }> };
+type ExpenseSplitRow = {
+  expense_id: string;
+  person: string;
+  amount: string;
+  settled: boolean;
+};
+type ExpenseRow = {
+  id: string;
+  date: string;
+  type: string;
+  item: string | null;
+  info: string | null;
+  amount: string;
+  split_type: string;
+};
 
 export async function getExpenses(): Promise<ExpenseData[]> {
   const { userId, dek, supabase } = await requireActionContext();
 
-  const { data, error } = await supabase
-    .from('expense_records')
-    .select(`*, splits:expense_splits(*)`)
-    .eq('user_id', userId)
-    .order('date', { ascending: false });
-
-  throwIfSupabaseError(error, 'expense read');
+  const records = await readAllRows<ExpenseRow>(
+    (from, to) =>
+      supabase
+        .from('expense_records')
+        .select('id, date, type, item, info, amount, split_type', {
+          count: 'exact',
+        })
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, to),
+    'expense read'
+  );
+  if (records.length === 0) return [];
+  const splits = await readAllRows<ExpenseSplitRow>(
+    (from, to) =>
+      supabase
+        .from('expense_splits')
+        .select(
+          'expense_id, person, amount, settled, parent:expense_records!inner(user_id)',
+          { count: 'exact' }
+        )
+        .eq('parent.user_id', userId)
+        .order('expense_id', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    'expense splits read'
+  );
+  const splitsByExpense = new Map<string, ExpenseSplitRow[]>();
+  for (const split of splits) {
+    const group = splitsByExpense.get(split.expense_id) ?? [];
+    group.push(split);
+    splitsByExpense.set(split.expense_id, group);
+  }
 
   return Promise.all(
-    (data || []).map(async (r) => {
+    records.map(async (r) => {
       const decryptedSplits = await Promise.all(
-        (r.splits || []).map(async (s: ExpenseSplitRow) => ({
+        (splitsByExpense.get(r.id) ?? []).map(async (s) => ({
           person: s.person,
           amount: await decryptNumber(s.amount, dek),
           settled: s.settled,
@@ -143,19 +184,23 @@ export async function settleMonthSplits(
 export async function getDistinctPeople(): Promise<string[]> {
   const { userId, supabase } = await requireActionContext();
 
-  const { data, error } = await supabase
-    .from('expense_records')
-    .select('splits:expense_splits(person)')
-    .eq('user_id', userId);
-
-  throwIfSupabaseError(error, 'people read');
+  const splits = await readAllRows<{ person: string }>(
+    (from, to) =>
+      supabase
+        .from('expense_splits')
+        .select('person, parent:expense_records!inner(user_id)', {
+          count: 'exact',
+        })
+        .eq('parent.user_id', userId)
+        .order('id', { ascending: true })
+        .range(from, to),
+    'people read'
+  );
 
   const peopleSet = new Set<string>();
-  data.forEach((r: ExpenseWithSplitsRow) => {
-    (r.splits || []).forEach((s) => {
-      if (s.person) peopleSet.add(s.person);
-    });
-  });
+  for (const split of splits) {
+    if (split.person) peopleSet.add(split.person);
+  }
 
   return Array.from(peopleSet).sort();
 }

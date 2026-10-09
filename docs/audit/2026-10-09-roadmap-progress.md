@@ -12,7 +12,7 @@ when the roadmap is completed; do not use it to bypass pending scoped approvals.
 | Skippable first-record prompt and optional reserve disclosure               | Merged/deployed in PR7                           | Synthetic dismiss/remount, collapsed controls and existing workflow regressions                                                                                        |
 | Profile readiness and opaque optional-read failures                         | Merged/deployed in PR7                           | New failed-read tests proved red against prior profile/planner actions; missing rows remain null                                                                       |
 | Monthly financial review with sources and exact-month asset comparison      | Merged/deployed in PR7                           | Gross income explicitly before CPF/tax; no inferred savings rate; impossible shared splits hide spending total                                                         |
-| Complete histories and export reads                                         | Flat histories implemented; nested pending       | Paginate top-level and nested relations; stable tie-break order; fixtures over1000rows; preserve owner RLS and opaque errors                                           |
+| Complete histories and export reads                                         | Flat merged; nested verification in progress     | Separate parent/child pages; bounded household ID filters; fixtures over1000rows; point-in-time backup remains pending                                                 |
 | Atomic saves, concurrent edit conflicts, retry idempotency                  | Pending concrete migration proposal              | Snapshot/expense/relief child replacement needs transaction and revision contract; scoped migration approval before executable migration changes                       |
 | Quote/FX availability and financial rule accuracy                           | Pending                                          | Price currency/date and source status, mixed-currency cost basis and official tax/CPF fixtures; no silent defaults or advice                                           |
 | Dashboard latency measurement/aggregation                                   | Pending                                          | Unlock-to-ready request/decryption timings using synthetic fixtures; no production speed claim from reduced rendering work alone                                       |
@@ -83,8 +83,22 @@ Snapshots/entries, expenses/splits, distinct people and household contributions
 remain pending. Parent pagination alone does not prove embedded-child completeness.
 Count changes or later read errors fail closed; same-count concurrent changes
 still require a transactionally consistent backup contract. No complete-export
-or speed improvement is claimed. PR/CI and full gates remain required.
+or speed improvement was claimed. PR9 merged with green CI and deployment;
+the isolated suite passed840tests with all aggregate metrics above80%.
 
 The prior tax batch shipped in PR8 on2026-10-09 with green CI and deployment.
 Its isolated suite passed824tests with92.84%lines and87.03%branches; full details
 are recorded in the shipped spec073. The broader roadmap remains open.
+
+## Nested-history remediation — spec075
+
+Parent and child queries are paged separately for snapshots, expenses and
+household goals. Personal children retain inner-join owner filtering; household
+contribution requests use bounded goal-ID lists plus existing membership RLS.
+Distinct-person suggestions page the split table with owner filtering. Original
+synthetic regressions failed on11of12cases, including125returned rows instead
+of1003. Isolated full gates pass111files/853tests:92.90%lines,92.66%statements,
+90.12%functions,87.44%branches with stricter floors unchanged. Second review
+checked query scope, child grouping, empty histories, later-page failures and
+export consumers. CI/preview checks remain required before merge. No migration
+or performance gain is claimed.

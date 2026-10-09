@@ -3,6 +3,7 @@
 import { requireHouseholdContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { throwIfSupabaseError } from '@/lib/errors';
+import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { computeGoalProgress } from '../lib/goal-progress';
@@ -30,37 +31,49 @@ interface ContributionRow {
 export async function getGoals(): Promise<HouseholdGoal[]> {
   const { userId, kh, supabase } = await requireHouseholdContext();
 
-  const { data: goalData, error: goalErr } = await supabase
-    .from('household_goals')
-    .select('id, name, target_amount, target_date, created_at')
-    .order('created_at', { ascending: false });
-  throwIfSupabaseError(goalErr, 'household goals read');
-
-  const goals = (goalData ?? []) as GoalRow[];
+  const goals = await readAllRows<GoalRow>(
+    (from, to) =>
+      supabase
+        .from('household_goals')
+        .select('id, name, target_amount, target_date, created_at', {
+          count: 'exact',
+        })
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, to),
+    'household goals read'
+  );
   if (goals.length === 0) return [];
 
-  const { data: contribData, error: contribErr } = await supabase
-    .from('household_goal_contributions')
-    .select('id, goal_id, contributor_user_id, amount, note, date')
-    .in(
-      'goal_id',
-      goals.map((g) => g.id)
-    )
-    .order('date', { ascending: false });
-  throwIfSupabaseError(contribErr, 'household contributions read');
-
   const contribByGoal = new Map<string, GoalContribution[]>();
-  for (const c of (contribData ?? []) as ContributionRow[]) {
-    const entry: GoalContribution = {
-      id: c.id,
-      amount: Number(decryptPayload(c.amount, kh)),
-      note: c.note ? decryptPayload(c.note, kh) : null,
-      date: c.date,
-      isSelf: c.contributor_user_id === userId,
-    };
-    const list = contribByGoal.get(c.goal_id) ?? [];
-    list.push(entry);
-    contribByGoal.set(c.goal_id, list);
+  // Bound UUID filters as well as returned rows to keep request URLs manageable.
+  for (let offset = 0; offset < goals.length; offset += 100) {
+    const goalIds = goals.slice(offset, offset + 100).map((goal) => goal.id);
+    const contributions = await readAllRows<ContributionRow>(
+      (from, to) =>
+        supabase
+          .from('household_goal_contributions')
+          .select('id, goal_id, contributor_user_id, amount, note, date', {
+            count: 'exact',
+          })
+          .in('goal_id', goalIds)
+          .order('date', { ascending: false })
+          .order('id', { ascending: true })
+          .range(from, to),
+      'household contributions read'
+    );
+    for (const c of contributions) {
+      const entry: GoalContribution = {
+        id: c.id,
+        amount: Number(decryptPayload(c.amount, kh)),
+        note: c.note ? decryptPayload(c.note, kh) : null,
+        date: c.date,
+        isSelf: c.contributor_user_id === userId,
+      };
+      const list = contribByGoal.get(c.goal_id) ?? [];
+      list.push(entry);
+      contribByGoal.set(c.goal_id, list);
+    }
   }
 
   return goals.map((g) => {
