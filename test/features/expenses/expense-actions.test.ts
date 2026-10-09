@@ -143,103 +143,76 @@ describe('expense-actions — upsertExpense', () => {
     ).rejects.toMatchObject({ code: 'VALIDATION' });
     expect(fake.calls.from).toHaveLength(0);
   });
-  it('stops replacement when child deletion fails', async () => {
-    const fake = setSupabase({
-      upsertData: { id: 'snap-1' },
-      selectError: { message: 'permission denied' },
-    });
-    const { upsertExpense } =
-      await import('@/features/expenses/actions/expense-actions');
-    await expect(upsertExpense(validExpense)).rejects.toThrow(
-      'expense splits delete failed'
-    );
-    expect(fake.calls.insert).toHaveLength(0);
-  });
-  it('does not delete children after a parent failure', async () => {
-    const fake = setSupabase({ upsertError: { message: 'parent failed' } });
-    const { upsertExpense } =
-      await import('@/features/expenses/actions/expense-actions');
-    await expect(upsertExpense(validExpense)).rejects.toThrow();
-    expect(fake.calls.delete).toBe(0);
-    expect(fake.calls.insert).toHaveLength(0);
-  });
-  it('prepares child ciphertext before any replacement mutation', async () => {
-    const fake = setSupabase({ upsertData: { id: 'snap-1' } });
+  it('prepares all ciphertext before any database access', async () => {
+    const fake = setSupabase();
     const encrypt = fieldCrypto.encryptPayload;
-    vi.spyOn(fieldCrypto, 'encryptPayload').mockImplementation((text, dek) => {
+    vi.spyOn(fieldCrypto, 'encryptPayload').mockImplementation((text, key) => {
       if (text === '20') throw new Error('child encryption failed');
-      return encrypt(text, dek);
+      return encrypt(text, key);
     });
     const { upsertExpense } =
       await import('@/features/expenses/actions/expense-actions');
     await expect(upsertExpense(validExpense)).rejects.toThrow(
       'child encryption failed'
     );
-    expect(fake.calls.delete).toBe(0);
-    expect(fake.calls.upsert).toHaveLength(0);
-    expect(fake.calls.insert).toHaveLength(0);
+    expect(fake.calls.rpc).toEqual([]);
+    expect(fake.calls.from).toEqual([]);
   });
-
-  it('encrypts sensitive fields and inserts encrypted splits with plaintext person', async () => {
+  it('encrypts fields and splits in one RPC without owner or child parent fields', async () => {
     const fake = setSupabase();
     const { upsertExpense } =
       await import('@/features/expenses/actions/expense-actions');
     await upsertExpense(validExpense);
-
-    const row = fake.calls.upsert[0] as {
-      item: string;
-      info: string;
-      amount: string;
-      split_type: string;
-    };
-    expect(row.item).not.toBe('Dinner');
+    expect(fake.calls.from).toEqual([]);
+    expect(fake.calls.rpc).toHaveLength(1);
+    const { name } = fake.calls.rpc[0];
+    const args = fake.calls.rpc[0].args as Record<string, unknown>;
+    expect(name).toBe('replace_expense_record');
+    const row = args.p_record as Record<string, string>;
+    expect(row.id).toBe('exp1');
+    expect(row.date).toBe('2026-06-01T00:00:00.000Z');
+    expect(row).not.toHaveProperty('user_id');
     expect(await decryptPayload(row.item, DEK)).toBe('Dinner');
+    expect(await decryptPayload(row.info, DEK)).toBe('team');
     expect(await decryptPayload(row.amount, DEK)).toBe('40');
     expect(row.split_type).toBe('shared');
-    expect(fake.calls.delete).toBe(1);
-
-    const splits = fake.calls.insert[0] as Array<{
-      person: string;
-      amount: string;
-    }>;
+    const splits = args.p_splits as Array<Record<string, unknown>>;
+    expect(splits[0]).not.toHaveProperty('expense_id');
     expect(splits[0].person).toBe('Alice');
-    expect(splits[0].amount).not.toBe('20');
-    expect(await decryptPayload(splits[0].amount, DEK)).toBe('20');
+    expect(splits[0].settled).toBe(false);
+    expect(await decryptPayload(splits[0].amount as string, DEK)).toBe('20');
   });
-
-  it('rejects invalid input before any DB call', async () => {
+  it('rejects invalid input before database access', async () => {
     const fake = setSupabase();
     const { upsertExpense } =
       await import('@/features/expenses/actions/expense-actions');
-    const invalid = { ...validExpense, amount: 0 };
-    await expect(upsertExpense(invalid)).rejects.toThrow();
-    expect(fake.calls.from).toHaveLength(0);
+    await expect(
+      upsertExpense({ ...validExpense, amount: 0 })
+    ).rejects.toMatchObject({ code: 'VALIDATION' });
+    expect(fake.calls.rpc).toEqual([]);
+    expect(fake.calls.from).toEqual([]);
   });
-
-  it('ignores stale split allocations for a self expense', async () => {
+  it('clears stale splits for a self expense', async () => {
     const fake = setSupabase();
     const { upsertExpense } =
       await import('@/features/expenses/actions/expense-actions');
     await upsertExpense({ ...validExpense, amount: 10, splitType: 'self' });
-    expect(fake.calls.insert).toHaveLength(0);
+    expect(
+      (fake.calls.rpc[0].args as Record<string, unknown>).p_splits
+    ).toEqual([]);
   });
-
-  it('surfaces an opaque error when the record upsert fails', async () => {
-    setSupabase({ upsertError: { message: 'duplicate key value' } });
+  it('fails closed with an opaque RPC error', async () => {
+    const fake = setSupabase({
+      rpcError: {
+        replace_expense_record: { message: 'private constraint details' },
+      },
+    });
     const { upsertExpense } =
       await import('@/features/expenses/actions/expense-actions');
     await expect(upsertExpense(validExpense)).rejects.toThrow(
-      'expense upsert failed'
+      'expense save failed'
     );
-  });
-
-  it('surfaces an opaque error when the splits insert fails', async () => {
-    setSupabase({ insertError: { message: 'value too long' } });
-    const { upsertExpense } =
-      await import('@/features/expenses/actions/expense-actions');
-    await expect(upsertExpense(validExpense)).rejects.toThrow(
-      'expense splits insert failed'
-    );
+    expect(fake.calls.from).toEqual([]);
   });
 });
 

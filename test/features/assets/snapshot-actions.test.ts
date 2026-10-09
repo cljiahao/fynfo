@@ -116,177 +116,95 @@ const VALID_SNAPSHOT = {
 };
 
 describe('snapshot-actions — upsertSnapshot', () => {
-  it('stops replacement when child deletion fails', async () => {
-    const fake = setSupabase({
-      upsertData: { id: 'snap-1' },
-      selectError: { message: 'permission denied' },
-    });
+  it('encrypts entries in one RPC with database-owned parent and owner fields', async () => {
+    const fake = setSupabase();
     const { upsertSnapshot } =
       await import('@/features/assets/actions/snapshot-actions');
-    await expect(upsertSnapshot(VALID_SNAPSHOT)).rejects.toThrow(
-      'asset_entries delete failed'
-    );
-    expect(fake.calls.insert).toHaveLength(0);
+    await upsertSnapshot(VALID_SNAPSHOT);
+    expect(fake.calls.from).toEqual([]);
+    expect(fake.calls.rpc).toHaveLength(1);
+    const { name } = fake.calls.rpc[0];
+    const args = fake.calls.rpc[0].args as Record<string, unknown>;
+    expect(name).toBe('replace_asset_snapshot');
+    expect(args).toMatchObject({ p_month: '2026-03', p_original_month: null });
+    expect(args).not.toHaveProperty('user_id');
+    const entries = args.p_entries as Array<Record<string, string>>;
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).not.toHaveProperty('snapshot_id');
+    expect(entries[0]).not.toHaveProperty('user_id');
+    expect(entries[0].category).toBe('savings');
+    expect(await decryptPayload(entries[0].account, DEK)).toBe('DBS');
+    expect(await decryptPayload(entries[0].amount, DEK)).toBe('5000');
   });
-  it('does not delete children after a parent failure', async () => {
-    const fake = setSupabase({ upsertError: { message: 'parent failed' } });
-    const { upsertSnapshot } =
-      await import('@/features/assets/actions/snapshot-actions');
-    await expect(upsertSnapshot(VALID_SNAPSHOT)).rejects.toThrow();
-    expect(fake.calls.delete).toBe(0);
-    expect(fake.calls.insert).toHaveLength(0);
-  });
-  it('prepares child ciphertext before any replacement mutation', async () => {
-    const fake = setSupabase({ upsertData: { id: 'snap-1' } });
+  it('prepares all ciphertext before any database access', async () => {
+    const fake = setSupabase();
     const encrypt = fieldCrypto.encryptPayload;
-    vi.spyOn(fieldCrypto, 'encryptPayload').mockImplementation((text, dek) => {
+    vi.spyOn(fieldCrypto, 'encryptPayload').mockImplementation((text, key) => {
       if (text === '5000') throw new Error('child encryption failed');
-      return encrypt(text, dek);
+      return encrypt(text, key);
     });
     const { upsertSnapshot } =
       await import('@/features/assets/actions/snapshot-actions');
     await expect(upsertSnapshot(VALID_SNAPSHOT)).rejects.toThrow(
       'child encryption failed'
     );
-    expect(fake.calls.delete).toBe(0);
-    expect(fake.calls.upsert).toHaveLength(0);
-    expect(fake.calls.insert).toHaveLength(0);
+    expect(fake.calls.rpc).toEqual([]);
+    expect(fake.calls.from).toEqual([]);
   });
-
-  it('upserts the month then encrypts entry account/amount before insert', async () => {
-    const fake = setSupabase({ upsertData: { id: 'snap-1' } });
-    const { upsertSnapshot } =
-      await import('@/features/assets/actions/snapshot-actions');
-    await upsertSnapshot(VALID_SNAPSHOT);
-
-    expect(fake.calls.from).toContain('monthly_snapshots');
-    const month = fake.calls.upsert[0] as Record<string, unknown>;
-    expect(month.month).toBe('2026-03');
-    expect(month.user_id).toBe(USER_ID);
-
-    const entries = fake.calls.insert[0] as Array<Record<string, string>>;
-    expect(entries).toHaveLength(1);
-    expect(entries[0].snapshot_id).toBe('snap-1');
-    expect(entries[0].category).toBe('savings');
-    expect(await decryptPayload(entries[0].account, DEK)).toBe('DBS');
-    expect(await decryptPayload(entries[0].amount, DEK)).toBe('5000');
-  });
-
-  it('skips the entry insert when no entry has a positive amount', async () => {
-    const fake = setSupabase({ upsertData: { id: 'snap-1' } });
+  it('replaces entries with an empty list when none are positive', async () => {
+    const fake = setSupabase();
     const { upsertSnapshot } =
       await import('@/features/assets/actions/snapshot-actions');
     await upsertSnapshot({
       id: '2026-03',
-      entries: [{ category: 'savings', account: 'DBS', amount: 0 }],
+      entries: [{ category: 'savings', account: '', amount: 0 }],
     });
-    expect(fake.calls.insert).toHaveLength(0);
+    expect(
+      (fake.calls.rpc[0].args as Record<string, unknown>).p_entries
+    ).toEqual([]);
   });
-
-  it('rejects an invalid month before any DB call', async () => {
-    const fake = setSupabase({ upsertData: { id: 'snap-1' } });
-    const { upsertSnapshot } =
-      await import('@/features/assets/actions/snapshot-actions');
-    await expect(
-      upsertSnapshot({ ...VALID_SNAPSHOT, id: 'not-a-month' })
-    ).rejects.toThrow();
-    expect(fake.calls.upsert).toHaveLength(0);
-  });
-
-  it('surfaces an opaque error when the snapshot upsert fails', async () => {
-    setSupabase({ upsertError: { message: 'deadlock detected' } });
+  it.each(['not-a-month', '2026-13'])(
+    'rejects invalid target and original month %s before DB access',
+    async (month) => {
+      const fake = setSupabase();
+      const { upsertSnapshot } =
+        await import('@/features/assets/actions/snapshot-actions');
+      await expect(
+        upsertSnapshot({ ...VALID_SNAPSHOT, id: month })
+      ).rejects.toMatchObject({ code: 'VALIDATION' });
+      await expect(upsertSnapshot(VALID_SNAPSHOT, month)).rejects.toMatchObject(
+        { code: 'VALIDATION' }
+      );
+      expect(fake.calls.rpc).toEqual([]);
+      expect(fake.calls.from).toEqual([]);
+    }
+  );
+  it.each(['2026-03', '2026-04'])(
+    'passes original month when edited to %s',
+    async (month) => {
+      const fake = setSupabase();
+      const { upsertSnapshot } =
+        await import('@/features/assets/actions/snapshot-actions');
+      await upsertSnapshot({ ...VALID_SNAPSHOT, id: month }, '2026-03');
+      expect(fake.calls.rpc[0].args).toMatchObject({
+        p_month: month,
+        p_original_month: '2026-03',
+      });
+      expect(fake.calls.from).toEqual([]);
+    }
+  );
+  it('fails closed with an opaque RPC error', async () => {
+    const fake = setSupabase({
+      rpcError: {
+        replace_asset_snapshot: { message: 'private constraint details' },
+      },
+    });
     const { upsertSnapshot } =
       await import('@/features/assets/actions/snapshot-actions');
     await expect(upsertSnapshot(VALID_SNAPSHOT)).rejects.toThrow(
-      'snapshot upsert failed'
+      'snapshot save failed'
     );
-  });
-
-  it('surfaces an opaque error when the entry insert fails', async () => {
-    setSupabase({
-      upsertData: { id: 'snap-1' },
-      insertError: { message: 'value too long for type' },
-    });
-    const { upsertSnapshot } =
-      await import('@/features/assets/actions/snapshot-actions');
-    await expect(upsertSnapshot(VALID_SNAPSHOT)).rejects.toThrow(
-      'asset_entries insert failed'
-    );
-  });
-
-  it('renames the existing row when originalId differs from the new month', async () => {
-    const fake = setSupabase({ selectData: { id: 'snap-1' } });
-    const { upsertSnapshot } =
-      await import('@/features/assets/actions/snapshot-actions');
-    await upsertSnapshot({ ...VALID_SNAPSHOT, id: '2026-04' }, '2026-03');
-
-    expect(fake.calls.upsert).toHaveLength(0);
-    const moved = fake.calls.update[0] as Record<string, unknown>;
-    expect(moved.month).toBe('2026-04');
-    expect(
-      fake.calls.queries.find((query) => query.operation === 'update')?.eq
-    ).toEqual([
-      { column: 'user_id', value: USER_ID },
-      { column: 'month', value: '2026-03' },
-    ]);
-    expect(
-      fake.calls.queries.find(
-        (query) =>
-          query.table === 'asset_entries' && query.operation === 'delete'
-      )?.eq
-    ).toEqual([{ column: 'snapshot_id', value: 'snap-1' }]);
-
-    const entries = fake.calls.insert[0] as Array<Record<string, string>>;
-    expect(entries[0].snapshot_id).toBe('snap-1');
-    expect(await decryptPayload(entries[0].account, DEK)).toBe('DBS');
-  });
-
-  it('surfaces an opaque error when a rename collides with an existing month', async () => {
-    const fake = setSupabase({
-      selectError: {
-        message: 'duplicate key value violates unique constraint',
-      },
-    });
-    const { upsertSnapshot } =
-      await import('@/features/assets/actions/snapshot-actions');
-    await expect(
-      upsertSnapshot({ ...VALID_SNAPSHOT, id: '2026-04' }, '2026-03')
-    ).rejects.toThrow('snapshot rename failed');
-    expect(fake.calls.insert).toHaveLength(0);
-  });
-
-  it('preserves the parent ID and saves new values when the edited month is unchanged', async () => {
-    const fake = setSupabase({
-      selectData: { id: 'snap-1' },
-      upsertError: {
-        code: '23503',
-        message: 'existing child foreign key would be broken',
-      },
-    });
-    const { upsertSnapshot } =
-      await import('@/features/assets/actions/snapshot-actions');
-    await upsertSnapshot(
-      {
-        ...VALID_SNAPSHOT,
-        entries: [{ category: 'savings', account: 'DBS', amount: 7500 }],
-      },
-      '2026-03'
-    );
-    expect(fake.calls.upsert).toHaveLength(0);
-    expect(fake.calls.update).toHaveLength(1);
-    expect(fake.calls.update[0]).toEqual(
-      expect.objectContaining({ month: '2026-03' })
-    );
-    expect(fake.calls.update[0]).not.toHaveProperty('id');
-    expect(
-      fake.calls.queries.find((q) => q.operation === 'update')?.eq
-    ).toEqual([
-      { column: 'user_id', value: USER_ID },
-      { column: 'month', value: '2026-03' },
-    ]);
-    const entries = fake.calls.insert[0] as Array<Record<string, string>>;
-    expect(entries[0].snapshot_id).toBe('snap-1');
-    expect(decryptPayload(entries[0].amount, DEK)).toBe('7500');
+    expect(fake.calls.from).toEqual([]);
   });
 });
 

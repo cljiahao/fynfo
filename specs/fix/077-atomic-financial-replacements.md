@@ -2,10 +2,10 @@
 id: '077'
 slug: atomic-financial-replacements
 area: fix
-status: draft
+status: approved
 author: Codex
 created: 2026-10-09
-approved:
+approved: 2026-10-09
 shipped:
 impl_pr:
 supersedes:
@@ -52,6 +52,9 @@ ownership from auth.uid() rather than a supplied user_id, and accepts only
 already encrypted financial payloads. Validate JSON structure, required fields,
 duplicate IDs/relief keys and bounded request size before writes. Existing RLS
 policies and table grants remain unchanged.
+Explicitly revoke service-role execution as well, including Supabase default
+function grants. Notify PostgREST to reload its schema cache after commit, as
+documented in [schema cache reloading](https://docs.postgrest.org/en/v14/references/schema_cache.html).
 
 - `replace_asset_snapshot(p_month text, p_original_month text,
 p_new_id text, p_entries jsonb) returns void`: lock/verify the owner parent;
@@ -107,21 +110,21 @@ separate contracts. Existing delete/settlement actions are not revised.
 
 ## Acceptance
 
-- [ ] Local PostgreSQL fixture replay uses only synthetic roles/rows and relevant
+- [x] Local PostgreSQL fixture replay uses only synthetic roles/rows and relevant
       historical schema; no production connection or real env is read.
-- [ ] Each successful RPC yields one complete replacement, including empty lists.
-- [ ] Induced final-child insertion failure preserves the old parent and children
+- [x] Each successful RPC yields one complete replacement, including empty lists.
+- [x] Induced final-child insertion failure preserves the old parent and children
       and, for rename, the old month. No partial replacement is committed.
-- [ ] Anonymous execution denied; another owner cannot replace a parent, attach
+- [x] Anonymous execution denied; another owner cannot replace a parent, attach
       children to it or delete its relief year, including guessed/colliding IDs.
-- [ ] Concurrent same-parent/year RPCs produce one complete submitted set,
+- [x] Concurrent same-parent/year RPCs produce one complete submitted set,
       including simultaneous first saves and empty-year replacements.
-- [ ] Existing snapshot IDs survive upsert/retry/rename. Repeating an identical
+- [x] Existing snapshot IDs survive upsert/retry/rename. Repeating an identical
       logical save does not duplicate children; new child IDs are not described
       as a durable retry identity.
-- [ ] Action regressions retain identity/key gates, encrypt before RPC, omit
+- [x] Action regressions retain identity/key gates, encrypt before RPC, omit
       caller-controlled ownership, reject failed RPC and expose opaque errors.
-- [ ] `pnpm check`, `pnpm test:ci`, `pnpm build` pass in the isolated fixture; >80% in every aggregate metric and stricter security floors retained.
+- [x] `pnpm check`, `pnpm test:ci`, `pnpm build` pass in the isolated fixture; >80% in every aggregate metric and stricter security floors retained.
 - [ ] Second review covers grants, SQL rollback, locking, RLS and README/comments.
       All CI checks green before owner-authorized merge.
 
@@ -141,12 +144,77 @@ this approval request. Application must fail closed if the RPC is absent; never
 silently fall back to non-atomic replacement. Only merge application callers once
 the owner confirms migration readiness. No database credentials are requested.
 
-## Open questions and owner decision
+## Owner decision
 
-- [ ] Clarence: approve creating/testing this specific additive migration and
-      integrating these three RPCs within the paths above? General roadmap
-      authorization has not approved this schema operation. Production execution,
+- [x] Clarence approved creating/testing this additive migration and integrating
+      these three RPCs in the authorization below. Production execution,
       optimistic conflicts and full retry-idempotency remain separately scoped.
 
-Status remains draft until explicit owner approval is recorded. No executable
-migration or RPC caller change has been made under this proposal.
+Each array is limited to 5,000 rows and each JSON argument to 1 MiB of serialized
+UTF-8. IDs/relief keys are nonempty strings up to 200 characters. The database
+validates required strings, category/type/disclosure enums and settlement booleans;
+it never interprets encrypted amounts. SQL owns timestamps and parent/owner fields.
+Relief replacements require READ COMMITTED (PostgREST's default). Higher isolation
+levels are rejected: waiting on an advisory lock must refresh the subsequent
+DELETE snapshot, especially for a previously empty year. No partial save fallback.
+The same relief-action file contains two redundant `data || []` fallbacks after
+`readAllRows`, which already returns an array or throws. Remove those unreachable
+fallbacks without changing read queries; retain meaningful empty-result tests.
+
+## Recorded owner authorization
+
+On2026-10-09, following the prioritized table naming this spec as the next
+atomic-save PR and its scoped migration approval requirement, Clarence said:
+“okay please work on each one after another once you checked and confirmation
+sweep it worked, PR and merged then start the next task.” This approves the
+reviewed additive migration, its three RPC callers and synthetic verification
+within this spec. It does not authorize production execution or unrelated new
+dependencies/migrations. Production readiness still requires owner confirmation
+before merging the callers, as described in rollout above.
+
+## Implementation and second review
+
+Implemented the three invoker RPCs and replaced only their server-action saves.
+Snapshot original-month input now uses the existing YYYY_MM boundary schema.
+Actions send no owner or child-parent fields and prepare every ciphertext before
+the single request. Read/delete/settlement query contracts are preserved.
+
+Three regressions failed against the previous callers because they issued table
+writes rather than one atomic RPC. Revised caller tests verify ciphertext by
+decrypting it with a synthetic key, empty replacements, edit/rename arguments,
+boundary failures, opaque RPC failures and no fallback. Nine integration tests
+exercise the real action guard: identity before vault and no RPC when either
+gate fails. Typed-array fallbacks were unreachable, and were removed rather than
+loosening the relief-action coverage floor.
+
+PostgreSQL17.10 fresh-cluster runs pass direct anon/service-role grant checks,
+missing identity, cross-owner parent/child ID collisions, ignored forged ownership
+fields, invalid shape/type/enum/duplicate/oversized payloads, rename collisions,
+absent originals and empty replacements. A final-child PK conflict rolls back
+parent changes, preceding inserts and deletion of old rows in each RPC. Separate
+workers are observed actually waiting on locks. Concurrent first/existing saves
+leave two children from one version, including matching expense parent/split
+payloads; first empty-year races and unsupported isolation are covered. Existing
+household/vault suites continue passing. Fixture clusters are stopped and retained
+under the isolated visualization directory, never connected to Supabase.
+
+Second review checked all changed source/test/SQL/docs paths, function grants
+(including Supabase service-role defaults), identity derivation, invoker/RLS
+semantics, empty search paths, pre-write validation, parent locks, preserved IDs,
+child rollback, advisory-lock snapshot semantics and schema-cache notification.
+README/comments describe the new contract and its limits. No dependency, crypto,
+protected-path or unrelated schema edits. No UI redesign in this backend batch;
+Impeccable remains the UI review workflow for subsequent frontend batches.
+
+Residual limits: last-writer-wins, direct owner table writes can bypass the RPC
+serialization, no durable retry identity, no revision history, and no production
+or authenticated browser proof. The live RPC transport/cache is verified after
+the owner applies SQL, rather than inferred from direct local PostgreSQL tests.
+Production execution and application merge remain pending migration readiness.
+
+Final isolated gates: `pnpm check`, `pnpm test:ci` and optimized `pnpm build`
+pass. 115 files / 885 tests; coverage 92.91% lines (3201/3445), 92.66% statements
+(3472/3747), 90.19% functions (1131/1254) and 87.65% branches (2010/2293).
+Existing security floors pass unchanged. One pre-existing UI test timed out
+while the full suite competed with the build; its isolated 11-test suite and
+the full suite subsequently passed without timeout/assertion changes.

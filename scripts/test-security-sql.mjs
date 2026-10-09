@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runAtomicFinancialConcurrency } from '../test/security/atomic-financial-concurrency.mjs';
 import { runHouseholdConcurrency } from '../test/security/household-concurrency.mjs';
 import { runVaultConcurrency } from '../test/security/vault-concurrency.mjs';
 
@@ -146,6 +147,7 @@ const histories = [
   '20260705000000_fix_household_creator_select.sql',
   '20261008000000_security_rpc_boundaries.sql',
   '20261008000001_household_authorization.sql',
+  '20261009000000_atomic_financial_replacements.sql',
 ];
 let started = false;
 try {
@@ -191,8 +193,10 @@ try {
     await fixture.file(`supabase/migrations/${migration}`);
   await fixture.file('test/security/household-authorization.sql');
   await fixture.file('test/security/vault-telemetry-authorization.sql');
+  await fixture.file('test/security/atomic-financial-replacements.sql');
   await runHouseholdConcurrency(fixture);
   await runVaultConcurrency(fixture);
+  await runAtomicFinancialConcurrency(fixture);
   process.stdout.write(
     'Real SQL authorization, conflict and concurrent boundaries passed.\n'
   );

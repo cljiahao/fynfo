@@ -80,10 +80,14 @@ Failed pages or changed counts reject the read. Separate requests can still
 observe concurrent edits; JSON export is not a proven point-in-time backup or
 restore mechanism and excludes household data.
 
-Tax-relief replacement validates unique relief keys and prepares encrypted rows
-before deleting existing values. Snapshot, expense and relief replacements still
-use multiple database requests; a later write failure can leave an incomplete
-save. Transactional replacements remain pending a separately approved migration.
+Snapshot, expense and tax-relief saves prepare encrypted rows before one
+authenticated, RLS-protected database transaction. A failed child write rolls
+back the parent and all replaced children. Snapshot edits preserve the parent ID.
+Spec077's additive migration must be applied before deploying these callers;
+missing RPCs reject saves without falling back to partial writes. Same-record
+saves remain last-writer-wins; this does not provide conflict detection or a
+durable retry ledger. Relief replacements require READ COMMITTED isolation.
+RPC arrays accept up to 5,000 rows, with each JSON argument limited to 1 MiB.
 
 ## Environment variables
 
@@ -151,9 +155,11 @@ node scripts/test-security-sql.mjs --pg-bin "C:/Program Files/PostgreSQL/17/bin"
 ```
 
 The data directory must not exist. The runner uses localhost fixture roles,
-replays relevant historical schema and both security migrations, and stops the
+replays relevant historical schema, security and atomic-save migrations, and stops the
 cluster after testing. It retains fixture data and logs for inspection and does
 not connect to the configured Supabase database or read environment files.
+It checks anonymous/cross-owner denial, failed-write rollback, parent identity,
+and concurrent first and existing snapshot, expense and relief replacements.
 
 ESLint includes SonarJS checks for commented-out code, identical functions and
 incorrect collection-size comparisons. The existing comment convention permits
