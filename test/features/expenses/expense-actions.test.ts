@@ -127,6 +127,22 @@ describe('expense-actions — getExpenses', () => {
 });
 
 describe('expense-actions — upsertExpense', () => {
+  it('rejects combined shares above the bill before any database call', async () => {
+    const fake = setSupabase();
+    const { upsertExpense } =
+      await import('@/features/expenses/actions/expense-actions');
+    await expect(
+      upsertExpense({
+        ...validExpense,
+        amount: 10.01,
+        splits: [
+          { person: 'Alex', amount: 5.01, settled: true },
+          { person: 'Sam', amount: 5.01, settled: false },
+        ],
+      })
+    ).rejects.toMatchObject({ code: 'VALIDATION' });
+    expect(fake.calls.from).toHaveLength(0);
+  });
   it('stops replacement when child deletion fails', async () => {
     const fake = setSupabase({
       upsertData: { id: 'snap-1' },
@@ -200,11 +216,11 @@ describe('expense-actions — upsertExpense', () => {
     expect(fake.calls.from).toHaveLength(0);
   });
 
-  it('skips the splits insert for a self expense', async () => {
+  it('ignores stale split allocations for a self expense', async () => {
     const fake = setSupabase();
     const { upsertExpense } =
       await import('@/features/expenses/actions/expense-actions');
-    await upsertExpense({ ...validExpense, splitType: 'self', splits: [] });
+    await upsertExpense({ ...validExpense, amount: 10, splitType: 'self' });
     expect(fake.calls.insert).toHaveLength(0);
   });
 

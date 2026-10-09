@@ -14,6 +14,10 @@ import { Separator } from '@/components/ui/separator';
 import { formatSGD } from '@/lib/utils/currency';
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import {
+  allocateEvenSplits,
+  getSplitAllocationError,
+} from '../lib/split-amounts';
 import type { ExpenseSplitData } from '../types';
 
 interface SplitDialogProps {
@@ -36,15 +40,9 @@ export function SplitDialog({
   const [splits, setSplits] = useState<ExpenseSplitData[]>(initialSplits);
   const [newName, setNewName] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-  // paidFor: true = you fronted everything, others owe their full share (your share = $0)
-  // false (default) = you're splitting with others (your share = total - others)
   const [paidFor, setPaidFor] = useState(false);
 
-  // useState seeds only on mount; the dialog instance is reused across rows, so
-  // resync the working copy to initialSplits on each closed -> open transition.
-  // Without this, reopening shows stale splits from a previously edited row.
-  // Render-phase adjustment (React's "you might not need an effect" pattern)
-  // keeps the reset inside this dialog and avoids a cascading-render effect.
+  // Reset reused drafts on opening without an effect-triggered extra render.
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
@@ -64,20 +62,12 @@ export function SplitDialog({
   );
 
   const totalPeople = paidFor ? splits.length : splits.length + 1;
-  const evenShare =
-    totalPeople > 0 && totalAmount > 0 ? totalAmount / totalPeople : 0;
-  const roundedShare = Math.round(evenShare * 100) / 100;
 
   const computeEvenSplitsFor = (
     list: ExpenseSplitData[],
     isPaidFor: boolean
   ) => {
-    const count = isPaidFor ? list.length : list.length + 1;
-    const perPerson =
-      totalAmount > 0 && count > 0
-        ? Math.round((totalAmount / count) * 100) / 100
-        : 0;
-    return list.map((s) => ({ ...s, amount: perPerson }));
+    return allocateEvenSplits(totalAmount, list, isPaidFor);
   };
 
   const computeEvenSplits = (list: ExpenseSplitData[]) =>
@@ -121,8 +111,13 @@ export function SplitDialog({
     setSplits((prev) => computeEvenSplits(prev));
   };
 
-  const othersTotal = splits.reduce((sum, s) => sum + s.amount, 0);
-  const yourShare = paidFor ? 0 : totalAmount - othersTotal;
+  const othersCents = splits.reduce(
+    (sum, s) => sum + Math.round(s.amount * 100),
+    0
+  );
+  const othersTotal = othersCents / 100;
+  const yourShare = (Math.round(totalAmount * 100) - othersCents) / 100;
+  const allocationError = getSplitAllocationError(totalAmount, splits);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -133,7 +128,6 @@ export function SplitDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Mode toggle */}
           <div className="grid grid-cols-2 rounded-lg border p-1 text-xs font-medium">
             <button
               type="button"
@@ -158,11 +152,10 @@ export function SplitDialog({
           </div>
           <p className="text-muted-foreground -mt-2 text-xs">
             {paidFor
-              ? 'You fronted the full amount — others owe you their share, your cut is $0.'
+              ? 'Divide the full bill among the others. Custom shares may leave a remainder for you.'
               : "You're in on the bill — the cost is divided between you and the others."}
           </p>
 
-          {/* Add person input */}
           <div className="relative">
             <div className="flex gap-2">
               <Input
@@ -180,6 +173,7 @@ export function SplitDialog({
                 onFocus={() => setShowSuggestions(true)}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                 placeholder="Add person's name..."
+                aria-label="Add person's name"
                 className="h-9 text-sm"
               />
               <Button
@@ -187,6 +181,7 @@ export function SplitDialog({
                 variant="outline"
                 onClick={() => addPerson(newName)}
                 disabled={!newName.trim()}
+                aria-label="Add person"
               >
                 <Plus className="size-4" />
               </Button>
@@ -207,7 +202,6 @@ export function SplitDialog({
             )}
           </div>
 
-          {/* Split table */}
           {splits.length > 0 && (
             <>
               <div className="rounded-lg border">
@@ -231,6 +225,8 @@ export function SplitDialog({
                             type="number"
                             step="0.01"
                             min="0"
+                            aria-label={`Amount owed by ${s.person}`}
+                            aria-invalid={Boolean(allocationError)}
                             value={s.amount || ''}
                             onChange={(e) =>
                               updateSplitAmount(
@@ -244,6 +240,7 @@ export function SplitDialog({
                         <td className="px-3 py-1.5 text-center">
                           <Checkbox
                             checked={s.settled}
+                            aria-label={`Settled by ${s.person}`}
                             onCheckedChange={() => toggleSettled(s.person)}
                           />
                         </td>
@@ -274,9 +271,8 @@ export function SplitDialog({
                   Split evenly
                 </Button>
                 <span className="text-muted-foreground text-xs">
-                  {formatSGD(totalAmount)} ÷ {totalPeople}{' '}
-                  {totalPeople === 1 ? 'person' : 'people'} ={' '}
-                  {formatSGD(roundedShare)} each
+                  {totalPeople} {totalPeople === 1 ? 'person' : 'people'}; equal
+                  splits distribute remainder cents
                 </span>
               </div>
 
@@ -287,22 +283,12 @@ export function SplitDialog({
                   <span className="text-muted-foreground">They owe you</span>
                   <span className="font-medium">{formatSGD(othersTotal)}</span>
                 </div>
-                {!paidFor && (
-                  <div className="flex-between">
-                    <span className="font-medium">Your share</span>
-                    <span className="font-semibold">
-                      {formatSGD(yourShare)}
-                    </span>
-                  </div>
-                )}
-                {paidFor && (
-                  <div className="flex-between">
-                    <span className="text-muted-foreground">Your share</span>
-                    <span className="text-muted-foreground">
-                      $0 — you get it all back
-                    </span>
-                  </div>
-                )}
+                <div className="flex-between">
+                  <span className="font-medium">Your share</span>
+                  <span className="font-semibold">
+                    {allocationError ? '—' : formatSGD(yourShare)}
+                  </span>
+                </div>
               </div>
             </>
           )}
@@ -313,13 +299,19 @@ export function SplitDialog({
             </p>
           )}
 
-          {/* Confirm */}
+          {allocationError && (
+            <p role="alert" className="text-destructive text-sm">
+              {allocationError}
+            </p>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button
+              disabled={Boolean(allocationError)}
               onClick={() => {
+                if (allocationError) return;
                 onConfirm(splits);
                 onOpenChange(false);
               }}

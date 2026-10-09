@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { CalendarIcon, Trash2, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { getSplitAllocationError } from '../lib/split-amounts';
 import { generateId, resolveSplitConfirm } from '../lib/utils';
 import type { ExpenseData, ExpenseSplitData } from '../types';
 import { ExpenseTypeSelect } from './expense-type-select';
@@ -102,6 +103,18 @@ export function EditableRow({
     if (shouldSave) onSave(next);
   };
 
+  const saveDraft = (draft: ExpenseData) => {
+    const error =
+      draft.splitType === 'shared'
+        ? getSplitAllocationError(draft.amount, draft.splits)
+        : null;
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    onSave({ ...draft, id: draft.id || generateId() });
+  };
+
   const handleSave = () => {
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
@@ -111,7 +124,7 @@ export function EditableRow({
       toast.error('Date and amount are required');
       return;
     }
-    onSave({ ...data, id: data.id || generateId() });
+    saveDraft(data);
   };
 
   const handleRowBlur = (e: React.FocusEvent<HTMLTableRowElement>) => {
@@ -139,7 +152,7 @@ export function EditableRow({
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       saveTimerRef.current = null;
-      onSave({ ...snapshot, id: snapshot.id || generateId() });
+      saveDraft(snapshot);
     }, 400);
   };
 
