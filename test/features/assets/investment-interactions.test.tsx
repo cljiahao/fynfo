@@ -213,6 +213,7 @@ it('uses salary and expenses to calculate goals and saves changed optional deduc
   ).toBeTruthy();
   fireEvent.click(screen.getByRole('checkbox', { name: 'Tithe' }));
   fireEvent.click(screen.getByRole('checkbox', { name: 'Allowance' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Adjust reserves' }));
   fireEvent.change(screen.getAllByRole('spinbutton')[5], {
     target: { value: '7' },
   });

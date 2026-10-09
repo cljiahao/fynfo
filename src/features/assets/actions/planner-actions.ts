@@ -14,9 +14,10 @@ export async function getPlannerSettings(): Promise<PlannerSettingsData | null> 
     .from('planner_settings')
     .select('*')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) return null;
+  throwIfSupabaseError(error, 'planner read');
+  if (!data) return null;
 
   return {
     emergencyMonths: data.emergency_months,

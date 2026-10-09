@@ -55,13 +55,13 @@ describe('planner-actions — getPlannerSettings', () => {
     expect(await getPlannerSettings()).toBeNull();
   });
 
-  it('returns null on a read error (no throw, no leak)', async () => {
+  it('rejects a failed read opaquely instead of loading default settings', async () => {
     setSupabase({
       selectError: { message: 'permission denied for table planner_settings' },
     });
     const { getPlannerSettings } =
       await import('@/features/assets/actions/planner-actions');
-    expect(await getPlannerSettings()).toBeNull();
+    await expect(getPlannerSettings()).rejects.toThrow('planner read failed');
   });
 });
 

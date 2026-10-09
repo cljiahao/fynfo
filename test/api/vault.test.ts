@@ -184,6 +184,36 @@ describe('POST /api/vault', () => {
     );
   });
 
+  it('returns only no-store lifecycle metadata without writing a profile or cookie', async () => {
+    profileRow = {
+      vault_check_v2: encryptPayload(VAULT_CANARY, DEK),
+      vault_version: 2,
+    };
+    const { GET } = await import('@/app/api/vault/route');
+    const response = await GET(new Request('http://localhost/api/vault'));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ initialized: true });
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(upsertSpy).not.toHaveBeenCalled();
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(cookieJar.set).not.toHaveBeenCalled();
+  });
+
+  it('reports a new vault only after a successful authenticated read', async () => {
+    const { GET } = await import('@/app/api/vault/route');
+    const response = await GET(new Request('http://localhost/api/vault'));
+    expect(await response.json()).toEqual({ initialized: false });
+    profileError = { code: 'private detail' };
+    const failed = await GET(new Request('http://localhost/api/vault'));
+    expect(failed.status).toBe(500);
+    expect(await failed.json()).not.toHaveProperty('initialized');
+    getUserResult.data.user = null;
+    expect((await GET(new Request('http://localhost/api/vault'))).status).toBe(
+      401
+    );
+    expect(upsertSpy).not.toHaveBeenCalled();
+  });
+
   it('concurrent first unlock preserves the winning key and rejects the loser', async () => {
     profileRow = {
       vault_check_v2: null,

@@ -33,6 +33,7 @@ vi.mock('@/features/equity/actions/price-actions', () => api);
 beforeEach(() => {
   vi.resetAllMocks();
   localStorage.clear();
+  sessionStorage.clear();
   api.getSnapshots.mockResolvedValue([
     {
       id: '2026-01',
@@ -209,6 +210,39 @@ it('shows zero-state salary/planner values when all prefetched datasets are empt
   ).toBeTruthy();
   expect(screen.queryByText('Investment Breakdown')).toBeNull();
   expect(screen.getByRole('link', { name: 'Add Snapshot' })).toBeTruthy();
+  expect(
+    await screen.findByRole('link', { name: 'Add your first snapshot' })
+  ).toBeTruthy();
+});
+
+it('reviews a selected month using existing records and hides failed review totals', async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: 300000 } },
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <DashboardOverview />
+    </QueryClientProvider>
+  );
+  await screen.findByText('Net (after CPF)');
+  fireEvent.change(screen.getByLabelText('Month'), {
+    target: { value: '2026-01' },
+  });
+  expect(screen.getByText('Asset change from 2025-12')).toBeTruthy();
+  expect(screen.getByText('Needs both snapshots')).toBeTruthy();
+  expect(
+    screen.queryByRole('link', { name: 'Add your first snapshot' })
+  ).toBeNull();
+  api.getExpenses.mockRejectedValue(new Error('private expense details'));
+  await client.invalidateQueries({ queryKey: ['expenses'] });
+  const retry = await screen.findByRole('button', {
+    name: 'Retry monthly review',
+  });
+  expect(screen.queryByText('Recorded gross income')).toBeNull();
+  api.getExpenses.mockResolvedValue([]);
+  fireEvent.click(retry);
+  expect(await screen.findByText('Recorded gross income')).toBeTruthy();
+  expect(screen.queryByText('private expense details')).toBeNull();
 });
 
 it('connects calculated market budgets to real ticker allocation edits without persisting sensitive targets', async () => {

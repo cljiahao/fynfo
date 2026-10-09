@@ -46,10 +46,18 @@ Supabase Auth account. There is no development authentication bypass.
 pnpm dev
 ```
 
-Open `http://localhost:3000`. Sign in, then unlock your financial vault with your
-six-digit PIN. The browser derives the encryption key; the server seals it in an
+Open `http://localhost:3000`. Sign in, then create your financial vault by choosing
+and confirming a six-digit PIN. Returning users unlock with their existing PIN.
+The browser derives the encryption key; the server seals it in an
 HttpOnly session cookie to encrypt and decrypt financial payloads. Keep your PIN
 safe: it protects the financial vault independently of your login account.
+Resetting an account password does not recover records encrypted with a forgotten
+PIN. First-use guidance offers a snapshot, expense or salary record and can be
+skipped. Tax/CPF estimates require a usable profile; reserve controls live under
+“Adjust reserves” and show their current settings while collapsed.
+The dashboard's monthly review combines recorded gross income, your share of
+all expense categories and exact-month snapshot changes. It does not infer net
+savings, investment returns or zero activity from missing records.
 
 ## Environment variables
 

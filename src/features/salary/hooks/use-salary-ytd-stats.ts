@@ -7,6 +7,8 @@ import {
 import type { SalaryData } from '../types';
 
 export interface SalaryYtdStats {
+  profileState: 'loading' | 'error' | 'incomplete' | 'ready';
+  retryProfile: () => void;
   currentYear: number;
   taxProfile: TaxProfileContext;
   currentYearRecords: SalaryData[];
@@ -23,12 +25,19 @@ export function useSalaryYtdStats(
   records: SalaryData[],
   additionalReliefsTotal = 0
 ): SalaryYtdStats {
-  const { data: profile } = useProfile();
+  const { data: profile, isPending, isError, refetch } = useProfile();
+  const profileState = isPending
+    ? 'loading'
+    : isError
+      ? 'error'
+      : profile?.birthYear == null
+        ? 'incomplete'
+        : 'ready';
   const currentYear = new Date().getFullYear();
 
   const taxProfile: TaxProfileContext = {
     birthYear: profile?.birthYear ?? null,
-    isNsman: profile?.isNsman ?? true,
+    isNsman: profile?.isNsman ?? false,
     residencyStatus: profile?.residencyStatus ?? 'resident',
   };
 
@@ -59,6 +68,10 @@ export function useSalaryYtdStats(
   );
 
   return {
+    profileState,
+    retryProfile: () => {
+      void refetch();
+    },
     currentYear,
     taxProfile,
     currentYearRecords,

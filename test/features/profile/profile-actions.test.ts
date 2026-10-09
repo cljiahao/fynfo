@@ -49,13 +49,13 @@ describe('profile-actions — getProfile', () => {
     expect(await getProfile()).toBeNull();
   });
 
-  it('returns null on a read error (no throw, no leak)', async () => {
+  it('rejects a failed read opaquely instead of treating it as a missing profile', async () => {
     setSupabase({
       selectError: { message: 'permission denied for table users_profile' },
     });
     const { getProfile } =
       await import('@/features/profile/actions/profile-actions');
-    expect(await getProfile()).toBeNull();
+    await expect(getProfile()).rejects.toThrow('profile read failed');
   });
 });
 

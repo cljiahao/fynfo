@@ -42,7 +42,11 @@ beforeEach(() => {
   vi.resetAllMocks();
   actions.getSalaryRecords.mockResolvedValue([]);
   actions.getTaxReliefs.mockResolvedValue([]);
-  actions.getProfile.mockResolvedValue(null);
+  actions.getProfile.mockResolvedValue({
+    birthYear: 1990,
+    isNsman: true,
+    residencyStatus: 'resident',
+  });
   actions.upsertSalaryRecord.mockResolvedValue(undefined);
   actions.deleteSalaryRecord.mockResolvedValue(undefined);
   actions.upsertTaxReliefs.mockResolvedValue(undefined);
@@ -50,6 +54,41 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('salary recording through real forms and queries', () => {
+  it('keeps tax calculations unavailable until a missing profile is completed', async () => {
+    actions.getProfile.mockResolvedValue(null);
+    mount(
+      <>
+        <SalarySummaryCards
+          records={[{ id: '2026-01', salary: 5000, bonus: 0 }]}
+        />
+        <SalarySummary records={[]} />
+      </>
+    );
+    expect(
+      await screen.findByRole('link', { name: 'Complete profile' })
+    ).toBeTruthy();
+    expect(
+      screen.getByText('Complete your profile for tax estimates')
+    ).toBeTruthy();
+    expect(screen.queryByText('Estimated Annual')).toBeNull();
+    expect(screen.getByText('Current Salary')).toBeTruthy();
+  });
+
+  it('retries a failed profile read before revealing tax estimates', async () => {
+    actions.getProfile
+      .mockRejectedValueOnce(new Error('private profile error'))
+      .mockResolvedValue({
+        birthYear: 1990,
+        residencyStatus: 'resident',
+        isNsman: false,
+      });
+    mount(<SalarySummary records={[]} />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Retry tax profile' })
+    );
+    expect(await screen.findByText('Estimated Annual')).toBeTruthy();
+    expect(screen.queryByText('private profile error')).toBeNull();
+  });
   it('saves entered month and numeric salary, then closes only after the write finishes', async () => {
     let finish!: () => void;
     actions.upsertSalaryRecord.mockImplementation(
@@ -234,14 +273,16 @@ describe('salary calculations and relief controls', () => {
     );
   });
 
-  it('shows zero-income summaries without annualizing absent records', () => {
+  it('shows zero-income summaries without annualizing absent records', async () => {
     mount(
       <>
         <SalarySummaryCards records={[]} />
         <SalarySummary records={[]} />
       </>
     );
-    expect(screen.getByText('No salary data for this year')).toBeTruthy();
+    expect(
+      await screen.findByText('No salary data for this year')
+    ).toBeTruthy();
     expect(
       screen.getByText(`No records for ${new Date().getFullYear()}`)
     ).toBeTruthy();
@@ -263,6 +304,7 @@ describe('salary calculations and relief controls', () => {
         ]}
       />
     );
+    await screen.findByText('Estimated Annual');
     await waitFor(() =>
       expect(screen.queryAllByRole('button', { name: 'Reliefs' })).toHaveLength(
         0
@@ -291,6 +333,7 @@ describe('salary calculations and relief controls', () => {
     );
     expect(screen.getByText('$6,000')).toBeTruthy();
     expect(screen.getByText('$72,000')).toBeTruthy();
+    await screen.findByText('Estimated Annual');
     fireEvent.click(
       screen.getAllByRole('button', { name: 'Relief breakdown' })[0]
     );
