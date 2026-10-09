@@ -2,10 +2,15 @@
 
 import { CustomCard } from '@/components/widgets';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
+import { AUTH_CALLBACK_ERROR_MESSAGE } from '../constants';
 import { EmailLoginForm } from './email-login-form';
 import { LoginButton } from './login-button';
 
-export function LoginCard() {
+export function LoginCard({
+  callbackFailed = false,
+}: {
+  callbackFailed?: boolean;
+}) {
   return (
     <CustomCard
       header={
@@ -18,6 +23,11 @@ export function LoginCard() {
       className="w-full max-w-md shadow-lg"
       contentClassName="flex flex-col gap-4 px-8 py-6"
     >
+      {callbackFailed && (
+        <p role="alert" className="text-destructive text-sm">
+          {AUTH_CALLBACK_ERROR_MESSAGE}
+        </p>
+      )}
       <LoginButton
         provider="google"
         redirectTo={`${PAGE_ROUTES.AUTH_CALLBACK}?next=${PAGE_ROUTES.DASHBOARD}`}

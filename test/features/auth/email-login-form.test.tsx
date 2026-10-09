@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { EmailLoginForm } from '@/features/auth/components/email-login-form';
+import '@testing-library/jest-dom/vitest';
 import {
   cleanup,
   fireEvent,
@@ -38,6 +39,22 @@ function submit(email = 'owner@example.test', password = 'fixture-password') {
 }
 
 describe('email sign-in', () => {
+  it('hides a thrown provider failure and permits retry without navigation', async () => {
+    boundary.signIn
+      .mockRejectedValueOnce(new Error('private provider detail'))
+      .mockResolvedValueOnce({ error: null });
+    render(<EmailLoginForm />);
+    submit();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Couldn’t sign in. Please try again.'
+    );
+    expect(screen.queryByText('private provider detail')).toBeNull();
+    expect(boundary.push).not.toHaveBeenCalled();
+    expect(boundary.refresh).not.toHaveBeenCalled();
+    submit();
+    await waitFor(() => expect(boundary.push).toHaveBeenCalledOnce());
+  });
+
   it('rejects invalid credentials locally before contacting authentication', async () => {
     render(<EmailLoginForm />);
     submit('invalid', '');

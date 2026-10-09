@@ -20,6 +20,48 @@ beforeEach(() => {
 
 describe('proxy boundaries', () => {
   it.each([
+    ['/dashboard', { id: 'fixture-user' }],
+    ['/login', { id: 'fixture-user' }],
+    ['/dashboard', null],
+    ['/api/vault', null],
+  ])(
+    'preserves only supplied session cache headers for %s',
+    async (path, user) => {
+      createClient.mockImplementation(
+        (
+          _url,
+          _key,
+          options: {
+            cookies: {
+              setAll: (cookies: [], headers: Record<string, string>) => void;
+            };
+          }
+        ) => ({
+          auth: {
+            getUser: async () => {
+              options.cookies.setAll([], {
+                'Cache-Control':
+                  'private, no-cache, no-store, must-revalidate, max-age=0',
+                Expires: '0',
+                Pragma: 'no-cache',
+                'X-Unrelated': 'ignored',
+              });
+              return { data: { user }, error: null };
+            },
+          },
+        })
+      );
+      const response = await proxy(
+        new NextRequest(`https://fynfo.example${path}`)
+      );
+      expect(response.headers.get('cache-control')).toContain('no-store');
+      expect(response.headers.get('expires')).toBe('0');
+      expect(response.headers.get('pragma')).toBe('no-cache');
+      expect(response.headers.get('x-unrelated')).toBeNull();
+    }
+  );
+
+  it.each([
     ['/login', { id: 'fixture-user' }, 307, 'https://fynfo.example/dashboard'],
     ['/dashboard/assets', null, 307, 'https://fynfo.example/login'],
     ['/api/vault', null, 401, null],

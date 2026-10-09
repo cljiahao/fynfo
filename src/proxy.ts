@@ -1,3 +1,4 @@
+import { AUTH_CACHE_HEADERS } from '@/lib/constants/auth';
 import { getSupabaseEnv } from '@/lib/constants/env';
 import { API_ROUTES, PAGE_ROUTES } from '@/lib/constants/routes';
 import { createServerClient } from '@supabase/ssr';
@@ -56,7 +57,7 @@ export async function proxy(req: NextRequest) {
       getAll() {
         return req.cookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet, headers = {}) {
         cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
         supabaseResponse = NextResponse.next({
           request: req,
@@ -64,6 +65,11 @@ export async function proxy(req: NextRequest) {
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, options)
         );
+        const cacheHeaders = new Headers(headers);
+        for (const name of Object.keys(AUTH_CACHE_HEADERS)) {
+          const value = cacheHeaders.get(name);
+          if (value) supabaseResponse.headers.set(name, value);
+        }
       },
     },
   });
@@ -78,6 +84,10 @@ export async function proxy(req: NextRequest) {
     // Redirects and denied requests must carry Supabase's refresh or expiry.
     for (const cookie of supabaseResponse.cookies.getAll()) {
       response.cookies.set(cookie);
+    }
+    for (const name of Object.keys(AUTH_CACHE_HEADERS)) {
+      const value = supabaseResponse.headers.get(name);
+      if (value) response.headers.set(name, value);
     }
     return response;
   }

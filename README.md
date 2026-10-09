@@ -40,7 +40,10 @@ throttle RPCs prevent unlock; telemetry remains best-effort.
 For Google login, enable the Google provider in Supabase Auth and configure the
 Supabase redirect allowlist for the app's `/auth/callback` URL (locally,
 `http://localhost:3000/auth/callback`). Email/password login uses an existing
-Supabase Auth account. There is no development authentication bypass.
+Supabase Auth account. There is no development authentication bypass. Failed
+sign-ins show opaque retry messages. Refreshed sessions preserve cookie options
+and private/no-store cache headers through proxy redirects; authentication
+callback responses are uncached.
 
 ```powershell
 pnpm dev
