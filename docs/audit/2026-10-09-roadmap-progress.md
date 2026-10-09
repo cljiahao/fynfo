@@ -136,4 +136,5 @@ allocation order, settlement preservation, row blur timing, schema consumers
 and README/comments. Synthetic desktop/mobile component preview verified visible
 errors, exact allocation, manual remainder and confirmation without account access.
 Full browser workflows and atomic migration approval remain pending. PR/merge
-and deployment checks are still required before marking this batch shipped.
+completed in PR12 on2026-10-09 after all CI/preview checks passed, as
+8f1da30b8922180d938fbb8ef8cf85b1d94c0b86.

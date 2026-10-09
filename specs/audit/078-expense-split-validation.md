@@ -1,6 +1,8 @@
 ---
 id: '078'
-status: owner-authorized-remediation
+status: shipped
+shipped: 2026-10-09
+impl_pr: https://github.com/cljiahao/fynfo/pull/12
 created: 2026-10-09
 author: Codex
 ---
@@ -70,7 +72,7 @@ concise comments describe cent ordering without claiming atomic saves.
 Final isolated gates pass113files/880tests:92.95%lines,92.69%statements,
 90.19%functions and87.57%branches; stricter security thresholds are unchanged.
 Formatting, lint, route logging, typecheck and optimized build pass. Unchanged
-commit/push hooks remain required before PR. A standalone preview of the real
+commit/push hooks also passed. A standalone preview of the real
 split component with compiled app styles passed desktop1280x720 and mobile390x844
 checks: visible invalid-total warning/disabled confirm, exact-cent paid-for
 allocation, actual manual remainder, named fields and successful confirmation.
@@ -79,3 +81,6 @@ component preview does not establish full authenticated browser workflows.
 
 No migration, new dependency, crypto change, protected path or historical data
 rewrite. Transactions/concurrent revisions remain pending draft077 approval.
+
+PR12 merged on2026-10-09 after all CI/preview checks passed, as
+8f1da30b8922180d938fbb8ef8cf85b1d94c0b86.
