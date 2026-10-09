@@ -10,6 +10,10 @@ interface SalarySummaryCardsProps {
   records: SalaryData[];
 }
 
+function formatIncome(value: number): string {
+  return Number.isFinite(value) ? formatSGDWhole(value) : '—';
+}
+
 export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
   const latest = records[records.length - 1];
   const {
@@ -26,13 +30,17 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
         label="Current Salary"
-        value={latest ? formatSGDWhole(latest.salary) : '-'}
+        value={latest ? formatIncome(latest.salary) : '-'}
         icon={Banknote}
         hint={latest?.id ?? 'No records'}
       />
       <StatCard
         label="Est. Annual"
-        value={formatSGDWhole(estSummary.grossAnnual)}
+        value={formatIncome(
+          monthsRecorded > 0
+            ? ((ytdSalary + ytdBonus) / monthsRecorded) * 12
+            : 0
+        )}
         icon={TrendingUp}
         hint={
           monthsRecorded > 0
@@ -43,7 +51,9 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
       <StatCard
         label="Est. Tax"
         value={
-          profileState === 'ready' ? formatSGDWhole(estSummary.taxPayable) : '—'
+          profileState === 'ready' && estSummary !== null
+            ? formatIncome(estSummary.taxPayable)
+            : '—'
         }
         icon={Receipt}
         tone="loss"
@@ -54,14 +64,16 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
               ? 'Tax profile unavailable'
               : profileState === 'incomplete'
                 ? 'Complete your profile for tax estimates'
-                : estSummary.grossAnnual > 0
-                  ? `Effective ${(estSummary.effectiveRate * 100).toFixed(1)}%`
-                  : 'No records'
+                : estSummary === null
+                  ? 'CPF estimate unavailable'
+                  : estSummary.grossAnnual > 0
+                    ? `Effective ${(estSummary.effectiveRate * 100).toFixed(1)}%`
+                    : 'No records'
         }
       />
       <StatCard
         label="YTD Income"
-        value={formatSGDWhole(ytdSalary + ytdBonus)}
+        value={formatIncome(ytdSalary + ytdBonus)}
         icon={Calculator}
         hint={
           currentYearRecords.length > 0

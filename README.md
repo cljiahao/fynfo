@@ -75,10 +75,16 @@ rewritten by this validation.
 Salary tax estimates use the calendar income year (assessment in the next year),
 the higher of 15% or resident rates for non-resident employment, and the resident
 SGD 80,000 personal relief cap including CPF. They are before rebates, eligible
-deductions and special exemptions. CPF remains a fixed 20% employee model;
-citizenship/PR eligibility, age tiers, monthly rounding and historical intra-year
-ceiling changes are not modelled. These are planning estimates, not a filing or
-payroll calculation.
+deductions and special exemptions. Salary-page CPF estimates assume full employee rates and
+age 55 and below, using monthly wage bands, whole-dollar employee rounding and
+2023–2026 ordinary wage ceilings. Recorded YTD uses individual monthly records;
+annual projections spread average recorded salary and bonus across 12 months.
+Additional Wage ceilings remain provisional until all employer wages are known.
+Unsupported years or calculation boundaries remain unavailable. Citizenship/PR
+eligibility and other age tiers are not established. These are planning
+estimates, not a filing or payroll calculation. The dashboard allocation planner
+retains its separate flat 20% CPF assumption; these payroll-rule corrections do
+not change that planning model.
 
 Financial histories are paginated with stable ordering and exact counts,
 including when the API returns smaller pages. Snapshot entries, expense splits

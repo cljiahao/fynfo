@@ -63,12 +63,16 @@ function SummaryColumn({
   summary,
   reliefItems,
   onOpenReliefs,
+  months = 12,
+  incomeLabel = 'Projected annual gross',
 }: {
   title: string;
   subtitle: string;
   summary: TaxSummary;
   reliefItems: ReliefItem[];
   onOpenReliefs: () => void;
+  months?: number;
+  incomeLabel?: string;
 }) {
   return (
     <Card>
@@ -81,7 +85,7 @@ function SummaryColumn({
           Income
         </p>
         <Row
-          label="Gross Annual"
+          label={incomeLabel}
           value={formatSGD(summary.grossAnnual)}
           variant="bold"
           indent
@@ -93,7 +97,7 @@ function SummaryColumn({
           Deductions
         </p>
         <Row
-          label="CPF (Employee 20%)"
+          label="CPF (assumed full rates)"
           value={`-${formatSGD(summary.totalCpf)}`}
           variant="negative"
           indent
@@ -188,8 +192,8 @@ function SummaryColumn({
           variant="positive"
         />
         <Row
-          label="Monthly Take-home"
-          value={formatSGD(summary.netAfterCpfAndTax / 12)}
+          label="Average net per modelled month"
+          value={formatSGD(summary.netAfterCpfAndTax / Math.max(months, 1))}
           variant="muted"
         />
       </CardContent>
@@ -245,6 +249,20 @@ export function SalarySummary({ records }: SalarySummaryProps) {
     );
   }
 
+  if (estSummary === null || trueSummary === null)
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Tax and CPF estimates unavailable</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p role="status">
+            Recorded income remains available. CPF rules or amounts are
+            unsupported for this estimate.
+          </p>
+        </CardContent>
+      </Card>
+    );
   return (
     <>
       <div className="grid gap-6 sm:grid-cols-2">
@@ -260,8 +278,10 @@ export function SalarySummary({ records }: SalarySummaryProps) {
           onOpenReliefs={() => setReliefDialogOpen(true)}
         />
         <SummaryColumn
-          title={`True Annual (${currentYear})`}
-          subtitle={`Based on ${currentYearRecords.length} month(s) of actual records`}
+          title={`Recorded YTD (${currentYear})`}
+          subtitle={`Based on ${currentYearRecords.length} recorded month(s); provisional AW ceiling`}
+          incomeLabel="Recorded gross income"
+          months={monthsRecorded}
           summary={trueSummary}
           reliefItems={reliefItems}
           onOpenReliefs={() => setReliefDialogOpen(true)}
@@ -269,7 +289,10 @@ export function SalarySummary({ records }: SalarySummaryProps) {
       </div>
 
       <p className="text-muted-foreground mt-3 text-xs">
-        Estimates use a fixed 20% employee CPF model, not age or PR-stage rates.
+        CPF assumes age 55 and below and full employee rates; eligibility and
+        PR-stage rates are not established. Annual projections spread average
+        recorded salary and bonus across 12 months. Recorded-year Additional
+        Wage ceilings remain provisional until all employer wages are known.
         Resident personal reliefs, including CPF, are capped at SGD 80,000. Tax
         is before rebates, eligible deductions and special exemptions.
       </p>

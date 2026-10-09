@@ -4,13 +4,18 @@ import {
   calculateAnnualCpf,
   calculateMonthlyCpf,
   calculateTax,
-  calculateTaxSummary,
   computeAutoReliefs,
   getCpfAnnualCeiling,
   getCpfMonthlyCeiling,
   getEarnedIncomeRelief,
+  calculateTaxSummary as readTaxSummary,
 } from '@/features/salary/lib/tax-cpf';
 
+function calculateTaxSummary(...args: Parameters<typeof readTaxSummary>) {
+  const result = readTaxSummary(...args);
+  if (result === null) throw new Error('Expected a supported CPF fixture');
+  return result;
+}
 describe('getEarnedIncomeRelief', () => {
   it('returns 1000 for null age', () => {
     expect(getEarnedIncomeRelief(null)).toBe(1000);
@@ -145,14 +150,14 @@ describe('calculateTax', () => {
 
 describe('getCpfMonthlyCeiling', () => {
   it('returns the correct ceiling for known years', () => {
-    expect(getCpfMonthlyCeiling(2023)).toBe(6300);
+    expect(getCpfMonthlyCeiling(2023, 9)).toBe(6300);
     expect(getCpfMonthlyCeiling(2024)).toBe(6800);
     expect(getCpfMonthlyCeiling(2025)).toBe(7400);
     expect(getCpfMonthlyCeiling(2026)).toBe(8000);
   });
 
-  it('falls back to 2026 value for unknown future year', () => {
-    expect(getCpfMonthlyCeiling(2030)).toBe(8000);
+  it('withholds unsupported future-year rules', () => {
+    expect(getCpfMonthlyCeiling(2030)).toBeNull();
   });
 });
 
@@ -162,8 +167,8 @@ describe('getCpfAnnualCeiling', () => {
     expect(getCpfAnnualCeiling(2026)).toBe(102000);
   });
 
-  it('falls back to 2026 value for unknown year', () => {
-    expect(getCpfAnnualCeiling(2030)).toBe(102000);
+  it('withholds unsupported annual rules', () => {
+    expect(getCpfAnnualCeiling(2030)).toBeNull();
   });
 });
 
@@ -184,7 +189,7 @@ describe('calculateMonthlyCpf', () => {
 
   it('uses the correct ceiling for 2023', () => {
     // ceiling = 6300; 7000 → capped to 6300; 6300 * 0.2 = 1260
-    expect(calculateMonthlyCpf(7000, 2023)).toBe(1260);
+    expect(calculateMonthlyCpf(7000, 2023, 9)).toBe(1260);
   });
 });
 
@@ -202,7 +207,7 @@ describe('calculateAnnualCpf', () => {
   it('includes CPF on additional wages (bonus) up to the annual ceiling gap', () => {
     // owCapped = 72000; owCpf = 14400
     // awWages = 28000; awCeiling = 102000 - 72000 = 30000; awCpf = 5600
-    expect(calculateAnnualCpf(72000, 100000, 2026)).toBe(20000);
+    expect(calculateAnnualCpf(72000, 100000, 2026)).toBe(19992);
   });
 
   it('caps additional wages when they exceed the annual ceiling remainder', () => {
@@ -325,17 +330,31 @@ describe('calculateTaxSummary', () => {
       isNsman: false,
       residencyStatus: 'non_resident' as const,
     };
-    expect(calculateTaxSummary(1000000, 0, 2022, profile).taxPayable).toBe(
-      194150
-    );
+    expect(
+      calculateTaxSummary(1000000, 0, 2022, profile, 0, 0).taxPayable
+    ).toBe(194150);
     expect(calculateTaxSummary(1000000, 0, 2023, profile).taxPayable).toBe(
       199150
     );
   });
 
   it('introduces the personal relief cap with YA2018, not earlier income years', () => {
-    const earlier = calculateTaxSummary(96000, 54000, 2016, undefined, 90000);
-    const capped = calculateTaxSummary(96000, 54000, 2017, undefined, 90000);
+    const earlier = calculateTaxSummary(
+      96000,
+      54000,
+      2016,
+      undefined,
+      90000,
+      20400
+    );
+    const capped = calculateTaxSummary(
+      96000,
+      54000,
+      2017,
+      undefined,
+      90000,
+      20400
+    );
     expect(earlier.chargeableIncome).toBe(37100);
     expect(capped.chargeableIncome).toBe(70000);
   });
@@ -357,3 +376,20 @@ describe('calculateTaxSummary', () => {
     expect(result.earnedIncomeRelief).toBe(8000);
   });
 });
+
+it('returns unavailable summary when CPF rules or inputs are unsupported', () => {
+  expect(readTaxSummary(60000, 0, 2030)).toBeNull();
+  expect(readTaxSummary(Number.MAX_VALUE, Number.MAX_VALUE, 2026)).toBeNull();
+  expect(readTaxSummary(60000, 0, 2026, undefined, 0, -1)).toBeNull();
+});
+
+it.each([
+  [500, 2026, 1, 0],
+  [5000.99, 2026, 1, 1000],
+  [7000, 2023, 8, 1200],
+])(
+  'corrects flat-rate, rounding or ceiling for wages %s in %s-%s',
+  (wages, year, month, expected) => {
+    expect(calculateMonthlyCpf(wages, year, month)).toBe(expected);
+  }
+);
