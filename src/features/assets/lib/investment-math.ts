@@ -1,4 +1,9 @@
-import type { StockPrice } from '@/features/equity/actions/price-actions';
+import {
+  finiteProduct,
+  marketValue,
+  validExchangeRate,
+  type ValuationQuote,
+} from '@/features/equity';
 import type { Holding } from '@/features/equity/lib/holdings';
 import type { EquityTradeData } from '@/features/equity/types';
 import type { AssetCategory, SnapshotData } from '../types';
@@ -70,15 +75,33 @@ export function deployPctColor(pct: number): string {
 /** Market-value of held equity per market, at the given prices. */
 export function computeMarketEquity(
   holdings: Holding[],
-  prices: Record<string, StockPrice> | undefined
-): { sgEquity: number; usEquity: number; totalEquity: number } {
-  const valueIn = (market: 'SG' | 'US') =>
-    holdings
-      .filter((h) => h.market === market)
-      .reduce((s, h) => s + h.shares * (prices?.[h.ticker]?.price ?? 0), 0);
-  const sgEquity = valueIn('SG');
-  const usEquity = valueIn('US');
-  return { sgEquity, usEquity, totalEquity: sgEquity + usEquity };
+  prices: Record<string, ValuationQuote> | undefined,
+  usdToSgd?: number | null
+): {
+  sgEquity: number | null;
+  usEquity: number | null;
+  totalEquity: number | null;
+} {
+  const sgEquity = marketValue(
+    holdings.filter((holding) => holding.market === 'SG'),
+    prices
+  );
+  const usHoldings = holdings.filter((holding) => holding.market === 'US');
+  const nativeUs = marketValue(usHoldings, prices);
+  const usEquity =
+    usHoldings.length === 0
+      ? 0
+      : nativeUs !== null && validExchangeRate(usdToSgd)
+        ? finiteProduct(nativeUs, usdToSgd)
+        : null;
+  const combined =
+    sgEquity !== null && usEquity !== null ? sgEquity + usEquity : null;
+  return {
+    sgEquity,
+    usEquity,
+    totalEquity:
+      combined !== null && Number.isFinite(combined) ? combined : null,
+  };
 }
 
 /** Buy-side cost spent per market within [qStart, qEnd]. `getMarket` injected. */

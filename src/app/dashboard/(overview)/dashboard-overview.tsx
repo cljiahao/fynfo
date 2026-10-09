@@ -56,7 +56,7 @@ export function DashboardOverview() {
     setPlannerValues(values);
   }, []);
 
-  const handleBudgetsChange = useCallback((budgets: MarketBudgets) => {
+  const handleBudgetsChange = useCallback((budgets: MarketBudgets | null) => {
     setMarketBudgets(budgets);
   }, []);
 

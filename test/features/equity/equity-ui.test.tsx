@@ -464,16 +464,17 @@ describe('real equity tables and calculations', () => {
     expect(screen.getAllByText('-')).toHaveLength(2);
     view.unmount();
     api.fetchStockPrices.mockResolvedValue({
-      DBS: { price: 5 },
-      AAPL: { price: 5 },
+      DBS: { price: 5, currency: 'SGD' },
+      AAPL: { price: 5, currency: 'USD' },
     });
     mount(
       <PortfolioSummary
         trades={[trade, { ...trade, id: 'us', ticker: 'AAPL' }]}
       />
     );
-    await screen.findAllByText('-$1,000.00');
-    expect((await screen.findAllByText('-$500.00')).length).toBe(2);
+    expect(await screen.findByText('-$500.00')).toBeTruthy();
+    expect(await screen.findByText('-US$500.00')).toBeTruthy();
+    expect(screen.queryByText('-$1,000.00')).toBeNull();
   });
 
   it('composes real distributions and opens add, edit and scan workflows', async () => {
@@ -592,7 +593,7 @@ describe('real equity tables and calculations', () => {
         .getAllByRole('row')
         .slice(1)
         .map((r) => within(r).getAllByRole('cell')[0].textContent);
-    expect(tickers()).toEqual(['AAPL', 'DBS']);
+    expect(tickers()).toEqual(['DBS', 'AAPL']);
     fireEvent.click(screen.getByText('Ticker'));
     expect(tickers()).toEqual(['AAPL', 'DBS']);
     fireEvent.click(screen.getByText('Ticker'));
@@ -600,7 +601,7 @@ describe('real equity tables and calculations', () => {
     fireEvent.click(screen.getByText('Income (12m)'));
     expect(screen.queryByText('OCBC')).toBeNull();
     fireEvent.click(screen.getByText('Yield on Cost'));
-    expect(tickers()[0]).toBe('AAPL');
+    expect(tickers()[0]).toBe('DBS');
   });
   it('explains empty yield', () => {
     mount(
@@ -623,9 +624,7 @@ describe('real equity tables and calculations', () => {
     expect(screen.getByText('▼ -50.00%')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'USD' }));
     await screen.findByText('$650.00');
-    fireEvent.keyDown(screen.getByRole('button', { name: 'SGD' }), {
-      key: 'Enter',
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'SGD' }));
     expect(screen.getByText('US$500.00')).toBeTruthy();
   });
   it('renders portfolio value and exposes quote loading/errors', async () => {
@@ -636,6 +635,70 @@ describe('real equity tables and calculations', () => {
     view.unmount();
     api.fetchStockPrices.mockRejectedValue(new Error('offline'));
     mount(<PortfolioSummary trades={[{ ...trade, ticker: 'ERROR' }]} />);
-    await screen.findByText('Prices unavailable');
+    await screen.findByText(/Prices unavailable for some holdings/);
   });
+});
+
+it('keeps a partial market unavailable instead of reporting a loss or zero', async () => {
+  api.fetchStockPrices.mockResolvedValue({
+    DBS: { price: 12, currency: 'SGD' },
+  });
+  mount(<PortfolioSummary trades={[trade, { ...trade, ticker: 'OCBC' }]} />);
+  await screen.findByText(/Prices unavailable for some holdings/);
+  expect(screen.queryByText('$1,200.00')).toBeNull();
+  expect(screen.queryByText('-$800.00')).toBeNull();
+  expect(screen.getAllByText('—').length).toBeGreaterThan(1);
+});
+
+it('shows genuine zero quotes as zero and an actual loss', async () => {
+  api.fetchStockPrices.mockResolvedValue({
+    DBS: { price: 0, currency: 'SGD' },
+  });
+  mount(<PortfolioSummary trades={[trade]} />);
+  await screen.findByText('-$1,000.00');
+  expect(screen.queryByText(/Prices unavailable/)).toBeNull();
+});
+
+it('does not convert USD holdings at zero when FX is missing', async () => {
+  api.fetchExchangeRate.mockResolvedValue(null);
+  mount(<HoldingsTable trades={[{ ...trade, ticker: 'AAPL' }]} />);
+  await screen.findByText('US$500.00');
+  fireEvent.click(screen.getByRole('button', { name: 'USD' }));
+  await screen.findByText('Prices or exchange rate unavailable');
+  expect(screen.queryByText('$0.00')).toBeNull();
+});
+
+it('keeps actual distribution rows when the conversion estimate is unavailable', async () => {
+  api.fetchExchangeRate.mockResolvedValue(null);
+  api.getDividends.mockResolvedValue([
+    { ...dividend, ticker: 'AAPL', currency: 'USD' },
+  ]);
+  mount(<DistributionsSection trades={[{ ...trade, ticker: 'AAPL' }]} />);
+  await screen.findByText(/Exchange rate unavailable. Converted totals/);
+  expect(await screen.findByText('US$20.00')).toBeTruthy();
+  expect(screen.queryByText(/20.00 total/)).toBeNull();
+});
+
+it('uses the same currency for US yield income and cost', () => {
+  mount(
+    <YieldOnCostTable
+      trades={[{ ...trade, ticker: 'AAPL' }]}
+      dividends={[{ ...dividend, ticker: 'AAPL', currency: 'USD' }]}
+      usdSgdRate={2}
+      asOf="2026-03-01"
+    />
+  );
+  expect(screen.getByText('$40.00')).toBeTruthy();
+  expect(screen.getByText('2.00%')).toBeTruthy();
+  expect(screen.queryByText('4.00%')).toBeNull();
+});
+
+it('withholds an overflowing holding percentage instead of displaying infinity', async () => {
+  api.fetchStockPrices.mockResolvedValue({
+    DBS: { price: 1, currency: 'SGD' },
+  });
+  mount(<HoldingsTable trades={[{ ...trade, price: 1e-310 }]} />);
+  await screen.findByText('$100.00');
+  fireEvent.click(screen.getByRole('button', { name: /SG Stocks/ }));
+  expect(screen.queryByText(/Infinity/)).toBeNull();
 });

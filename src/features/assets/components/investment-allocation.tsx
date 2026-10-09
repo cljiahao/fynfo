@@ -24,13 +24,16 @@ interface InvestmentAllocationProps {
 const STORAGE_KEY = 'fynfo-allocations';
 
 export function InvestmentAllocation({ budgets }: InvestmentAllocationProps) {
-  const { data: trades } = useTrades();
+  const { data: trades, isError: tradesError } = useTrades();
   // useMemo justified: iterates all trades to aggregate net holdings per ticker
   const holdings = useMemo(() => computeHoldings(trades ?? []), [trades]);
   const heldTickers = holdings.map((h) => h.ticker);
-  const { data: prices, isLoading: pricesLoading } =
-    useStockPrices(heldTickers);
-  const { data: usdToSgd } = useExchangeRate('USD', 'SGD');
+  const {
+    data: prices,
+    isLoading: pricesLoading,
+    isError: pricesError,
+  } = useStockPrices(heldTickers);
+  const { data: usdToSgd, isError: rateError } = useExchangeRate('USD', 'SGD');
 
   const [allocations, setAllocations] = useState<Record<string, number>>({});
 
@@ -66,26 +69,26 @@ export function InvestmentAllocation({ budgets }: InvestmentAllocationProps) {
           <MarketAllocationTable
             title="SG Stocks"
             holdings={sgHoldings}
-            prices={prices}
+            prices={pricesError || tradesError ? undefined : prices}
             pricesLoading={pricesLoading}
             allocations={allocations}
             onAllocationChange={handleAllocationChange}
             currency="SGD"
-            target={budgets?.sg.target ?? 0}
-            usdToSgd={usdToSgd ?? 0}
+            target={budgets?.sg.target ?? null}
+            usdToSgd={rateError ? null : (usdToSgd ?? null)}
           />
         )}
         {usHoldings.length > 0 && (
           <MarketAllocationTable
             title="US Stocks"
             holdings={usHoldings}
-            prices={prices}
+            prices={pricesError || tradesError ? undefined : prices}
             pricesLoading={pricesLoading}
             allocations={allocations}
             onAllocationChange={handleAllocationChange}
             currency="USD"
-            target={budgets?.us.target ?? 0}
-            usdToSgd={usdToSgd ?? 0}
+            target={budgets?.us.target ?? null}
+            usdToSgd={rateError ? null : (usdToSgd ?? null)}
           />
         )}
       </CardContent>
