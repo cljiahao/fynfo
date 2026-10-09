@@ -118,3 +118,22 @@ PR11 merged on2026-10-09 after all CI/preview checks passed as
 concurrent writers still require the separate transaction contract in draft
 spec077. Scoped owner approval was requested for that additive migration and
 its callers; implementation and production execution have not occurred.
+
+## Expense allocation validation — spec078
+
+Shared saves now reject shares above the bill before any database call. Equal
+splits distribute whole-cent remainders rather than independently rounding each
+person. The split dialog shows the actual personal remainder in both modes,
+keeps invalid drafts editable and explains blocked confirmation. Inline Enter/
+blur saves also preserve overallocated drafts with the same corrective message.
+Settled shares remain part of the bill; self expenses keep ignoring stale splits.
+Historical records are unchanged and nonatomic replacements remain unresolved.
+
+Four regressions reproduced on prior behavior. Final isolated gates pass
+113files/880tests with92.95%lines,92.69%statements,90.19%functions and87.57%branches.
+Second review checked safe-cent bounds, floating-point sums, tiny bills, owner
+allocation order, settlement preservation, row blur timing, schema consumers
+and README/comments. Synthetic desktop/mobile component preview verified visible
+errors, exact allocation, manual remainder and confirmation without account access.
+Full browser workflows and atomic migration approval remain pending. PR/merge
+and deployment checks are still required before marking this batch shipped.

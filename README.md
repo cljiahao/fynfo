@@ -59,6 +59,12 @@ The dashboard's monthly review combines recorded gross income, your share of
 all expense categories and exact-month snapshot changes. It does not infer net
 savings, investment returns or zero activity from missing records.
 
+Shared expense saves reject allocations exceeding the bill at cent precision.
+Equal splits distribute remainder cents in person order, with your share last
+when included. The dialog shows your actual remainder even in “Paid for” mode;
+settled amounts still count toward the allocation. Historical records are not
+rewritten by this validation.
+
 Salary tax estimates use the calendar income year (assessment in the next year),
 the higher of 15% or resident rates for non-resident employment, and the resident
 SGD 80,000 personal relief cap including CPF. They are before rebates, eligible

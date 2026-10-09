@@ -174,6 +174,31 @@ describe('expense inline row behavioral commits', () => {
     });
     expect(save.mock.calls[0][0].id).toBeTruthy();
   });
+  it('preserves an overallocated draft on Enter and blur until the bill is corrected', () => {
+    vi.useFakeTimers();
+    const { save } = editable(false, {
+      ...row,
+      splitType: 'shared',
+      splits: [{ person: 'Alex', amount: 45, settled: false }],
+    });
+    fireEvent.change(screen.getByRole('spinbutton'), {
+      target: { value: '40' },
+    });
+    fireEvent.keyDown(screen.getByRole('spinbutton'), { key: 'Enter' });
+    expect(save).not.toHaveBeenCalled();
+    expect(notices.error).toHaveBeenCalledWith(
+      expect.stringMatching(/Shares exceed/)
+    );
+    fireEvent.blur(screen.getByRole('spinbutton'), { relatedTarget: null });
+    vi.advanceTimersByTime(400);
+    expect(save).not.toHaveBeenCalled();
+    expect(screen.getByRole('spinbutton')).toHaveValue(40);
+    fireEvent.change(screen.getByRole('spinbutton'), {
+      target: { value: '50' },
+    });
+    fireEvent.keyDown(screen.getByRole('spinbutton'), { key: 'Enter' });
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ amount: 50 }));
+  });
   it('commits edited item, info and amount on Enter with correct id', async () => {
     const { save } = editable();
     await userEvent.clear(screen.getByPlaceholderText('Brand'));
