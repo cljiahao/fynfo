@@ -1,7 +1,9 @@
 ---
 id: '085'
 area: audit
-status: draft
+status: shipped
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/16
 created: 2026-10-10
 author: Codex
 constitution_satisfies:
@@ -56,4 +58,4 @@ The revised run measured means of 1.90 / 15.80 / 200.11 ms and p99 of 4.44 / 22.
 
 Official [Next.js Server Function guidance](https://nextjs.org/docs/app/getting-started/mutating-data) states that client dispatch currently awaits Server Functions one at a time. Installed Next.js 16.3.8 corroborates this in next/dist/client/components/app-router-instance.js: runRemainingActions advances after a settled head (lines 50–61), while non-navigation calls enqueue behind the pending action (lines 164–168). Server-side prefetch is parallel, but independent client hooks calling server functions after vault unlock cannot claim parallel transport from Promise.all in mocked tests. A separate loopback transport lab protocol is drafted as spec086 before any production fetching change.
 
-README/comments require no product update for this measurement-only batch. The new benchmark and test have no explanatory narration or suppressions. Proposed reproducible command inside the synthetic fixture: node node_modules/vitest/vitest.mjs bench test/benchmarks/dashboard-history.bench.ts --run --outputJson ../085-dashboard-benchmark.json. No new dependency, migration, protected file or product behavior changed. Release remains coordinated and sequential after earlier batches; this record is not marked shipped.
+README/comments require no product update for this measurement-only batch. The new benchmark and test have no explanatory narration or suppressions. Proposed reproducible command inside the synthetic fixture: node node_modules/vitest/vitest.mjs bench test/benchmarks/dashboard-history.bench.ts --run --outputJson ../085-dashboard-benchmark.json. No new dependency, migration, protected file or product behavior changed. PR16 merged on 2026-10-10 after all required checks passed on exact head 3a3d635. This ships measurement tooling and evidence, not a production latency optimization.

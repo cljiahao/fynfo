@@ -1,7 +1,9 @@
 ---
 id: '084'
 area: audit
-status: approved
+status: shipped
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/17
 created: 2026-10-10
 author: Codex
 constitution_satisfies:

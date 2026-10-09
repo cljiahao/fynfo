@@ -191,3 +191,42 @@ text casts for lossless counters and returned expected errors for Server Actions
 [PostgreSQL17](https://www.postgresql.org/docs/17/transaction-iso.html),
 [PostgREST column casting](https://docs.postgrest.org/en/stable/references/api/tables_views.html#casting-columns),
 [Next.js expected errors](https://nextjs.org/docs/app/getting-started/error-handling).
+
+## Parallel delivery closeout — 2026-10-10
+
+The owner requested parallel worktrees; isolated accuracy, latency and CPF
+fixtures used tracked source and placeholder configuration only. No private
+accounts, secret files or production financial records were read. The existing
+hooks were retained. Initial fixture Husky wrappers were absent after installation
+without Git metadata; official Husky setup restored them, the unchanged pre-commit
+was explicitly rechecked, and subsequent commits/pushes used normal hooks. No
+hook bypass or protected-file edit occurred.
+
+Spec085/086 shipped in PR16 after green exact-head CI as
+5ec95fbed1c413218ca7571aacee7904f3a00040. The opt-in history benchmark and deterministic
+prefetch regression establish a baseline, not a production speed improvement.
+A synthetic real Next16 transport lab measured five alternating samples: separate
+450ms functions median995.7ms versus one internally concurrent function501.4ms.
+Server timing confirms separate calls queued; the lab uses no account/database
+and does not prove a selected Fynfo architecture. Spec087 is a proposal only:
+bounded caches must avoid arbitrary snapshot edit-string collisions, preserve
+freshness/errors and full-history consumers, and demonstrate representative
+benefit. Small histories can be slower if extra reads are introduced.
+
+Spec084 shipped in PR17 after green exact-head CI as
+574731f10885c115a806619962757b55105c67d6. Missing prices/currencies no longer become
+fabricated valuations; SGD/USD summaries remain native, real FX is required for
+conversion, incomplete derived budgets clear, and unsupported/overflowing returns
+are withheld. 116files/910 local tests passed:93.00%lines,92.72%statements,
+90.20%functions,87.53%branches; stricter floors unchanged. Four regressions fail
+against shipped source, followed by exact fixture restoration. Independent review
+and synthetic desktop/mobile/keyboard proof passed. Historical partial-sale cost
+accounting and provider metadata limits remain explicit; no exhaustive financial
+accuracy claim is made.
+
+Spec088 is under final verification for monthly CPF wagebands, rounding, actual
+month ceilings and recorded-versus-projected labels. It does not establish
+citizenship/PR or other age eligibility, change persistence, or silently update
+the separate flat20% deployment planner. Snapshot spec083 remains verified and
+unmerged pending owner confirmation of its distinct revision SQL; spec077's prior
+confirmation does not apply to it.
