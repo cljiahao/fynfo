@@ -1,6 +1,8 @@
 ---
 id: '073'
-status: owner-authorized-remediation
+status: shipped
+shipped: 2026-10-09
+impl_pr: https://github.com/cljiahao/fynfo/pull/8
 created: 2026-10-09
 author: Codex
 ---
@@ -80,7 +82,8 @@ README and inline comments were reviewed for durable rationale; redundant
 heading narration was removed. This fixes tax calculation bugs, not the
 remaining payroll/eligibility model. No latency improvement is claimed.
 
-PR and CI integration remain required before marking this batch shipped.
+PR8 merged on2026-10-09 after all CI and preview checks passed. The merge commit
+is597c79f40cb850f02645dbf71bebfed218ce3936. The wider roadmap remains open.
 
 Historical boundary follow-up in the same batch: IRAS states the overall cap
 took effect in YA2018 (calendar income year2017). Preserve earlier income-year
