@@ -8,7 +8,7 @@ import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
-import { taxReliefDataSchema } from '../schemas';
+import { taxReliefListSchema } from '../schemas';
 import type { TaxReliefData } from '../types';
 
 export async function getTaxReliefs(year: number): Promise<TaxReliefData[]> {
@@ -66,8 +66,22 @@ export async function upsertTaxReliefs(
   reliefs: TaxReliefData[]
 ): Promise<void> {
   parseOrThrow(z.number().int().positive(), year, 'tax_relief.year');
-  parseOrThrow(z.array(taxReliefDataSchema), reliefs, 'tax_relief.reliefs');
+  const validatedReliefs = parseOrThrow(
+    taxReliefListSchema,
+    reliefs,
+    'tax_relief.reliefs'
+  );
   const { userId, dek, supabase } = await requireActionContext();
+
+  const inserts = await Promise.all(
+    validatedReliefs.map(async (r) => ({
+      id: randomUUID(),
+      user_id: userId,
+      year,
+      relief_key: r.reliefKey,
+      amount: await encryptPayload(r.amount.toString(), dek),
+    }))
+  );
 
   const { error: delErr } = await supabase
     .from('tax_relief_entries')
@@ -77,17 +91,7 @@ export async function upsertTaxReliefs(
 
   throwIfSupabaseError(delErr, 'tax_relief delete');
 
-  if (reliefs.length === 0) return;
-
-  const inserts = await Promise.all(
-    reliefs.map(async (r) => ({
-      id: randomUUID(),
-      user_id: userId,
-      year,
-      relief_key: r.reliefKey,
-      amount: await encryptPayload(r.amount.toString(), dek),
-    }))
-  );
+  if (inserts.length === 0) return;
 
   const { error: insErr } = await supabase
     .from('tax_relief_entries')

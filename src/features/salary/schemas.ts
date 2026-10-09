@@ -11,3 +11,12 @@ export const taxReliefDataSchema = z.object({
   reliefKey: z.string().min(1),
   amount: z.number().min(0),
 });
+
+export const taxReliefListSchema = z
+  .array(taxReliefDataSchema)
+  .refine(
+    (reliefs) =>
+      new Set(reliefs.map((relief) => relief.reliefKey)).size ===
+      reliefs.length,
+    { message: 'Each relief may appear only once.' }
+  );
