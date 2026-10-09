@@ -30,8 +30,8 @@ function downloadJson(content: string, filename: string): void {
 }
 
 /**
- * Gathers every domain (decrypted server-side via the session DEK) and saves a
- * single versioned JSON backup to the user's device. No partial file on error.
+ * Downloads a decrypted personal-vault export, not a proven recovery backup.
+ * A failed domain read prevents download; cross-domain reads are not atomic.
  */
 export function useExportData() {
   const [isExporting, setIsExporting] = useState(false);

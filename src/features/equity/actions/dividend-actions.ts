@@ -4,6 +4,7 @@ import { requireActionContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { decryptNumber } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
+import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { dividendInputSchema } from '../schemas';
@@ -12,13 +13,17 @@ import type { DividendData } from '../types';
 export async function getDividends(): Promise<DividendData[]> {
   const { userId, dek, supabase } = await requireActionContext();
 
-  const { data, error } = await supabase
-    .from('equity_dividends')
-    .select('*')
-    .eq('user_id', userId)
-    .order('date', { ascending: false });
-
-  throwIfSupabaseError(error, 'dividends read');
+  const data = await readAllRows(
+    (from, to) =>
+      supabase
+        .from('equity_dividends')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, to),
+    'dividends read'
+  );
 
   return (data || []).map((d) => ({
     id: d.id,

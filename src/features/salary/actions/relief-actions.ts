@@ -4,6 +4,7 @@ import { requireActionContext } from '@/lib/action-guard';
 import { encryptPayload } from '@/lib/crypto';
 import { decryptNumber } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
+import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
@@ -13,13 +14,17 @@ import type { TaxReliefData } from '../types';
 export async function getTaxReliefs(year: number): Promise<TaxReliefData[]> {
   const { userId, dek, supabase } = await requireActionContext();
 
-  const { data, error } = await supabase
-    .from('tax_relief_entries')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('year', year);
-
-  throwIfSupabaseError(error, 'tax_relief read');
+  const data = await readAllRows(
+    (from, to) =>
+      supabase
+        .from('tax_relief_entries')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId)
+        .eq('year', year)
+        .order('id', { ascending: true })
+        .range(from, to),
+    'tax_relief read'
+  );
 
   return Promise.all(
     (data || []).map(async (e) => ({
@@ -35,12 +40,17 @@ export async function getAllTaxReliefs(): Promise<
 > {
   const { userId, dek, supabase } = await requireActionContext();
 
-  const { data, error } = await supabase
-    .from('tax_relief_entries')
-    .select('*')
-    .eq('user_id', userId);
-
-  throwIfSupabaseError(error, 'tax_relief read');
+  const data = await readAllRows(
+    (from, to) =>
+      supabase
+        .from('tax_relief_entries')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId)
+        .order('year', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    'tax_relief read'
+  );
 
   return Promise.all(
     (data || []).map(async (e) => ({

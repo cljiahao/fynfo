@@ -12,7 +12,7 @@ when the roadmap is completed; do not use it to bypass pending scoped approvals.
 | Skippable first-record prompt and optional reserve disclosure               | Merged/deployed in PR7                           | Synthetic dismiss/remount, collapsed controls and existing workflow regressions                                                                                        |
 | Profile readiness and opaque optional-read failures                         | Merged/deployed in PR7                           | New failed-read tests proved red against prior profile/planner actions; missing rows remain null                                                                       |
 | Monthly financial review with sources and exact-month asset comparison      | Merged/deployed in PR7                           | Gross income explicitly before CPF/tax; no inferred savings rate; impossible shared splits hide spending total                                                         |
-| Complete histories and export reads                                         | Next hardening batch                             | Paginate top-level and nested relations; stable tie-break order; fixtures over1000rows; preserve owner RLS and opaque errors                                           |
+| Complete histories and export reads                                         | Flat histories implemented; nested pending       | Paginate top-level and nested relations; stable tie-break order; fixtures over1000rows; preserve owner RLS and opaque errors                                           |
 | Atomic saves, concurrent edit conflicts, retry idempotency                  | Pending concrete migration proposal              | Snapshot/expense/relief child replacement needs transaction and revision contract; scoped migration approval before executable migration changes                       |
 | Quote/FX availability and financial rule accuracy                           | Pending                                          | Price currency/date and source status, mixed-currency cost basis and official tax/CPF fixtures; no silent defaults or advice                                           |
 | Dashboard latency measurement/aggregation                                   | Pending                                          | Unlock-to-ready request/decryption timings using synthetic fixtures; no production speed claim from reduced rendering work alone                                       |
@@ -70,3 +70,21 @@ start with calendar income year2023; the80000 combined personal relief cap
 includes CPF. Four regressions reproduced on original source. Fixed20% CPF,
 relief eligibility, historical intra-year ceilings and rebates remain explicit
 limitations. No citizenship/CPF eligibility is inferred from tax residency.
+
+## Flat-history remediation — spec074
+
+Salary, trades, dividends and tax-relief reads now use bounded pages with exact
+counts and stable ID tie-break order. Advance by actual returned row count;
+a lower API cap is not treated as end of history. A 1203-row encrypted salary
+regression returned only125rows before remediation. Large encrypted fixtures
+for every affected domain pass; owner/year filters are retained on every page.
+
+Snapshots/entries, expenses/splits, distinct people and household contributions
+remain pending. Parent pagination alone does not prove embedded-child completeness.
+Count changes or later read errors fail closed; same-count concurrent changes
+still require a transactionally consistent backup contract. No complete-export
+or speed improvement is claimed. PR/CI and full gates remain required.
+
+The prior tax batch shipped in PR8 on2026-10-09 with green CI and deployment.
+Its isolated suite passed824tests with92.84%lines and87.03%branches; full details
+are recorded in the shipped spec073. The broader roadmap remains open.
