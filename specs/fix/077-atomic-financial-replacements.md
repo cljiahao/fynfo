@@ -2,12 +2,12 @@
 id: '077'
 slug: atomic-financial-replacements
 area: fix
-status: approved
+status: shipped
 author: Codex
 created: 2026-10-09
 approved: 2026-10-09
-shipped:
-impl_pr:
+shipped: 2026-10-09
+impl_pr: https://github.com/cljiahao/fynfo/pull/13
 supersedes:
 constitution_satisfies:
   - '§2.1'
@@ -125,7 +125,7 @@ separate contracts. Existing delete/settlement actions are not revised.
 - [x] Action regressions retain identity/key gates, encrypt before RPC, omit
       caller-controlled ownership, reject failed RPC and expose opaque errors.
 - [x] `pnpm check`, `pnpm test:ci`, `pnpm build` pass in the isolated fixture; >80% in every aggregate metric and stricter security floors retained.
-- [ ] Second review covers grants, SQL rollback, locking, RLS and README/comments.
+- [x] Second review covers grants, SQL rollback, locking, RLS and README/comments.
       All CI checks green before owner-authorized merge.
 
 ## Risk and reversibility
@@ -210,7 +210,10 @@ Residual limits: last-writer-wins, direct owner table writes can bypass the RPC
 serialization, no durable retry identity, no revision history, and no production
 or authenticated browser proof. The live RPC transport/cache is verified after
 the owner applies SQL, rather than inferred from direct local PostgreSQL tests.
-Production execution and application merge remain pending migration readiness.
+Clarence confirmed “i ran the migration” on2026-10-09. PR13 merged after all
+required CI/preview checks passed, as89009a7c7750caa0217cfed7ba9c53612735e539.
+Production migration execution is owner-reported; no confidential account or
+production database was accessed for independent verification.
 
 Final isolated gates: `pnpm check`, `pnpm test:ci` and optimized `pnpm build`
 pass. 115 files / 885 tests; coverage 92.91% lines (3201/3445), 92.66% statements

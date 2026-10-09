@@ -138,3 +138,25 @@ errors, exact allocation, manual remainder and confirmation without account acce
 Full browser workflows and atomic migration approval remain pending. PR/merge
 completed in PR12 on2026-10-09 after all CI/preview checks passed, as
 8f1da30b8922180d938fbb8ef8cf85b1d94c0b86.
+
+## Atomic financial replacements — spec077
+
+Snapshots, expenses and annual reliefs now prepare ciphertext before one
+authenticated invoker RPC. Parent/child replacements roll back together, ownership
+is database-derived, and snapshot parent IDs survive retries and renames. Relief
+years serialize under READ COMMITTED, including first saves to an empty year.
+Anonymous/service-role execution is revoked; existing RLS and table grants remain.
+Last-writer-wins and direct owner table-write access remain explicit limitations.
+
+Fresh PostgreSQL17.10 fixtures passed malformed/oversized/duplicate payloads,
+cross-owner collisions, failed final-child rollback, empty/rename replacements,
+preserved IDs and observed concurrent complete saves. Identity-before-vault action
+tests passed. Full isolated gates and unchanged Git hooks passed115files/885tests:
+92.91%lines,92.66%statements,90.19%functions,87.65%branches; security floors unchanged.
+Second review and README/comment checks are recorded in spec077.
+
+Clarence confirmed applying the migration on2026-10-09. PR13 merged with green
+CI/preview checks as89009a7c7750caa0217cfed7ba9c53612735e539. Production readiness
+is owner-reported; no production records or credentials were accessed. Batch B
+starts with investigating snapshot stale-edit protection and safe failed-save
+handling; concrete schema approval remains required before implementation.
