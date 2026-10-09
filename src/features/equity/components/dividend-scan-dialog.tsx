@@ -15,12 +15,14 @@ import { Coins, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { fetchDividends } from '../actions/price-actions';
+import { MAX_PRICE_CONCURRENCY } from '../constants';
 import { useCreateDividends } from '../hooks/use-dividends';
 import {
   buildDividendCandidates,
+  dividendScanTickers,
   type DividendCandidate,
 } from '../lib/dividend-scan';
-import { computeHoldings } from '../lib/holdings';
+
 import type { DividendData, EquityTradeData } from '../types';
 
 interface DividendScanDialogProps {
@@ -52,17 +54,31 @@ export function DividendScanDialog({
       setScanning(true);
       setRows([]);
       try {
-        const holdings = computeHoldings(trades);
-        const entries = await Promise.all(
-          holdings.map(async (h) => {
-            const points = await fetchDividends(h.ticker);
-            return [h.ticker, points] as const;
-          })
+        const tickers = dividendScanTickers(trades);
+        const pointsByTicker: Parameters<typeof buildDividendCandidates>[1] =
+          {};
+        let cursor = 0;
+        let failed = false;
+        async function worker() {
+          while (!cancelled && !failed && cursor < tickers.length) {
+            const ticker = tickers[cursor++];
+            try {
+              pointsByTicker[ticker] = await fetchDividends(ticker);
+            } catch (error) {
+              failed = true;
+              throw error;
+            }
+          }
+        }
+        await Promise.all(
+          Array.from(
+            { length: Math.min(MAX_PRICE_CONCURRENCY, tickers.length) },
+            worker
+          )
         );
-        const pointsByTicker = Object.fromEntries(entries);
+        if (cancelled) return;
         const candidates = buildDividendCandidates(
           trades,
-          holdings,
           pointsByTicker,
           existing
         );
@@ -96,7 +112,7 @@ export function DividendScanDialog({
 
   async function handleImport() {
     const toAdd = rows
-      .filter((r) => r.selected && r.amount > 0)
+      .filter((r) => r.selected && Number.isFinite(r.amount) && r.amount > 0)
       .map((r) => ({
         ticker: r.ticker,
         date: r.date,
@@ -122,16 +138,17 @@ export function DividendScanDialog({
         <DialogHeader>
           <DialogTitle>Scan distributions</DialogTitle>
           <DialogDescription>
-            Estimated from your trade history × market distribution data. Review
-            and adjust amounts — these are estimates, not your exact received
-            amounts.
+            Gross estimates from your trade history and the last five years of
+            market data, including sold positions. Shares use trades before each
+            ex-date. Dates are ex-dates, not confirmed payment dates. Review
+            amounts against your received payments.
           </DialogDescription>
         </DialogHeader>
 
         {scanning ? (
           <div className="text-muted-foreground flex items-center justify-center gap-2 py-12 text-sm">
             <Loader2 className="size-4 animate-spin" />
-            Scanning your holdings…
+            Scanning your trade history…
           </div>
         ) : rows.length === 0 ? (
           <EmptyState

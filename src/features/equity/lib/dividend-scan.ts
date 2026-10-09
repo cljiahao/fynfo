@@ -1,28 +1,24 @@
 import type { DividendCurrency, DividendData, EquityTradeData } from '../types';
-import { type DividendPoint, sharesHeldAsOf } from './dividend-suggest';
-import type { Holding } from './holdings';
+import { type DividendPoint, sharesHeldBeforeExDate } from './dividend-suggest';
 import { getMarket } from './ticker-map';
 
 export interface DividendCandidate {
   ticker: string;
-  // ex-date (ISO)
+  // Feed ex-date, not a confirmed payment date.
   date: string;
   dpu: number;
   shares: number;
-  // estimated = dpu * shares
   amount: number;
   currency: DividendCurrency;
 }
 
-/**
- * Reconstructs candidate distributions for held positions: for each holding and
- * each Yahoo ex-date, estimates the amount as DPU × shares-held-on-that-date.
- * Skips ex-dates where no shares were held, dedupes against already-recorded
- * dividends (and within the scan) by ticker+date, sorts newest first.
- */
+export function dividendScanTickers(trades: EquityTradeData[]): string[] {
+  return [...new Set(trades.map((trade) => trade.ticker.trim().toUpperCase()))];
+}
+
+/** Historical gross estimates; current ownership does not establish past entitlement. */
 export function buildDividendCandidates(
   trades: EquityTradeData[],
-  holdings: Holding[],
   pointsByTicker: Record<string, DividendPoint[]>,
   existing: DividendData[]
 ): DividendCandidate[] {
@@ -31,24 +27,26 @@ export function buildDividendCandidates(
   const seen = new Set(existing.map((d) => key(d.ticker, d.date)));
 
   const out: DividendCandidate[] = [];
-  for (const h of holdings) {
-    const points =
-      pointsByTicker[h.ticker] ?? pointsByTicker[h.ticker.toUpperCase()] ?? [];
+  for (const ticker of dividendScanTickers(trades)) {
+    const points = pointsByTicker[ticker] ?? [];
     const currency: DividendCurrency =
-      getMarket(h.ticker) === 'US' ? 'USD' : 'SGD';
+      getMarket(ticker) === 'US' ? 'USD' : 'SGD';
 
-    for (const p of points) {
-      const shares = sharesHeldAsOf(trades, h.ticker, p.exDate);
-      if (shares <= 0) continue;
-      const k = key(h.ticker, p.exDate);
-      if (seen.has(k)) continue;
-      seen.add(k);
+    for (const point of points) {
+      const shares = sharesHeldBeforeExDate(trades, ticker, point.exDate);
+      if (shares === null || shares <= 0) continue;
+      if (!Number.isFinite(point.dpu) || point.dpu <= 0) continue;
+      const amount = Math.round(point.dpu * shares * 100) / 100;
+      if (!Number.isFinite(amount) || amount <= 0) continue;
+      const candidateKey = key(ticker, point.exDate);
+      if (seen.has(candidateKey)) continue;
+      seen.add(candidateKey);
       out.push({
-        ticker: h.ticker,
-        date: p.exDate.slice(0, 10),
-        dpu: p.dpu,
+        ticker,
+        date: point.exDate.slice(0, 10),
+        dpu: point.dpu,
         shares,
-        amount: Math.round(p.dpu * shares * 100) / 100,
+        amount,
         currency,
       });
     }

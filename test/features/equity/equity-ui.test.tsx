@@ -450,7 +450,7 @@ describe('real equity tables and calculations', () => {
         existing={[]}
       />
     );
-    expect(screen.getByText('Scanning your holdings…')).toBeTruthy();
+    expect(screen.getByText('Scanning your trade history…')).toBeTruthy();
     view.unmount();
     reject(new Error('late failure'));
     await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledWith('DBS'));
@@ -701,4 +701,160 @@ it('withholds an overflowing holding percentage instead of displaying infinity',
   await screen.findByText('$100.00');
   fireEvent.click(screen.getByRole('button', { name: /SG Stocks/ }));
   expect(screen.queryByText(/Infinity/)).toBeNull();
+});
+
+describe('historical scan entitlement regressions', () => {
+  it('fetches sold positions and offers their earlier distribution', async () => {
+    mount(
+      <DividendScanDialog
+        open
+        onOpenChange={vi.fn()}
+        trades={[
+          trade,
+          { ...trade, id: 'sold', date: '2026-03-01', action: 'sell' },
+        ]}
+        existing={[]}
+      />
+    );
+    expect(
+      (
+        (await screen.findByLabelText(
+          'Amount for DBS 2026-02-01'
+        )) as HTMLInputElement
+      ).value
+    ).toBe('20');
+    expect(api.fetchDividends).toHaveBeenCalledExactlyOnceWith('DBS');
+    expect(
+      screen.getByText(/Dates are ex-dates, not confirmed payment dates/)
+    ).toBeTruthy();
+  });
+  it('excludes purchases on the supplied ex-date', async () => {
+    mount(
+      <DividendScanDialog
+        open
+        onOpenChange={vi.fn()}
+        trades={[{ ...trade, date: '2026-02-01' }]}
+        existing={[]}
+      />
+    );
+    await screen.findByText('No new distributions found');
+    expect(api.createDividends).not.toHaveBeenCalled();
+  });
+  it('retains entitlement when selling on the supplied ex-date', async () => {
+    mount(
+      <DividendScanDialog
+        open
+        onOpenChange={vi.fn()}
+        trades={[
+          trade,
+          { ...trade, id: 'sold', date: '2026-02-01', action: 'sell' },
+        ]}
+        existing={[]}
+      />
+    );
+    expect(
+      (
+        (await screen.findByLabelText(
+          'Amount for DBS 2026-02-01'
+        )) as HTMLInputElement
+      ).value
+    ).toBe('20');
+  });
+  it('deduplicates historical tickers and limits active requests', async () => {
+    const pending: Array<
+      (points: Array<{ exDate: string; dpu: number }>) => void
+    > = [];
+    let active = 0;
+    let peak = 0;
+    api.fetchDividends.mockImplementation(() => {
+      active++;
+      peak = Math.max(peak, active);
+      return new Promise<Array<{ exDate: string; dpu: number }>>((resolve) => {
+        pending.push((points) => {
+          active--;
+          resolve(points);
+        });
+      });
+    });
+    mount(
+      <DividendScanDialog
+        open
+        onOpenChange={vi.fn()}
+        trades={[
+          ...Array.from({ length: 6 }, (_, index) => ({
+            ...trade,
+            ticker: `TEST${index}`,
+          })),
+          { ...trade, ticker: 'test0' },
+        ]}
+        existing={[]}
+      />
+    );
+    await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(5));
+    pending[0]([]);
+    await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(6));
+    for (const resolve of pending.slice(1)) resolve([]);
+    await screen.findByText('No new distributions found');
+    expect(peak).toBe(5);
+    expect(api.fetchDividends.mock.calls.map(([ticker]) => ticker)).toEqual([
+      'TEST0',
+      'TEST1',
+      'TEST2',
+      'TEST3',
+      'TEST4',
+      'TEST5',
+    ]);
+  });
+  it('stops scheduling historical requests after unmount', async () => {
+    const pending: Array<() => void> = [];
+    api.fetchDividends.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          pending.push(() => resolve([]));
+        })
+    );
+    const view = mount(
+      <DividendScanDialog
+        open
+        onOpenChange={vi.fn()}
+        trades={Array.from({ length: 7 }, (_, index) => ({
+          ...trade,
+          ticker: `TEST${index}`,
+        }))}
+        existing={[]}
+      />
+    );
+    await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(5));
+    view.unmount();
+    for (const resolve of pending) resolve();
+    await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(5));
+    expect(api.error).not.toHaveBeenCalled();
+  });
+});
+
+it('stops queued historical scan work after a request throws', async () => {
+  const pending: Array<() => void> = [];
+  api.fetchDividends.mockRejectedValueOnce(new Error('offline'));
+  api.fetchDividends.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        pending.push(() => resolve([]));
+      })
+  );
+  mount(
+    <DividendScanDialog
+      open
+      onOpenChange={vi.fn()}
+      trades={Array.from({ length: 7 }, (_, index) => ({
+        ...trade,
+        ticker: `TEST${index}`,
+      }))}
+      existing={[]}
+    />
+  );
+  await waitFor(() =>
+    expect(api.error).toHaveBeenCalledWith('Could not scan for distributions')
+  );
+  for (const resolve of pending) resolve();
+  await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(5));
 });

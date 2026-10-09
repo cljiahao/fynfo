@@ -66,6 +66,14 @@ dividends and currency movements, and require usable dated cash flows and a veri
 solver result. Optional SGD conversions require an actual exchange rate. Converted
 historical income and spending use the current rate as a planning estimate, not the
 payment-date rate. Query refresh time does not establish the provider quote's age.
+
+Distribution scans include historical trade tickers and sold positions within the
+existing five-year feed. Entitlement estimates use shares held before the supplied
+ex-date. Dates are ex-dates rather than confirmed payments, and currencies retain
+the existing SG/US ticker-based inference. Check amounts, currency and payment dates
+against received records; provider failures and actual payment evidence require
+the separate source/reconciliation contract.
+
 Shared expense saves reject allocations exceeding the bill at cent precision.
 Equal splits distribute remainder cents in person order, with your share last
 when included. The dialog shows your actual remainder even in “Paid for” mode;
