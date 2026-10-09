@@ -1,6 +1,8 @@
 ---
 id: '075'
-status: implementing
+status: shipped
+shipped: 2026-10-09
+impl_pr: https://github.com/cljiahao/fynfo/pull/10
 created: 2026-10-09
 author: Codex
 ---
@@ -81,4 +83,5 @@ still prevent download. No private records or real env contents were accessed.
 
 These fixtures establish application paging and query construction, not a live
 authenticated browser walkthrough or database query replay. No performance
-gain is claimed. CI/preview checks must still pass before merge.
+gain is claimed. PR10 merged on2026-10-09 after every CI and preview check passed,
+as3c5554c89207f15c16f2554b9fefc697829b63f1.

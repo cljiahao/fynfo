@@ -12,7 +12,7 @@ when the roadmap is completed; do not use it to bypass pending scoped approvals.
 | Skippable first-record prompt and optional reserve disclosure               | Merged/deployed in PR7                           | Synthetic dismiss/remount, collapsed controls and existing workflow regressions                                                                                        |
 | Profile readiness and opaque optional-read failures                         | Merged/deployed in PR7                           | New failed-read tests proved red against prior profile/planner actions; missing rows remain null                                                                       |
 | Monthly financial review with sources and exact-month asset comparison      | Merged/deployed in PR7                           | Gross income explicitly before CPF/tax; no inferred savings rate; impossible shared splits hide spending total                                                         |
-| Complete histories and export reads                                         | Flat merged; nested verification in progress     | Separate parent/child pages; bounded household ID filters; fixtures over1000rows; point-in-time backup remains pending                                                 |
+| Complete histories and export reads                                         | Flat and nested merged in PR9/PR10               | Separate parent/child pages; bounded household ID filters; fixtures over1000rows; point-in-time backup remains pending                                                 |
 | Atomic saves, concurrent edit conflicts, retry idempotency                  | Pending concrete migration proposal              | Snapshot/expense/relief child replacement needs transaction and revision contract; scoped migration approval before executable migration changes                       |
 | Quote/FX availability and financial rule accuracy                           | Pending                                          | Price currency/date and source status, mixed-currency cost basis and official tax/CPF fixtures; no silent defaults or advice                                           |
 | Dashboard latency measurement/aggregation                                   | Pending                                          | Unlock-to-ready request/decryption timings using synthetic fixtures; no production speed claim from reduced rendering work alone                                       |
@@ -100,5 +100,5 @@ synthetic regressions failed on11of12cases, including125returned rows instead
 of1003. Isolated full gates pass111files/853tests:92.90%lines,92.66%statements,
 90.12%functions,87.44%branches with stricter floors unchanged. Second review
 checked query scope, child grouping, empty histories, later-page failures and
-export consumers. CI/preview checks remain required before merge. No migration
-or performance gain is claimed.
+export consumers. PR10 merged on2026-10-09 after all CI/preview checks passed as
+3c5554c89207f15c16f2554b9fefc697829b63f1. No migration or performance gain is claimed.
