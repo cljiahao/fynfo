@@ -74,6 +74,11 @@ Failed pages or changed counts reject the read. Separate requests can still
 observe concurrent edits; JSON export is not a proven point-in-time backup or
 restore mechanism and excludes household data.
 
+Tax-relief replacement validates unique relief keys and prepares encrypted rows
+before deleting existing values. Snapshot, expense and relief replacements still
+use multiple database requests; a later write failure can leave an incomplete
+save. Transactional replacements remain pending a separately approved migration.
+
 ## Environment variables
 
 See [.env.example](.env.example) for the placeholder template.

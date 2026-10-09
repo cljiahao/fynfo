@@ -1,3 +1,4 @@
+import * as fieldCrypto from '@/lib/crypto';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -22,6 +23,7 @@ function setSupabase(opts: FakeSupabaseOptions = {}) {
 }
 
 beforeEach(() => {
+  vi.restoreAllMocks();
   setSupabase();
 });
 
@@ -94,6 +96,33 @@ describe('relief-actions — upsertTaxReliefs', () => {
     { reliefKey: 'srs', amount: 500 },
   ];
 
+  it('prepares every replacement before any deletion, even when later encryption fails', async () => {
+    const fake = setSupabase();
+    const encrypt = fieldCrypto.encryptPayload;
+    vi.spyOn(fieldCrypto, 'encryptPayload').mockImplementation((text, key) => {
+      if (text === '500') throw new Error('synthetic encryption failure');
+      return encrypt(text, key);
+    });
+    const { upsertTaxReliefs } =
+      await import('@/features/salary/actions/relief-actions');
+    await expect(upsertTaxReliefs(2026, reliefs)).rejects.toThrow(
+      'synthetic encryption failure'
+    );
+    expect(fake.calls.from).toHaveLength(0);
+    expect(fake.calls.delete).toBe(0);
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+
+  it('rejects duplicate relief keys before any database access', async () => {
+    const fake = setSupabase();
+    const { upsertTaxReliefs } =
+      await import('@/features/salary/actions/relief-actions');
+    await expect(
+      upsertTaxReliefs(2026, [reliefs[0], { ...reliefs[0], amount: 500 }])
+    ).rejects.toMatchObject({ code: 'VALIDATION' });
+    expect(fake.calls.from).toHaveLength(0);
+  });
+
   it('deletes the year then inserts freshly-encrypted rows', async () => {
     const fake = setSupabase();
     const { upsertTaxReliefs } =
@@ -101,6 +130,10 @@ describe('relief-actions — upsertTaxReliefs', () => {
     await upsertTaxReliefs(2026, reliefs);
 
     expect(fake.calls.delete).toBe(1);
+    expect(fake.calls.queries[0].eq).toEqual([
+      { column: 'user_id', value: USER_ID },
+      { column: 'year', value: 2026 },
+    ]);
     const rows = fake.calls.insert[0] as Array<Record<string, unknown>>;
     expect(rows).toHaveLength(2);
     expect(rows[0].user_id).toBe(USER_ID);
@@ -137,12 +170,13 @@ describe('relief-actions — upsertTaxReliefs', () => {
   });
 
   it('surfaces an opaque error when the delete fails', async () => {
-    setSupabase({ selectError: { message: 'permission denied' } });
+    const fake = setSupabase({ selectError: { message: 'permission denied' } });
     const { upsertTaxReliefs } =
       await import('@/features/salary/actions/relief-actions');
     await expect(upsertTaxReliefs(2026, reliefs)).rejects.toThrow(
       'tax_relief delete failed'
     );
+    expect(fake.calls.insert).toHaveLength(0);
   });
 
   it('surfaces an opaque error when the insert fails', async () => {

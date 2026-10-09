@@ -102,3 +102,18 @@ of1003. Isolated full gates pass111files/853tests:92.90%lines,92.66%statements,
 checked query scope, child grouping, empty histories, later-page failures and
 export consumers. PR10 merged on2026-10-09 after all CI/preview checks passed as
 3c5554c89207f15c16f2554b9fefc697829b63f1. No migration or performance gain is claimed.
+
+## Save preparation — spec076
+
+Tax-relief replacement deleted old rows before encrypting the new list. Two
+regressions reproduced on original source: later encryption failure had already
+issued deletion, and duplicate keys were accepted despite the database unique
+constraint. Prepare all ciphertext and validate unique keys before any mutation.
+This preserves ordinary successful saves and empty-list clearing. Full isolated
+gates pass111files/855tests:92.90%lines,92.67%statements,90.14%functions and
+87.44%branches with stricter floors unchanged. Second review checked validation,
+encryption ordering, owner/year scope, consumer failure handling and README.
+CI/preview checks remain required before merge. Database insertion failures and
+concurrent writers still require the separate transaction contract in draft
+spec077. Scoped owner approval was requested for that additive migration and
+its callers; implementation and production execution have not occurred.
