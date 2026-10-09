@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { useExportData } from '@/features/profile/hooks/use-export-data';
 import { act, renderHook } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   read: vi.fn(),
+  snapshots: vi.fn(),
   dividends: vi.fn(() => Promise.resolve([])),
   toast: vi.fn(),
 }));
@@ -11,7 +12,7 @@ vi.mock('@/features/assets/actions/planner-actions', () => ({
   getPlannerSettings: () => null,
 }));
 vi.mock('@/features/assets/actions/snapshot-actions', () => ({
-  getSnapshots: () => [],
+  getSnapshots: state.snapshots,
 }));
 vi.mock('@/features/equity/actions/equity-actions', () => ({
   getTrades: () => [],
@@ -35,6 +36,7 @@ vi.mock('sonner', () => ({
   toast: { success: state.toast, error: state.toast },
 }));
 afterEach(() => vi.clearAllMocks());
+beforeEach(() => state.snapshots.mockResolvedValue([]));
 it('does not disclose export after vault unmount while reads are pending', async () => {
   let resolveRead: (value: null) => void = () => {};
   state.read.mockImplementation(
@@ -82,6 +84,14 @@ it('rejects a failed dividend read without downloading a partial export', async 
 });
 
 it('downloads a complete versioned backup and releases its temporary URL', async () => {
+  state.snapshots.mockResolvedValue([
+    {
+      id: '2026-01',
+      snapshotId: 'fixture-parent',
+      revision: '9007199254740993',
+      entries: [],
+    },
+  ]);
   state.read.mockResolvedValue({
     birthYear: 1990,
     isNsman: false,
@@ -117,7 +127,7 @@ it('downloads a complete versioned backup and releases its temporary URL', async
     exportedAt: expect.any(String),
     data: {
       profile: { birthYear: 1990, isNsman: false, residencyStatus: 'resident' },
-      snapshots: [],
+      snapshots: [{ id: '2026-01', entries: [] }],
       expenses: [],
       salary: [],
       taxReliefs: [],

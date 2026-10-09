@@ -191,3 +191,29 @@ text casts for lossless counters and returned expected errors for Server Actions
 [PostgreSQL17](https://www.postgresql.org/docs/17/transaction-iso.html),
 [PostgREST column casting](https://docs.postgrest.org/en/stable/references/api/tables_views.html#casting-columns),
 [Next.js expected errors](https://nextjs.org/docs/app/getting-started/error-handling).
+
+## Snapshot comparison and recovery — spec083, verified but not shipped
+
+Clarence approved the revision migration/callers and the original-parent-ID
+addendum on2026-10-09. Snapshot creates use a unique insert; edits/deletes compare
+identity plus lossless revision under an owner row lock. Coherent edit reads bind
+version to all ciphertext children. Legacy RPCs advance revisions. Drafts remain
+visible after conflicts or uncertain outcomes, with explicit review; no force
+writes or automatic mutation retries. Recovery rejects unrelated rename targets,
+cancels older in-flight reads and ignores obsolete completions after navigation.
+Export format remains unchanged. The mobile month header and accessible control
+names were corrected within the owner's audit scope.
+
+All isolated gates pass116files/906tests:93.00%lines,92.62%statements,
+90.17%functions,87.92%branches; security floors unchanged. Two relevant regressions
+fail on shipped main. Fresh PostgreSQL fixtures prove owner/role boundaries,
+atomic revision/data rollback, one concurrent winner, delete/recreate protection,
+bigint/child-count correctness, coherent concurrent reads and pre-migration record
+preservation. Second review and synthetic desktop/mobile recovery proof are in
+spec083. No authenticated/private browser or production-record access occurred.
+
+Application merge waits for owner confirmation of
+supabase/migrations/20261009000001_snapshot_edit_revisions.sql. Spec077's earlier
+migration confirmation is distinct. Do not repeat completed spec082 or ask again
+for spec083 implementation/identity approval. Older deployments and direct table
+writers remain documented comparison limits; durable retry/history work is later.

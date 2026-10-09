@@ -43,7 +43,10 @@ beforeEach(() => {
 
 describe('authenticated financial actions still require an unlocked key session', () => {
   it.each([
-    ['snapshot delete', () => deleteSnapshot('2026-10')],
+    [
+      'snapshot delete',
+      () => deleteSnapshot('2026-10', { snapshotId: 'fixture', revision: '1' }),
+    ],
     ['salary delete', () => deleteSalaryRecord('2026-10')],
     ['trade delete', () => deleteTrade('trade-fixture')],
     ['dividend delete', () => deleteDividend('dividend-fixture')],

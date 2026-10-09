@@ -70,7 +70,7 @@ export function useExportData() {
       const envelope = buildExportEnvelope(
         {
           profile,
-          snapshots,
+          snapshots: snapshots.map(({ id, entries }) => ({ id, entries })),
           expenses,
           salary,
           taxReliefs,

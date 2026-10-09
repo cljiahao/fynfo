@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { SalaryPlanner } from '@/features/assets/components/salary-planner';
 import { SnapshotForm } from '@/features/assets/components/snapshot-form';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
@@ -17,6 +18,7 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('@/features/assets/hooks/use-snapshots', () => ({
+  SNAPSHOTS_KEY: ['snapshots'],
   useSnapshot: () => ({
     data: state.snapshot,
     isLoading: false,
@@ -31,6 +33,13 @@ vi.mock('@/features/assets/hooks/use-snapshots', () => ({
   }),
   useUpsertSnapshot: () => ({ mutateAsync: state.mutate }),
 }));
+function renderSnapshot(editId?: string) {
+  return render(
+    <QueryClientProvider client={new QueryClient()}>
+      <SnapshotForm editId={editId} />
+    </QueryClientProvider>
+  );
+}
 vi.mock('@/features/salary/hooks/use-salary', () => ({
   useSalaryRecords: () => ({
     data: state.empty,
@@ -74,14 +83,14 @@ beforeEach(() => {
   });
 });
 it('blocks editing cached snapshots after read failure and retries', () => {
-  render(<SnapshotForm editId="2026-01" />);
+  renderSnapshot('2026-01');
   expect(screen.queryByRole('button', { name: 'Update Snapshot' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   expect(state.refetch).toHaveBeenCalled();
 });
 it('blocks new snapshots when duplicate-check read fails', () => {
   state.listError = true;
-  render(<SnapshotForm />);
+  renderSnapshot();
   expect(screen.queryByRole('button', { name: 'Save Snapshot' })).toBeNull();
 });
 it.each(['salaryError', 'settingsError', 'expensesError'] as const)(

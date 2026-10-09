@@ -31,7 +31,7 @@ describe('snapshot-actions — getSnapshots', () => {
   it('decrypts entry account and amount on success', async () => {
     setSupabase({
       selectDataByTable: {
-        monthly_snapshots: [{ id: 'snap-1', month: '2026-03' }],
+        monthly_snapshots: [{ id: 'snap-1', month: '2026-03', revision: '1' }],
         asset_entries: [
           {
             snapshot_id: 'snap-1',
@@ -47,6 +47,8 @@ describe('snapshot-actions — getSnapshots', () => {
     expect(await getSnapshots()).toEqual([
       {
         id: '2026-03',
+        snapshotId: 'snap-1',
+        revision: '1',
         entries: [{ category: 'savings', account: 'DBS', amount: 5000 }],
       },
     ]);
@@ -72,41 +74,68 @@ describe('snapshot-actions — getSnapshots', () => {
 });
 
 describe('snapshot-actions — getSnapshot', () => {
-  it('returns null when the month is absent', async () => {
-    setSupabase({ selectData: null });
+  it('returns null for an absent month using the coherent RPC', async () => {
+    const fake = setSupabase();
     const { getSnapshot } =
       await import('@/features/assets/actions/snapshot-actions');
     expect(await getSnapshot('2026-03')).toBeNull();
+    expect(fake.calls.from).toEqual([]);
+    expect(fake.calls.rpc).toEqual([
+      { name: 'get_asset_snapshot_for_edit', args: { p_month: '2026-03' } },
+    ]);
   });
-  it('decrypts a single month by id', async () => {
+  it('decrypts the coherent record and preserves a counter above JS safe integers', async () => {
     setSupabase({
-      selectDataByTable: {
-        monthly_snapshots: { id: 'snap-1', month: '2026-03' },
-        asset_entries: [
-          {
-            snapshot_id: 'snap-1',
-            category: 'savings',
-            account: await encryptPayload('OCBC', DEK),
-            amount: await encryptPayload('8000', DEK),
-          },
-        ],
+      rpcData: {
+        get_asset_snapshot_for_edit: {
+          id: '2026-03',
+          snapshotId: 'snap-1',
+          revision: '9007199254740993',
+          entries: [
+            {
+              category: 'savings',
+              account: await encryptPayload('OCBC', DEK),
+              amount: await encryptPayload('8000', DEK),
+            },
+          ],
+        },
       },
     });
     const { getSnapshot } =
       await import('@/features/assets/actions/snapshot-actions');
     expect(await getSnapshot('2026-03')).toEqual({
       id: '2026-03',
+      snapshotId: 'snap-1',
+      revision: '9007199254740993',
       entries: [{ category: 'savings', account: 'OCBC', amount: 8000 }],
     });
   });
-
-  it('throws an opaque error on a failed single-record read', async () => {
-    setSupabase({ selectError: { message: 'permission denied' } });
+  it('fails closed when the coherent RPC is missing or its response is malformed', async () => {
+    setSupabase({
+      rpcError: {
+        get_asset_snapshot_for_edit: {
+          message: 'private missing function detail',
+        },
+      },
+    });
     const { getSnapshot } =
       await import('@/features/assets/actions/snapshot-actions');
     await expect(getSnapshot('2026-03')).rejects.toThrow(
       'snapshot read failed'
     );
+    setSupabase({
+      rpcData: {
+        get_asset_snapshot_for_edit: {
+          id: '2026-03',
+          snapshotId: 'snap-1',
+          revision: 9007199254740993,
+          entries: [],
+        },
+      },
+    });
+    await expect(getSnapshot('2026-03')).rejects.toMatchObject({
+      code: 'VALIDATION',
+    });
   });
 });
 
@@ -125,7 +154,7 @@ describe('snapshot-actions — upsertSnapshot', () => {
     expect(fake.calls.rpc).toHaveLength(1);
     const { name } = fake.calls.rpc[0];
     const args = fake.calls.rpc[0].args as Record<string, unknown>;
-    expect(name).toBe('replace_asset_snapshot');
+    expect(name).toBe('replace_asset_snapshot_if_current');
     expect(args).toMatchObject({ p_month: '2026-03', p_original_month: null });
     expect(args).not.toHaveProperty('user_id');
     const entries = args.p_entries as Array<Record<string, string>>;
@@ -185,10 +214,15 @@ describe('snapshot-actions — upsertSnapshot', () => {
       const fake = setSupabase();
       const { upsertSnapshot } =
         await import('@/features/assets/actions/snapshot-actions');
-      await upsertSnapshot({ ...VALID_SNAPSHOT, id: month }, '2026-03');
+      await upsertSnapshot({ ...VALID_SNAPSHOT, id: month }, '2026-03', {
+        snapshotId: 'snap-1',
+        revision: '1',
+      });
       expect(fake.calls.rpc[0].args).toMatchObject({
         p_month: month,
         p_original_month: '2026-03',
+        p_expected_snapshot_id: 'snap-1',
+        p_expected_revision: '1',
       });
       expect(fake.calls.from).toEqual([]);
     }
@@ -196,7 +230,9 @@ describe('snapshot-actions — upsertSnapshot', () => {
   it('fails closed with an opaque RPC error', async () => {
     const fake = setSupabase({
       rpcError: {
-        replace_asset_snapshot: { message: 'private constraint details' },
+        replace_asset_snapshot_if_current: {
+          message: 'private constraint details',
+        },
       },
     });
     const { upsertSnapshot } =
@@ -208,30 +244,85 @@ describe('snapshot-actions — upsertSnapshot', () => {
   });
 });
 
-describe('snapshot-actions — deleteSnapshot', () => {
-  it('issues a scoped delete on monthly_snapshots', async () => {
+describe('snapshot-actions — version comparisons', () => {
+  const version = { snapshotId: 'snap-1', revision: '1' };
+  it('requires an edit baseline and rejects create baselines before any write', async () => {
+    const fake = setSupabase();
+    const { upsertSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    await expect(
+      upsertSnapshot(VALID_SNAPSHOT, '2026-03')
+    ).rejects.toMatchObject({ code: 'VALIDATION' });
+    await expect(
+      upsertSnapshot(VALID_SNAPSHOT, undefined, version)
+    ).rejects.toMatchObject({ code: 'VALIDATION' });
+    expect(fake.calls.rpc).toEqual([]);
+  });
+  it.each(['01', '-1', '1.0', '9223372036854775808'])(
+    'rejects invalid revision %s before RPC',
+    async (revision) => {
+      const fake = setSupabase();
+      const { upsertSnapshot, deleteSnapshot } =
+        await import('@/features/assets/actions/snapshot-actions');
+      await expect(
+        upsertSnapshot(VALID_SNAPSHOT, '2026-03', { ...version, revision })
+      ).rejects.toMatchObject({ code: 'VALIDATION' });
+      await expect(
+        deleteSnapshot('2026-03', { ...version, revision })
+      ).rejects.toMatchObject({ code: 'VALIDATION' });
+      expect(fake.calls.rpc).toEqual([]);
+    }
+  );
+  it('returns a serializable safe conflict for save and delete without leaking database detail', async () => {
+    setSupabase({
+      rpcError: {
+        replace_asset_snapshot_if_current: {
+          code: 'PFS01',
+          message: 'private snapshot constraint',
+        },
+        delete_asset_snapshot_if_current: {
+          code: 'PFS01',
+          message: 'private snapshot constraint',
+        },
+      },
+    });
+    const { upsertSnapshot, deleteSnapshot } =
+      await import('@/features/assets/actions/snapshot-actions');
+    expect(await upsertSnapshot(VALID_SNAPSHOT, '2026-03', version)).toEqual({
+      ok: false,
+      code: 'CONFLICT',
+    });
+    expect(JSON.stringify(await deleteSnapshot('2026-03', version))).toBe(
+      '{"ok":false,"code":"CONFLICT"}'
+    );
+  });
+  it('deletes through one identity/revision RPC, without direct table access', async () => {
     const fake = setSupabase();
     const { deleteSnapshot } =
       await import('@/features/assets/actions/snapshot-actions');
-    await deleteSnapshot('2026-03');
-    expect(fake.calls.from).toContain('monthly_snapshots');
-    expect(fake.calls.delete).toBe(1);
-    expect(
-      fake.calls.queries.find(
-        (query) =>
-          query.table === 'monthly_snapshots' && query.operation === 'delete'
-      )?.eq
-    ).toEqual([
-      { column: 'user_id', value: USER_ID },
-      { column: 'month', value: '2026-03' },
+    expect(await deleteSnapshot('2026-03', version)).toEqual({ ok: true });
+    expect(fake.calls.from).toEqual([]);
+    expect(fake.calls.delete).toBe(0);
+    expect(fake.calls.rpc).toEqual([
+      {
+        name: 'delete_asset_snapshot_if_current',
+        args: {
+          p_month: '2026-03',
+          p_expected_revision: '1',
+          p_expected_snapshot_id: 'snap-1',
+        },
+      },
     ]);
   });
-
-  it('surfaces an opaque error on a delete failure', async () => {
-    setSupabase({ selectError: { message: 'permission denied' } });
+  it('surfaces an opaque error on unexpected deletion failure', async () => {
+    setSupabase({
+      rpcError: {
+        delete_asset_snapshot_if_current: { message: 'private failure' },
+      },
+    });
     const { deleteSnapshot } =
       await import('@/features/assets/actions/snapshot-actions');
-    await expect(deleteSnapshot('2026-03')).rejects.toThrow(
+    await expect(deleteSnapshot('2026-03', version)).rejects.toThrow(
       'snapshot write failed'
     );
   });

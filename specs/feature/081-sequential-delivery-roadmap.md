@@ -28,40 +28,40 @@ dependency/source access and persistence questions.
 
 ## Delivery batches
 
-| Batch | Work                                                                            | Readiness                                                          |
-| ----- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| A     | Atomic snapshots, expenses and relief replacements                              | Shipped spec077 / PR13 after owner migration confirmation          |
-| B     | Concurrent edit detection and safe retries                                      | Spec082 shipped / PR14; spec083 identity-bound comparison approved |
-| C     | Quote/FX freshness, unavailable data and consistent investment currencies       | Pending scoped batch                                               |
-| D     | CPF eligibility, age and rounding accuracy                                      | Official rule fixtures required                                    |
-| E     | Measured dashboard latency and fetching architecture                            | Synthetic baseline before optimization claims                      |
-| F     | Synthetic browser flows and accessibility                                       | Per-PR checks plus broader workflow proof                          |
-| G     | Proven backup/restore, recovery checklist and PIN limitations                   | Investigate alongside foundation; restore contract before writes   |
-| H     | Account signup/password recovery and callbacks                                  | Verify provider contract                                           |
-| I     | Refund, transfer and card-repayment classification                              | Ledger/schema proposal where required                              |
-| J     | Local PDF extraction, side-by-side editable review, mobile/keyboard and cleanup | Draft079; dependency approval required                             |
-| K1–K4 | UOB, DBS, Citibank and HSBC adapters                                            | Verify each variant with synthetic/public fixtures                 |
-| L     | Import duplicate checks, explicit save selection and outcome summary            | A/B plus defined import identity                                   |
-| M     | Merchant names and categorization rules                                         | Scoped persistence contract                                        |
-| N     | Historical dividend scan and entitlement boundaries                             | Correct current sold-position omissions                            |
-| O     | Authorized dividend evidence source/payment dates                               | Draft080; verified provider permission                             |
-| P     | Expected versus received dividends and statement reconciliation                 | Separate event/status persistence contract                         |
-| Q     | Statement/record balance reconciliation                                         | Explicit currencies/account coverage                               |
-| R     | Confirm-to-save recurring templates and bills/subscriptions calendar            | Encrypted schedule/occurrence contract                             |
-| S     | Budgets, recorded spending and annual reserves                                  | Reuse monthly-review calculations                                  |
-| T     | Monthly closing checklist                                                       | Reuse review/readiness; no duplicate ledger                        |
-| U     | Encrypted revision history and undo                                             | Atomic append/retention/schema approval                            |
-| V     | Explain totals using contributing records and assumptions                       | Reuse calculation sources                                          |
-| W     | Liabilities and repayment details                                               | Define schema and net-worth contract                               |
-| X     | Personal goals                                                                  | Reuse existing goal patterns                                       |
-| Y     | Named planning scenarios                                                        | Keep hypothetical values separate from actuals                     |
-| Z     | Explain wealth changes and unresolved differences                               | Accurate flows and valuation prerequisites                         |
-| AA    | Investment concentration against owner targets                                  | Accurate currency/exposure data                                    |
-| AB    | Expense anomaly review                                                          | Suggestions only, explicit review                                  |
-| AC    | Financial timeline                                                              | Reuse source records                                               |
-| AD    | Global search and quick actions                                                 | Owner-scoped queries, bounded result sets                          |
-| AE    | Account archival with historical preservation                                   | Define account identity/lifecycle                                  |
-| AF    | Amount hiding for screen sharing                                                | Presentation feature, no security-gate claim                       |
+| Batch | Work                                                                            | Readiness                                                              |
+| ----- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| A     | Atomic snapshots, expenses and relief replacements                              | Shipped spec077 / PR13 after owner migration confirmation              |
+| B     | Concurrent edit detection and safe retries                                      | Spec082 shipped / PR14; spec083 verified, owner SQL readiness required |
+| C     | Quote/FX freshness, unavailable data and consistent investment currencies       | Pending scoped batch                                                   |
+| D     | CPF eligibility, age and rounding accuracy                                      | Official rule fixtures required                                        |
+| E     | Measured dashboard latency and fetching architecture                            | Synthetic baseline before optimization claims                          |
+| F     | Synthetic browser flows and accessibility                                       | Per-PR checks plus broader workflow proof                              |
+| G     | Proven backup/restore, recovery checklist and PIN limitations                   | Investigate alongside foundation; restore contract before writes       |
+| H     | Account signup/password recovery and callbacks                                  | Verify provider contract                                               |
+| I     | Refund, transfer and card-repayment classification                              | Ledger/schema proposal where required                                  |
+| J     | Local PDF extraction, side-by-side editable review, mobile/keyboard and cleanup | Draft079; dependency approval required                                 |
+| K1–K4 | UOB, DBS, Citibank and HSBC adapters                                            | Verify each variant with synthetic/public fixtures                     |
+| L     | Import duplicate checks, explicit save selection and outcome summary            | A/B plus defined import identity                                       |
+| M     | Merchant names and categorization rules                                         | Scoped persistence contract                                            |
+| N     | Historical dividend scan and entitlement boundaries                             | Correct current sold-position omissions                                |
+| O     | Authorized dividend evidence source/payment dates                               | Draft080; verified provider permission                                 |
+| P     | Expected versus received dividends and statement reconciliation                 | Separate event/status persistence contract                             |
+| Q     | Statement/record balance reconciliation                                         | Explicit currencies/account coverage                                   |
+| R     | Confirm-to-save recurring templates and bills/subscriptions calendar            | Encrypted schedule/occurrence contract                                 |
+| S     | Budgets, recorded spending and annual reserves                                  | Reuse monthly-review calculations                                      |
+| T     | Monthly closing checklist                                                       | Reuse review/readiness; no duplicate ledger                            |
+| U     | Encrypted revision history and undo                                             | Atomic append/retention/schema approval                                |
+| V     | Explain totals using contributing records and assumptions                       | Reuse calculation sources                                              |
+| W     | Liabilities and repayment details                                               | Define schema and net-worth contract                                   |
+| X     | Personal goals                                                                  | Reuse existing goal patterns                                           |
+| Y     | Named planning scenarios                                                        | Keep hypothetical values separate from actuals                         |
+| Z     | Explain wealth changes and unresolved differences                               | Accurate flows and valuation prerequisites                             |
+| AA    | Investment concentration against owner targets                                  | Accurate currency/exposure data                                        |
+| AB    | Expense anomaly review                                                          | Suggestions only, explicit review                                      |
+| AC    | Financial timeline                                                              | Reuse source records                                                   |
+| AD    | Global search and quick actions                                                 | Owner-scoped queries, bounded result sets                              |
+| AE    | Account archival with historical preservation                                   | Define account identity/lifecycle                                      |
+| AF    | Amount hiding for screen sharing                                                | Presentation feature, no security-gate claim                           |
 
 ## Verification and handoff
 

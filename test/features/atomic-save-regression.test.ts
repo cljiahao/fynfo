@@ -21,7 +21,7 @@ it('saves a snapshot using one atomic RPC and no direct table writes', async () 
     entries: [{ category: 'savings', account: 'Synthetic', amount: 10 }],
   });
   expect(fake.calls.rpc.map((call) => call.name)).toEqual([
-    'replace_asset_snapshot',
+    'replace_asset_snapshot_if_current',
   ]);
   expect(fake.calls.from).toEqual([]);
 });
