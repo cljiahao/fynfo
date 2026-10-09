@@ -68,8 +68,8 @@ batch and must not be presented as a verified filing calculation.
 ## Results
 
 Implemented with four regressions proven red against original source. The
-isolated full suite passes108files/823tests:92.84%lines,92.60%statements,
-90.03%functions,87.02%branches. Formatting, route logging, lint, typecheck and
+isolated full suite passes108files/824tests:92.84%lines,92.60%statements,
+90.03%functions,87.03%branches. Formatting, route logging, lint, typecheck and
 optimized synthetic build pass. Additional UI assertions for the visible CPF
 assumption and relief cap pass in the focused suite.
 
@@ -81,3 +81,13 @@ heading narration was removed. This fixes tax calculation bugs, not the
 remaining payroll/eligibility model. No latency improvement is claimed.
 
 PR and CI integration remain required before marking this batch shipped.
+
+Historical boundary follow-up in the same batch: IRAS states the overall cap
+took effect in YA2018 (calendar income year2017). Preserve earlier income-year
+relief behavior and add a2016/2017 boundary regression before integration.
+
+Consumer-copy correction: `profile/components/profile-form.tsx` claims birth
+year determines CPF contribution rates, although the model is fixed20%.
+Correct its description to tax estimates and earned-income relief only. No
+profile fields, storage or validation change; verify formatting and existing
+profile interaction tests with the full gates.

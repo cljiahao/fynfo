@@ -55,7 +55,7 @@ function ProfileFormInner({ initial }: { initial: ProfileData }) {
       <CardHeader>
         <CardTitle>Profile</CardTitle>
         <CardDescription>
-          Personal details used for tax and CPF calculations
+          Personal details used for tax estimates
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -83,8 +83,7 @@ function ProfileFormInner({ initial }: { initial: ProfileData }) {
                 )}
               />
               <p className="text-muted-foreground text-xs">
-                Used to determine earned income relief tier and CPF contribution
-                rates
+                Used to determine your earned income relief tier.
               </p>
             </div>
 

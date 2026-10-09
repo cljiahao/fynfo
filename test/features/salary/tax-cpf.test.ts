@@ -333,6 +333,13 @@ describe('calculateTaxSummary', () => {
     );
   });
 
+  it('introduces the personal relief cap with YA2018, not earlier income years', () => {
+    const earlier = calculateTaxSummary(96000, 54000, 2016, undefined, 90000);
+    const capped = calculateTaxSummary(96000, 54000, 2017, undefined, 90000);
+    expect(earlier.chargeableIncome).toBe(37100);
+    expect(capped.chargeableIncome).toBe(70000);
+  });
+
   it('computes effectiveRate as taxPayable divided by grossAnnual', () => {
     const result = calculateTaxSummary(72000, 0, 2026);
     expect(result.effectiveRate).toBeCloseTo(

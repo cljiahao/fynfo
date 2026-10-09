@@ -135,10 +135,11 @@ export function calculateTaxSummary(
     ? 0
     : earnedIncomeRelief + nsmanRelief + additionalReliefs;
 
-  // CPF is itself a personal relief and shares the overall resident relief cap.
+  // CPF shares the overall relief cap, introduced in YA2018 (income year2017).
+  const reliefCap = year >= 2017 ? PERSONAL_RELIEF_CAP : Infinity;
   const allowedReliefs = isNonResident
     ? 0
-    : Math.min(totalCpf + taxReliefs, PERSONAL_RELIEF_CAP);
+    : Math.min(totalCpf + taxReliefs, reliefCap);
   const chargeableIncome = Math.max(grossAnnual - allowedReliefs, 0);
 
   let taxPayable: number;
