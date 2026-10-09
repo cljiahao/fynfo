@@ -1,6 +1,8 @@
 ---
 id: '074'
-status: owner-authorized-remediation
+status: shipped
+shipped: 2026-10-09
+impl_pr: https://github.com/cljiahao/fynfo/pull/9
 created: 2026-10-09
 author: Codex
 ---
@@ -80,4 +82,5 @@ builders and filters on every page, unique plaintext tie-break ordering,
 exact-count failure handling and export consumers. The test helper preserves
 nonpaged response shapes and separately verifies range/count/server-limit
 semantics. README and export comments explicitly retain nested-history and
-point-in-time backup limitations. PR/green CI integration is still required.
+point-in-time backup limitations. PR9 merged on2026-10-09 after all CI and preview
+checks passed as7eaebc6b974a7e51fac43189124f37ac8f6a4fc6. Nested-history work remains.
