@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { EMAIL_SIGN_IN_UNAVAILABLE } from '../constants';
 import {
   emailLoginSchema,
   type EmailLoginValues,
@@ -29,14 +30,19 @@ export function EmailLoginForm() {
 
   const onSubmit = async (values: EmailLoginValues) => {
     setAuthError(null);
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email: values.email,
-      password: values.password,
-    });
-    if (error) {
-      // Opaque: never reveal which of email/password was wrong.
-      setAuthError('Invalid email or password');
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
+      });
+      if (error) {
+        // Opaque: never reveal which of email/password was wrong.
+        setAuthError('Invalid email or password');
+        return;
+      }
+    } catch {
+      setAuthError(EMAIL_SIGN_IN_UNAVAILABLE);
       return;
     }
     router.push(PAGE_ROUTES.DASHBOARD);
@@ -69,7 +75,11 @@ export function EmailLoginForm() {
           <p className="text-destructive text-xs">{errors.password.message}</p>
         )}
       </div>
-      {authError && <p className="text-destructive text-sm">{authError}</p>}
+      {authError && (
+        <p role="alert" className="text-destructive text-sm">
+          {authError}
+        </p>
+      )}
       <Button type="submit" disabled={isSubmitting}>
         {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
         Sign in

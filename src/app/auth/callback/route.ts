@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/integrations/services/supabase';
+import { AUTH_CACHE_HEADERS } from '@/lib/constants/auth';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { NextResponse, type NextRequest } from 'next/server';
 
@@ -19,14 +20,23 @@ export async function GET(req: NextRequest) {
   }
 
   if (code) {
-    const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      return NextResponse.redirect(destination);
+    try {
+      const supabase = await createSupabaseServerClient();
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error)
+        return NextResponse.redirect(destination, {
+          headers: AUTH_CACHE_HEADERS,
+        });
+    } catch {
+      return NextResponse.redirect(
+        `${origin}${PAGE_ROUTES.LOGIN}?error=auth_callback_failed`,
+        { headers: AUTH_CACHE_HEADERS }
+      );
     }
   }
 
   return NextResponse.redirect(
-    `${origin}${PAGE_ROUTES.LOGIN}?error=auth_callback_failed`
+    `${origin}${PAGE_ROUTES.LOGIN}?error=auth_callback_failed`,
+    { headers: AUTH_CACHE_HEADERS }
   );
 }
