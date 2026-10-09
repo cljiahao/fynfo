@@ -184,7 +184,8 @@ SQL execution remains owner-only and requires distinct readiness confirmation.
 Read-only contract review found the delete/recreate ABA case: different parents
 can share month/revision1. The proposed addendum requires original parent ID plus
 revision in compare-save/delete calls, adding no further column. Its concrete
-owner decision is pending under constitution §8.3; no083implementation has begun.
+owner decision was approved on2026-10-09 under constitution §8.3. Spec083
+implementation follows this closeout; no production migration has been run.
 Research supports SELECT FOR UPDATE's current-row comparison under READ COMMITTED,
 text casts for lossless counters and returned expected errors for Server Actions:
 [PostgreSQL17](https://www.postgresql.org/docs/17/transaction-iso.html),
