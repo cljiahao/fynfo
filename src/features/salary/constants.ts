@@ -1,7 +1,6 @@
 import type { ReliefDefinition } from './types';
 
-// Singapore progressive tax brackets
-export const TAX_BRACKETS = [
+const COMMON_TAX_BRACKETS = [
   { upTo: 20000, rate: 0 },
   { upTo: 30000, rate: 0.02 },
   { upTo: 40000, rate: 0.035 },
@@ -12,11 +11,23 @@ export const TAX_BRACKETS = [
   { upTo: 240000, rate: 0.19 },
   { upTo: 280000, rate: 0.195 },
   { upTo: 320000, rate: 0.2 },
+] as const;
+
+// YA2024 onwards applies to income earned from calendar year2023.
+export const TAX_BRACKETS = [
+  ...COMMON_TAX_BRACKETS,
+  { upTo: 500000, rate: 0.22 },
+  { upTo: 1000000, rate: 0.23 },
+  { upTo: Infinity, rate: 0.24 },
+] as const;
+
+export const HISTORICAL_TAX_BRACKETS = [
+  ...COMMON_TAX_BRACKETS,
   { upTo: Infinity, rate: 0.22 },
 ] as const;
 
-// Non-resident flat tax rate
-export const NON_RESIDENT_RATE = 0.22;
+export const NON_RESIDENT_RATE = 0.15;
+export const PERSONAL_RELIEF_CAP = 80000;
 
 // CPF employee contribution rate
 export const CPF_EMPLOYEE_RATE = 0.2;

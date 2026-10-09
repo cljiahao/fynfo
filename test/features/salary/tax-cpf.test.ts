@@ -119,6 +119,28 @@ describe('calculateTax', () => {
     // 200 + 350 + 15100 * 0.07 = 1607
     expect(calculateTax(55100)).toBeCloseTo(1607);
   });
+
+  it('matches the published YA2024 onwards top-bracket totals', () => {
+    expect(calculateTax(500000)).toBe(84150);
+    expect(calculateTax(1000000)).toBe(199150);
+    expect(calculateTax(1100000)).toBe(223150);
+  });
+
+  it('uses calendar income year to preserve the historical top rate', () => {
+    expect(calculateTax(1000000, 2022)).toBe(194150);
+    expect(calculateTax(1000000, 2023)).toBe(199150);
+  });
+
+  it.each([320000, 500000, 1000000])(
+    'handles the bracket boundary at %i',
+    (boundary) => {
+      const nextRate =
+        boundary === 320000 ? 0.22 : boundary === 500000 ? 0.23 : 0.24;
+      expect(calculateTax(boundary + 100) - calculateTax(boundary)).toBeCloseTo(
+        100 * nextRate
+      );
+    }
+  );
 });
 
 describe('getCpfMonthlyCeiling', () => {
@@ -234,7 +256,7 @@ describe('calculateTaxSummary', () => {
     expect(result.chargeableIncome).toBe(55100 - 5000);
   });
 
-  it('applies non-resident flat rate (higher of flat vs progressive)', () => {
+  it('applies the higher of 15% or progressive tax to non-resident employment', () => {
     const profile = {
       birthYear: null,
       isNsman: false,
@@ -247,16 +269,68 @@ describe('calculateTaxSummary', () => {
     expect(result.nsmanRelief).toBe(0);
     expect(result.taxReliefs).toBe(0);
     expect(result.additionalReliefs).toBe(0);
-    // flat = 100000 * 0.22 = 22000; progressive < 22000 → taxPayable = 22000
-    expect(result.taxPayable).toBe(22000);
-    expect(result.effectiveRate).toBeCloseTo(0.22);
+    expect(result.chargeableIncome).toBe(100000);
+    expect(result.taxPayable).toBe(15000);
+    expect(result.effectiveRate).toBeCloseTo(0.15);
   });
+
+  it('does not deduct CPF or personal reliefs from non-resident progressive tax', () => {
+    const result = calculateTaxSummary(
+      1000000,
+      100000,
+      2026,
+      {
+        birthYear: 1990,
+        isNsman: true,
+        residencyStatus: 'non_resident',
+      },
+      90000
+    );
+    expect(result.chargeableIncome).toBe(1100000);
+    expect(result.taxPayable).toBe(223150);
+    expect(result.additionalReliefs).toBe(0);
+    expect(result.netAfterCpfAndTax).toBe(1100000 - result.totalCpf - 223150);
+  });
+
+  it.each([
+    [57099, 70001],
+    [57100, 70000],
+    [90000, 70000],
+  ])(
+    'caps combined CPF and personal reliefs for claims of %i',
+    (reliefs, chargeable) => {
+      const result = calculateTaxSummary(
+        96000,
+        54000,
+        2026,
+        undefined,
+        reliefs
+      );
+      expect(result.totalCpf).toBe(20400);
+      expect(result.chargeableIncome).toBe(chargeable);
+      expect(result.taxPayable).toBeCloseTo(550 + (chargeable - 40000) * 0.07);
+    }
+  );
 
   it('returns zero taxPayable and effectiveRate for zero income', () => {
     const result = calculateTaxSummary(0, 0, 2026);
     expect(result.grossAnnual).toBe(0);
     expect(result.taxPayable).toBe(0);
     expect(result.effectiveRate).toBe(0);
+  });
+
+  it('passes the income year through the summary calculation', () => {
+    const profile = {
+      birthYear: 1990,
+      isNsman: false,
+      residencyStatus: 'non_resident' as const,
+    };
+    expect(calculateTaxSummary(1000000, 0, 2022, profile).taxPayable).toBe(
+      194150
+    );
+    expect(calculateTaxSummary(1000000, 0, 2023, profile).taxPayable).toBe(
+      199150
+    );
   });
 
   it('computes effectiveRate as taxPayable divided by grossAnnual', () => {
