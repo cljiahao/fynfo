@@ -3,14 +3,19 @@ import { z } from 'zod';
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T.*)?$/;
 const TICKER_RE = /^[A-Z0-9.\-:]{1,16}$/;
 
+const CALENDAR_DATE = z.iso.date();
+const recordDateSchema = z
+  .string()
+  .regex(ISO_DATE, 'date must be ISO-8601 (YYYY-MM-DD or full timestamp)')
+  .refine(
+    (value) =>
+      CALENDAR_DATE.safeParse(value.slice(0, 10)).success &&
+      !Number.isNaN(Date.parse(value)),
+    'date is not a valid calendar date'
+  );
+
 export const equityTradeInputSchema = z.object({
-  date: z
-    .string()
-    .regex(ISO_DATE, 'date must be ISO-8601 (YYYY-MM-DD or full timestamp)')
-    .refine(
-      (s) => !Number.isNaN(Date.parse(s)),
-      'date is not a valid calendar date'
-    ),
+  date: recordDateSchema,
   broker: z.string().min(1).max(64),
   ticker: z
     .string()
@@ -25,13 +30,7 @@ export const equityTradeInputSchema = z.object({
 });
 
 export const dividendInputSchema = z.object({
-  date: z
-    .string()
-    .regex(ISO_DATE, 'date must be ISO-8601 (YYYY-MM-DD or full timestamp)')
-    .refine(
-      (s) => !Number.isNaN(Date.parse(s)),
-      'date is not a valid calendar date'
-    ),
+  date: recordDateSchema,
   ticker: z
     .string()
     .transform((s) => s.trim().toUpperCase())

@@ -118,7 +118,8 @@ no eligible estimates were returned; it does not confirm every payment is record
 Distribution totals, yield and scans require a successful history read; failed
 reads offer retry instead of claiming an empty history. Manual Add stays available.
 
-Expense saves reject impossible calendar dates before encryption or database work.
+Expense, trade and distribution saves reject impossible calendar days before
+requesting an encryption/database context.
 Supported valid dates and timestamps retain their existing timezone behavior.
 
 Expense spreadsheet paste uses explicit calendar dates and complete finite positive
