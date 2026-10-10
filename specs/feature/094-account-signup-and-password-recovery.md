@@ -25,7 +25,7 @@ constitution_overrides: []
 
 # Email account creation and login-password recovery
 
-External proposal only; no repository/product/provider changes. Clarence's approved roadmap 081 batch H authorizes this intended feature direction. The unresolved hosted configuration below prevents a production-readiness claim; this draft does not invent an approval for settings, dependencies or templates.
+Draft proposal only; no product implementation or provider configuration changes. Clarence's approved roadmap 081 batch H authorizes this intended feature direction. The unresolved hosted configuration below prevents a production-readiness claim; this draft does not invent an approval for settings, dependencies or templates.
 
 ## Evidence and problem
 

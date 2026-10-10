@@ -2,7 +2,9 @@
 id: 095
 slug: auth-identity-lifetime
 area: fix
-status: owner-authorized
+status: shipped
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/24
 author: Codex
 created: 2026-10-10
 constitution_satisfies:

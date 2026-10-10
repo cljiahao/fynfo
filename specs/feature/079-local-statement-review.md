@@ -47,16 +47,16 @@ Use named exports and existing UI primitives. No original-file server action.
   visibly unsupported. CSV and screenshot OCR are separate follow-ups.
 - Propose pinned `pdfjs-dist@6.4.299`, Apache-2.0, lazily loaded with its local
   worker only when review opens. Registry metadata on2026-10-09 reports Node
-  > =22.13.0 or >=24, unpacked size34913648bytes and optional @napi-rs/canvas^1.0.10.
-  > Review that optional native dependency and lockfile before installation; do not
-  > silently expand the approved footprint. No OCR/AI dependency or remote model.
-  > Measure actual route/worker bundles and extraction timings; package unpacked
-  > size is not browser transfer size. Preserve initial route budget.
-  > Proposed footprint: omit optional `@napi-rs/canvas` through the narrowly named
-  > `ignoredOptionalDependencies` entry in `pnpm-workspace.yaml`; the browser
-  > workflow uses existing canvas APIs. This configuration change is included in
-  > the dependency approval request. Retain other optional packages and existing
-  > build-script restrictions. Do not use a global no-optional installation.
+  `>=22.13.0 || >=24`, unpacked size34913648bytes and optional `@napi-rs/canvas^1.0.10`.
+  Review that optional native dependency and lockfile before installation; do not
+  silently expand the approved footprint. No OCR/AI dependency or remote model.
+  Measure actual route/worker bundles and extraction timings; package unpacked
+  size is not browser transfer size. Preserve initial route budget.
+  Proposed footprint: omit optional `@napi-rs/canvas` through the narrowly named
+  `ignoredOptionalDependencies` entry in `pnpm-workspace.yaml`; the browser
+  workflow uses existing canvas APIs. This configuration change is included in
+  the dependency approval request. Retain other optional packages and existing
+  build-script restrictions. Do not use a global no-optional installation.
 - File selection displays “Processed on this device” with a clear no-file-storage
   contract. Local PDF passwords, if supported, stay in memory and never appear in
   logs, persistence, analytics or server requests. The agent never accesses real
@@ -64,7 +64,7 @@ Use named exports and existing UI primitives. No original-file server action.
 - Limit to10MiB,100pages, bounded extracted text and worker deadlines. Render
   only the active page. Cancel/replace/lock/navigation terminates work, clears
   drafts and releases object URLs. Reject corrupt/unsupported files visibly.
-  Disable PDF scripting/evaluation and XFA; don't execute links or annotations.
+  Use the low-level document API with XFA disabled; do not run PDF scripting or viewer code, links or annotations. PDF.js6 removed evaluation support; do not pass the obsolete isEvalSupported option.
   Bundle required resources locally, with no remote asset fallback. Review the
   exact library security options and request graph before implementing.
 - Desktop: original PDF/page controls left, editable date/merchant/category/
@@ -83,9 +83,7 @@ Use named exports and existing UI primitives. No original-file server action.
   editable and ambiguity is labelled, without fabricated confidence scores.
 - Review does not save automatically. Save selected is explicit; unresolved
   required fields cannot be selected for save. Preserve edits on failures and
-  show each outcome. Saving expenses waits for the separately approved atomic
-  save contract077 plus a defined retry identity; this draft does not approve
-  that migration or promise transactional batch rollback from current actions.
+  show each outcome. Atomic replacement contract077 has shipped; durable import retry identity remains separate. This draft does not approve another migration or promise transactional batch rollback from current actions.
   Dividend-like credits may be reviewed separately through existing dividend
   components, with explicit ticker matching; no double classification as expense.
 
@@ -124,8 +122,7 @@ remain ordinary records managed through existing UI, with no destructive cleanup
   occurred. Optional native package treatment must be settled before install.
 - Bank variants and password-protected/image-only coverage require fixture proof;
   no confidential files are requested. Unsupported variants fail visibly.
-- Atomic/retried expense import depends on separately scoped contracts; draft077
-  alone does not supply durable import idempotency.
+- Atomic/retried expense import depends on separately scoped contracts; shipped077 alone does not supply durable import idempotency.
 
 ## Research
 
