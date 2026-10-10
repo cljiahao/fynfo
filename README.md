@@ -74,6 +74,14 @@ Contributing records explain salary and bonus, aggregate shared-expense deductio
 and both snapshot totals. Expense pages show at most 20 rows while totals include
 every matching record.
 
+Search records in the navbar searches the five personal histories only when opened.
+It matches recorded text, shows up to four results per source, and identifies
+loading, updating or failed sources with individual retry controls. Household
+records are excluded. Closing or navigating clears the local search term; it is
+never added to URLs, storage or telemetry. Existing owner history caches remain
+available to other pages. Only snapshot results open a specific editor; other
+results open their feature page.
+
 Successful non-optimistic saves and deletes discard pending pre-write reads before
 refreshing the affected records. Existing background refresh behavior remains;
 optimistic expense updates retain their rollback behavior.
