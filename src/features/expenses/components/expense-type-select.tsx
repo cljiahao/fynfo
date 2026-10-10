@@ -15,6 +15,7 @@ interface ExpenseTypeSelectProps {
   className?: string;
   inputClassName?: string;
   inputRef?: React.Ref<HTMLInputElement>;
+  inputId?: string;
   disabled?: boolean;
 }
 
@@ -27,6 +28,7 @@ export function ExpenseTypeSelect({
   className,
   inputClassName,
   inputRef,
+  inputId,
   disabled = false,
 }: ExpenseTypeSelectProps) {
   const [typeQuery, setTypeQuery] = useState('');
@@ -90,6 +92,7 @@ export function ExpenseTypeSelect({
   return (
     <div className={cn('relative', className)}>
       <Input
+        id={inputId}
         ref={inputRef}
         disabled={disabled}
         value={typeEditing ? typeQuery : EXPENSE_TYPE_LABELS[value]}

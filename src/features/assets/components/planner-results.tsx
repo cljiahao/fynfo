@@ -125,6 +125,7 @@ export function PlannerResults({
               Tithe
             </Label>
             <Input
+              aria-label="Tithe percentage"
               type="number"
               min="0"
               max="100"
@@ -148,6 +149,7 @@ export function PlannerResults({
               Allowance
             </Label>
             <Input
+              aria-label="Allowance percentage"
               type="number"
               min="0"
               max="100"

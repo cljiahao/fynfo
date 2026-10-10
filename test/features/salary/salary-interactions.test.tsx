@@ -6,6 +6,7 @@ import { SalaryTable } from '@/features/salary/components/salary-table';
 import { TaxReliefsDialog } from '@/features/salary/components/tax-reliefs-dialog';
 import type { SalaryData } from '@/features/salary/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import '@testing-library/jest-dom/vitest';
 import {
   cleanup,
   fireEvent,
@@ -14,6 +15,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const actions = vi.hoisted(() => ({
@@ -52,6 +54,40 @@ beforeEach(() => {
   actions.upsertTaxReliefs.mockResolvedValue(undefined);
 });
 afterEach(cleanup);
+
+it.each(['Gross Salary', 'Bonus'])(
+  'associates salary %s with its numeric input and label focus',
+  async (name) => {
+    mount(<SalaryFormDialog open onOpenChange={vi.fn()} />);
+    const input = screen.getByRole('spinbutton', { name });
+    await userEvent.click(screen.getByText(name, { selector: 'label' }));
+    expect(input).toHaveFocus();
+    expect(screen.getByLabelText('Month')).toBeEnabled();
+  }
+);
+
+it('keeps salary dialog label targets distinct across mounted instances', () => {
+  mount(
+    <>
+      <SalaryFormDialog open onOpenChange={vi.fn()} />
+      <SalaryFormDialog open onOpenChange={vi.fn()} />
+    </>
+  );
+  const dialogs = screen.getAllByRole('dialog', { hidden: true });
+  const ids: string[] = [];
+  for (const dialog of dialogs) {
+    for (const name of ['Month', 'Gross Salary', 'Bonus']) {
+      const label = within(dialog).getByText(name, { selector: 'label' });
+      const target = label.getAttribute('for');
+      expect(target).toBeTruthy();
+      const input = dialog.querySelector(`[id="${target}"]`);
+      expect(input).toBeTruthy();
+      ids.push(target!);
+    }
+  }
+  expect(ids).toHaveLength(6);
+  expect(new Set(ids).size).toBe(6);
+});
 
 describe('salary recording through real forms and queries', () => {
   it('keeps tax calculations unavailable until a missing profile is completed', async () => {

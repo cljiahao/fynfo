@@ -294,6 +294,7 @@ export function EditableRow({
         <td className="px-2 py-2">
           <Input
             type="number"
+            aria-label="Amount (SGD)"
             step="0.01"
             min="0"
             value={data.amount || ''}

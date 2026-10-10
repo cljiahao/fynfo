@@ -127,6 +127,20 @@ describe('saved scenario isolation', () => {
       '-$100'
     );
     const originalCalls = live.mock.calls.length;
+    const liveTithe = document
+      .querySelector('#tithe')
+      ?.closest('div')
+      ?.querySelector('input');
+    expect(liveTithe).toHaveAccessibleName('Tithe percentage');
+    expect(
+      within(dialog).getByRole('spinbutton', { name: 'Tithe percentage' })
+    ).toBeDisabled();
+    const allowance = within(dialog).getByRole('spinbutton', {
+      name: 'Allowance percentage',
+    });
+    expect(allowance).toHaveValue(5);
+    expect(allowance).toBeEnabled();
+    fireEvent.change(allowance, { target: { value: '7' } });
     fireEvent.change(within(dialog).getByLabelText('Gross Salary'), {
       target: { value: '7000' },
     });
@@ -169,6 +183,7 @@ describe('saved scenario isolation', () => {
         inputs: {
           ...payload.inputs,
           salary: 7000,
+          allowancePctInput: 7,
           titheEnabled: true,
           emergencyMonths: 0,
         },
@@ -247,6 +262,12 @@ describe('saved scenario isolation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save as new' }));
     expect(screen.getByLabelText('Scenario name')).toBeDisabled();
     expect(screen.getByLabelText('Gross Salary')).toBeDisabled();
+    expect(
+      screen.getByRole('spinbutton', { name: 'Tithe percentage' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('spinbutton', { name: 'Allowance percentage' })
+    ).toBeDisabled();
     expect(screen.getAllByRole('button', { name: 'Close' })[0]).toBeEnabled();
     first.unmount();
     mount(

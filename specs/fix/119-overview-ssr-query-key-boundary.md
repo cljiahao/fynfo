@@ -2,12 +2,12 @@
 id: '119'
 slug: overview-ssr-query-key-boundary
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-11
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/40
 supersedes:
 constitution_satisfies:
   [
@@ -156,4 +156,10 @@ The first full run completed: pnpm check exit 0; test:ci exit 1 with exactly fou
 
 After the reviewed test-renderer correction, all unchanged local gates passed: pnpm check exit 0 (route logging, formatting, lint with zero warnings and TypeScript), pnpm test:ci exit 0 (144 files/1,436 tests), and pnpm build exit 0 (Next.js 16.3.8 optimized Turbopack build). Aggregate coverage: 93.08% statements, 89.11% branches, 91.42% functions and 93.79% lines. Every metric is above the owner's 80% floor and existing stricter security thresholds remain unchanged. Final logs use 119-product-\*-final.log; 119-gate-exits.json records exact exits. The initial four-test renderer failure remains retained rather than mislabeled as a product bug.
 
-Fresh review accepted the actual workflow helper without weakening assertions: report 119-workflow-independent-review.md SHA256 477814e6dc0921bb5a22c7fcbe60fb7a2b53764374e44b31767e6b0f4561a726. The same product source/compiler/browser proof remains frozen. Existing pnpm 11.4 runtime was used with fixture-only pnpm_config_verify_deps_before_run=false to prevent automatic dependency repair; all gate scripts and normal hooks remain required. No dependency installation, global setting change or hook bypass occurred. Normal commit/push hooks and exact-head CI/preview delivery follow; 119 is not shipped until verified merge.
+Fresh review accepted the actual workflow helper without weakening assertions: report 119-workflow-independent-review.md SHA256 477814e6dc0921bb5a22c7fcbe60fb7a2b53764374e44b31767e6b0f4561a726. The same product source/compiler/browser proof remains frozen. Existing pnpm 11.4 runtime was used with fixture-only pnpm_config_verify_deps_before_run=false to prevent automatic dependency repair; all gate scripts and normal hooks remain required. No dependency installation, global setting change or hook bypass occurred. At this local verification stage normal hooks and exact-head delivery were pending; verified completion follows below.
+
+## Verified delivery — 2026-10-10
+
+Root verified PR40 exact head `3cc6acaddc4482fa7629e26f63361509eec79e54` merged as `496f637d3e4f19069b6a53183131242683449973` at19:10:11 UTC after CI38078495939 SUCCESS completed19:09:17 UTC (job114290357871) and successful preview. All five local gates and unchanged normal hooks passed:144 files/1,436 tests; coverage93.08% statements,89.11% branches,91.42% functions and93.79% lines. Actual compiler/four-key hydration and synthetic browser proof remain qualified above; no production authentication or private-record workflow claim follows. Public production deployment CmE7qNNGxoKxiF4kCj2srSnMCcvV was still pending at root handoff19:10:14 UTC; production SUCCESS is not yet verified in this record. This closes119 merge delivery only, not the roadmap or final integrated confirmation sweep.
+
+Root subsequently verified [public merged-commit production deployment](https://vercel.com/noxynx/fynfo/CmE7qNNGxoKxiF4kCj2srSnMCcvV) SUCCESS updated2026-10-10T19:10:47Z. The earlier pending sentence records the initial merge handoff only. No private production workflow or authenticated data was accessed. Existing21-path implementation history and all qualified compiler/browser boundaries remain unchanged.
