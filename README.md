@@ -201,7 +201,10 @@ The profile page downloads a versioned JSON export of profile, snapshots,
 expenses, salary, tax reliefs, equity trades, dividends, and planner settings.
 The server decrypts these eight personal domains while the vault is unlocked.
 Household goals and contributions are excluded. Treat the downloaded file as
-sensitive plaintext; there is currently no import/restore workflow.
+sensitive plaintext; there is currently no import/restore workflow. Avoid editing
+records during export: independent domain reads do not form one database snapshot.
+A failed domain read prevents download; temporary download resources are released
+even if browser activation fails, and overlapping export requests are ignored.
 
 ## Production artifact
 
