@@ -15,6 +15,7 @@ interface ExpenseTypeSelectProps {
   className?: string;
   inputClassName?: string;
   inputRef?: React.Ref<HTMLInputElement>;
+  disabled?: boolean;
 }
 
 export function ExpenseTypeSelect({
@@ -26,6 +27,7 @@ export function ExpenseTypeSelect({
   className,
   inputClassName,
   inputRef,
+  disabled = false,
 }: ExpenseTypeSelectProps) {
   const [typeQuery, setTypeQuery] = useState('');
   const [typeEditing, setTypeEditing] = useState(false);
@@ -44,6 +46,7 @@ export function ExpenseTypeSelect({
     : EXPENSE_TYPES;
 
   const selectType = (t: ExpenseType) => {
+    if (disabled) return;
     onChange(t);
     setTypeQuery('');
     setTypeEditing(false);
@@ -52,6 +55,7 @@ export function ExpenseTypeSelect({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (disabled) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setTypeIndex((i) => Math.min(i + 1, filtered.length - 1));
@@ -60,6 +64,7 @@ export function ExpenseTypeSelect({
       e.preventDefault();
       setTypeIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === 'Enter') {
+      e.stopPropagation();
       e.preventDefault();
       if (typeOpen && typeIndex >= 0 && filtered[typeIndex]) {
         selectType(filtered[typeIndex]);
@@ -69,6 +74,7 @@ export function ExpenseTypeSelect({
         onSubmit?.();
       }
     } else if (e.key === 'Escape') {
+      e.stopPropagation();
       setTypeOpen(false);
       setTypeQuery('');
     } else if (e.key === 'Tab') {
@@ -85,14 +91,17 @@ export function ExpenseTypeSelect({
     <div className={cn('relative', className)}>
       <Input
         ref={inputRef}
+        disabled={disabled}
         value={typeEditing ? typeQuery : EXPENSE_TYPE_LABELS[value]}
         onChange={(e) => {
+          if (disabled) return;
           setTypeEditing(true);
           setTypeQuery(e.target.value);
           setTypeOpen(true);
           setTypeIndex(0);
         }}
         onFocus={(e) => {
+          if (disabled) return;
           setTypeEditing(false);
           setTypeQuery('');
           setTypeOpen(true);
@@ -110,7 +119,7 @@ export function ExpenseTypeSelect({
         placeholder="Category"
         className={cn('h-9 w-full', inputClassName)}
       />
-      {typeOpen && (
+      {typeOpen && !disabled && (
         <div className="bg-popover absolute top-full z-50 mt-1 w-full overflow-hidden rounded-md border shadow-md">
           <div className="max-h-48 overflow-y-auto py-1">
             {filtered.map((t, i) => (
