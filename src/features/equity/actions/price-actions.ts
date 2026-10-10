@@ -1,6 +1,7 @@
 'use server';
 
 import { requireUserId } from '@/lib/auth-guard';
+import { AppError } from '@/lib/errors';
 import { z } from 'zod';
 import {
   MAX_PRICE_CONCURRENCY,
@@ -170,7 +171,7 @@ export async function fetchExchangeRate(
   }
 }
 
-/** Historical per-unit distributions, sorted by ex-date. Empty on failure. */
+/** Historical per-unit distributions, sorted by ex-date. Unavailable feeds reject. */
 export async function fetchDividends(
   ticker: string
 ): Promise<Array<{ exDate: string; dpu: number }>> {
@@ -188,11 +189,13 @@ export async function fetchDividends(
         signal: AbortSignal.timeout(PRICE_FETCH_TIMEOUT_MS),
       }
     );
-    if (!res.ok) return [];
+    if (!res.ok)
+      throw new AppError('EXTERNAL_API', 'Dividend data unavailable');
 
     const data: unknown = await res.json();
     const parsed = dividendResponseSchema.safeParse(data);
-    if (!parsed.success) return [];
+    if (!parsed.success)
+      throw new AppError('EXTERNAL_API', 'Dividend data unavailable');
     const dividends = parsed.data.chart.result[0].events?.dividends;
     if (!dividends) return [];
 
@@ -207,6 +210,6 @@ export async function fetchDividends(
     }
     return points.sort((a, b) => a.exDate.localeCompare(b.exDate));
   } catch {
-    return [];
+    throw new AppError('EXTERNAL_API', 'Dividend data unavailable');
   }
 }
