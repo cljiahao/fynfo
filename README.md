@@ -75,7 +75,10 @@ optimistic expense updates retain their rollback behavior.
 
 Investment quotes must include a reported price and currency; missing or mismatched
 quotes leave valuation and return estimates unavailable rather than becoming zero.
-SGD and USD portfolio amounts are shown separately. Capital return estimates exclude
+SGD and USD portfolio amounts are shown separately.
+Distribution suggestions update only the active editor with the same inputs and
+holdings. Closing the form discards its pending UI work; reopening starts a fresh
+editor. The suggested amount still needs review before saving. Capital return estimates exclude
 dividends and currency movements, and require usable dated cash flows and a verified
 solver result. Optional SGD conversions require an actual exchange rate. Converted
 historical income and spending use the current rate as a planning estimate, not the
