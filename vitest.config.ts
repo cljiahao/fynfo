@@ -32,6 +32,18 @@ export default defineConfig({
         statements: 81,
         functions: 81,
         branches: 81,
+        'src/features/auth/hooks/use-auth-identity.ts': {
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 85,
+        },
+        'src/features/auth/components/vault-lock-context.tsx': {
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 85,
+        },
         'src/lib/crypto.ts': {
           lines: 100,
           statements: 100,
