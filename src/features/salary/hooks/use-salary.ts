@@ -1,5 +1,6 @@
 'use client';
 
+import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   deleteSalaryRecord,
@@ -31,7 +32,7 @@ export function useUpsertSalary() {
   return useMutation({
     mutationFn: (data: SalaryData) => upsertSalaryRecord(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SALARY_KEY });
+      void refreshQueriesAfterMutation(queryClient, SALARY_KEY);
     },
   });
 }
@@ -41,7 +42,7 @@ export function useDeleteSalary() {
   return useMutation({
     mutationFn: (id: string) => deleteSalaryRecord(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SALARY_KEY });
+      void refreshQueriesAfterMutation(queryClient, SALARY_KEY);
     },
   });
 }

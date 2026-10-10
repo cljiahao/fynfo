@@ -62,6 +62,10 @@ The dashboard's monthly review combines recorded gross income, your share of
 all expense categories and exact-month snapshot changes. It does not infer net
 savings, investment returns or zero activity from missing records.
 
+Successful non-optimistic saves and deletes discard pending pre-write reads before
+refreshing the affected records. Existing background refresh behavior remains;
+optimistic expense updates retain their rollback behavior.
+
 Investment quotes must include a reported price and currency; missing or mismatched
 quotes leave valuation and return estimates unavailable rather than becoming zero.
 SGD and USD portfolio amounts are shown separately. Capital return estimates exclude

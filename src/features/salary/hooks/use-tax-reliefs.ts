@@ -1,5 +1,6 @@
 'use client';
 
+import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getTaxReliefs, upsertTaxReliefs } from '../actions/relief-actions';
 import type { TaxReliefData } from '../types';
@@ -18,7 +19,7 @@ export function useUpsertTaxReliefs(year: number) {
   return useMutation({
     mutationFn: (reliefs: TaxReliefData[]) => upsertTaxReliefs(year, reliefs),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...RELIEF_KEY, year] });
+      void refreshQueriesAfterMutation(queryClient, [...RELIEF_KEY, year]);
     },
   });
 }

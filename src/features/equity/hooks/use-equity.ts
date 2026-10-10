@@ -1,5 +1,6 @@
 'use client';
 
+import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createTrade,
@@ -23,7 +24,7 @@ export function useCreateTrade() {
   return useMutation({
     mutationFn: (data: Omit<EquityTradeData, 'id'>) => createTrade(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: TRADES_KEY });
+      void refreshQueriesAfterMutation(queryClient, TRADES_KEY);
     },
   });
 }
@@ -39,7 +40,7 @@ export function useUpdateTrade() {
       data: Omit<EquityTradeData, 'id'>;
     }) => updateTrade(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: TRADES_KEY });
+      void refreshQueriesAfterMutation(queryClient, TRADES_KEY);
     },
   });
 }
@@ -49,7 +50,7 @@ export function useDeleteTrade() {
   return useMutation({
     mutationFn: (id: string) => deleteTrade(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: TRADES_KEY });
+      void refreshQueriesAfterMutation(queryClient, TRADES_KEY);
     },
   });
 }

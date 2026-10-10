@@ -1,5 +1,6 @@
 'use client';
 
+import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getPlannerSettings,
@@ -21,7 +22,7 @@ export function useUpsertPlannerSettings() {
   return useMutation({
     mutationFn: (data: PlannerSettingsData) => upsertPlannerSettings(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PLANNER_KEY });
+      void refreshQueriesAfterMutation(queryClient, PLANNER_KEY);
     },
   });
 }
