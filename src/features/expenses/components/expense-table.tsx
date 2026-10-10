@@ -3,7 +3,7 @@
 import { EmptyState, PaginationControls } from '@/components/widgets';
 import { format } from 'date-fns';
 import { Receipt } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   useDeleteExpense,
@@ -17,6 +17,7 @@ import {
   type SortDir,
   type SortKey,
 } from '../lib/expense-table';
+import { generateId } from '../lib/utils';
 import type { ExpenseData } from '../types';
 import { EditableRow } from './editable-expense-row';
 import { ExpenseTableToolbar } from './expense-table-toolbar';
@@ -24,7 +25,7 @@ import { SortableHeader } from './sortable-header';
 
 const EMPTY_ROW: ExpenseData = {
   id: '',
-  date: format(new Date(), 'yyyy-MM-dd'),
+  date: '',
   type: 'food_drink',
   item: '',
   info: '',
@@ -39,17 +40,22 @@ export function ExpenseTable() {
   const upsert = useUpsertExpense();
   const remove = useDeleteExpense();
   const [newRows, setNewRows] = useState<ExpenseData[]>([]);
+  const lifetime = useRef({ active: true });
+  useEffect(() => {
+    const instance = { active: true };
+    lifetime.current = instance;
+    return () => {
+      instance.active = false;
+    };
+  }, []);
 
-  // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [splitFilter, setSplitFilter] = useState<string>('all');
 
-  // Sort
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
-  // Pagination
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(25);
 
@@ -77,40 +83,51 @@ export function ExpenseTable() {
     setPage(0);
   };
 
-  // Filter + sort
-  const filtered = filterExpenses(expenses ?? [], {
-    searchQuery,
-    typeFilter,
-    splitFilter,
-  });
+  const draftIds = new Set(newRows.map((row) => row.id));
+  const filtered = filterExpenses(
+    (expenses ?? []).filter((row) => !draftIds.has(row.id)),
+    {
+      searchQuery,
+      typeFilter,
+      splitFilter,
+    }
+  );
   const sorted = sortExpenses(filtered, sortKey, sortDir);
   const paginated = sorted.slice(page * pageSize, (page + 1) * pageSize);
 
   const addRow = () => {
-    setNewRows((prev) => [...prev, { ...EMPTY_ROW, id: '' }]);
+    const row = {
+      ...EMPTY_ROW,
+      id: generateId(),
+      date: format(new Date(), 'yyyy-MM-dd'),
+    };
+    setNewRows((prev) => [...prev, row]);
   };
 
   const handleSave = async (data: ExpenseData) => {
+    const instance = lifetime.current;
     try {
       await upsert.mutateAsync(data);
-      setNewRows([]);
+      if (!instance.active) return;
+      setNewRows((prev) => prev.filter((row) => row.id !== data.id));
       toast.success('Expense saved');
     } catch {
-      toast.error('Failed to save expense');
+      if (instance.active) toast.error('Failed to save expense');
     }
   };
 
   const handleDelete = async (id: string) => {
+    const instance = lifetime.current;
     try {
       await remove.mutateAsync(id);
-      toast.success('Expense deleted');
+      if (instance.active) toast.success('Expense deleted');
     } catch {
-      toast.error('Failed to delete');
+      if (instance.active) toast.error('Failed to delete');
     }
   };
 
-  const cancelNewRow = (index: number) => {
-    setNewRows((prev) => prev.filter((_, i) => i !== index));
+  const cancelNewRow = (id: string) => {
+    setNewRows((prev) => prev.filter((row) => row.id !== id));
   };
 
   if (isLoading) {
@@ -129,7 +146,6 @@ export function ExpenseTable() {
         onAddRow={addRow}
       />
 
-      {/* Table */}
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[1040px] table-fixed">
           <colgroup>
@@ -185,16 +201,15 @@ export function ExpenseTable() {
             </tr>
           </thead>
           <tbody>
-            {/* New rows always at top */}
-            {newRows.map((row, i) => (
+            {newRows.map((row) => (
               <EditableRow
-                key={`new-${i}`}
+                key={`new-${row.id}`}
                 row={row}
                 isNew
                 peopleSuggestions={people ?? []}
                 onSave={handleSave}
                 onDelete={handleDelete}
-                onCancel={() => cancelNewRow(i)}
+                onCancel={() => cancelNewRow(row.id)}
               />
             ))}
             {paginated.map((expense) => (

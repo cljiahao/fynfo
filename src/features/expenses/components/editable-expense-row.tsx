@@ -30,7 +30,7 @@ interface EditableRowProps {
   row: ExpenseData;
   isNew: boolean;
   peopleSuggestions: string[];
-  onSave: (data: ExpenseData) => void;
+  onSave: (data: ExpenseData) => void | Promise<void>;
   onDelete: (id: string) => void;
   onCancel?: () => void;
 }
@@ -46,6 +46,9 @@ export function EditableRow({
   onCancel,
 }: EditableRowProps) {
   const [data, setData] = useState<ExpenseData>(row);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const lifetime = useRef({ active: true });
   const [splitDialogOpen, setSplitDialogOpenState] = useState(false);
   const splitDialogOpenRef = useRef(false);
   const setSplitDialogOpen = (open: boolean) => {
@@ -59,26 +62,39 @@ export function EditableRow({
     setDateOpenState(open);
   };
   const typeOpenRef = useRef(false);
+  const [splitSelectOpen, setSplitSelectOpenState] = useState(false);
   const splitSelectOpenRef = useRef(false);
+  const setSplitSelectOpen = (open: boolean) => {
+    splitSelectOpenRef.current = open;
+    setSplitSelectOpenState(open);
+  };
   const skipNextBlurRef = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    const instance = { active: true };
+    lifetime.current = instance;
+    return () => {
+      instance.active = false;
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    },
-    []
-  );
+    };
+  }, []);
 
   const update = (patch: Partial<ExpenseData>) => {
+    if (savingRef.current) return;
     setData((prev) => ({ ...prev, ...patch }));
   };
 
   const handleRowKeyDown = (e: React.KeyboardEvent) => {
+    if (savingRef.current) {
+      if (e.key === 'Enter' || e.key === 'Escape') e.preventDefault();
+      return;
+    }
     if (
       e.key === 'Enter' &&
-      !dateOpen &&
+      !dateOpenRef.current &&
       !typeOpenRef.current &&
-      !splitDialogOpen
+      !splitSelectOpenRef.current &&
+      !splitDialogOpenRef.current
     ) {
       e.preventDefault();
       handleSave();
@@ -89,6 +105,7 @@ export function EditableRow({
   };
 
   const handleSplitTypeChange = (splitType: 'self' | 'shared') => {
+    if (savingRef.current) return;
     if (splitType === 'self') {
       update({ splitType, splits: [] });
     } else {
@@ -98,12 +115,15 @@ export function EditableRow({
   };
 
   const handleSplitConfirm = (splits: ExpenseSplitData[]) => {
+    if (savingRef.current) return;
     const { next, shouldSave } = resolveSplitConfirm(data, isNew, splits);
     setData(next);
     if (shouldSave) onSave(next);
   };
 
-  const saveDraft = (draft: ExpenseData) => {
+  const saveDraft = async (draft: ExpenseData) => {
+    if (savingRef.current) return;
+    const instance = lifetime.current;
     const error =
       draft.splitType === 'shared'
         ? getSplitAllocationError(draft.amount, draft.splits)
@@ -112,10 +132,27 @@ export function EditableRow({
       toast.error(error);
       return;
     }
-    onSave({ ...draft, id: draft.id || generateId() });
+    if (isNew) {
+      savingRef.current = true;
+      setSaving(true);
+      setDateOpen(false);
+      setSplitSelectOpen(false);
+      setSplitDialogOpen(false);
+    }
+    try {
+      await onSave({ ...draft, id: draft.id || generateId() });
+    } catch {
+      return;
+    } finally {
+      if (isNew && instance.active) {
+        savingRef.current = false;
+        setSaving(false);
+      }
+    }
   };
 
   const handleSave = () => {
+    if (savingRef.current) return;
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
@@ -128,6 +165,7 @@ export function EditableRow({
   };
 
   const handleRowBlur = (e: React.FocusEvent<HTMLTableRowElement>) => {
+    if (savingRef.current) return;
     if (e.currentTarget.contains(e.relatedTarget as Node)) return;
     if (skipNextBlurRef.current) {
       skipNextBlurRef.current = false;
@@ -166,14 +204,21 @@ export function EditableRow({
           'hover:bg-muted/40 border-b transition-colors',
           isNew && 'bg-accent/30'
         )}
+        aria-busy={saving || undefined}
         onKeyDown={handleRowKeyDown}
         onBlur={handleRowBlur}
       >
         <td className="px-2 py-2">
-          <Popover open={dateOpen} onOpenChange={setDateOpen}>
+          <Popover
+            open={dateOpen && !saving}
+            onOpenChange={(open) => {
+              if (!savingRef.current) setDateOpen(open);
+            }}
+          >
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
+                disabled={saving}
                 className={cn(
                   'h-9 w-full justify-start gap-2 text-xs font-normal',
                   !data.date && 'text-muted-foreground'
@@ -203,6 +248,7 @@ export function EditableRow({
                   variant="ghost"
                   size="sm"
                   className="w-full"
+                  disabled={saving}
                   onClick={() => {
                     update({ date: format(new Date(), 'yyyy-MM-dd') });
                     setDateOpen(false);
@@ -217,6 +263,7 @@ export function EditableRow({
         <td className="px-2 py-2">
           <ExpenseTypeSelect
             value={data.type}
+            disabled={saving}
             onChange={(t) => update({ type: t })}
             onSubmit={handleSave}
             onOpenChange={(open) => {
@@ -229,6 +276,7 @@ export function EditableRow({
         <td className="px-2 py-2">
           <Input
             value={data.item}
+            disabled={saving}
             onChange={(e) => update({ item: e.target.value })}
             placeholder="Brand"
             className="h-9 w-full text-xs"
@@ -237,6 +285,7 @@ export function EditableRow({
         <td className="px-2 py-2">
           <Input
             value={data.info}
+            disabled={saving}
             onChange={(e) => update({ info: e.target.value })}
             placeholder="Description"
             className="h-9 w-full text-xs"
@@ -248,6 +297,7 @@ export function EditableRow({
             step="0.01"
             min="0"
             value={data.amount || ''}
+            disabled={saving}
             onChange={(e) => update({ amount: Number(e.target.value) || 0 })}
             placeholder="0.00"
             className="h-9 w-full text-right text-xs tabular-nums"
@@ -255,16 +305,20 @@ export function EditableRow({
         </td>
         <td className="px-2 py-2">
           <Select
+            open={splitSelectOpen && !saving}
             value={data.splitType}
             onValueChange={(v) => handleSplitTypeChange(v as 'self' | 'shared')}
             onOpenChange={(open) => {
-              splitSelectOpenRef.current = open;
+              if (!savingRef.current) setSplitSelectOpen(open);
             }}
           >
-            <SelectTrigger className="h-9 w-full px-2 text-xs">
+            <SelectTrigger
+              disabled={saving}
+              className="h-9 w-full px-2 text-xs"
+            >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent onKeyDown={(event) => event.stopPropagation()}>
               <SelectItem value="self">Self</SelectItem>
               <SelectItem value="shared">Shared</SelectItem>
             </SelectContent>
@@ -275,7 +329,10 @@ export function EditableRow({
             <button
               type="button"
               className="border-input hover:bg-accent flex h-9 w-full items-center gap-1.5 rounded-md border px-2 text-left text-xs transition-colors"
-              onClick={() => setSplitDialogOpen(true)}
+              disabled={saving}
+              onClick={() => {
+                if (!savingRef.current) setSplitDialogOpen(true);
+              }}
             >
               <Users className="text-muted-foreground size-3.5 shrink-0" />
               <span className="truncate">{splitSummary || 'Add...'}</span>
@@ -292,12 +349,17 @@ export function EditableRow({
               <Button
                 variant="outline"
                 size="icon"
-                className="size-8"
+                className={saving ? 'h-8 px-2' : 'size-8'}
+                disabled={saving}
                 onClick={onCancel}
-                title="Cancel"
-                aria-label="Cancel edit"
+                title={saving ? 'Saving expense' : 'Cancel'}
+                aria-label={saving ? 'Saving expense' : 'Cancel edit'}
               >
-                <X className="size-3.5" />
+                {saving ? (
+                  <span className="text-xs">Saving…</span>
+                ) : (
+                  <X className="size-3.5" />
+                )}
               </Button>
             ) : (
               <Button
@@ -323,8 +385,10 @@ export function EditableRow({
       </tr>
 
       <SplitDialog
-        open={splitDialogOpen}
-        onOpenChange={setSplitDialogOpen}
+        open={splitDialogOpen && !saving}
+        onOpenChange={(open) => {
+          if (!savingRef.current) setSplitDialogOpen(open);
+        }}
         totalAmount={data.amount}
         initialSplits={data.splits}
         peopleSuggestions={peopleSuggestions}

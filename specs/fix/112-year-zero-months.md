@@ -2,12 +2,12 @@
 id: 112
 slug: year-zero-months
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-10
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/38
 constitution_satisfies:
   - '§2.1'
   - '§2.3'
@@ -238,13 +238,13 @@ Root coordinates the heavy slot and delivery. Require `pnpm format:check`, `pnpm
 
 ## Implementation record
 
-Ten-path scope published before application or regression edits. Preserve original preparation evidence; final application tests/gates/review and112 delivery are not claimed yet. Chart tests prove qualified labels and amounts passed to Recharts, whose axes may skip or clip labels; they do not prove all labels are always visible at every width. Existing raw-key tables remain accessible.
+Ten-path scope published before application or regression edits. At the initial implementation stage, final application tests/gates/review and112 delivery were not yet claimed; the completed verification and delivery follow below. Chart tests prove qualified labels and amounts passed to Recharts, whose axes may skip or clip labels; they do not prove all labels are always visible at every width. Existing raw-key tables remain accessible.
 
 ### Scoped baseline and corrected proof
 
 The initial baseline log (`112-baseline-red.log`) contained 13 meaningful calendar failures, 14 passing controls and one unrelated inert mock failure: async mocked decryption produced NaN. That mock was corrected to match the synchronous API and is not counted as product evidence. Seven cases demonstrate crashing or mislabelled chart data; six spending cases demonstrate missing final-millisecond SG/US buys across generated Singapore, UTC and NewYork profiles. No missing-helper module import was used as a red. The corrected focused suite passed 81 tests across six files (`112-targeted.log`), including representative positive-year chart labels, retained raw arrays/amounts/cumulative values, actual legacy read/delete dispatch and actual scenario-read schema qualification with inert decryption, plus version3 export projection. These action mocks do not establish real encryption or database persistence. Existing mounted real chart interactions also passed.
 
-Final targeted verification passed after refinements: 81 tests across six files (`112-targeted-final.log`), TypeScript (`112-typecheck-final.log`) and zero-warning scoped ESLint (`112-scoped-lint-final.log`). The jsdom directive is first, and every quarter profile asserts its independently expected UTC offset. Source is frozen; root and independent reviewer accepted the corrected evidence and scoped contracts. All five gates passed serially as recorded below. 112 remains unshipped pending normal delivery hooks and exact-head CI/merge. Chart adapter tests observe the data handed to Recharts, not guaranteed visibility of every auto-skipped/clipped axis label; separate integrated synthetic Next proof remains planned.
+Final targeted verification passed after refinements: 81 tests across six files (`112-targeted-final.log`), TypeScript (`112-typecheck-final.log`) and zero-warning scoped ESLint (`112-scoped-lint-final.log`). The jsdom directive is first, and every quarter profile asserts its independently expected UTC offset. Source is frozen; root and independent reviewer accepted the corrected evidence and scoped contracts. All five gates passed serially as recorded below. At this verification freeze, normal delivery hooks and exact-head CI/merge were pending; their successful completion is recorded below. Chart adapter tests observe the data handed to Recharts, not guaranteed visibility of every auto-skipped/clipped axis label; separate integrated synthetic Next proof remains planned.
 
 Impeccable clarify/craft-floor guidance was read for truthful, concise invalid-month qualification within the existing visual system. No new UI layout, route, disclosure or tooltip was introduced. In-scope comments were reviewed: removed the assets hook useMemo narration and retained a concise inclusive local-quarter contract.
 
@@ -254,6 +254,10 @@ The corrected partial shipped-consumer baseline (`112-baseline-qualified-red.log
 
 All five gates passed sequentially with synthetic configuration: route checks, formatter, zero-warning lint and TypeScript (`112-full-check.log`), full coverage (`112-full-test-ci.log`) and normal Next.js 16.3.8 Turbopack build (`112-full-build.log`). Coverage passed 143 files/1,410 tests in 554.49s: 93.08% statements, 89.31% branches, 91.24% functions and 93.62% lines. Every existing stricter threshold passed unchanged. Both accepted source reviews refer to the same frozen executable/test hashes; only evidence/prose recording changed after verification.
 
-Root and independent scenario reviewer closed the initial mock/accounting issue and the directive/TZ/comment refinements. External review report `112-independent-source-review.md` SHA256 `bc66e1e11d1d53307d8403cee35194ac1c6b52fa1613729859d968ddd2113098` retains the qualified review. Normal commit/push hooks and exact-head CI/merge follow; no shipped or production behavior is claimed for 112. New-write/direct-SQL policy, legacy native editor usability, monthly-review low-year arithmetic and integrated browser/restore proof remain separate.
+Root and independent scenario reviewer closed the initial mock/accounting issue and the directive/TZ/comment refinements. External review report `112-independent-source-review.md` SHA256 `bc66e1e11d1d53307d8403cee35194ac1c6b52fa1613729859d968ddd2113098` retains the qualified review. Normal commit/push hooks and exact-head CI/merge subsequently passed as recorded in Delivery below; private production behavior was not verified. New-write/direct-SQL policy, legacy native editor usability, monthly-review low-year arithmetic and integrated browser/restore proof remain separate.
 
 Before staging, an external-fixture fidelity check detected a Next dev-generated AGENTS append and four stale already-shipped document copies. Root inspected the exact differences and authorized restoring only those five fixture copies from immutable349bf026, retaining original bytes/hashes in `112-fixture-fidelity-before/` and `112-fixture-fidelity-hashes.json`. This is external approved-source materialization, not a tracked rulebook amendment. All five restored files have zero actual content diff and are excluded from staging. Alternate-worktree/index stat markers persisted despite exact content equality; content/cached diffs are the authority. The six executable/test hashes remained unchanged. Scoped formatter checks passed; unchanged normal hooks verify the final fixture.
+
+## Delivery — 2026-10-10
+
+PR38 merged exact head `5e60b81e83e04fe41ff9ad31278da17d2aa80e65` as `1c9857c014038e755c54140cb9d50398103c3223` at 17:23:27 UTC after CI 38071070671 SUCCESS completed 17:20:31 UTC and Vercel preview success. All five local gates and unchanged normal hooks passed: 143 files/1,410 tests; coverage 93.08% statements, 89.31% branches, 91.24% functions, 93.62% lines. Root verified public merged-commit production deployment status SUCCESS; private workflows were not accessed. This completes this batch only; new-write year-zero policy and final integrated browser qualification remain separate.
