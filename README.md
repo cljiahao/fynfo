@@ -78,6 +78,8 @@ optimistic expense updates retain their rollback behavior.
 Investment quotes must include a reported price and currency; missing or mismatched
 quotes leave valuation and return estimates unavailable rather than becoming zero.
 SGD and USD portfolio amounts are shown separately.
+Trade history follows the existing ticker-based SGD/USD inference without FX
+conversion; check historical currency against trade statements. Gross value excludes fees.
 Distribution suggestions update only the active editor with the same inputs and
 holdings. Closing the form discards its pending UI work; reopening starts a fresh
 editor. The suggested amount still needs review before saving. Capital return estimates exclude
