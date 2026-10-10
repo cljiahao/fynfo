@@ -9,6 +9,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { BrandText } from '@/components/widgets';
+import { RecordSearch } from '@/features/search';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
 import { Menu } from 'lucide-react';
@@ -45,7 +46,6 @@ export function DashboardNavbar({ userMenu }: { userMenu?: React.ReactNode }) {
           <BrandText />
         </Link>
 
-        {/* Desktop nav */}
         <div className="hidden items-center gap-1 md:flex">
           {NAV_ITEMS.map((item) => (
             <Link
@@ -73,46 +73,48 @@ export function DashboardNavbar({ userMenu }: { userMenu?: React.ReactNode }) {
           )}
         </div>
 
-        {/* Mobile nav */}
-        <div className="flex items-center gap-2 md:hidden">
-          {userMenu}
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-9 border-0 shadow-none"
-                aria-label="Open navigation menu"
-              >
-                <Menu className="size-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-64">
-              <SheetHeader>
-                <SheetTitle>
-                  <span className="text-brand-gradient">Fyn</span>
-                  <span>fo</span>
-                </SheetTitle>
-              </SheetHeader>
-              <nav className="flex flex-col gap-1 pt-4">
-                {NAV_ITEMS.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={cn(
-                      'rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
-                      isActive(item)
-                        ? 'bg-accent text-accent-foreground'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-            </SheetContent>
-          </Sheet>
+        <div className="flex items-center gap-2">
+          <RecordSearch key={pathname} />
+          <div className="flex items-center gap-2 md:hidden">
+            {userMenu}
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9 border-0 shadow-none"
+                  aria-label="Open navigation menu"
+                >
+                  <Menu className="size-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-64">
+                <SheetHeader>
+                  <SheetTitle>
+                    <span className="text-brand-gradient">Fyn</span>
+                    <span>fo</span>
+                  </SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col gap-1 pt-4">
+                  {NAV_ITEMS.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileOpen(false)}
+                      className={cn(
+                        'rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
+                        isActive(item)
+                          ? 'bg-accent text-accent-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
     </nav>

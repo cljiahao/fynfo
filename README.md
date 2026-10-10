@@ -71,6 +71,14 @@ savings, investment returns or zero activity from missing records. Its disclosed
 next steps show recorded-data availability and links for checking payslips,
 statements and balances; they do not certify a completed or reconciled month.
 
+Search records in the navbar searches the five personal histories only when opened.
+It matches recorded text, shows up to four results per source, and identifies
+loading, updating or failed sources with individual retry controls. Household
+records are excluded. Closing or navigating clears the local search term; it is
+never added to URLs, storage or telemetry. Existing owner history caches remain
+available to other pages. Only snapshot results open a specific editor; other
+results open their feature page.
+
 Successful non-optimistic saves and deletes discard pending pre-write reads before
 refreshing the affected records. Existing background refresh behavior remains;
 optimistic expense updates retain their rollback behavior.

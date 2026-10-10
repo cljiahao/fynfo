@@ -1,4 +1,5 @@
 export * from './components';
+export { CATEGORY_LABELS } from './constants';
 export * from './hooks';
 export {
   calculateMoMChange,
