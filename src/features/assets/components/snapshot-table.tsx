@@ -25,12 +25,17 @@ import {
   CATEGORY_LABELS,
   INVESTMENT_CATEGORIES,
 } from '../constants';
-import { useDeleteSnapshot } from '../hooks/use-snapshots';
+import { useDeleteSnapshot, useReviewSnapshots } from '../hooks/use-snapshots';
 import { calculateTotal } from '../lib/calculations';
-import type { AssetCategory, SnapshotData } from '../types';
+import type {
+  AssetCategory,
+  SnapshotData,
+  SnapshotRecord,
+  SnapshotVersion,
+} from '../types';
 
 interface SnapshotTableProps {
-  snapshots: SnapshotData[];
+  snapshots: SnapshotRecord[];
 }
 
 function sumCategory(
@@ -71,48 +76,105 @@ const COMPACT_COLUMNS = [
   },
 ] as const;
 
-function SnapshotActionButtons({ id }: { id: string }) {
-  const [open, setOpen] = useState(false);
+function SnapshotActionButtons({ snapshot }: { snapshot: SnapshotRecord }) {
+  const { id } = snapshot;
+  const [selected, setSelected] = useState<
+    (SnapshotVersion & { id: string }) | null
+  >(null);
+  const [failure, setFailure] = useState<string | null>(null);
   const router = useRouter();
   const deleteMutation = useDeleteSnapshot();
+  const review = useReviewSnapshots();
 
   return (
-    <div className="flex justify-center gap-1">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() =>
-          router.push(`${PAGE_ROUTES.ENTRY}?edit=${encodeURIComponent(id)}`)
-        }
-        aria-label="Edit snapshot"
-      >
-        <Pencil className="size-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setOpen(true)}
-        aria-label="Delete snapshot"
-      >
-        <Trash2 className="text-destructive size-4" />
-      </Button>
-      <ConfirmDeleteDialog
-        open={open}
-        onOpenChange={setOpen}
-        title="Delete Snapshot"
-        description={
-          <>
-            Are you sure you want to delete the snapshot for{' '}
-            <span className="font-semibold">{id}</span>? This action cannot be
-            undone.
-          </>
-        }
-        isPending={deleteMutation.isPending}
-        onConfirm={async () => {
-          await deleteMutation.mutateAsync(id);
-          toast.success(`Deleted ${id}`);
-        }}
-      />
+    <div className="space-y-2">
+      <div className="flex justify-center gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            router.push(`${PAGE_ROUTES.ENTRY}?edit=${encodeURIComponent(id)}`)
+          }
+          aria-label="Edit snapshot"
+        >
+          <Pencil className="size-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            setSelected({
+              id,
+              snapshotId: snapshot.snapshotId,
+              revision: snapshot.revision,
+            })
+          }
+          disabled={!!failure || review.isPending}
+          aria-label="Delete snapshot"
+        >
+          <Trash2 className="text-destructive size-4" />
+        </Button>
+        <ConfirmDeleteDialog
+          open={!!selected}
+          onOpenChange={(open) => {
+            if (!open) setSelected(null);
+          }}
+          title="Delete Snapshot"
+          description={
+            <>
+              Are you sure you want to delete the snapshot for{' '}
+              <span className="font-semibold">{id}</span>? This action cannot be
+              undone.
+            </>
+          }
+          isPending={deleteMutation.isPending}
+          onConfirm={async () => {
+            if (!selected || deleteMutation.isPending) return;
+            try {
+              const result = await deleteMutation.mutateAsync({
+                id: selected.id,
+                expectedVersion: {
+                  snapshotId: selected.snapshotId,
+                  revision: selected.revision,
+                },
+              });
+              if (!result.ok)
+                setFailure(
+                  'Snapshot changed. Refresh history before deleting.'
+                );
+              else toast.success(`Deleted ${selected.id}`);
+            } catch {
+              setFailure(
+                'Delete outcome is uncertain. Refresh history before trying again.'
+              );
+            } finally {
+              setSelected(null);
+            }
+          }}
+        />
+      </div>
+      {failure && (
+        <div role="alert" className="text-warning text-xs">
+          <p>{failure}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={review.isPending}
+            onClick={async () => {
+              try {
+                await review.mutateAsync();
+                setFailure(null);
+              } catch {
+                setFailure(
+                  'Could not refresh history. Try again before deleting.'
+                );
+              }
+            }}
+          >
+            {review.isPending ? 'Refreshing…' : 'Refresh history'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -174,7 +236,7 @@ export function SnapshotTable({ snapshots }: SnapshotTableProps) {
                       {formatSGDWhole(total)}
                     </td>
                     <td className="py-2 text-center">
-                      <SnapshotActionButtons id={s.id} />
+                      <SnapshotActionButtons snapshot={s} />
                     </td>
                   </tr>
                 );
@@ -219,7 +281,7 @@ export function SnapshotTable({ snapshots }: SnapshotTableProps) {
                       {formatSGDWhole(total)}
                     </td>
                     <td className="py-2 text-center">
-                      <SnapshotActionButtons id={s.id} />
+                      <SnapshotActionButtons snapshot={s} />
                     </td>
                   </tr>
                 );

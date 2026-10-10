@@ -136,8 +136,9 @@ retains its separate flat 20% CPF assumption; these payroll-rule corrections do
 not change that planning model.
 
 Financial histories are paginated with stable ordering and exact counts,
-including when the API returns smaller pages. Snapshot entries, expense splits
-and household contributions are paged independently from their parents.
+including when the API returns smaller pages. Snapshot history entries, expense splits
+and household contributions are paged independently from their parents. A snapshot
+edit read returns its revision and full encrypted child set in one statement.
 Failed pages or changed counts reject the read. Separate requests can still
 observe concurrent edits; JSON export is not a proven point-in-time backup or
 restore mechanism and excludes household data.
@@ -147,12 +148,21 @@ authenticated, RLS-protected database transaction. A failed child write rolls
 back the parent and all replaced children. Snapshot edits preserve the parent ID.
 Spec077's additive migration must be applied before deploying these callers;
 missing RPCs reject saves without falling back to partial writes. Same-record
-saves remain last-writer-wins; this does not provide conflict detection or a
-durable retry ledger. Relief replacements require READ COMMITTED isolation.
+expense and relief saves remain last-writer-wins; these transactions do not provide
+a durable retry ledger. Relief replacements require READ COMMITTED isolation.
 RPC arrays accept up to 5,000 rows, with each JSON argument limited to 1 MiB.
 Snapshot editors refresh untouched fields from background queries while
 preserving dirty drafts. Navigating to a different record loads that record.
-This protects draft input but does not yet detect stale database edits.
+Spec083’s distinct additive migration is required before deploying snapshot
+compare-save/delete callers. They compare the original parent ID and revision,
+including after a month is deleted and recreated. Conflicts or uncertain responses
+keep the draft and block another write until explicit review. Reloading saved
+values discards the draft; an absent new snapshot leaves it ready to save. Missing
+edit records never become automatic creates. Direct table writers remain outside
+this application comparison contract. Reload older open editors after rollout;
+older deployments can use the legacy RPC, which advances revisions without
+comparing them. Expense/relief transactions still use
+last-writer-wins. Snapshot revisions stay out of the existing export format.
 
 ## Environment variables
 
@@ -208,7 +218,7 @@ pnpm check:harness # Read-only manifest comparison; known baseline drift tracked
 Use `pnpm format` to format files and `pnpm test` for watch mode. Both `test:ci`
 and `test:coverage` require at least 81% global line, statement, function and branch
 coverage, alongside stricter security-critical file thresholds. Empty test
-discovery fails. Four test workers limit memory pressure from browser suites.
+discovery fails. Two test workers limit memory pressure from browser suites.
 The project verification skill and quality gates are documented in
 [AGENTS.md](AGENTS.md).
 
@@ -220,16 +230,17 @@ node scripts/test-security-sql.mjs --pg-bin "C:/Program Files/PostgreSQL/17/bin"
 ```
 
 The data directory must not exist. The runner uses localhost fixture roles,
-replays relevant historical schema, security and atomic-save migrations, and stops the
+replays relevant historical schema, security, atomic-save and snapshot-revision migrations, and stops the
 cluster after testing. It retains fixture data and logs for inspection and does
 not connect to the configured Supabase database or read environment files.
 It checks anonymous/cross-owner denial, failed-write rollback, parent identity,
 and concurrent first and existing snapshot, expense and relief replacements.
+Snapshot checks include stale edits/deletes, same-month delete/recreate, lossless
+bigint counters, overflow rollback and coherent reads during concurrent writes.
 
 ESLint includes SonarJS checks for commented-out code, identical functions and
 incorrect collection-size comparisons. The existing comment convention permits
 concise explanations where required; avoid redundant narration and temporary notes.
-Vitest uses two workers to limit CPU/memory contention during DOM and crypto tests.
 
 Add shadcn primitives using `npx shadcn@latest add <component-name>`.
 

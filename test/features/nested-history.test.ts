@@ -71,6 +71,7 @@ describe('complete nested histories', () => {
         monthly_snapshots: Array.from({ length: TOTAL }, (_, index) => ({
           id: `snapshot-${index}`,
           month: `month-${index}`,
+          revision: '1',
         })),
         asset_entries: assetEntries,
       },
@@ -97,15 +98,15 @@ describe('complete nested histories', () => {
     }
   });
 
-  it('pages all children of an owner-verified single snapshot', async () => {
+  it('reads the full coherent edit payload through one RPC without client paging', async () => {
     const fake = setup({
-      selectDataByTable: {
-        monthly_snapshots: {
-          id: 'snapshot-0',
-          month: '2026-01',
-          entries: assetEntries.slice(0, CAP),
+      rpcData: {
+        get_asset_snapshot_for_edit: {
+          snapshotId: 'snapshot-0',
+          id: '2026-01',
+          revision: '1',
+          entries: assetEntries,
         },
-        asset_entries: assetEntries,
       },
     });
     const snapshot = await getSnapshot('2026-01');
@@ -115,24 +116,16 @@ describe('complete nested histories', () => {
       account: '',
       amount: 1,
     });
-    expect(fake.calls.queries[0].eq).toEqual([
-      { column: 'user_id', value: USER_ID },
-      { column: 'month', value: '2026-01' },
+    expect(fake.calls.from).toEqual([]);
+    expect(fake.calls.rpc).toEqual([
+      { name: 'get_asset_snapshot_for_edit', args: { p_month: '2026-01' } },
     ]);
-    for (const query of fake.calls.queries.slice(1)) {
-      expect(query.eq).toEqual([
-        { column: 'snapshot_id', value: 'snapshot-0' },
-      ]);
-      expect(query.order).toEqual([
-        { column: 'id', options: { ascending: true } },
-      ]);
-    }
   });
 
   it('skips children when a snapshot is absent or the history is empty', async () => {
     const single = setup({ selectData: null });
     expect(await getSnapshot('2026-01')).toBeNull();
-    expect(single.calls.from).toEqual(['monthly_snapshots']);
+    expect(single.calls.from).toEqual([]);
     const history = setup({ selectData: [] });
     expect(await getSnapshots()).toEqual([]);
     expect(history.calls.from).toEqual(['monthly_snapshots']);
@@ -238,11 +231,6 @@ describe('complete nested histories', () => {
 
   it.each([
     ['snapshot history', getSnapshots, 'snapshot entries read failed'],
-    [
-      'single snapshot',
-      () => getSnapshot('2026-01'),
-      'snapshot entries read failed',
-    ],
     ['expenses', getExpenses, 'expense splits read failed'],
     ['people', getDistinctPeople, 'people read failed'],
     ['household', getGoals, 'household contributions read failed'],
@@ -253,10 +241,9 @@ describe('complete nested histories', () => {
         from >= CAP ? { message: 'private database constraint detail' } : null;
       setup({
         selectDataByTable: {
-          monthly_snapshots:
-            _label === 'single snapshot'
-              ? { id: 'snapshot-0', month: '2026-01' }
-              : [{ id: 'snapshot-0', month: '2026-01' }],
+          monthly_snapshots: [
+            { id: 'snapshot-0', month: '2026-01', revision: '1' },
+          ],
           asset_entries: assetEntries,
           expense_records: [expense],
           expense_splits: expenseSplits,

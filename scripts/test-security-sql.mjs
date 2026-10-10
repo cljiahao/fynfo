@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runAtomicFinancialConcurrency } from '../test/security/atomic-financial-concurrency.mjs';
 import { runHouseholdConcurrency } from '../test/security/household-concurrency.mjs';
+import { runSnapshotRevisionConcurrency } from '../test/security/snapshot-revision-concurrency.mjs';
 import { runVaultConcurrency } from '../test/security/vault-concurrency.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -148,6 +149,7 @@ const histories = [
   '20261008000000_security_rpc_boundaries.sql',
   '20261008000001_household_authorization.sql',
   '20261009000000_atomic_financial_replacements.sql',
+  '20261009000001_snapshot_edit_revisions.sql',
 ];
 let started = false;
 try {
@@ -189,14 +191,19 @@ try {
     'CREATE DATABASE fynfo_security_fixture;',
   ]);
   await fixture.file('test/security/bootstrap.sql');
-  for (const migration of histories)
+  for (const migration of histories) {
+    if (migration === '20261009000001_snapshot_edit_revisions.sql')
+      await fixture.file('test/security/snapshot-pre-revision.sql');
     await fixture.file(`supabase/migrations/${migration}`);
+  }
   await fixture.file('test/security/household-authorization.sql');
   await fixture.file('test/security/vault-telemetry-authorization.sql');
   await fixture.file('test/security/atomic-financial-replacements.sql');
+  await fixture.file('test/security/snapshot-edit-revisions.sql');
   await runHouseholdConcurrency(fixture);
   await runVaultConcurrency(fixture);
   await runAtomicFinancialConcurrency(fixture);
+  await runSnapshotRevisionConcurrency(fixture);
   process.stdout.write(
     'Real SQL authorization, conflict and concurrent boundaries passed.\n'
   );

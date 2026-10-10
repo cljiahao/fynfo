@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { SnapshotRecord } from '@/features/assets/types';
 import { ExportDataCard } from '@/features/profile/components/export-data-card';
 import { useExportData } from '@/features/profile/hooks/use-export-data';
 import type { ExportData } from '@/features/profile/lib/export-data';
@@ -180,6 +181,27 @@ it.each([
     expect(view.result.current.isExporting).toBe(false);
   }
 );
+
+it('omits internal snapshot identity and lossless revision from the export', async () => {
+  seed(NONEMPTY);
+  const versioned: SnapshotRecord = {
+    ...NONEMPTY.snapshots[0],
+    snapshotId: 'fixture-parent',
+    revision: '9007199254740993',
+  };
+  state.snapshots.mockResolvedValue([versioned]);
+  const view = renderHook(() => useExportData());
+  await act(async () => {
+    await view.result.current.exportData();
+  });
+  const parsed: unknown = JSON.parse(await readBlob(download.mock.calls[0][0]));
+  expect(parsed).toEqual({
+    version: 2,
+    app: 'fynfo',
+    exportedAt: expect.any(String),
+    data: NONEMPTY,
+  });
+});
 
 it.each(DOMAINS)(
   'rejects failed %s read without a partial download or private error',

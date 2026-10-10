@@ -7,4 +7,9 @@ export {
   getLatestSnapshot,
   getPreviousSnapshot,
 } from './lib/calculations';
-export type { AssetCategory, ChartDataPoint, SnapshotData } from './types';
+export type {
+  AssetCategory,
+  ChartDataPoint,
+  SnapshotData,
+  SnapshotRecord,
+} from './types';

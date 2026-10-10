@@ -19,6 +19,17 @@ export interface SnapshotData {
   entries: AssetEntryData[];
 }
 
+export interface SnapshotVersion {
+  snapshotId: string;
+  revision: string;
+}
+
+export type SnapshotRecord = SnapshotData & SnapshotVersion;
+
+export type SnapshotWriteResult =
+  | { ok: true }
+  | { ok: false; code: 'CONFLICT' };
+
 export interface SnapshotWithTotals extends SnapshotData {
   total: number;
 }

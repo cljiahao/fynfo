@@ -192,6 +192,32 @@ text casts for lossless counters and returned expected errors for Server Actions
 [PostgREST column casting](https://docs.postgrest.org/en/stable/references/api/tables_views.html#casting-columns),
 [Next.js expected errors](https://nextjs.org/docs/app/getting-started/error-handling).
 
+## Snapshot comparison and recovery — spec083, verified but not shipped
+
+Clarence approved the revision migration/callers and the original-parent-ID
+addendum on2026-10-09. Snapshot creates use a unique insert; edits/deletes compare
+identity plus lossless revision under an owner row lock. Coherent edit reads bind
+version to all ciphertext children. Legacy RPCs advance revisions. Drafts remain
+visible after conflicts or uncertain outcomes, with explicit review; no force
+writes or automatic mutation retries. Recovery rejects unrelated rename targets,
+cancels older in-flight reads and ignores obsolete completions after navigation.
+Export format remains unchanged. The mobile month header and accessible control
+names were corrected within the owner's audit scope.
+
+All isolated gates pass116files/906tests:93.00%lines,92.62%statements,
+90.17%functions,87.92%branches; security floors unchanged. Two relevant regressions
+fail on shipped main. Fresh PostgreSQL fixtures prove owner/role boundaries,
+atomic revision/data rollback, one concurrent winner, delete/recreate protection,
+bigint/child-count correctness, coherent concurrent reads and pre-migration record
+preservation. Second review and synthetic desktop/mobile recovery proof are in
+spec083. No authenticated/private browser or production-record access occurred.
+
+Application merge waits for owner confirmation of
+supabase/migrations/20261009000001_snapshot_edit_revisions.sql. Spec077's earlier
+migration confirmation is distinct. Do not repeat completed spec082 or ask again
+for spec083 implementation/identity approval. Older deployments and direct table
+writers remain documented comparison limits; durable retry/history work is later.
+
 ## Parallel delivery closeout — 2026-10-10
 
 The owner requested parallel worktrees; isolated accuracy, latency and CPF
@@ -272,3 +298,7 @@ Draft080 is now preserved alongside079:090's shipped historical estimate correct
 101 / PR29 expense calendar-date boundary merged d082928910e59d2fb9533e0d8237fbf8c659de63 at05:43UTC after exact2216a5b9bffc8f15834aeae78b7c5844a95e6163 CI/Vercel success. Full125files/1074tests passed; coverage93.42/88.85/91.00/93.73 and existing security floors unchanged. Invalid dates reject before context/encryption/database, with valid timestamp semantics unchanged.102 source-backed monthly totals selected next without additional reads.103 named-scenario persistence is a draft requiring scoped approval.104 scan-to-received proposal records actual-payment-date/net-amount/currency and durable dedupe limitations; no implementation selected.083 still awaits its distinct revision migration confirmation,079 its precise PDF dependency decision,091 coherent recovery SQL/privacy approval and094 provider readiness. No whole-roadmap, private-production workflow or exhaustive audit completion claim.
 
 Delivery coordination: parallel source/reviews remain useful; subsequent heavy coverage/build jobs are serialized to avoid host contention. Automatic push review rejected100 before execution for missing destination evidence; root verified exact credential-free Fynfo origin, ADMIN permission and prior owner-authorized destination, and the evidence-based retry passed unchanged hooks. No denial or hook was bypassed.
+
+## 2026-10-10: PR15 production revision migration confirmed
+
+Clarence confirmed running the exact 20261009000001_snapshot_edit_revisions.sql after opening its complete local file. This satisfies the distinct spec083 production prerequisite. PR15 remains unmerged while current main is integrated and required gates are rerun. Preserve both identity/revision comparison and spec093 cancellation of pre-write replies, refreshing only confirmed writes. Keep spec092 complete export/error/lifetime tests and add the original concurrency-metadata omission regression. No migration or protected-file contract change; no production records or credentials accessed.

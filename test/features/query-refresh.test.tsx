@@ -155,7 +155,11 @@ const cases: Case[] = [
     useRead: useSnapshotReads,
     useRun() {
       const mutation = useDeleteSnapshot();
-      return () => mutation.mutateAsync('2026-01');
+      return () =>
+        mutation.mutateAsync({
+          id: '2026-01',
+          expectedVersion: { snapshotId: 'synthetic-parent', revision: '1' },
+        });
     },
   },
   {
@@ -391,6 +395,8 @@ const clients: QueryClient[] = [];
 beforeEach(() => {
   vi.resetAllMocks();
   for (const fn of Object.values(api)) fn.mockResolvedValue(undefined);
+  api.upsertSnapshot.mockResolvedValue({ ok: true });
+  api.deleteSnapshot.mockResolvedValue({ ok: true });
 });
 afterEach(() => {
   cleanup();
@@ -417,6 +423,42 @@ function setup(testCase: Case) {
   };
 }
 describe('confirmed mutation query freshness', () => {
+  it.each(cases.slice(0, 2))(
+    '$name: a returned conflict preserves valid pending reads',
+    async (testCase) => {
+      const reads = testCase.readNames.map((name) => {
+        const pending = deferred();
+        api[name].mockReturnValueOnce(pending.promise);
+        return { name, pending };
+      });
+      api[testCase.mutationName].mockResolvedValueOnce({
+        ok: false,
+        code: 'CONFLICT',
+      });
+      const { client, result } = setup(testCase);
+      const cancel = vi.spyOn(client, 'cancelQueries');
+      const invalidate = vi.spyOn(client, 'invalidateQueries');
+      await waitFor(() => {
+        for (const read of reads) expect(api[read.name]).toHaveBeenCalledOnce();
+      });
+      await act(async () => {
+        expect(await result.current.run()).toEqual({
+          ok: false,
+          code: 'CONFLICT',
+        });
+        for (const read of reads)
+          read.pending.resolve({ generation: 'valid-pre-conflict' });
+      });
+      await waitFor(() =>
+        expect(result.current.queries.every((query) => query.isSuccess)).toBe(
+          true
+        )
+      );
+      expect(cancel).not.toHaveBeenCalled();
+      expect(invalidate).not.toHaveBeenCalled();
+      for (const read of reads) expect(api[read.name]).toHaveBeenCalledOnce();
+    }
+  );
   it('keeps post-save refetch failure visible rather than accepting an older response', async () => {
     const old = deferred();
     api.getSnapshots
@@ -452,7 +494,7 @@ describe('confirmed mutation query freshness', () => {
       client.clear();
     });
     await act(async () => {
-      write.resolve(undefined);
+      write.resolve({ ok: true });
       await mutation;
       read.resolve({ generation: 'pre-lock' });
       await Promise.resolve();

@@ -3,7 +3,7 @@ import { CategoryBreakdown } from '@/features/assets/components/category-breakdo
 import { SnapshotForm } from '@/features/assets/components/snapshot-form';
 import { SnapshotTable } from '@/features/assets/components/snapshot-table';
 import { useChartData } from '@/features/assets/hooks/use-chart-data';
-import type { SnapshotData } from '@/features/assets/types';
+import type { SnapshotData, SnapshotRecord } from '@/features/assets/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   act,
@@ -36,7 +36,9 @@ function mount(ui: React.ReactNode) {
     ...render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>),
   };
 }
-const snapshot: SnapshotData = {
+const snapshot: SnapshotRecord = {
+  snapshotId: 'fixture-parent',
+  revision: '1',
   id: '2026-01',
   entries: [
     { category: 'savings', account: 'Bank', amount: 100 },
@@ -48,7 +50,7 @@ const snapshot: SnapshotData = {
 beforeEach(() => {
   vi.resetAllMocks();
   external.getSnapshots.mockResolvedValue([]);
-  external.upsertSnapshot.mockResolvedValue(undefined);
+  external.upsertSnapshot.mockResolvedValue({ ok: true });
   external.deleteSnapshot.mockResolvedValue(undefined);
 });
 afterEach(cleanup);
@@ -121,6 +123,8 @@ it('initializes each explicitly selected editor context even after a dirty draft
   external.getSnapshots.mockResolvedValue([snapshot]);
   external.getSnapshot.mockImplementation(async (id: string) => ({
     id,
+    snapshotId: 'fixture-' + id,
+    revision: '1',
     entries: [
       {
         category: 'savings',
@@ -242,7 +246,10 @@ it('renders desktop categories and mobile combined investments, and sends edit/d
     within(screen.getByRole('dialog')).getByRole('button', { name: /^Delete$/ })
   );
   await waitFor(() =>
-    expect(external.deleteSnapshot).toHaveBeenCalledWith('2026-01')
+    expect(external.deleteSnapshot).toHaveBeenCalledWith('2026-01', {
+      snapshotId: snapshot.snapshotId,
+      revision: snapshot.revision,
+    })
   );
 });
 
@@ -296,6 +303,7 @@ it('prefills account names without copying balances and saves trimmed positive e
           { category: 'savings', account: 'Primary bank', amount: 1250.5 },
         ],
       },
+      undefined,
       undefined
     )
   );
@@ -355,7 +363,11 @@ it('returns to assets after successfully updating an existing snapshot', async (
   );
   expect(external.upsertSnapshot).toHaveBeenCalledWith(
     expect.objectContaining({ id: '2026-01' }),
-    '2026-01'
+    '2026-01',
+    expect.objectContaining({
+      snapshotId: snapshot.snapshotId,
+      revision: snapshot.revision,
+    })
   );
 });
 
@@ -371,8 +383,12 @@ it('retains original snapshot identity when month is edited and does not navigat
   fireEvent.click(screen.getByRole('button', { name: 'Update Snapshot' }));
   await waitFor(() =>
     expect(external.upsertSnapshot).toHaveBeenCalledWith(
-      { ...snapshot, id: '2026-03' },
-      '2026-01'
+      { id: '2026-03', entries: snapshot.entries },
+      '2026-01',
+      expect.objectContaining({
+        snapshotId: snapshot.snapshotId,
+        revision: snapshot.revision,
+      })
     )
   );
   expect(external.push).not.toHaveBeenCalled();

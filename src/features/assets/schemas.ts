@@ -16,6 +16,25 @@ export const snapshotFormSchema = z.object({
 
 export type SnapshotFormValues = z.infer<typeof snapshotFormSchema>;
 
+export const snapshotVersionSchema = z.object({
+  snapshotId: z.string().min(1).max(200),
+  revision: z
+    .string()
+    .regex(/^(0|[1-9][0-9]{0,18})$/)
+    .refine((value) => value.length < 19 || value <= '9223372036854775807'),
+});
+
+export const snapshotEditReadSchema = snapshotVersionSchema.extend({
+  id: YYYY_MM,
+  entries: z.array(
+    z.object({
+      category: assetEntrySchema.shape.category,
+      account: z.string().nullable(),
+      amount: z.string(),
+    })
+  ),
+});
+
 export const plannerSettingsSchema = z.object({
   emergencyMonths: z.number().min(0),
   warChestMonths: z.number().min(0),
