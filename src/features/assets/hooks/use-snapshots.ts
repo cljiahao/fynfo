@@ -9,9 +9,10 @@ import {
   getSnapshots,
   upsertSnapshot,
 } from '../actions/snapshot-actions';
+import { SNAPSHOTS_KEY } from '../constants';
 import type { SnapshotData, SnapshotVersion } from '../types';
 
-export const SNAPSHOTS_KEY = ['snapshots'] as const;
+export { SNAPSHOTS_KEY } from '../constants';
 
 export function useSnapshots() {
   const transport = useOverviewReadTransport();

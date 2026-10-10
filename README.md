@@ -71,6 +71,12 @@ Existing history caches and per-source retries remain; other pages keep their or
 read path. Query cancellation prevents late replies from overwriting removed
 or optimistically updated records.
 
+Initial unlocked dashboard requests prefetch snapshot, salary, planner and expense
+records in a feature-owned Server Component using shared server-safe query keys.
+Successful reads hydrate their existing client caches. This initial render still
+waits for all four sources; vault unlock uses the independent client read path
+above and does not automatically refresh the server route.
+
 The dashboard's monthly review combines recorded gross income, your share of
 all expense categories and exact-month snapshot changes. It does not infer net
 savings, investment returns or zero activity from missing records. Its disclosed

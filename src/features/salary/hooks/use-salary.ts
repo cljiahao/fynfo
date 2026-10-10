@@ -9,9 +9,10 @@ import {
   getSalaryRecords,
   upsertSalaryRecord,
 } from '../actions/salary-actions';
+import { SALARY_KEY } from '../constants';
 import type { SalaryData } from '../types';
 
-export const SALARY_KEY = ['salary'] as const;
+export { SALARY_KEY } from '../constants';
 
 export function useSalaryRecords() {
   const transport = useOverviewReadTransport();

@@ -2,12 +2,12 @@
 id: 116
 slug: expense-draft-preservation
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-11
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/39
 supersedes:
 constitution_satisfies:
   - '§2.1'
@@ -148,3 +148,7 @@ Root's final review of the three product component diffs found no remaining scop
 ## Complete local gates before delivery
 
 All five gates passed sequentially in the isolated synthetic fixture: full route/formatter/zero-warning lint/TypeScript check (`116-full-check.log`), coverage (`116-full-test-ci.log`) and normal Next.js16.3.8 build (`116-full-build.log`). The full suite passed144 files/1,432 tests in351.45s. Coverage:93.09% statements (4379/4704),89.11% branches (3004/3371),91.44% functions (1336/1461),93.79% lines (4024/4290). Every existing security/aggregate threshold passed unchanged. Product/test hashes are unchanged after both accepted reviews; only factual evidence is appended. No real env, confidential record, provider account or database was used. Normal commit/push hooks, exact-head CI and verified merge remain required;116 remains unshipped.
+
+## Verified delivery closeout
+
+PR39 exact head 33d2f04872d3a7ef1a15a1e18e99f26cf7f05ce4 merged as 64e2dc9392fb6d4fd8bb3748b86963ebe3f47d85 at 2026-10-10 18:14:57 UTC. Required CI 38074504124 succeeded at 18:11:13 UTC, and preview checks succeeded. Root verified public production deployment FaqbJcZDZQcpC5VGaBiEE62tC8mr SUCCESS at 18:15:37 UTC. Normal unchanged hooks passed: 144 files/1,432 tests; coverage 93.09% statements, 89.11% branches, 91.44% functions and 93.79% lines. Private production workflows were not accessed. This closeout changes no historical approval or scoped behavior claim.

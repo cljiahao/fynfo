@@ -90,3 +90,5 @@ export const EXPENSE_PASTE_NONDECIMAL_MONEY =
 export const EXPENSE_PASTE_MONTH_ALIASES: Readonly<Record<string, number>> = {
   sept: 9,
 };
+
+export const EXPENSE_KEY = ['expenses'] as const;

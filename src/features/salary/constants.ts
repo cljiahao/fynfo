@@ -95,3 +95,5 @@ export const RELIEF_CATALOG: ReliefDefinition[] = [
       'Contributions to your Supplementary Retirement Scheme account (max SGD 15,300 for citizens/PRs).',
   },
 ];
+
+export const SALARY_KEY = ['salary'] as const;

@@ -106,3 +106,9 @@ to the selected review months. Two independent bounded reads could reduce the
 fixture from 2 pages to 4 and add client serialization overhead. Fresh/error cache
 seeding and any shared-window reuse require proof. This is an unselected
 alternative, not a performance claim or approved implementation.
+
+## 119 compiler-boundary correction to earlier unit evidence
+
+The earlier parallel-prefetch statement described intended ordinary JavaScript behavior. The actual Next.js 16.3.8 webpack RSC build transformed query-key exports from client-hook modules into client-reference functions. Installed Query 5.97 hashes those functions to the same undefined key, so the original page prefetched only the first snapshot source. Plain-import tests did not establish RSC key validity. Preserve this historical record and its measured artifacts; do not rewrite original approvals or infer production latency/authentication from the synthetic finding.
+
+119 records neutral unchanged arrays and a feature-owned await-all Server Component; initial SSR still waits for its slowest source, and post-unlock behavior remains the existing 108 cohort. Actual corrected compiler proof maps all four keys to arrays, while unused hook references remain elsewhere in the server graph. Synthetic hydration/counter proof and final gates are recorded in the 119 audit; broader pending-query streaming remains an unselected proposal.
