@@ -2,7 +2,9 @@
 id: '090'
 slug: dividend-history-entitlement
 area: audit
-status: approved
+status: shipped
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/20
 author: Codex
 created: 2026-10-10
 constitution_satisfies: ['§2.1', '§2.3', '§3.1', '§4.1', '§4.2', '§7.4', '§8.2']

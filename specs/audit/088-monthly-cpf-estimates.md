@@ -1,7 +1,9 @@
 ---
 id: '088'
 area: audit
-status: approved
+status: shipped
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/18
 created: 2026-10-10
 author: Codex
 constitution_satisfies: ['§2.1', '§2.3', '§3.1', '§4.1', '§4.2', '§7.4', '§8.2']

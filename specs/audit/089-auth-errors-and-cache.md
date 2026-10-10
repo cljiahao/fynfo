@@ -1,7 +1,9 @@
 ---
 id: '089'
 area: audit
-status: owner-authorized
+status: shipped
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/19
 created: 2026-10-10
 author: Codex
 constitution_satisfies:
