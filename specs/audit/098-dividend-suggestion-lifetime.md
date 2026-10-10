@@ -2,7 +2,9 @@
 id: 098
 slug: dividend-suggestion-lifetime
 area: audit
-status: owner-authorized
+status: shipped
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/26
 author: Codex
 created: 2026-10-10
 constitution_satisfies: ['§2.5', '§3.2', '§4', '§5.1', '§7.4', '§8.2']
