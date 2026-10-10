@@ -1,5 +1,6 @@
 'use client';
 
+import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getProfile, upsertProfile } from '../actions/profile-actions';
 import type { ProfileData } from '../types';
@@ -18,7 +19,7 @@ export function useUpsertProfile() {
   return useMutation({
     mutationFn: (data: ProfileData) => upsertProfile(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PROFILE_KEY });
+      void refreshQueriesAfterMutation(queryClient, PROFILE_KEY);
     },
   });
 }
