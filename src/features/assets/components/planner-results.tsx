@@ -26,6 +26,7 @@ interface BreakdownItem {
 }
 
 interface PlannerResultsProps {
+  idPrefix?: string;
   pieData: PieDatum[];
   netAfterCpf: number;
   breakdownItems: BreakdownItem[];
@@ -50,6 +51,7 @@ interface PlannerResultsProps {
 // Allocation pie + breakdown/goals panel (shown when salary > 0).
 // Presentational; tithe/allowance toggles write back via setters.
 export function PlannerResults({
+  idPrefix = '',
   pieData,
   netAfterCpf,
   breakdownItems,
@@ -112,11 +114,14 @@ export function PlannerResults({
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           <div className="flex items-center gap-1.5">
             <Checkbox
-              id="tithe"
+              id={idPrefix ? `${idPrefix}-tithe` : 'tithe'}
               checked={titheEnabled}
               onCheckedChange={(v) => setTitheEnabled(v === true)}
             />
-            <Label htmlFor="tithe" className="text-xs">
+            <Label
+              htmlFor={idPrefix ? `${idPrefix}-tithe` : 'tithe'}
+              className="text-xs"
+            >
               Tithe
             </Label>
             <Input
@@ -132,11 +137,14 @@ export function PlannerResults({
           </div>
           <div className="flex items-center gap-1.5">
             <Checkbox
-              id="allowance"
+              id={idPrefix ? `${idPrefix}-allowance` : 'allowance'}
               checked={allowanceEnabled}
               onCheckedChange={(v) => setAllowanceEnabled(v === true)}
             />
-            <Label htmlFor="allowance" className="text-xs">
+            <Label
+              htmlFor={idPrefix ? `${idPrefix}-allowance` : 'allowance'}
+              className="text-xs"
+            >
               Allowance
             </Label>
             <Input

@@ -1,3 +1,4 @@
+export { getScenarios } from './actions/scenario-actions';
 export * from './components';
 export { CATEGORY_LABELS } from './constants';
 export * from './hooks';
@@ -10,6 +11,7 @@ export {
 export type {
   AssetCategory,
   ChartDataPoint,
+  ScenarioRecord,
   SnapshotData,
   SnapshotRecord,
 } from './types';

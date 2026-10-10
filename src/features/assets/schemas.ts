@@ -43,3 +43,47 @@ export const plannerSettingsSchema = z.object({
   allowanceEnabled: z.boolean(),
   allowancePct: z.number().min(0).max(100),
 });
+
+// Spec103 bounds apply only to saved snapshots, not the live planner contract.
+export const scenarioInputsSchema = z.strictObject({
+  salary: z.number().min(0).max(1e9),
+  expenses: z.number().min(0).max(1e9),
+  emergencyMonths: z.number().min(0).max(120),
+  warChestMonths: z.number().min(0).max(120),
+  titheEnabled: z.boolean(),
+  tithePctInput: z.number().min(0).max(100),
+  allowanceEnabled: z.boolean(),
+  allowancePctInput: z.number().min(0).max(100),
+  currentSavings: z.number().min(-1e9).max(1e9),
+  currentBonds: z.number().min(-1e9).max(1e9),
+});
+
+export const scenarioPayloadSchema = z.strictObject({
+  schemaVersion: z.literal(1),
+  name: z.string().trim().min(1).max(80),
+  model: z.literal('allocation-flat-cpf-v1'),
+  currency: z.literal('SGD'),
+  capturedAt: z.iso.datetime(),
+  sourceSnapshotMonth: YYYY_MM.optional(),
+  inputs: scenarioInputsSchema,
+});
+
+export const scenarioRevisionSchema = z
+  .string()
+  .regex(/^[1-9]\d{0,18}$/)
+  .refine(
+    (value) =>
+      /^[1-9]\d{0,18}$/.test(value) &&
+      BigInt(value) <= BigInt('9223372036854775807')
+  );
+export const scenarioIdentitySchema = z.strictObject({
+  id: z.uuid(),
+  revision: scenarioRevisionSchema,
+});
+export const createScenarioSchema = z.strictObject({
+  creationRequestId: z.uuid(),
+  payload: scenarioPayloadSchema,
+});
+export const updateScenarioSchema = scenarioIdentitySchema.extend({
+  payload: scenarioPayloadSchema,
+});

@@ -57,3 +57,30 @@ export interface PlannerSettingsData {
   allowanceEnabled: boolean;
   allowancePct: number;
 }
+
+export interface ScenarioPayload {
+  schemaVersion: 1;
+  name: string;
+  model: 'allocation-flat-cpf-v1';
+  currency: 'SGD';
+  capturedAt: string;
+  sourceSnapshotMonth?: string;
+  inputs: import('./lib/salary-plan').SalaryPlanInput;
+}
+
+export interface ScenarioRecord {
+  id: string;
+  creationRequestId: string;
+  revision: string;
+  createdAt: string;
+  updatedAt: string;
+  payload: ScenarioPayload;
+}
+
+export type ScenarioCreateResult =
+  | { status: 'CREATED' | 'EXISTING'; id: string; revision: string }
+  | { status: 'CAPACITY' | 'CONFLICT' };
+export type ScenarioSaveResult =
+  | { status: 'SAVED'; revision: string }
+  | { status: 'CONFLICT' };
+export type ScenarioDeleteResult = { status: 'DELETED' | 'CONFLICT' };

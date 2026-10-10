@@ -37,3 +37,44 @@ export const INVESTMENT_CATEGORIES: AssetCategory[] = [
   'non_equity',
   'crypto',
 ];
+
+export const SCENARIO_SLICES = [
+  {
+    label: 'Savings',
+    amount: 'savingsAmt',
+    percent: 'savingsPct',
+    color: 'var(--chart-1)',
+  },
+  {
+    label: 'Expenses',
+    amount: 'expensesAmt',
+    percent: 'expensesPct',
+    color: 'var(--loss)',
+  },
+  {
+    label: 'Insurance',
+    amount: 'insuranceAmt',
+    percent: 'insurancePct',
+    color: 'var(--warning)',
+  },
+  {
+    label: 'Investment',
+    amount: 'investmentAmt',
+    percent: 'investmentPct',
+    color: 'var(--gain)',
+  },
+  {
+    label: 'Tithe',
+    amount: 'titheAmt',
+    percent: 'tithePct',
+    color: 'var(--chart-5)',
+    enabled: 'titheEnabled',
+  },
+  {
+    label: 'Allowance',
+    amount: 'allowanceAmt',
+    percent: 'allowancePct',
+    color: 'var(--chart-6)',
+    enabled: 'allowanceEnabled',
+  },
+] as const;

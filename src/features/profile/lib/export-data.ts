@@ -1,3 +1,4 @@
+import type { ScenarioRecord } from '@/features/assets';
 import type {
   PlannerSettingsData,
   SnapshotData,
@@ -9,7 +10,7 @@ import type { ProfileData } from '../types';
 
 /** Envelope schema version. Bump when `ExportData` shape changes; a future
  *  import branches on this to migrate older backups. */
-export const EXPORT_VERSION = 2;
+export const EXPORT_VERSION = 3;
 
 /** A tax-relief row carrying its year (reliefs are stored per year). */
 export type TaxReliefExport = TaxReliefData & { year: number };
@@ -23,6 +24,7 @@ export interface ExportData {
   trades: EquityTradeData[];
   dividends: DividendData[];
   plannerSettings: PlannerSettingsData | null;
+  scenarios: ScenarioRecord[];
 }
 
 export interface ExportEnvelope {

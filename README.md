@@ -247,8 +247,8 @@ Add shadcn primitives using `npx shadcn@latest add <component-name>`.
 ## Personal data export
 
 The profile page downloads a versioned JSON export of profile, snapshots,
-expenses, salary, tax reliefs, equity trades, dividends, and planner settings.
-The server decrypts these eight personal domains while the vault is unlocked.
+expenses, salary, tax reliefs, equity trades, dividends, planner settings, and saved planning scenarios.
+The server decrypts these nine personal domains while the vault is unlocked.
 Household goals and contributions are excluded. Treat the downloaded file as
 sensitive plaintext; there is currently no import/restore workflow. Avoid editing
 records during export: independent domain reads do not form one database snapshot.
@@ -270,3 +270,11 @@ This checkout currently contains neither a tracked Dockerfile nor a
 `scripts/build-push.sh` implementation. Building and publishing a container needs
 those separately approved deployment artifacts; the repository does not currently
 provide the Docker commands previously described here.
+
+## Private saved planning scenarios
+
+The Planner's Saved scenarios disclosure captures a named hypothetical plan in your personal encrypted vault (up to ten current scenarios). Opening a saved plan uses its captured salary, expenses and savings/bond balances; editing it never changes actual records, live allocation outputs or automatically saved planner preferences. The saved view names the SGD, flat20% CPF, fixed5% insurance and9-month reserve-funding assumptions. Scenario save conflicts preserve the draft and require an authoritative reload before review or a new save intent. Creation request correlation lasts only while its row exists; no permanent exactly-once or anti-resurrection guarantee is claimed.
+
+Export version3 includes complete current scenarios as a ninth personal domain; a failed or corrupt scenario read prevents the download. Export does not execute restore or provide a consistent cross-domain snapshot.
+
+Apply `supabase/migrations/20261010000103_personal_planning_scenarios.sql` only through the owner's reviewed migration process. Application merge waits for the owner's exact migration confirmation. The reproducible SQL proof is `node supabase/tests/103-personal-planning-scenarios.mjs` (optional second argument: Docker executable path). It requires already-installed `postgres:17-alpine` and `public.ecr.aws/supabase/postgrest:v14.14` images and a running Docker Linux engine. It creates fresh synthetic roles/users, tmpfs database storage and an isolated network, binds HTTP only to loopback, exercises real RLS/CAS/concurrent capacity/PostgREST bigint JSON boundaries, and cleans only resources whose fresh creation IDs it owns. It never connects to an existing database or downloads images.
