@@ -87,3 +87,66 @@ it('distinguishes missing records and refuses a comparison across a missing mont
   });
   expect(() => buildMonthlyReview('', [], [], [])).toThrow();
 });
+
+it('qualifies each contributing personal amount and exact source values', () => {
+  const review = buildMonthlyReview(
+    '2026-01',
+    [],
+    [{ id: '2026-01', salary: 0.105, bonus: 0.105 }],
+    [
+      {
+        id: 'good',
+        date: '2026-01-01',
+        type: 'other',
+        item: 'Good',
+        info: '',
+        amount: 10,
+        splitType: 'shared',
+        splits: [{ person: 'Private', amount: 2, settled: false }],
+      },
+      {
+        id: 'bad',
+        date: '2026-01-02',
+        type: 'other',
+        item: 'Bad',
+        info: '',
+        amount: 1,
+        splitType: 'shared',
+        splits: [{ person: 'Private', amount: 2, settled: true }],
+      },
+    ]
+  );
+  expect(review.grossIncome).toBe(0.22);
+  expect(review.personalSpending).toBeNull();
+  expect(review.sources.income).toEqual([
+    { month: '2026-01', salaryCents: 11, bonusCents: 11 },
+  ]);
+  expect(review.sources.expenses.map((row) => row.personalCents)).toEqual([
+    800,
+    null,
+  ]);
+  expect(review.sources.previousAssetTotal).toBeNull();
+  expect(JSON.stringify(review.sources)).not.toContain('Private');
+});
+
+it('preserves existing legacy self-expense arithmetic rather than reclassifying it as an invalid shared split', () => {
+  const review = buildMonthlyReview(
+    '2026-01',
+    [],
+    [],
+    [
+      {
+        id: 'legacy',
+        date: '2026-01-01',
+        item: '',
+        info: '',
+        type: 'other',
+        amount: -1,
+        splitType: 'self',
+        splits: [],
+      },
+    ]
+  );
+  expect(review.personalSpending).toBe(-1);
+  expect(review.sources.expenses[0].personalCents).toBe(-100);
+});

@@ -70,6 +70,9 @@ all expense categories and exact-month snapshot changes. It does not infer net
 savings, investment returns or zero activity from missing records. Its disclosed
 next steps show recorded-data availability and links for checking payslips,
 statements and balances; they do not certify a completed or reconciled month.
+Contributing records explain salary and bonus, aggregate shared-expense deductions
+and both snapshot totals. Expense pages show at most 20 rows while totals include
+every matching record.
 
 Successful non-optimistic saves and deletes discard pending pre-write reads before
 refreshing the affected records. Existing background refresh behavior remains;
