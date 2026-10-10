@@ -1,6 +1,7 @@
 import {
   nearestDpu,
   sharesHeldAsOf,
+  sharesHeldBeforeExDate,
   suggestAmount,
 } from '@/features/equity/lib/dividend-suggest';
 import type { EquityTradeData } from '@/features/equity/types';
@@ -69,5 +70,57 @@ describe('nearestDpu', () => {
       { exDate: '2026-08-15', dpu: 0.021 },
     ];
     expect(nearestDpu(points, '2026-05-30')).toBe(0.025);
+  });
+});
+
+describe('sharesHeldBeforeExDate', () => {
+  it('uses the recorded calendar day for timestamped trades', () => {
+    const trades = [
+      trade({ date: '2026-02-28T23:30:00-08:00', shares: 100 }),
+      trade({ date: '2026-03-01T00:00:00+08:00', shares: 50 }),
+      trade({ date: '2026-03-01T14:00:00+08:00', action: 'sell', shares: 100 }),
+    ];
+    expect(sharesHeldBeforeExDate(trades, 'MLT', '2026-03-01')).toBe(100);
+  });
+  it('ignores unrelated invalid trades and clamps net negative history', () => {
+    expect(
+      sharesHeldBeforeExDate(
+        [trade({ ticker: 'AAPL', date: 'invalid' }), trade({ action: 'sell' })],
+        'MLT',
+        '2026-03-01'
+      )
+    ).toBe(0);
+    expect(
+      sharesHeldBeforeExDate([trade({ ticker: ' mlt ' })], 'MLT', '2026-03-01')
+    ).toBe(100);
+  });
+  it.each(['invalid', '2026-02-30', '2026-13-01'])(
+    'withholds invalid ex-date %s',
+    (date) => {
+      expect(sharesHeldBeforeExDate([trade({})], 'MLT', date)).toBeNull();
+    }
+  );
+  it.each([0, -1, Infinity, NaN])(
+    'withholds invalid matching trade shares %s',
+    (shares) => {
+      expect(
+        sharesHeldBeforeExDate([trade({ shares })], 'MLT', '2026-03-01')
+      ).toBeNull();
+    }
+  );
+  it('withholds invalid matching dates and sum overflow', () => {
+    expect(
+      sharesHeldBeforeExDate([trade({ date: 'invalid' })], 'MLT', '2026-03-01')
+    ).toBeNull();
+    expect(
+      sharesHeldBeforeExDate(
+        [
+          trade({ shares: Number.MAX_VALUE }),
+          trade({ shares: Number.MAX_VALUE }),
+        ],
+        'MLT',
+        '2026-03-01'
+      )
+    ).toBeNull();
   });
 });
