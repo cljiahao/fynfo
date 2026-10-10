@@ -60,3 +60,33 @@ export const EXPENSE_TYPE_COLORS: Record<ExpenseType, string> = {
   transport: '#0ea5e9',
   travel: '#f43f5e',
 };
+
+export const EXPENSE_PASTE_MONTHS = [
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
+] as const;
+export const EXPENSE_PASTE_ISO_DATE = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
+export const EXPENSE_PASTE_SLASH_DATE = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/;
+export const EXPENSE_PASTE_NAMED_DATE =
+  /^(?:([a-z]+)\s+(\d{1,2})(?:,\s*|\s+)(\d{4})|(\d{1,2})\s+([a-z]+)(?:,\s*|\s+)(\d{4}))$/i;
+export const EXPENSE_PASTE_MONEY =
+  /^\$?\s*(?:\d+(?:\.\d*)?|\.\d+|\d{1,3}(?:,\d{3})+(?:\.\d*)?)$/;
+export const EXPENSE_PASTE_MONEY_CANDIDATE =
+  /^(?:[+-]?\$?\s*[+-]?[\d,.\s]+|\([+-]?\$?\s*[+-]?[\d,.\s]+\))$/;
+export const EXPENSE_PASTE_CREDIT =
+  /^(?:\(?-?\$?\s*-?[\d,.]+\)?\s*(?:CR|CREDIT)|(?:CR|CREDIT)\s*\$?[\d,.]+)$/i;
+export const EXPENSE_PASTE_NONDECIMAL_MONEY =
+  /^(?:NaN|[+-]?Infinity|[+-]?(?:\d+(?:\.\d*)?|\.\d+)[eE][+-]?\d+|[\d$,.+\-()\s]+(?:DR|DEBIT))$/i;
+export const EXPENSE_PASTE_MONTH_ALIASES: Readonly<Record<string, number>> = {
+  sept: 9,
+};

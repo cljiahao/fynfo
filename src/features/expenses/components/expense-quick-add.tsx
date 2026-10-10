@@ -11,10 +11,10 @@ import {
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { CalendarIcon, ClipboardPaste, Plus, Zap } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useUpsertExpense } from '../hooks/use-expenses';
-import { parsePastedRow } from '../lib/paste-parser';
+import { parsePastedRow, type PasteIssue } from '../lib/paste-parser';
 import { buildSelfExpense } from '../lib/utils';
 import type { ExpenseType } from '../types';
 import { ExpenseTypeSelect } from './expense-type-select';
@@ -29,6 +29,18 @@ export function ExpenseQuickAdd() {
   const [info, setInfo] = useState('');
   const [amount, setAmount] = useState('');
   const [pasted, setPasted] = useState(false);
+  const [issues, setIssues] = useState<PasteIssue[]>([]);
+  const feedbackId = useId();
+  const invalidDate = issues.some((issue) => issue.field === 'date');
+  const invalidAmount = issues.some((issue) => issue.field === 'amount');
+  const lifetime = useRef({ active: true });
+  useEffect(() => {
+    const instance = { active: true };
+    lifetime.current = instance;
+    return () => {
+      instance.active = false;
+    };
+  }, []);
 
   const typeRef = useRef<HTMLInputElement>(null);
   const typeOpenRef = useRef(false);
@@ -39,6 +51,7 @@ export function ExpenseQuickAdd() {
     setInfo('');
     setAmount('');
     setPasted(false);
+    setIssues([]);
     typeRef.current?.focus();
   };
 
@@ -66,6 +79,7 @@ export function ExpenseQuickAdd() {
         return;
       }
 
+      setIssues(parsed.issues ?? []);
       const nextDate = parsed.date ?? date;
       const nextType = parsed.type ?? type;
       const nextItem = parsed.item ?? item;
@@ -78,8 +92,13 @@ export function ExpenseQuickAdd() {
       if (parsed.info !== undefined) setInfo(nextInfo);
       if (parsed.amount !== undefined) setAmount(nextAmount);
 
-      const amountNum = parseFloat(nextAmount);
-      if (nextDate && amountNum > 0) {
+      const amountNum = Number(nextAmount);
+      if (parsed.issues?.length) {
+        setPasted(true);
+        return;
+      }
+      const instance = lifetime.current;
+      if (nextDate && Number.isFinite(amountNum) && amountNum > 0) {
         void upsert
           .mutateAsync(
             buildSelfExpense({
@@ -90,10 +109,15 @@ export function ExpenseQuickAdd() {
               amount: amountNum,
             })
           )
-          .then(() => toast.success('Expense added from paste'))
-          .catch(() =>
-            toast.error('Failed to add expense — removed from list')
-          );
+          .then(() => {
+            if (instance.active) toast.success('Expense added from paste');
+          })
+          .catch(() => {
+            if (instance.active)
+              toast.error(
+                'Expense save unconfirmed — check the list before retrying'
+              );
+          });
         resetForm();
       } else {
         setPasted(true);
@@ -102,48 +126,43 @@ export function ExpenseQuickAdd() {
       return;
     }
 
-    // Multiple rows — parse all, submit valid ones, report skipped
     const parsed = rows.map(parsePastedRow);
-    const valid = parsed.filter(
-      (p) => p.date && p.amount && parseFloat(p.amount) > 0
-    );
+    const valid = parsed.filter((p) => !p.issues?.length && p.date && p.amount);
     const skipped = parsed.length - valid.length;
-
     if (valid.length === 0) {
-      toast.error('No rows had both a date and an amount — nothing added');
+      toast.error('No valid rows with a date and amount — nothing submitted');
       return;
     }
-
-    // Fire each valid row optimistically (onMutate inserts, onError rolls back);
-    // a failing row surfaces its own error toast. Clear the form right away.
-    valid.forEach(
-      (p) =>
-        void upsert
-          .mutateAsync(
-            buildSelfExpense({
-              date: p.date!,
-              type: p.type ?? type,
-              item: p.item ?? '',
-              info: p.info ?? '',
-              amount: parseFloat(p.amount!),
-            })
-          )
-          .catch(() =>
-            toast.error('A pasted expense failed to save — removed from list')
-          )
+    const instance = lifetime.current;
+    const saves = valid.map((p) =>
+      upsert.mutateAsync(
+        buildSelfExpense({
+          date: p.date!,
+          type: p.type ?? type,
+          item: p.item ?? '',
+          info: p.info ?? '',
+          amount: Number(p.amount!),
+        })
+      )
     );
-
-    const msg =
-      skipped > 0
-        ? `${valid.length} expense${valid.length > 1 ? 's' : ''} added, ${skipped} skipped (missing date or amount)`
-        : `${valid.length} expense${valid.length > 1 ? 's' : ''} added`;
-    toast.success(msg);
+    // Each paste owns its settled results; optimistic rows are not confirmed saves.
+    void Promise.allSettled(saves).then((results) => {
+      if (!instance.active) return;
+      const confirmed = results.filter(
+        (result) => result.status === 'fulfilled'
+      ).length;
+      const unconfirmed = results.length - confirmed;
+      const message = `${confirmed} confirmed, ${unconfirmed} unconfirmed, ${skipped} skipped`;
+      if (unconfirmed > 0 || confirmed === 0)
+        toast.error(message + '. Check the list before retrying.');
+      else toast.success(message);
+    });
     resetForm();
   };
-
   const handleSubmit = () => {
-    const amountNum = parseFloat(amount);
-    if (!date || !amountNum || amountNum <= 0) {
+    if (issues.length > 0) return;
+    const amountNum = Number(amount);
+    if (!date || !Number.isFinite(amountNum) || amountNum <= 0) {
       toast.error('Date and amount are required');
       return;
     }
@@ -151,12 +170,20 @@ export function ExpenseQuickAdd() {
     // Fire-and-forget: the hook's `onMutate` inserts the row optimistically and
     // `onError` rolls it back, so we clear the form immediately for the next row
     // instead of waiting on the server round-trip.
+    const instance = lifetime.current;
     void upsert
       .mutateAsync(
         buildSelfExpense({ date, type, item, info, amount: amountNum })
       )
-      .then(() => toast.success('Expense added'))
-      .catch(() => toast.error('Failed to add expense — removed from list'));
+      .then(() => {
+        if (instance.active) toast.success('Expense added');
+      })
+      .catch(() => {
+        if (instance.active)
+          toast.error(
+            'Expense save unconfirmed — check the list before retrying'
+          );
+      });
     resetForm();
   };
 
@@ -172,7 +199,6 @@ export function ExpenseQuickAdd() {
       className="border-primary/20 bg-primary/5 rounded-xl border-2 p-4"
       onPaste={handleContainerPaste}
     >
-      {/* Header */}
       <div className="flex-between mb-3">
         <div className="flex items-center gap-2">
           <div className="flex-center bg-primary size-7 rounded-lg">
@@ -202,16 +228,33 @@ export function ExpenseQuickAdd() {
         </span>
       </div>
 
-      {/* Fields */}
+      {issues.length > 0 && (
+        <p
+          id={feedbackId}
+          role="alert"
+          className="text-loss-strong mb-3 text-sm"
+        >
+          {invalidDate && 'Choose a valid date. '}
+          {invalidAmount &&
+            (issues.some((issue) => issue.code === 'UNSUPPORTED_CREDIT')
+              ? 'Credits cannot be added as expenses. Enter a positive expense amount to continue.'
+              : 'Enter a valid positive amount.')}
+        </p>
+      )}
       <div className="flex flex-wrap items-end gap-3">
-        {/* Date */}
         <div className="space-y-1">
-          <label className="text-muted-foreground block text-xs font-medium">
+          <label
+            htmlFor={feedbackId + '-date'}
+            className="text-muted-foreground block text-xs font-medium"
+          >
             Date
           </label>
           <Popover open={dateOpen} onOpenChange={setDateOpen}>
             <PopoverTrigger asChild>
               <Button
+                id={feedbackId + '-date'}
+                aria-invalid={invalidDate || undefined}
+                aria-describedby={invalidDate ? feedbackId : undefined}
                 variant="outline"
                 className={cn(
                   'bg-background h-9 w-[140px] justify-start gap-2 text-sm font-normal',
@@ -230,6 +273,9 @@ export function ExpenseQuickAdd() {
                 onSelect={(d) => {
                   if (d) {
                     setDate(format(d, 'yyyy-MM-dd'));
+                    setIssues((current) =>
+                      current.filter((issue) => issue.field !== 'date')
+                    );
                     setDateOpen(false);
                   }
                 }}
@@ -242,6 +288,9 @@ export function ExpenseQuickAdd() {
                   className="w-full"
                   onClick={() => {
                     setDate(format(new Date(), 'yyyy-MM-dd'));
+                    setIssues((current) =>
+                      current.filter((issue) => issue.field !== 'date')
+                    );
                     setDateOpen(false);
                   }}
                 >
@@ -251,8 +300,6 @@ export function ExpenseQuickAdd() {
             </PopoverContent>
           </Popover>
         </div>
-
-        {/* Category combobox */}
         <div className="space-y-1">
           <label className="text-muted-foreground text-xs font-medium">
             Category
@@ -270,8 +317,6 @@ export function ExpenseQuickAdd() {
             inputRef={typeRef}
           />
         </div>
-
-        {/* Item */}
         <div className="space-y-1">
           <label className="text-muted-foreground text-xs font-medium">
             Item / Brand
@@ -285,8 +330,6 @@ export function ExpenseQuickAdd() {
             className="bg-background h-9 w-[140px] text-sm"
           />
         </div>
-
-        {/* Info */}
         <div className="min-w-[120px] flex-1 space-y-1">
           <label className="text-muted-foreground text-xs font-medium">
             Notes
@@ -299,30 +342,40 @@ export function ExpenseQuickAdd() {
             className="bg-background h-9 w-full text-sm"
           />
         </div>
-
-        {/* Amount */}
         <div className="space-y-1">
-          <label className="text-muted-foreground text-xs font-medium">
+          <label
+            htmlFor={feedbackId + '-amount'}
+            className="text-muted-foreground text-xs font-medium"
+          >
             Amount (SGD)
           </label>
           <Input
+            id={feedbackId + '-amount'}
+            aria-invalid={invalidAmount || undefined}
+            aria-describedby={invalidAmount ? feedbackId : undefined}
             type="number"
             step="0.01"
             min="0"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setAmount(value);
+              if (Number.isFinite(Number(value)) && Number(value) > 0) {
+                setIssues((current) =>
+                  current.filter((issue) => issue.field !== 'amount')
+                );
+              }
+            }}
             onKeyDown={handleKeyDown}
             onFocus={(e) => e.target.select()}
             placeholder="0.00"
             className="bg-background h-9 w-[110px] text-right text-sm tabular-nums"
           />
         </div>
-
-        {/* Submit */}
         <Button
           className="h-9 shrink-0"
           onClick={handleSubmit}
-          disabled={upsert.isPending}
+          disabled={upsert.isPending || issues.length > 0}
         >
           <Plus className="mr-1.5 size-4" />
           Add Expense

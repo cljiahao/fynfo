@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { VaultGate } from '@/components/layout/vault-gate';
+import { VaultLockProvider } from '@/features/auth';
 import { ExpenseQuickAdd } from '@/features/expenses/components/expense-quick-add';
 import { ExpenseTable } from '@/features/expenses/components/expense-table';
 import { OwedSummary } from '@/features/expenses/components/owed-summary';
@@ -7,6 +9,7 @@ import type { ExpenseData } from '@/features/expenses/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import {
+  act,
   cleanup,
   createEvent,
   fireEvent,
@@ -250,7 +253,7 @@ describe('quick add real mutation success and failure', () => {
     await waitFor(() => expect(actions.upsertExpense).toHaveBeenCalledTimes(2));
     await waitFor(() =>
       expect(notices.error).toHaveBeenCalledWith(
-        'Failed to add expense — removed from list'
+        'Expense save unconfirmed — check the list before retrying'
       )
     );
   });
@@ -285,7 +288,7 @@ describe('quick add real mutation success and failure', () => {
     pasteExpense('2026-10-01\tCafe\t25');
     await waitFor(() =>
       expect(notices.error).toHaveBeenCalledWith(
-        'Failed to add expense — removed from list'
+        'Expense save unconfirmed — check the list before retrying'
       )
     );
     expect(client.getQueryData(['expenses'])).toEqual([]);
@@ -300,15 +303,15 @@ describe('quick add real mutation success and failure', () => {
       '2026-10-01\tCafe\t25\n2026-10-02\tStore\t30\nNoDate\tMissing'
     );
     await waitFor(() => expect(actions.upsertExpense).toHaveBeenCalledTimes(2));
-    expect(notices.success).toHaveBeenCalledWith(
-      '2 expenses added, 1 skipped (missing date or amount)'
+    await waitFor(() =>
+      expect(notices.error).toHaveBeenCalledWith(
+        '1 confirmed, 1 unconfirmed, 1 skipped. Check the list before retrying.'
+      )
     );
     await waitFor(() =>
       expect(client.getQueryData<ExpenseData[]>(['expenses'])).toHaveLength(1)
     );
-    expect(notices.error).toHaveBeenCalledWith(
-      'A pasted expense failed to save — removed from list'
-    );
+    expect(notices.success).not.toHaveBeenCalled();
     expect(client.getQueryData<ExpenseData[]>(['expenses'])?.[0].item).toBe(
       'Store'
     );
@@ -321,7 +324,7 @@ describe('quick add real mutation success and failure', () => {
     );
     pasteExpense('x\ty\nq\tz');
     expect(notices.error).toHaveBeenCalledWith(
-      'No rows had both a date and an amount — nothing added'
+      'No valid rows with a date and amount — nothing submitted'
     );
     expect(actions.upsertExpense).not.toHaveBeenCalled();
   });
@@ -355,3 +358,227 @@ describe('quick add real mutation success and failure', () => {
     expect(screen.getByPlaceholderText('Category')).toHaveValue('Transport');
   });
 });
+
+it.each([
+  '2026-02-30\tCafe\t12.50',
+  '2026-10-01\tCafe\t1.2.3',
+  '2026-10-01\tRefund\t-12.50',
+])(
+  'blocks stale fallback and manual submission for invalid pasted fields %s',
+  async (text) => {
+    mount(<ExpenseQuickAdd />);
+    fireEvent.change(screen.getByPlaceholderText('0.00'), {
+      target: { value: '25' },
+    });
+    pasteExpense(text);
+    fireEvent.keyDown(screen.getByPlaceholderText('0.00'), { key: 'Enter' });
+    await userEvent.click(screen.getByRole('button', { name: 'Add Expense' }));
+    expect(actions.upsertExpense).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+  }
+);
+it('does not announce confirmed batch saves before the actual mutations settle', async () => {
+  const completions: Array<() => void> = [];
+  actions.upsertExpense.mockImplementation(
+    () => new Promise<void>((resolve) => completions.push(resolve))
+  );
+  mount(<ExpenseQuickAdd />);
+  pasteExpense('2026-10-01\tCafe\t25\n2026-10-02\tStore\t30');
+  await waitFor(() => expect(completions).toHaveLength(2));
+  expect(notices.success).not.toHaveBeenCalled();
+  completions.forEach((resolve) => resolve());
+  await waitFor(() =>
+    expect(notices.success).toHaveBeenCalledWith(
+      '2 confirmed, 0 unconfirmed, 0 skipped'
+    )
+  );
+});
+
+function deferredSave() {
+  let resolve!: () => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<void>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+}
+it('settles overlapping batches separately in reverse order and preserves a newer draft', async () => {
+  const first = deferredSave();
+  const second = deferredSave();
+  const third = deferredSave();
+  const fourth = deferredSave();
+  actions.upsertExpense
+    .mockReturnValueOnce(first.promise)
+    .mockReturnValueOnce(second.promise)
+    .mockReturnValueOnce(third.promise)
+    .mockReturnValueOnce(fourth.promise);
+  const client = mount(<ExpenseQuickAdd />);
+  pasteExpense('2026-10-01\tFirst\t25\n2026-10-02\tSecond\t30');
+  pasteExpense('2026-10-03\tThird\t35\n2026-10-04\tFourth\t40');
+  await waitFor(() => expect(actions.upsertExpense).toHaveBeenCalledTimes(4));
+  fireEvent.change(screen.getByPlaceholderText('e.g. Grab, NTUC'), {
+    target: { value: 'New draft' },
+  });
+  await act(async () => {
+    third.resolve();
+    fourth.resolve();
+  });
+  await waitFor(() =>
+    expect(notices.success).toHaveBeenCalledExactlyOnceWith(
+      '2 confirmed, 0 unconfirmed, 0 skipped'
+    )
+  );
+  await act(async () => {
+    first.reject(new Error('synthetic'));
+    second.reject(new Error('synthetic'));
+  });
+  await waitFor(() =>
+    expect(notices.error).toHaveBeenCalledExactlyOnceWith(
+      '0 confirmed, 2 unconfirmed, 0 skipped. Check the list before retrying.'
+    )
+  );
+  expect(screen.getByPlaceholderText('e.g. Grab, NTUC')).toHaveValue(
+    'New draft'
+  );
+  expect(
+    client
+      .getQueryData<ExpenseData[]>(['expenses'])
+      ?.map((row) => row.item)
+      .sort()
+  ).toEqual(['Fourth', 'Third']);
+});
+it('requires affected field correction and supports a fresh valid paste', async () => {
+  mount(<ExpenseQuickAdd />);
+  fireEvent.change(screen.getByPlaceholderText('0.00'), {
+    target: { value: '25' },
+  });
+  pasteExpense('2026-10-01\tCafe\t1.2.3');
+  fireEvent.change(screen.getByPlaceholderText('Optional description'), {
+    target: { value: 'Changed note' },
+  });
+  fireEvent.keyDown(screen.getByPlaceholderText('0.00'), { key: 'Enter' });
+  expect(actions.upsertExpense).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByPlaceholderText('0.00'), {
+    target: { value: '0' },
+  });
+  expect(screen.getByRole('button', { name: 'Add Expense' })).toBeDisabled();
+  fireEvent.change(screen.getByPlaceholderText('0.00'), {
+    target: { value: '12.5' },
+  });
+  fireEvent.keyDown(screen.getByPlaceholderText('0.00'), { key: 'Enter' });
+  await waitFor(() => expect(actions.upsertExpense).toHaveBeenCalledTimes(1));
+  expect(actions.upsertExpense.mock.calls[0][0]).toMatchObject({
+    amount: 12.5,
+  });
+  pasteExpense('2026-02-30\tCafe\t30');
+  expect(screen.getByRole('alert')).toHaveTextContent('Choose a valid date');
+  pasteExpense('2026-10-04\tCafe\t30');
+  await waitFor(() => expect(actions.upsertExpense).toHaveBeenCalledTimes(2));
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+it('clears an invalid pasted date only after calendar correction', async () => {
+  mount(<ExpenseQuickAdd />);
+  pasteExpense('2026-02-30\tCafe\t12.50');
+  fireEvent.keyDown(screen.getByPlaceholderText('0.00'), { key: 'Enter' });
+  expect(actions.upsertExpense).not.toHaveBeenCalled();
+  const dateButton = screen
+    .getAllByRole('button')
+    .find((button) => /\d{2} \w{3} \d{4}/.test(button.textContent ?? ''))!;
+  await userEvent.click(dateButton);
+  await userEvent.click(screen.getByRole('button', { name: 'Today' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Add Expense' }));
+  await waitFor(() => expect(actions.upsertExpense).toHaveBeenCalledTimes(1));
+});
+it.each(['manual', 'single', 'batch'] as const)(
+  'suppresses consumed late %s outcomes after unmount',
+  async (kind) => {
+    const pending = deferredSave();
+    actions.upsertExpense.mockReturnValue(pending.promise);
+    const client = new QueryClient({
+      defaultOptions: { mutations: { retry: false } },
+    });
+    const view = render(
+      <QueryClientProvider client={client}>
+        <ExpenseQuickAdd />
+      </QueryClientProvider>
+    );
+    if (kind === 'manual') {
+      fireEvent.change(screen.getByPlaceholderText('0.00'), {
+        target: { value: '25' },
+      });
+      fireEvent.keyDown(screen.getByPlaceholderText('0.00'), { key: 'Enter' });
+    } else
+      pasteExpense(
+        kind === 'single'
+          ? '2026-10-01\tCafe\t25'
+          : '2026-10-01\tCafe\t25\n2026-10-02\tStore\t30'
+      );
+    await waitFor(() =>
+      expect(actions.upsertExpense).toHaveBeenCalledTimes(
+        kind === 'batch' ? 2 : 1
+      )
+    );
+    view.unmount();
+    await act(async () => pending.reject(new Error('synthetic')));
+    expect(notices.error).not.toHaveBeenCalled();
+    expect(notices.success).not.toHaveBeenCalled();
+  }
+);
+it('suppresses old success after actual095 vault identity replacement unmounts quick add', async () => {
+  const pending = deferredSave();
+  actions.upsertExpense.mockReturnValue(pending.promise);
+  const client = new QueryClient({
+    defaultOptions: { mutations: { retry: false } },
+  });
+  const node = (userId: string) => (
+    <QueryClientProvider client={client}>
+      <VaultLockProvider initiallyUnlocked userId={userId}>
+        <VaultGate>
+          <ExpenseQuickAdd />
+        </VaultGate>
+      </VaultLockProvider>
+    </QueryClientProvider>
+  );
+  const view = render(node('synthetic-a'));
+  pasteExpense('2026-10-01\tCafe\t25');
+  await waitFor(() => expect(actions.upsertExpense).toHaveBeenCalledTimes(1));
+  view.rerender(node('synthetic-b'));
+  expect(screen.queryByPlaceholderText('0.00')).not.toBeInTheDocument();
+  await act(async () => pending.resolve());
+  expect(notices.success).not.toHaveBeenCalled();
+});
+
+it('preserves omitted-field fallback and does not treat headers as a save request', async () => {
+  mount(<ExpenseQuickAdd />);
+  fireEvent.change(screen.getByPlaceholderText('0.00'), {
+    target: { value: '25' },
+  });
+  pasteExpense('date\titem\tamount');
+  expect(actions.upsertExpense).not.toHaveBeenCalled();
+  pasteExpense('Cafe\tLunch');
+  await waitFor(() => expect(actions.upsertExpense).toHaveBeenCalledTimes(1));
+  expect(actions.upsertExpense.mock.calls[0][0]).toMatchObject({
+    item: 'Cafe',
+    info: 'Lunch',
+    amount: 25,
+  });
+});
+it.each(['9'.repeat(400), '0', '12.50 CR', '$oops'])(
+  'blocks nonfinite or unsupported pasted amount from stale fallback %s',
+  (token) => {
+    mount(<ExpenseQuickAdd />);
+    fireEvent.change(screen.getByPlaceholderText('0.00'), {
+      target: { value: '25' },
+    });
+    pasteExpense(`2026-10-01\tCafe\t${token}`);
+    fireEvent.keyDown(screen.getByPlaceholderText('0.00'), { key: 'Enter' });
+    expect(actions.upsertExpense).not.toHaveBeenCalled();
+    const amount = screen.getByRole('spinbutton', { name: 'Amount (SGD)' });
+    expect(amount).toHaveAttribute('aria-invalid', 'true');
+    expect(amount).toHaveAttribute(
+      'aria-describedby',
+      screen.getByRole('alert').id
+    );
+  }
+);

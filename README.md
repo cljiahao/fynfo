@@ -121,6 +121,19 @@ reads offer retry instead of claiming an empty history. Manual Add stays availab
 Expense saves reject impossible calendar dates before encryption or database work.
 Supported valid dates and timestamps retain their existing timezone behavior.
 
+Expense spreadsheet paste uses explicit calendar dates and complete finite positive
+amounts. SG day/month order wins for ambiguous dates; unambiguous US and English
+month forms remain supported. Invalid financial tokens block automatic and manual
+submission until that field is corrected or a fresh valid paste replaces it.
+Omitted fields retain the existing Quick Add fallback. Credits are unsupported;
+this paste convenience is not a bank statement adapter or duplicate detector.
+
+Quick Add clears accepted entries immediately and keeps rapid keyboard entry.
+Each multi-row paste reports its own confirmed, unconfirmed and skipped counts
+after its writes settle. An unconfirmed result requires checking the list before
+retrying; optimistic rollback does not prove database absence. Late notifications
+are suppressed after the form unmounts, including vault/identity teardown.
+
 Shared expense saves reject allocations exceeding the bill at cent precision.
 Equal splits distribute remainder cents in person order, with your share last
 when included. The dialog shows your actual remainder even in “Paid for” mode;
