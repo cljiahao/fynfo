@@ -1,5 +1,6 @@
 'use client';
 
+import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   deleteSnapshot,
@@ -40,7 +41,8 @@ export function useUpsertSnapshot() {
     }) => upsertSnapshot(data, originalId, expectedVersion),
     retry: false,
     onSuccess: (result) => {
-      if (result.ok) queryClient.invalidateQueries({ queryKey: SNAPSHOTS_KEY });
+      if (result.ok)
+        void refreshQueriesAfterMutation(queryClient, SNAPSHOTS_KEY);
     },
   });
 }
@@ -57,7 +59,8 @@ export function useDeleteSnapshot() {
     }) => deleteSnapshot(id, expectedVersion),
     retry: false,
     onSuccess: (result) => {
-      if (result.ok) queryClient.invalidateQueries({ queryKey: SNAPSHOTS_KEY });
+      if (result.ok)
+        void refreshQueriesAfterMutation(queryClient, SNAPSHOTS_KEY);
     },
   });
 }

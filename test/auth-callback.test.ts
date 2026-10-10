@@ -64,4 +64,28 @@ describe('auth callback redirects', () => {
     );
     expect(exchange).not.toHaveBeenCalled();
   });
+
+  it('returns an opaque retry destination for a thrown exchange failure', async () => {
+    exchange.mockRejectedValueOnce(new Error('private provider detail'));
+    const response = await GET(
+      new NextRequest('https://fynfo.example/auth/callback?code=fixture-code')
+    );
+    expect(response.headers.get('location')).toBe(
+      'https://fynfo.example/login?error=auth_callback_failed'
+    );
+  });
+
+  it.each(['?code=fixture-code', ''])(
+    'prevents caching callback response %s',
+    async (query) => {
+      const response = await GET(
+        new NextRequest(`https://fynfo.example/auth/callback${query}`)
+      );
+      expect(response.headers.get('cache-control')).toBe(
+        'private, no-cache, no-store, must-revalidate, max-age=0'
+      );
+      expect(response.headers.get('expires')).toBe('0');
+      expect(response.headers.get('pragma')).toBe('no-cache');
+    }
+  );
 });

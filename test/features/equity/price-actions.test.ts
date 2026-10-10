@@ -8,7 +8,9 @@ vi.mock('@/lib/auth-guard', () => ({
 function chartResponse(meta: Record<string, unknown>) {
   return {
     ok: true,
-    json: async () => ({ chart: { result: [{ meta }] } }),
+    json: async () => ({
+      chart: { result: [{ meta: { currency: 'USD', ...meta } }] },
+    }),
   } as Response;
 }
 
@@ -25,6 +27,33 @@ afterEach(() => {
 });
 
 describe('price-actions — fetchStockPrices', () => {
+  it.each([
+    { currency: 'USD' },
+    { regularMarketPrice: null, currency: 'USD' },
+    { regularMarketPrice: 1, currency: null },
+    { regularMarketPrice: 1, currency: undefined },
+  ])('does not fabricate missing prices or currencies: %j', async (meta) => {
+    fetchMock.mockResolvedValue(chartResponse(meta));
+    const { fetchStockPrices } =
+      await import('@/features/equity/actions/price-actions');
+    expect(await fetchStockPrices(['AAPL'])).toEqual({});
+  });
+
+  it('retains an actual zero and provider source time', async () => {
+    fetchMock.mockResolvedValue(
+      chartResponse({
+        regularMarketPrice: 0,
+        regularMarketTime: 0,
+        currency: 'USD',
+      })
+    );
+    const { fetchStockPrices } =
+      await import('@/features/equity/actions/price-actions');
+    expect((await fetchStockPrices(['AAPL'])).AAPL).toMatchObject({
+      price: 0,
+      asOf: '1970-01-01T00:00:00.000Z',
+    });
+  });
   it('rejects oversized ticker arrays before issuing requests', async () => {
     fetchMock.mockResolvedValue(chartResponse({ regularMarketPrice: 1 }));
     const { fetchStockPrices } =
@@ -130,18 +159,23 @@ describe('price-actions — fetchStockPrices', () => {
       currency: 'USD',
       change: 10,
       changePercent: 10,
+      asOf: null,
     });
   });
 
   it('maps a SG internal ticker to its Yahoo symbol but keys by the internal name', async () => {
     fetchMock.mockResolvedValue(
-      chartResponse({ regularMarketPrice: 5, previousClose: 5 })
+      chartResponse({
+        regularMarketPrice: 5,
+        previousClose: 5,
+        currency: 'SGD',
+      })
     );
     const { fetchStockPrices } =
       await import('@/features/equity/actions/price-actions');
     const out = await fetchStockPrices(['DBS']);
     expect(out.DBS.symbol).toBe('D05.SI');
-    expect(out.DBS.currency).toBe('USD');
+    expect(out.DBS.currency).toBe('SGD');
     expect(out.DBS.changePercent).toBe(0);
   });
 
@@ -306,11 +340,14 @@ describe('price-actions — fetchDividends', () => {
     ]);
   });
 
-  it('returns [] when the response is not ok', async () => {
+  it('rejects opaque when the response is not ok', async () => {
     fetchMock.mockResolvedValue({ ok: false } as Response);
     const { fetchDividends } =
       await import('@/features/equity/actions/price-actions');
-    expect(await fetchDividends('MLT')).toEqual([]);
+    await expect(fetchDividends('MLT')).rejects.toMatchObject({
+      code: 'EXTERNAL_API',
+      message: 'Dividend data unavailable',
+    });
   });
 
   it('returns [] when there are no dividend events', async () => {
@@ -323,10 +360,13 @@ describe('price-actions — fetchDividends', () => {
     expect(await fetchDividends('MLT')).toEqual([]);
   });
 
-  it('returns [] when the fetch throws', async () => {
+  it('rejects opaque when the fetch throws', async () => {
     fetchMock.mockRejectedValue(new Error('network'));
     const { fetchDividends } =
       await import('@/features/equity/actions/price-actions');
-    expect(await fetchDividends('MLT')).toEqual([]);
+    await expect(fetchDividends('MLT')).rejects.toMatchObject({
+      code: 'EXTERNAL_API',
+      message: 'Dividend data unavailable',
+    });
   });
 });

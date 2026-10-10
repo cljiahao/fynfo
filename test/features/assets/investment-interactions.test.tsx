@@ -15,7 +15,8 @@ import {
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const external = vi.hoisted(() => ({
   getTrades: vi.fn(),
-  getStockPrices: vi.fn(),
+  fetchStockPrices: vi.fn(),
+  fetchExchangeRate: vi.fn(),
   getSalaryRecords: vi.fn(),
   getPlannerSettings: vi.fn(),
   upsertPlannerSettings: vi.fn(),
@@ -38,7 +39,8 @@ beforeEach(() => {
   vi.resetAllMocks();
   localStorage.clear();
   external.getTrades.mockResolvedValue([]);
-  external.getStockPrices.mockResolvedValue({});
+  external.fetchStockPrices.mockResolvedValue({});
+  external.fetchExchangeRate.mockResolvedValue(1.3);
   external.getSalaryRecords.mockResolvedValue([]);
   external.getPlannerSettings.mockResolvedValue(null);
   external.getExpenses.mockResolvedValue([]);
@@ -61,7 +63,10 @@ it('calculates SG board lots, sorts every numeric column, and routes allocation 
     <MarketAllocationTable
       title="SG portfolio"
       holdings={[holding('ZZZ', 10), holding('AAA', 100)]}
-      prices={{ ZZZ: { price: 20 }, AAA: { price: 10 } }}
+      prices={{
+        ZZZ: { price: 20, currency: 'SGD' },
+        AAA: { price: 10, currency: 'SGD' },
+      }}
       pricesLoading={false}
       allocations={{ ZZZ: 20, AAA: 80 }}
       onAllocationChange={update}
@@ -93,8 +98,8 @@ it('calculates SG board lots, sorts every numeric column, and routes allocation 
 it('converts US target to dollars and suppresses buys when quotes or FX are unavailable', () => {
   const props = {
     title: 'US portfolio',
-    holdings: [holding('AAPL', 1)],
-    prices: { AAPL: { price: 100 } },
+    holdings: [{ ...holding('AAPL', 1), market: 'US' as const }],
+    prices: { AAPL: { price: 100, currency: 'USD' } },
     pricesLoading: true,
     allocations: { AAPL: 100 },
     onAllocationChange: vi.fn(),
@@ -247,4 +252,62 @@ it('uses salary and expenses to calculate goals and saves changed optional deduc
     target: { value: '' },
   });
   expect(screen.getByText('Enter salary to see allocation')).toBeTruthy();
+});
+
+it('clears investment budgets when USD conversion is unavailable while keeping basic inputs', async () => {
+  external.getTrades.mockResolvedValue([
+    {
+      date: '2026-01-01',
+      ticker: 'AAPL',
+      broker: '',
+      action: 'buy',
+      shares: 1,
+      price: 100,
+      fees: 0,
+    },
+  ]);
+  external.fetchStockPrices.mockResolvedValue({
+    AAPL: { price: 110, currency: 'USD' },
+  });
+  external.fetchExchangeRate.mockResolvedValue(null);
+  const changed = vi.fn();
+  mount(
+    <InvestmentBreakdown
+      investmentAmount={1000}
+      emergencyFundGoal={0}
+      warChestGoal={0}
+      onBudgetsChange={changed}
+    />
+  );
+  await screen.findByText(/Investment targets unavailable/);
+  await waitFor(() =>
+    expect(external.fetchStockPrices).toHaveBeenCalledWith(['AAPL'])
+  );
+  expect(changed).toHaveBeenLastCalledWith(null);
+  expect(
+    screen.getByRole('button', { name: /Monthly Investment/ })
+  ).toBeTruthy();
+  expect(screen.queryByText('SG Market Deployment')).toBeNull();
+});
+
+it('does not propose shares from incomplete or overflowing allocation data', () => {
+  mount(
+    <MarketAllocationTable
+      title="Incomplete market"
+      holdings={[holding('DBS', 100)]}
+      prices={{ DBS: { price: Number.MAX_VALUE, currency: 'SGD' } }}
+      pricesLoading={false}
+      allocations={{ DBS: 100 }}
+      onAllocationChange={vi.fn()}
+      currency="SGD"
+      target={10000}
+      usdToSgd={1.3}
+    />
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Incomplete market' }));
+  expect(screen.getByText('Quotes unavailable')).toBeTruthy();
+  expect(screen.queryByText(/Infinity/)).toBeNull();
+  expect(
+    screen.getByRole('spinbutton', { name: 'Allocation for DBS' })
+  ).toBeTruthy();
 });

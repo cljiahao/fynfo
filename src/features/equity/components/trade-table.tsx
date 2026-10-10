@@ -13,12 +13,13 @@ import {
   EmptyState,
   PaginationControls,
 } from '@/components/widgets';
-import { formatSGD } from '@/lib/utils/currency';
+import { formatCurrency } from '@/lib/utils/currency';
 import { format } from 'date-fns';
 import { Pencil, Trash2, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useDeleteTrade } from '../hooks/use-equity';
+import { getMarket } from '../lib/ticker-map';
 import type { EquityTradeData } from '../types';
 
 interface TradeTableProps {
@@ -99,7 +100,10 @@ export function TradeTable({ trades, onEdit }: TradeTableProps) {
     <Card>
       <CardHeader>
         <CardTitle>Trade History</CardTitle>
-        <CardDescription>All equity trades</CardDescription>
+        <CardDescription>
+          Currency inferred from ticker mapping (SGD/USD); check your trade
+          statement. No FX conversion.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
@@ -113,12 +117,13 @@ export function TradeTable({ trades, onEdit }: TradeTableProps) {
                 <th className="py-2 text-center font-medium">Shares</th>
                 <th className="py-2 text-center font-medium">Price</th>
                 <th className="py-2 text-center font-medium">Fees</th>
-                <th className="py-2 text-center font-medium">Total</th>
+                <th className="py-2 text-center font-medium">Gross value</th>
                 <th className="py-2 text-center font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {paged.map((t) => {
+                const currency = getMarket(t.ticker) === 'SG' ? 'SGD' : 'USD';
                 const total = t.shares * t.price;
                 return (
                   <tr key={t.id} className="border-b last:border-0">
@@ -144,13 +149,15 @@ export function TradeTable({ trades, onEdit }: TradeTableProps) {
                       {t.shares}
                     </td>
                     <td className="py-2 text-center tabular-nums">
-                      {formatSGD(t.price)}
+                      {formatCurrency(t.price, currency)}
                     </td>
                     <td className="py-2 text-center tabular-nums">
-                      {t.fees > 0 ? formatSGD(t.fees) : '-'}
+                      {t.fees > 0 ? formatCurrency(t.fees, currency) : '-'}
                     </td>
                     <td className="py-2 text-center font-semibold tabular-nums">
-                      {formatSGD(total)}
+                      {Number.isFinite(total)
+                        ? formatCurrency(total, currency)
+                        : 'Unavailable'}
                     </td>
                     <td className="py-2 text-center">
                       <TradeActionButtons trade={t} onEdit={onEdit} />

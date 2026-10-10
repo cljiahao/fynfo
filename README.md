@@ -3,6 +3,8 @@
 Personal wealth management dashboard for savings, investments, equity trades,
 salary, Singapore tax/CPF calculations, and expenses. Two accounts can link a
 household for shared goals while keeping their personal vaults separate.
+Goal completion uses the contributed amount against a positive target; rounded
+progress percentages do not establish completion.
 
 ## Stack
 
@@ -40,7 +42,15 @@ throttle RPCs prevent unlock; telemetry remains best-effort.
 For Google login, enable the Google provider in Supabase Auth and configure the
 Supabase redirect allowlist for the app's `/auth/callback` URL (locally,
 `http://localhost:3000/auth/callback`). Email/password login uses an existing
-Supabase Auth account. There is no development authentication bypass.
+Supabase Auth account. There is no development authentication bypass. Failed
+sign-ins show opaque retry messages. Refreshed sessions preserve cookie options
+and private/no-store cache headers through proxy redirects; authentication
+callback responses are uncached.
+A detected account change or signout hides financial editors and clears cached
+records before returning to login. An unavailable initial browser session blocks
+financial content with a manual sign-in link; ordinary same-account refreshes
+preserve the current editor. Server authorization and user-bound vault cookies
+remain mandatory.
 
 ```powershell
 pnpm dev
@@ -57,7 +67,45 @@ skipped. Tax/CPF estimates require a usable profile; reserve controls live under
 “Adjust reserves” and show their current settings while collapsed.
 The dashboard's monthly review combines recorded gross income, your share of
 all expense categories and exact-month snapshot changes. It does not infer net
-savings, investment returns or zero activity from missing records.
+savings, investment returns or zero activity from missing records. Its disclosed
+next steps show recorded-data availability and links for checking payslips,
+statements and balances; they do not certify a completed or reconciled month.
+Contributing records explain salary and bonus, aggregate shared-expense deductions
+and both snapshot totals. Expense pages show at most 20 rows while totals include
+every matching record.
+
+Successful non-optimistic saves and deletes discard pending pre-write reads before
+refreshing the affected records. Existing background refresh behavior remains;
+optimistic expense updates retain their rollback behavior.
+
+Investment quotes must include a reported price and currency; missing or mismatched
+quotes leave valuation and return estimates unavailable rather than becoming zero.
+SGD and USD portfolio amounts are shown separately.
+Trade history follows the existing ticker-based SGD/USD inference without FX
+conversion; check historical currency against trade statements. Gross value excludes fees.
+Distribution suggestions update only the active editor with the same inputs and
+holdings. Closing the form discards its pending UI work; reopening starts a fresh
+editor. The suggested amount still needs review before saving. Capital return estimates exclude
+dividends and currency movements, and require usable dated cash flows and a verified
+solver result. Optional SGD conversions require an actual exchange rate. Converted
+historical income and spending use the current rate as a planning estimate, not the
+payment-date rate. Query refresh time does not establish the provider quote's age.
+
+Distribution scans include historical trade tickers and sold positions within the
+existing five-year feed. Entitlement estimates use shares held before the supplied
+ex-date. Dates are ex-dates rather than confirmed payments, and currencies retain
+the existing SG/US ticker-based inference. Check amounts, currency and payment dates
+against received records; provider failures and actual payment evidence require
+the separate source/reconciliation contract.
+
+Dividend scans offer retry when market feeds are unavailable. An empty scan means
+no eligible estimates were returned; it does not confirm every payment is recorded.
+
+Distribution totals, yield and scans require a successful history read; failed
+reads offer retry instead of claiming an empty history. Manual Add stays available.
+
+Expense saves reject impossible calendar dates before encryption or database work.
+Supported valid dates and timestamps retain their existing timezone behavior.
 
 Shared expense saves reject allocations exceeding the bill at cent precision.
 Equal splits distribute remainder cents in person order, with your share last
@@ -68,10 +116,16 @@ rewritten by this validation.
 Salary tax estimates use the calendar income year (assessment in the next year),
 the higher of 15% or resident rates for non-resident employment, and the resident
 SGD 80,000 personal relief cap including CPF. They are before rebates, eligible
-deductions and special exemptions. CPF remains a fixed 20% employee model;
-citizenship/PR eligibility, age tiers, monthly rounding and historical intra-year
-ceiling changes are not modelled. These are planning estimates, not a filing or
-payroll calculation.
+deductions and special exemptions. Salary-page CPF estimates assume full employee rates and
+age 55 and below, using monthly wage bands, whole-dollar employee rounding and
+2023–2026 ordinary wage ceilings. Recorded YTD uses individual monthly records;
+annual projections spread average recorded salary and bonus across 12 months.
+Additional Wage ceilings remain provisional until all employer wages are known.
+Unsupported years or calculation boundaries remain unavailable. Citizenship/PR
+eligibility and other age tiers are not established. These are planning
+estimates, not a filing or payroll calculation. The dashboard allocation planner
+retains its separate flat 20% CPF assumption; these payroll-rule corrections do
+not change that planning model.
 
 Financial histories are paginated with stable ordering and exact counts,
 including when the API returns smaller pages. Snapshot history entries, expense splits
@@ -86,8 +140,8 @@ authenticated, RLS-protected database transaction. A failed child write rolls
 back the parent and all replaced children. Snapshot edits preserve the parent ID.
 Spec077's additive migration must be applied before deploying these callers;
 missing RPCs reject saves without falling back to partial writes. Same-record
-saves remain last-writer-wins; this does not provide conflict detection or a
-durable retry ledger. Relief replacements require READ COMMITTED isolation.
+expense and relief saves remain last-writer-wins; these transactions do not provide
+a durable retry ledger. Relief replacements require READ COMMITTED isolation.
 RPC arrays accept up to 5,000 rows, with each JSON argument limited to 1 MiB.
 Snapshot editors refresh untouched fields from background queries while
 preserving dirty drafts. Navigating to a different record loads that record.
@@ -101,7 +155,6 @@ this application comparison contract. Reload older open editors after rollout;
 older deployments can use the legacy RPC, which advances revisions without
 comparing them. Expense/relief transactions still use
 last-writer-wins. Snapshot revisions stay out of the existing export format.
-This protects draft input but does not yet detect stale database edits.
 
 ## Environment variables
 
@@ -189,7 +242,10 @@ The profile page downloads a versioned JSON export of profile, snapshots,
 expenses, salary, tax reliefs, equity trades, dividends, and planner settings.
 The server decrypts these eight personal domains while the vault is unlocked.
 Household goals and contributions are excluded. Treat the downloaded file as
-sensitive plaintext; there is currently no import/restore workflow.
+sensitive plaintext; there is currently no import/restore workflow. Avoid editing
+records during export: independent domain reads do not form one database snapshot.
+A failed domain read prevents download; temporary download resources are released
+even if browser activation fails, and overlapping export requests are ignored.
 
 ## Production artifact
 

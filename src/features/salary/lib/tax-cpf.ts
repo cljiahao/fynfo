@@ -1,12 +1,15 @@
 import {
-  CPF_ANNUAL_CEILING,
-  CPF_EMPLOYEE_RATE,
-  CPF_MONTHLY_CEILING,
+  CPF_ANNUAL_WAGE_CEILING,
   HISTORICAL_TAX_BRACKETS,
   NON_RESIDENT_RATE,
   PERSONAL_RELIEF_CAP,
   TAX_BRACKETS,
 } from '../constants';
+import {
+  employeeCpf,
+  estimateAnnualCpf,
+  ordinaryWageCeiling,
+} from './cpf-estimate';
 
 // Earned income relief by age tier
 export function getEarnedIncomeRelief(age: number | null): number {
@@ -67,41 +70,37 @@ export function calculateTax(
   return tax;
 }
 
-export function getCpfMonthlyCeiling(year: number): number {
-  return CPF_MONTHLY_CEILING[year] ?? CPF_MONTHLY_CEILING[2026];
+export function getCpfMonthlyCeiling(
+  year: number,
+  month?: number
+): number | null {
+  return year === 2023 && month === undefined
+    ? null
+    : ordinaryWageCeiling(year, month ?? 1);
 }
-
-export function getCpfAnnualCeiling(year: number): number {
-  return CPF_ANNUAL_CEILING[year] ?? CPF_ANNUAL_CEILING[2026];
+export function getCpfAnnualCeiling(year: number): number | null {
+  return ordinaryWageCeiling(year, 1) === null ? null : CPF_ANNUAL_WAGE_CEILING;
 }
-
 export function calculateMonthlyCpf(
   monthlySalary: number,
-  year: number
-): number {
-  const ceiling = getCpfMonthlyCeiling(year);
-  const capped = Math.min(monthlySalary, ceiling);
-  return capped * CPF_EMPLOYEE_RATE;
+  year: number,
+  month?: number
+): number | null {
+  const ceiling = getCpfMonthlyCeiling(year, month);
+  return ceiling === null ? null : employeeCpf(monthlySalary, 0, ceiling);
 }
-
+/** Annual projection assumes equal salary and bonus payments in twelve months. */
 export function calculateAnnualCpf(
   annualOrdinaryWages: number,
   annualTotalWages: number,
   year: number
-): number {
-  const monthlyCeiling = getCpfMonthlyCeiling(year);
-  const owCapped = Math.min(annualOrdinaryWages, monthlyCeiling * 12);
-  const owCpf = owCapped * CPF_EMPLOYEE_RATE;
-
-  const annualCeiling = getCpfAnnualCeiling(year);
-  const awWages = annualTotalWages - annualOrdinaryWages;
-  const awCeiling = Math.max(annualCeiling - owCapped, 0);
-  const awCapped = Math.min(awWages, awCeiling);
-  const awCpf = awCapped * CPF_EMPLOYEE_RATE;
-
-  return owCpf + awCpf;
+): number | null {
+  return estimateAnnualCpf(
+    annualOrdinaryWages,
+    annualTotalWages - annualOrdinaryWages,
+    year
+  );
 }
-
 export interface TaxSummary {
   grossAnnual: number;
   totalCpf: number;
@@ -121,12 +120,29 @@ export function calculateTaxSummary(
   annualBonus: number,
   year: number,
   profile: TaxProfileContext = DEFAULT_PROFILE,
-  additionalReliefs: number = 0
-): TaxSummary {
+  additionalReliefs: number = 0,
+  cpfOverride?: number
+): TaxSummary | null {
   const grossAnnual = annualSalary + annualBonus;
   const isNonResident = profile.residencyStatus === 'non_resident';
 
-  const totalCpf = calculateAnnualCpf(annualSalary, grossAnnual, year);
+  const totalCpf =
+    cpfOverride ?? calculateAnnualCpf(annualSalary, grossAnnual, year);
+  if (
+    totalCpf === null ||
+    ![
+      annualSalary,
+      annualBonus,
+      additionalReliefs,
+      grossAnnual,
+      totalCpf,
+    ].every(Number.isFinite) ||
+    annualSalary < 0 ||
+    annualBonus < 0 ||
+    additionalReliefs < 0 ||
+    totalCpf < 0
+  )
+    return null;
 
   const autoReliefs = computeAutoReliefs(profile, year);
   const earnedIncomeRelief = autoReliefs.earnedIncomeRelief;

@@ -28,6 +28,35 @@ export function sharesHeldAsOf(
   return Math.max(shares, 0);
 }
 
+function recordedDay(value: string): string | null {
+  const day = value.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(Date.parse(value)))
+    return null;
+  const parsed = new Date(`${day}T00:00:00.000Z`);
+  return parsed.toISOString().slice(0, 10) === day ? day : null;
+}
+
+/** Trades on the supplied ex-date do not change the estimated entitlement. */
+export function sharesHeldBeforeExDate(
+  trades: EquityTradeData[],
+  ticker: string,
+  exDate: string
+): number | null {
+  const target = recordedDay(exDate);
+  if (target === null) return null;
+  const normalized = ticker.trim().toUpperCase();
+  let shares = 0;
+  for (const trade of trades) {
+    if (trade.ticker.trim().toUpperCase() !== normalized) continue;
+    const day = recordedDay(trade.date);
+    if (day === null || !Number.isFinite(trade.shares) || trade.shares <= 0)
+      return null;
+    if (day >= target) continue;
+    shares += trade.action === 'buy' ? trade.shares : -trade.shares;
+    if (!Number.isFinite(shares)) return null;
+  }
+  return Math.max(shares, 0);
+}
 /** Suggested received amount = DPU × shares held. */
 export function suggestAmount(dpu: number, sharesHeld: number): number {
   return dpu * sharesHeld;

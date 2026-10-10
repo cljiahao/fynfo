@@ -1,5 +1,6 @@
 'use client';
 
+import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createDividend,
@@ -24,7 +25,7 @@ export function useCreateDividend() {
   return useMutation({
     mutationFn: (data: Omit<DividendData, 'id'>) => createDividend(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: DIVIDENDS_KEY });
+      void refreshQueriesAfterMutation(queryClient, DIVIDENDS_KEY);
     },
   });
 }
@@ -34,7 +35,7 @@ export function useCreateDividends() {
   return useMutation({
     mutationFn: (rows: Omit<DividendData, 'id'>[]) => createDividends(rows),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: DIVIDENDS_KEY });
+      void refreshQueriesAfterMutation(queryClient, DIVIDENDS_KEY);
     },
   });
 }
@@ -50,7 +51,7 @@ export function useUpdateDividend() {
       data: Omit<DividendData, 'id'>;
     }) => updateDividend(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: DIVIDENDS_KEY });
+      void refreshQueriesAfterMutation(queryClient, DIVIDENDS_KEY);
     },
   });
 }
@@ -60,7 +61,7 @@ export function useDeleteDividend() {
   return useMutation({
     mutationFn: (id: string) => deleteDividend(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: DIVIDENDS_KEY });
+      void refreshQueriesAfterMutation(queryClient, DIVIDENDS_KEY);
     },
   });
 }

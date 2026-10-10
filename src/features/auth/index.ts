@@ -1,4 +1,5 @@
 export {
+  AuthIdentityWatcher,
   EmailLoginForm,
   IdleLockWatcher,
   LoginButton,
@@ -8,5 +9,9 @@ export {
   VaultUnlockFlow,
   useVaultLock,
 } from './components';
-export { IDLE_CHECK_MS, IDLE_LIMIT_MS } from './constants';
+export {
+  AUTH_IDENTITY_CHANGED_MESSAGE,
+  IDLE_CHECK_MS,
+  IDLE_LIMIT_MS,
+} from './constants';
 export { useIdleLock, useSignOut } from './hooks';

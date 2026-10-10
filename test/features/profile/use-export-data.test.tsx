@@ -1,104 +1,142 @@
 // @vitest-environment jsdom
+import type { SnapshotRecord } from '@/features/assets/types';
+import { ExportDataCard } from '@/features/profile/components/export-data-card';
 import { useExportData } from '@/features/profile/hooks/use-export-data';
-import { act, renderHook } from '@testing-library/react';
+import type { ExportData } from '@/features/profile/lib/export-data';
+import '@testing-library/jest-dom/vitest';
+import {
+  act,
+  cleanup,
+  render,
+  renderHook,
+  screen,
+} from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+
 const state = vi.hoisted(() => ({
-  read: vi.fn(),
+  profile: vi.fn(),
   snapshots: vi.fn(),
-  dividends: vi.fn(() => Promise.resolve([])),
-  toast: vi.fn(),
+  expenses: vi.fn(),
+  salary: vi.fn(),
+  taxReliefs: vi.fn(),
+  trades: vi.fn(),
+  dividends: vi.fn(),
+  plannerSettings: vi.fn(),
+  success: vi.fn(),
+  error: vi.fn(),
 }));
 vi.mock('@/features/assets/actions/planner-actions', () => ({
-  getPlannerSettings: () => null,
+  getPlannerSettings: state.plannerSettings,
 }));
 vi.mock('@/features/assets/actions/snapshot-actions', () => ({
   getSnapshots: state.snapshots,
 }));
 vi.mock('@/features/equity/actions/equity-actions', () => ({
-  getTrades: () => [],
+  getTrades: state.trades,
 }));
 vi.mock('@/features/equity/actions/dividend-actions', () => ({
   getDividends: state.dividends,
 }));
 vi.mock('@/features/expenses/actions/expense-actions', () => ({
-  getExpenses: () => [],
+  getExpenses: state.expenses,
 }));
 vi.mock('@/features/salary/actions/relief-actions', () => ({
-  getAllTaxReliefs: () => [],
+  getAllTaxReliefs: state.taxReliefs,
 }));
 vi.mock('@/features/salary/actions/salary-actions', () => ({
-  getSalaryRecords: () => [],
+  getSalaryRecords: state.salary,
 }));
 vi.mock('@/features/profile/actions/profile-actions', () => ({
-  getProfile: state.read,
+  getProfile: state.profile,
 }));
 vi.mock('sonner', () => ({
-  toast: { success: state.toast, error: state.toast },
+  toast: { success: state.success, error: state.error },
 }));
-afterEach(() => vi.clearAllMocks());
-beforeEach(() => state.snapshots.mockResolvedValue([]));
-it('does not disclose export after vault unmount while reads are pending', async () => {
-  let resolveRead: (value: null) => void = () => {};
-  state.read.mockImplementation(
-    () =>
-      new Promise((resolve) => {
-        resolveRead = resolve;
-      })
-  );
-  const download = vi.fn();
-  Object.defineProperty(URL, 'createObjectURL', {
-    configurable: true,
-    value: download,
-  });
-  const view = renderHook(() => useExportData());
-  let pending: Promise<void>;
-  act(() => {
-    pending = view.result.current.exportData();
-  });
-  view.unmount();
-  await act(async () => {
-    resolveRead(null);
-    await pending;
-  });
-  expect(download).not.toHaveBeenCalled();
-  expect(state.toast).not.toHaveBeenCalled();
-});
 
-it('rejects a failed dividend read without downloading a partial export', async () => {
-  state.read.mockResolvedValue(null);
-  state.dividends.mockRejectedValueOnce(new Error('private upstream detail'));
-  const download = vi.fn();
-  Object.defineProperty(URL, 'createObjectURL', {
-    configurable: true,
-    value: download,
-  });
-  const view = renderHook(() => useExportData());
-  await act(async () => {
-    await view.result.current.exportData();
-  });
-  expect(download).not.toHaveBeenCalled();
-  expect(state.toast).toHaveBeenCalledWith(
-    'Export failed. Make sure your vault is unlocked.'
-  );
-  view.unmount();
-});
-
-it('downloads a complete versioned backup and releases its temporary URL', async () => {
-  state.snapshots.mockResolvedValue([
+const EMPTY: ExportData = {
+  profile: null,
+  snapshots: [],
+  expenses: [],
+  salary: [],
+  taxReliefs: [],
+  trades: [],
+  dividends: [],
+  plannerSettings: null,
+};
+const NONEMPTY: ExportData = {
+  profile: { birthYear: 1990, isNsman: false, residencyStatus: 'resident' },
+  snapshots: [
     {
       id: '2026-01',
-      snapshotId: 'fixture-parent',
-      revision: '9007199254740993',
-      entries: [],
+      entries: [
+        { category: 'savings', account: 'Synthetic account', amount: 123.45 },
+      ],
     },
-  ]);
-  state.read.mockResolvedValue({
-    birthYear: 1990,
-    isNsman: false,
-    residencyStatus: 'resident',
+  ],
+  expenses: [
+    {
+      id: 'fixture-expense',
+      date: '2026-01-02',
+      type: 'shopping',
+      item: 'Fixture item',
+      info: 'Fixture note',
+      amount: 10.5,
+      splitType: 'shared',
+      splits: [{ person: 'Fixture person', amount: 5.25, settled: false }],
+    },
+  ],
+  salary: [{ id: '2026-01', salary: 5000.25, bonus: 100.5 }],
+  taxReliefs: [{ year: 2026, reliefKey: 'fixture-relief', amount: 100.25 }],
+  trades: [
+    {
+      id: 'fixture-trade',
+      date: '2026-01-01',
+      broker: 'Fixture broker',
+      ticker: 'ABC',
+      action: 'buy',
+      shares: 2,
+      price: 50.25,
+      fees: 1.25,
+      isCdp: true,
+      isPO: false,
+    },
+  ],
+  dividends: [
+    {
+      id: 'fixture-dividend',
+      ticker: 'ABC',
+      date: '2026-01-03',
+      amount: 12.34,
+      currency: 'USD',
+    },
+  ],
+  plannerSettings: {
+    emergencyMonths: 3,
+    warChestMonths: 6,
+    titheEnabled: false,
+    tithePct: 10,
+    allowanceEnabled: true,
+    allowancePct: 5,
+  },
+};
+const DOMAINS = Object.keys(EMPTY) as Array<keyof ExportData>;
+const download = vi.fn((_blob: Blob) => 'blob:fixture-export');
+const revoke = vi.fn();
+function seed(data: ExportData) {
+  for (const domain of DOMAINS) state[domain].mockResolvedValue(data[domain]);
+}
+function readBlob(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(blob);
   });
-  const download = vi.fn((_blob: Blob) => 'blob:fixture-backup');
-  const revoke = vi.fn();
+}
+beforeEach(() => {
+  vi.resetAllMocks();
+  seed(EMPTY);
+  download.mockReturnValue('blob:fixture-export');
   Object.defineProperty(URL, 'createObjectURL', {
     configurable: true,
     value: download,
@@ -107,41 +145,163 @@ it('downloads a complete versioned backup and releases its temporary URL', async
     configurable: true,
     value: revoke,
   });
-  const click = vi
-    .spyOn(HTMLAnchorElement.prototype, 'click')
-    .mockImplementation(() => {});
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+});
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+
+it.each([
+  ['empty', EMPTY],
+  ['all eight nonempty domains', NONEMPTY],
+])(
+  'downloads versioned %s export without changing values',
+  async (_label, data) => {
+    seed(data);
+    const view = renderHook(() => useExportData());
+    await act(async () => {
+      await view.result.current.exportData();
+    });
+    const parsed: unknown = JSON.parse(
+      await readBlob(download.mock.calls[0][0])
+    );
+    expect(parsed).toEqual({
+      version: 2,
+      app: 'fynfo',
+      exportedAt: expect.any(String),
+      data,
+    });
+    for (const domain of DOMAINS) expect(state[domain]).toHaveBeenCalledOnce();
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledOnce();
+    expect(revoke).toHaveBeenCalledWith('blob:fixture-export');
+    expect(document.querySelector('a[download]')).toBeNull();
+    expect(state.success).toHaveBeenCalledWith('Data exported');
+    expect(state.error).not.toHaveBeenCalled();
+    expect(view.result.current.isExporting).toBe(false);
+  }
+);
+
+it('omits internal snapshot identity and lossless revision from the export', async () => {
+  seed(NONEMPTY);
+  const versioned: SnapshotRecord = {
+    ...NONEMPTY.snapshots[0],
+    snapshotId: 'fixture-parent',
+    revision: '9007199254740993',
+  };
+  state.snapshots.mockResolvedValue([versioned]);
   const view = renderHook(() => useExportData());
   await act(async () => {
     await view.result.current.exportData();
   });
-  expect(download).toHaveBeenCalledWith(expect.any(Blob));
-  const content = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsText(download.mock.calls[0][0]);
-  });
-  expect(JSON.parse(content)).toEqual({
+  const parsed: unknown = JSON.parse(await readBlob(download.mock.calls[0][0]));
+  expect(parsed).toEqual({
     version: 2,
     app: 'fynfo',
     exportedAt: expect.any(String),
-    data: {
-      profile: { birthYear: 1990, isNsman: false, residencyStatus: 'resident' },
-      snapshots: [{ id: '2026-01', entries: [] }],
-      expenses: [],
-      salary: [],
-      taxReliefs: [],
-      trades: [],
-      dividends: [],
-      plannerSettings: null,
-    },
+    data: NONEMPTY,
   });
-  expect(click).toHaveBeenCalledOnce();
-  expect(revoke).toHaveBeenCalledWith('blob:fixture-backup');
-  expect(document.querySelector('a[download]')).toBeNull();
-  expect(state.dividends).toHaveBeenCalledOnce();
-  expect(state.toast).toHaveBeenCalledWith('Data exported');
+});
+
+it.each(DOMAINS)(
+  'rejects failed %s read without a partial download or private error',
+  async (domain) => {
+    seed(NONEMPTY);
+    state[domain].mockRejectedValueOnce(new Error('private upstream detail'));
+    const view = renderHook(() => useExportData());
+    await act(async () => {
+      await view.result.current.exportData();
+    });
+    expect(download).not.toHaveBeenCalled();
+    expect(state.success).not.toHaveBeenCalled();
+    expect(state.error).toHaveBeenCalledWith(
+      'Export failed. Make sure your vault is unlocked.'
+    );
+    expect(view.result.current.isExporting).toBe(false);
+    await act(async () => {
+      await view.result.current.exportData();
+    });
+    expect(download).toHaveBeenCalledOnce();
+  }
+);
+
+it.each(['resolved', 'rejected'])(
+  'suppresses late %s completion after vault unmount',
+  async (kind) => {
+    let finish: () => void = () => {};
+    state.profile.mockImplementationOnce(
+      () =>
+        new Promise((resolve, reject) => {
+          finish = () =>
+            kind === 'resolved'
+              ? resolve(null)
+              : reject(new Error('private pending detail'));
+        })
+    );
+    const view = renderHook(() => useExportData());
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = view.result.current.exportData();
+    });
+    view.unmount();
+    await act(async () => {
+      finish();
+      await pending;
+    });
+    expect(download).not.toHaveBeenCalled();
+    expect(state.success).not.toHaveBeenCalled();
+    expect(state.error).not.toHaveBeenCalled();
+  }
+);
+
+it('prevents same-tick overlapping exports while reads are pending', async () => {
+  let finish: (value: null) => void = () => {};
+  state.profile.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  const view = renderHook(() => useExportData());
+  let pending: Promise<void> = Promise.resolve();
+  act(() => {
+    pending = view.result.current.exportData();
+    void view.result.current.exportData();
+  });
+  expect(state.profile).toHaveBeenCalledOnce();
+  await act(async () => {
+    finish(null);
+    await pending;
+  });
+  expect(download).toHaveBeenCalledOnce();
   expect(view.result.current.isExporting).toBe(false);
-  click.mockRestore();
-  view.unmount();
+});
+
+it('releases temporary download resources after click failure and permits retry', async () => {
+  vi.mocked(HTMLAnchorElement.prototype.click).mockImplementationOnce(() => {
+    throw new Error('private browser detail');
+  });
+  const view = renderHook(() => useExportData());
+  await act(async () => {
+    await view.result.current.exportData();
+  });
+  expect(revoke).toHaveBeenCalledWith('blob:fixture-export');
+  expect(document.querySelector('a[download]')).toBeNull();
+  expect(state.success).not.toHaveBeenCalled();
+  expect(state.error).toHaveBeenCalledWith(
+    'Export failed. Make sure your vault is unlocked.'
+  );
+  expect(view.result.current.isExporting).toBe(false);
+  await act(async () => {
+    await view.result.current.exportData();
+  });
+  expect(state.success).toHaveBeenCalledOnce();
+});
+
+it('explains material export limitations beside the existing action', () => {
+  render(<ExportDataCard />);
+  expect(screen.getByText(/file contains plaintext/)).toBeVisible();
+  expect(screen.getByText(/cannot be restored in Fynfo/)).toBeVisible();
+  expect(screen.getByText(/Edits made during export/)).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Export my data' })).toBeEnabled();
 });

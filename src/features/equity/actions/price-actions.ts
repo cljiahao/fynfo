@@ -1,6 +1,7 @@
 'use server';
 
 import { requireUserId } from '@/lib/auth-guard';
+import { AppError } from '@/lib/errors';
 import { z } from 'zod';
 import {
   MAX_PRICE_CONCURRENCY,
@@ -16,6 +17,7 @@ export interface StockPrice {
   currency: string;
   change: number;
   changePercent: number;
+  asOf?: string | null;
 }
 
 const tickerSchema = z
@@ -30,6 +32,7 @@ const currencySchema = z
   .regex(/^[A-Za-z]{3}$/)
   .transform((value) => value.toUpperCase());
 const quoteMetaSchema = z.object({
+  regularMarketTime: z.number().int().min(0).max(253_402_300_799).nullish(),
   regularMarketPrice: z.number().nonnegative().finite().nullish(),
   previousClose: z.number().nonnegative().finite().nullish(),
   chartPreviousClose: z.number().nonnegative().finite().nullish(),
@@ -79,7 +82,8 @@ async function readQuote(ticker: string): Promise<StockPrice | null> {
     const parsed = quoteResponseSchema.safeParse(data);
     if (!parsed.success) return null;
     const meta = parsed.data.chart.result[0].meta;
-    const price = meta.regularMarketPrice ?? 0;
+    if (meta.regularMarketPrice == null || meta.currency == null) return null;
+    const price = meta.regularMarketPrice;
     const prevClose = meta.previousClose ?? meta.chartPreviousClose ?? price;
     const change = price - prevClose;
     const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0;
@@ -90,7 +94,11 @@ async function readQuote(ticker: string): Promise<StockPrice | null> {
       ticker,
       symbol,
       price,
-      currency: meta.currency ?? 'USD',
+      currency: meta.currency,
+      asOf:
+        meta.regularMarketTime == null
+          ? null
+          : new Date(meta.regularMarketTime * 1000).toISOString(),
       change,
       changePercent,
     };
@@ -163,7 +171,7 @@ export async function fetchExchangeRate(
   }
 }
 
-/** Historical per-unit distributions, sorted by ex-date. Empty on failure. */
+/** Historical per-unit distributions, sorted by ex-date. Unavailable feeds reject. */
 export async function fetchDividends(
   ticker: string
 ): Promise<Array<{ exDate: string; dpu: number }>> {
@@ -181,11 +189,13 @@ export async function fetchDividends(
         signal: AbortSignal.timeout(PRICE_FETCH_TIMEOUT_MS),
       }
     );
-    if (!res.ok) return [];
+    if (!res.ok)
+      throw new AppError('EXTERNAL_API', 'Dividend data unavailable');
 
     const data: unknown = await res.json();
     const parsed = dividendResponseSchema.safeParse(data);
-    if (!parsed.success) return [];
+    if (!parsed.success)
+      throw new AppError('EXTERNAL_API', 'Dividend data unavailable');
     const dividends = parsed.data.chart.result[0].events?.dividends;
     if (!dividends) return [];
 
@@ -200,6 +210,6 @@ export async function fetchDividends(
     }
     return points.sort((a, b) => a.exDate.localeCompare(b.exDate));
   } catch {
-    return [];
+    throw new AppError('EXTERNAL_API', 'Dividend data unavailable');
   }
 }

@@ -7,6 +7,13 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
+import {
+  finiteProduct,
+  holdingPrice,
+  marketValue,
+  validExchangeRate,
+  type ValuationQuote,
+} from '@/features/equity';
 import type { Holding } from '@/features/equity/lib/holdings';
 import { formatCurrency } from '@/lib/utils/currency';
 import { ArrowDown, ArrowUp, ArrowUpDown, Loader2 } from 'lucide-react';
@@ -28,23 +35,28 @@ export function MarketAllocationTable({
 }: {
   title: string;
   holdings: Holding[];
-  prices: Record<string, { price: number }> | undefined;
+  prices: Record<string, ValuationQuote> | undefined;
   pricesLoading: boolean;
   allocations: Record<string, number>;
   onAllocationChange: (ticker: string, pct: number) => void;
   currency: 'SGD' | 'USD';
-  target: number;
-  usdToSgd: number;
+  target: number | null;
+  usdToSgd: number | null;
 }) {
   const isSg = currency === 'SGD';
 
   // Target is in SGD from the breakdown. Convert to USD for US stocks.
-  const targetInCurrency = isSg ? target : usdToSgd > 0 ? target / usdToSgd : 0;
-
-  const totalPortfolioValue = holdings.reduce((s, h) => {
-    const p = prices?.[h.ticker]?.price ?? 0;
-    return s + h.shares * p;
-  }, 0);
+  const rawTarget =
+    target === null
+      ? null
+      : isSg
+        ? target
+        : validExchangeRate(usdToSgd)
+          ? target / usdToSgd
+          : null;
+  const targetInCurrency =
+    rawTarget !== null && Number.isFinite(rawTarget) ? rawTarget : null;
+  const totalPortfolioValue = marketValue(holdings, prices);
 
   const [sortKey, setSortKey] = useState<SortKey>('ticker');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -61,15 +73,28 @@ export function MarketAllocationTable({
   // useMemo justified: computes derived row data (prices × shares, targets, lacking) for each holding
   const rows = useMemo(() => {
     return holdings.map((h) => {
-      const price = prices?.[h.ticker]?.price ?? 0;
-      const currentValue = h.shares * price;
+      const price = holdingPrice(h, prices);
+      const currentValue =
+        price === null ? null : finiteProduct(h.shares, price);
       const alloc = allocations[h.ticker] ?? 0;
-      const tickerTarget = targetInCurrency * (alloc / 100);
-      const lacking = tickerTarget - currentValue;
+      const tickerTarget =
+        targetInCurrency === null
+          ? null
+          : finiteProduct(targetInCurrency, alloc / 100);
+      const difference =
+        tickerTarget !== null && currentValue !== null
+          ? tickerTarget - currentValue
+          : null;
+      const lacking =
+        difference !== null && Number.isFinite(difference) ? difference : null;
       let sharesToBuy = 0;
-      if (price > 0 && lacking > 0) {
+      if (price !== null && price > 0 && lacking !== null && lacking > 0) {
         const raw = lacking / price;
-        sharesToBuy = isSg ? Math.floor(raw / 100) * 100 : Math.floor(raw);
+        sharesToBuy = Number.isFinite(raw)
+          ? isSg
+            ? Math.floor(raw / 100) * 100
+            : Math.floor(raw)
+          : 0;
       }
       return {
         ticker: h.ticker,
@@ -90,13 +115,13 @@ export function MarketAllocationTable({
         case 'ticker':
           return r.ticker;
         case 'current':
-          return r.currentValue;
+          return r.currentValue ?? -1;
         case 'alloc':
           return r.alloc;
         case 'target':
-          return r.tickerTarget;
+          return r.tickerTarget ?? -1;
         case 'lacking':
-          return r.lacking;
+          return r.lacking ?? -1;
         case 'shares':
           return r.sharesToBuy;
       }
@@ -157,10 +182,12 @@ export function MarketAllocationTable({
               <span>
                 <span className="text-muted-foreground">Holdings: </span>
                 <span className="font-semibold">
-                  {formatCurrency(totalPortfolioValue, currency)}
+                  {totalPortfolioValue === null
+                    ? 'Quotes unavailable'
+                    : formatCurrency(totalPortfolioValue, currency)}
                 </span>
               </span>
-              {targetInCurrency > 0 && (
+              {targetInCurrency !== null && targetInCurrency > 0 && (
                 <span>
                   <span className="text-muted-foreground">Target: </span>
                   <span className="text-chart-1 font-semibold">
@@ -169,6 +196,12 @@ export function MarketAllocationTable({
                 </span>
               )}
             </div>
+            {targetInCurrency === null && (
+              <p role="status" className="text-warning mb-3 text-sm">
+                Target unavailable until complete quotes and exchange rates are
+                loaded.
+              </p>
+            )}
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-xs">
@@ -185,12 +218,13 @@ export function MarketAllocationTable({
                   <tr key={r.ticker} className="border-b last:border-0">
                     <td className="py-2 font-mono font-medium">{r.ticker}</td>
                     <td className="py-2 text-center tabular-nums">
-                      {r.price > 0
+                      {r.currentValue !== null
                         ? formatCurrency(r.currentValue, currency)
                         : '-'}
                     </td>
                     <td className="py-2 text-center">
                       <Input
+                        aria-label={`Allocation for ${r.ticker}`}
                         type="number"
                         min="0"
                         max="100"
@@ -207,13 +241,16 @@ export function MarketAllocationTable({
                       />
                     </td>
                     <td className="py-2 text-center tabular-nums">
-                      {r.alloc > 0
+                      {r.alloc > 0 && r.tickerTarget !== null
                         ? formatCurrency(r.tickerTarget, currency)
                         : '-'}
                     </td>
                     <td
                       className={`py-2 text-center tabular-nums ${
-                        r.alloc > 0 && r.tickerTarget > 0
+                        r.alloc > 0 &&
+                        r.tickerTarget !== null &&
+                        r.tickerTarget > 0 &&
+                        r.lacking !== null
                           ? r.lacking <= 0
                             ? 'text-gain'
                             : r.lacking / r.tickerTarget > 0.2
@@ -222,7 +259,9 @@ export function MarketAllocationTable({
                           : ''
                       }`}
                     >
-                      {r.alloc > 0 ? formatCurrency(r.lacking, currency) : '-'}
+                      {r.alloc > 0 && r.lacking !== null
+                        ? formatCurrency(r.lacking, currency)
+                        : '-'}
                     </td>
                     <td className="py-2 text-center font-mono tabular-nums">
                       {r.alloc > 0 && r.sharesToBuy > 0

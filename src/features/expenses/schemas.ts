@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { EXPENSE_TYPES } from './constants';
 import { getSplitAllocationError } from './lib/split-amounts';
 
+const CALENDAR_DATE = z.iso.date();
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T.*)?$/;
 
 export const expenseSplitSchema = z.object({
@@ -17,7 +19,9 @@ export const expenseDataSchema = z
       .string()
       .regex(ISO_DATE, 'date must be ISO-8601 (YYYY-MM-DD or full timestamp)')
       .refine(
-        (s) => !Number.isNaN(Date.parse(s)),
+        (s) =>
+          CALENDAR_DATE.safeParse(s.slice(0, 10)).success &&
+          !Number.isNaN(Date.parse(s)),
         'date is not a valid calendar date'
       ),
     type: z.enum(EXPENSE_TYPES as [string, ...string[]]),

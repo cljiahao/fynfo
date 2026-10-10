@@ -184,3 +184,21 @@ Reload older open editors after rollout. Older deployments can still use the
 legacy last-writer-wins RPC, which advances revisions but does not compare them;
 direct table writers can bypass both comparison and advancement. Durable retries,
 exactly-once outcomes and full revision history remain outside this batch.
+
+## Owner production confirmation and current-main integration — 2026-10-10
+
+Clarence confirmed running the exact 20261009000001_snapshot_edit_revisions.sql after requesting and opening that file. The production prerequisite is satisfied; refreshed application verification and green CI still precede merge. No new migration, dependency, crypto or protected-file amendment is selected.
+
+Integrate already-shipped current-main batches into PR15 without rewriting history. Resolve use-snapshots.ts by retaining identity/revision parameters and retry:false, plus spec093's cancellation-before-refetch only when result.ok. Retain spec092's complete export/failure/teardown tests and port the original internal snapshot identity/revision omission regression. Adjust test/features/query-refresh.test.tsx's synthetic mutation arguments/results to the approved spec083 contract and verify returned conflicts neither cancel nor invalidate pending valid reads. Resolve roadmap/progress records by preserving historical verification and later delivery evidence; record this exact owner confirmation. Affected conflict paths: src/features/assets/hooks/use-snapshots.ts, test/features/profile/use-export-data.test.tsx, specs/feature/081-sequential-delivery-roadmap.md, docs/audit/2026-10-09-roadmap-progress.md; additional integration regression path test/features/query-refresh.test.tsx and this record. README's automatically merged contracts are reviewed. Run focused regressions, all existing gates in an isolated synthetic fixture, fresh review and normal hooks. Rollback application merge only; retain additive revision SQL and stored records.
+
+Integration verification: 110 focused tests pass. The full 132-file suite passes
+1,139 tests with 93.45% statements, 89.38% branches, 91.07% functions and 93.85%
+lines; stricter security thresholds remain unchanged. Formatting, lint, typecheck
+and route logging checks pass. A fresh independent source review found no scoped
+blocker in success-only refresh, identity-bound comparisons or export metadata
+exclusion. README removes a stale claim that snapshot edits lack conflict detection.
+The initial fixture dependency junction was rejected by Turbopack; an offline,
+frozen-lockfile installation reuses the existing dependencies for the normal build.
+The normal Turbopack production build subsequently passes with the unchanged
+configuration and fixture-local locked dependencies. Normal hooks and updated-head
+CI still precede merge.

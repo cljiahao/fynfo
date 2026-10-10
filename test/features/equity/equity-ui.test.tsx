@@ -450,7 +450,7 @@ describe('real equity tables and calculations', () => {
         existing={[]}
       />
     );
-    expect(screen.getByText('Scanning your holdings…')).toBeTruthy();
+    expect(screen.getByText('Scanning your trade history…')).toBeTruthy();
     view.unmount();
     reject(new Error('late failure'));
     await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledWith('DBS'));
@@ -464,16 +464,17 @@ describe('real equity tables and calculations', () => {
     expect(screen.getAllByText('-')).toHaveLength(2);
     view.unmount();
     api.fetchStockPrices.mockResolvedValue({
-      DBS: { price: 5 },
-      AAPL: { price: 5 },
+      DBS: { price: 5, currency: 'SGD' },
+      AAPL: { price: 5, currency: 'USD' },
     });
     mount(
       <PortfolioSummary
         trades={[trade, { ...trade, id: 'us', ticker: 'AAPL' }]}
       />
     );
-    await screen.findAllByText('-$1,000.00');
-    expect((await screen.findAllByText('-$500.00')).length).toBe(2);
+    expect(await screen.findByText('-$500.00')).toBeTruthy();
+    expect(await screen.findByText('-US$500.00')).toBeTruthy();
+    expect(screen.queryByText('-$1,000.00')).toBeNull();
   });
 
   it('composes real distributions and opens add, edit and scan workflows', async () => {
@@ -592,7 +593,7 @@ describe('real equity tables and calculations', () => {
         .getAllByRole('row')
         .slice(1)
         .map((r) => within(r).getAllByRole('cell')[0].textContent);
-    expect(tickers()).toEqual(['AAPL', 'DBS']);
+    expect(tickers()).toEqual(['DBS', 'AAPL']);
     fireEvent.click(screen.getByText('Ticker'));
     expect(tickers()).toEqual(['AAPL', 'DBS']);
     fireEvent.click(screen.getByText('Ticker'));
@@ -600,7 +601,7 @@ describe('real equity tables and calculations', () => {
     fireEvent.click(screen.getByText('Income (12m)'));
     expect(screen.queryByText('OCBC')).toBeNull();
     fireEvent.click(screen.getByText('Yield on Cost'));
-    expect(tickers()[0]).toBe('AAPL');
+    expect(tickers()[0]).toBe('DBS');
   });
   it('explains empty yield', () => {
     mount(
@@ -623,9 +624,7 @@ describe('real equity tables and calculations', () => {
     expect(screen.getByText('▼ -50.00%')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'USD' }));
     await screen.findByText('$650.00');
-    fireEvent.keyDown(screen.getByRole('button', { name: 'SGD' }), {
-      key: 'Enter',
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'SGD' }));
     expect(screen.getByText('US$500.00')).toBeTruthy();
   });
   it('renders portfolio value and exposes quote loading/errors', async () => {
@@ -636,6 +635,226 @@ describe('real equity tables and calculations', () => {
     view.unmount();
     api.fetchStockPrices.mockRejectedValue(new Error('offline'));
     mount(<PortfolioSummary trades={[{ ...trade, ticker: 'ERROR' }]} />);
-    await screen.findByText('Prices unavailable');
+    await screen.findByText(/Prices unavailable for some holdings/);
   });
+});
+
+it('keeps a partial market unavailable instead of reporting a loss or zero', async () => {
+  api.fetchStockPrices.mockResolvedValue({
+    DBS: { price: 12, currency: 'SGD' },
+  });
+  mount(<PortfolioSummary trades={[trade, { ...trade, ticker: 'OCBC' }]} />);
+  await screen.findByText(/Prices unavailable for some holdings/);
+  expect(screen.queryByText('$1,200.00')).toBeNull();
+  expect(screen.queryByText('-$800.00')).toBeNull();
+  expect(screen.getAllByText('—').length).toBeGreaterThan(1);
+});
+
+it('shows genuine zero quotes as zero and an actual loss', async () => {
+  api.fetchStockPrices.mockResolvedValue({
+    DBS: { price: 0, currency: 'SGD' },
+  });
+  mount(<PortfolioSummary trades={[trade]} />);
+  await screen.findByText('-$1,000.00');
+  expect(screen.queryByText(/Prices unavailable/)).toBeNull();
+});
+
+it('does not convert USD holdings at zero when FX is missing', async () => {
+  api.fetchExchangeRate.mockResolvedValue(null);
+  mount(<HoldingsTable trades={[{ ...trade, ticker: 'AAPL' }]} />);
+  await screen.findByText('US$500.00');
+  fireEvent.click(screen.getByRole('button', { name: 'USD' }));
+  await screen.findByText('Prices or exchange rate unavailable');
+  expect(screen.queryByText('$0.00')).toBeNull();
+});
+
+it('keeps actual distribution rows when the conversion estimate is unavailable', async () => {
+  api.fetchExchangeRate.mockResolvedValue(null);
+  api.getDividends.mockResolvedValue([
+    { ...dividend, ticker: 'AAPL', currency: 'USD' },
+  ]);
+  mount(<DistributionsSection trades={[{ ...trade, ticker: 'AAPL' }]} />);
+  await screen.findByText(/Exchange rate unavailable. Converted totals/);
+  expect(await screen.findByText('US$20.00')).toBeTruthy();
+  expect(screen.queryByText(/20.00 total/)).toBeNull();
+});
+
+it('uses the same currency for US yield income and cost', () => {
+  mount(
+    <YieldOnCostTable
+      trades={[{ ...trade, ticker: 'AAPL' }]}
+      dividends={[{ ...dividend, ticker: 'AAPL', currency: 'USD' }]}
+      usdSgdRate={2}
+      asOf="2026-03-01"
+    />
+  );
+  expect(screen.getByText('$40.00')).toBeTruthy();
+  expect(screen.getByText('2.00%')).toBeTruthy();
+  expect(screen.queryByText('4.00%')).toBeNull();
+});
+
+it('withholds an overflowing holding percentage instead of displaying infinity', async () => {
+  api.fetchStockPrices.mockResolvedValue({
+    DBS: { price: 1, currency: 'SGD' },
+  });
+  mount(<HoldingsTable trades={[{ ...trade, price: 1e-310 }]} />);
+  await screen.findByText('$100.00');
+  fireEvent.click(screen.getByRole('button', { name: /SG Stocks/ }));
+  expect(screen.queryByText(/Infinity/)).toBeNull();
+});
+
+describe('historical scan entitlement regressions', () => {
+  it('fetches sold positions and offers their earlier distribution', async () => {
+    mount(
+      <DividendScanDialog
+        open
+        onOpenChange={vi.fn()}
+        trades={[
+          trade,
+          { ...trade, id: 'sold', date: '2026-03-01', action: 'sell' },
+        ]}
+        existing={[]}
+      />
+    );
+    expect(
+      (
+        (await screen.findByLabelText(
+          'Amount for DBS 2026-02-01'
+        )) as HTMLInputElement
+      ).value
+    ).toBe('20');
+    expect(api.fetchDividends).toHaveBeenCalledExactlyOnceWith('DBS');
+    expect(
+      screen.getByText(/Dates are ex-dates, not confirmed payment dates/)
+    ).toBeTruthy();
+  });
+  it('excludes purchases on the supplied ex-date', async () => {
+    mount(
+      <DividendScanDialog
+        open
+        onOpenChange={vi.fn()}
+        trades={[{ ...trade, date: '2026-02-01' }]}
+        existing={[]}
+      />
+    );
+    await screen.findByText('No new distributions found');
+    expect(api.createDividends).not.toHaveBeenCalled();
+  });
+  it('retains entitlement when selling on the supplied ex-date', async () => {
+    mount(
+      <DividendScanDialog
+        open
+        onOpenChange={vi.fn()}
+        trades={[
+          trade,
+          { ...trade, id: 'sold', date: '2026-02-01', action: 'sell' },
+        ]}
+        existing={[]}
+      />
+    );
+    expect(
+      (
+        (await screen.findByLabelText(
+          'Amount for DBS 2026-02-01'
+        )) as HTMLInputElement
+      ).value
+    ).toBe('20');
+  });
+  it('deduplicates historical tickers and limits active requests', async () => {
+    const pending: Array<
+      (points: Array<{ exDate: string; dpu: number }>) => void
+    > = [];
+    let active = 0;
+    let peak = 0;
+    api.fetchDividends.mockImplementation(() => {
+      active++;
+      peak = Math.max(peak, active);
+      return new Promise<Array<{ exDate: string; dpu: number }>>((resolve) => {
+        pending.push((points) => {
+          active--;
+          resolve(points);
+        });
+      });
+    });
+    mount(
+      <DividendScanDialog
+        open
+        onOpenChange={vi.fn()}
+        trades={[
+          ...Array.from({ length: 6 }, (_, index) => ({
+            ...trade,
+            ticker: `TEST${index}`,
+          })),
+          { ...trade, ticker: 'test0' },
+        ]}
+        existing={[]}
+      />
+    );
+    await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(5));
+    pending[0]([]);
+    await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(6));
+    for (const resolve of pending.slice(1)) resolve([]);
+    await screen.findByText('No new distributions found');
+    expect(peak).toBe(5);
+    expect(api.fetchDividends.mock.calls.map(([ticker]) => ticker)).toEqual([
+      'TEST0',
+      'TEST1',
+      'TEST2',
+      'TEST3',
+      'TEST4',
+      'TEST5',
+    ]);
+  });
+  it('stops scheduling historical requests after unmount', async () => {
+    const pending: Array<() => void> = [];
+    api.fetchDividends.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          pending.push(() => resolve([]));
+        })
+    );
+    const view = mount(
+      <DividendScanDialog
+        open
+        onOpenChange={vi.fn()}
+        trades={Array.from({ length: 7 }, (_, index) => ({
+          ...trade,
+          ticker: `TEST${index}`,
+        }))}
+        existing={[]}
+      />
+    );
+    await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(5));
+    view.unmount();
+    for (const resolve of pending) resolve();
+    await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(5));
+    expect(api.error).not.toHaveBeenCalled();
+  });
+});
+
+it('stops queued historical scan work after a request throws', async () => {
+  const pending: Array<() => void> = [];
+  api.fetchDividends.mockRejectedValueOnce(new Error('offline'));
+  api.fetchDividends.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        pending.push(() => resolve([]));
+      })
+  );
+  mount(
+    <DividendScanDialog
+      open
+      onOpenChange={vi.fn()}
+      trades={Array.from({ length: 7 }, (_, index) => ({
+        ...trade,
+        ticker: `TEST${index}`,
+      }))}
+      existing={[]}
+    />
+  );
+  await waitFor(() =>
+    expect(api.error).toHaveBeenCalledWith('Could not scan for distributions')
+  );
+  for (const resolve of pending) resolve();
+  await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(5));
 });

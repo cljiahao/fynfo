@@ -217,3 +217,88 @@ supabase/migrations/20261009000001_snapshot_edit_revisions.sql. Spec077's earlie
 migration confirmation is distinct. Do not repeat completed spec082 or ask again
 for spec083 implementation/identity approval. Older deployments and direct table
 writers remain documented comparison limits; durable retry/history work is later.
+
+## Parallel delivery closeout — 2026-10-10
+
+The owner requested parallel worktrees; isolated accuracy, latency and CPF
+fixtures used tracked source and placeholder configuration only. No private
+accounts, secret files or production financial records were read. The existing
+hooks were retained. Initial fixture Husky wrappers were absent after installation
+without Git metadata; official Husky setup restored them, the unchanged pre-commit
+was explicitly rechecked, and subsequent commits/pushes used normal hooks. No
+hook bypass or protected-file edit occurred.
+
+Spec085/086 shipped in PR16 after green exact-head CI as
+5ec95fbed1c413218ca7571aacee7904f3a00040. The opt-in history benchmark and deterministic
+prefetch regression establish a baseline, not a production speed improvement.
+A synthetic real Next16 transport lab measured five alternating samples: separate
+450ms functions median995.7ms versus one internally concurrent function501.4ms.
+Server timing confirms separate calls queued; the lab uses no account/database
+and does not prove a selected Fynfo architecture. Spec087 is a proposal only:
+bounded caches must avoid arbitrary snapshot edit-string collisions, preserve
+freshness/errors and full-history consumers, and demonstrate representative
+benefit. Small histories can be slower if extra reads are introduced.
+
+Spec084 shipped in PR17 after green exact-head CI as
+574731f10885c115a806619962757b55105c67d6. Missing prices/currencies no longer become
+fabricated valuations; SGD/USD summaries remain native, real FX is required for
+conversion, incomplete derived budgets clear, and unsupported/overflowing returns
+are withheld. 116files/910 local tests passed:93.00%lines,92.72%statements,
+90.20%functions,87.53%branches; stricter floors unchanged. Four regressions fail
+against shipped source, followed by exact fixture restoration. Independent review
+and synthetic desktop/mobile/keyboard proof passed. Historical partial-sale cost
+accounting and provider metadata limits remain explicit; no exhaustive financial
+accuracy claim is made.
+
+Spec088 is under final verification for monthly CPF wagebands, rounding, actual
+month ceilings and recorded-versus-projected labels. It does not establish
+citizenship/PR or other age eligibility, change persistence, or silently update
+the separate flat20% deployment planner. Snapshot spec083 remains verified and
+unmerged pending owner confirmation of its distinct revision SQL; spec077's prior
+confirmation does not apply to it.
+
+## Accuracy, authentication and historical dividend delivery — 2026-10-10
+
+Spec088 shipped in PR18 as96eab4d407f9f103a33f7caed7b9d312151b644f after green exact-head CI. Monthly full-rate age55-and-below CPF planning now handles low wage bands, whole-dollar rounding, actual2023 month ceilings and recorded/projected labels.116files/910tests passed;92.99%lines,92.72%statements,90.23%functions,87.95%branches. Three meaningful baseline failures, independent reviews and synthetic desktop/mobile proof passed. Eligibility/PR/other ages, unsupported low-band partial AW-cap cases and the separate assets planner remain explicit limits.
+
+Spec089 shipped in PR19 as298befa76b71a9db59be76fe3bbae524a501eb6f after green exact-head CI. Safe returned/thrown login failures allow retry; callback/proxy response reconstruction preserves refresh cache metadata and cookies.119files/926tests passed;93.32%lines,93.02%statements,90.60%functions,88.00%branches. Existing-provider baseline regressions, independent review and actual Next public-route desktop/mobile proof passed using placeholders only. No private sign-in/provider session was used. Signup/password recovery remains draft094 with hosted non-secret configuration and identity-lifetime prerequisites.
+
+Spec090 shipped in PR20 asd60aac3247a8b6d10bde9e8d2df84d8a18896941 after green exact-head CI. Historical scanning includes sold tickers, excludes ex-date purchases and retains prior shares sold on the ex-date.117files/938tests passed;93.06%lines,92.79%statements,90.23%functions,87.78%branches. Three mounted red regressions, independent review and actual-dialog synthetic desktop/mobile/edit/select/import proof passed. Browser import used memory-only adapters. The five-year provider feed, inferred currency, ex-date/payment-field mismatch, special distributions and empty-on-provider-failure limitations remain; this is not verified received income or authorized dividends.sg integration.
+
+Spec092 ordinary export qualification/cleanup is locally verified and awaits PR delivery. Synthetic actual-hook download contained all eight nonempty fixture domains; mobile390px has no horizontal overflow and domain failure leaves visible opaque retry feedback. Temporary browser/server/viewport resources were cleaned. Export still has no restore and independent domain reads are not a coherent backup. Spec091 remains an unapproved additive coherent-read/empty-vault-restore proposal, with exact privilege/isolation/capacity proof required before migration approval.
+
+Spec087's external bounded-selection lab repeated12/120/1200month fixtures: full-reader mean1.26–1.35/13.67–15.37/175.51–184.91ms versus bounded0.45–0.61ms, pages2/7/68 versus4. The production decryption/pagination is real but DB selection is simulated; no browser/provider/production latency gain or architecture selection is claimed. Missing calendar months, year rollover and a612-child case pass. QueryClient lifecycle proof found a pending pre-write read can publish after default invalidation. Spec093 now tests and corrects that race across20 non-optimistic mutations; it is locally verified and not yet shipped. Existing background refresh, optimistic expenses, retained hydration replay and parent/child read coherence remain separate contracts.
+
+Clarence reiterated continuing until tasks are complete while asleep. Parallel ordinary delivery continues; no new dependency/migration/crypto/protected approval is inferred. Spec079's pinned PDF.js dependency plus narrowly omitted optional native canvas footprint awaits a concrete owner answer. No parser was installed. Snapshot083 still requires distinct confirmation of20261009000001_snapshot_edit_revisions.sql; earlier077 confirmation does not authorize application merge. These records do not claim the entire roadmap or exhaustive security review is complete.
+
+## Export, read freshness and identity delivery — 2026-10-10
+
+Spec092 shipped PR21 as68106d5f33fd060cd403a30e5950018f25475776 after all exact-head required checks passed. Same-tick duplicate exports and failed-download resource leaks are fixed; plaintext, household exclusion, absent restore and non-atomic read limitations remain visible.118files/944tests;93.14%lines,92.84%statements,90.34%functions,87.90%branches. Two reviews plus actual-hook synthetic download/failure and desktop/mobile proof passed.091 coherent export/empty-vault restore remains an unapproved migration contract.
+
+Spec093 shipped PR22 as916190dee307c106d1ce23b709130e02a94d598b after green exact-head checks. Twenty successful non-optimistic mutation hooks cancel pre-write reads before invalidation; actual-query baseline20 failures and20 failed-write controls distinguish the observed race.121files/991tests;93.39%lines,93.08%statements,90.66%functions,88.23%branches. Existing awaited/background completion choices and optimistic-expense behavior are preserved. Already-dispatched Server Functions, coherent parent/child reads and retained hydration replay remain separate.
+
+Spec096 shipped PR23 as3d048b23f8bc379e53fb92de9e12760909333edb at04:54:40UTC after green exact-head CI/preview checks. A goal at99.5 of100 now keeps its unfunded status despite displayed percentage rounding.121files/997tests;93.50%lines,93.20%statements,90.76%functions,88.60%branches. Two source reviews and meaningful mounted boundary/invalid-input regressions passed. Shared-goal correctness does not establish private personal-goal ownership; sub-cent formatting remains separate.
+
+Spec095 shipped PR24 as31482852ce64e8685ae54fa30d61d43c4f890e92 at04:55:55UTC after green exact-head checks. Server-verified identity binds protected UI lifetime; detected signout/account changes clear client queries, hide old editors immediately and block late unlock replies. Uncertain initial session fails closed with manual sign-in; same-account refresh preserves drafts.121files/993tests;93.65%lines,93.35%statements,90.90%functions,88.58%branches, with original floors retained and new explicit security-file floors. Actual-component synthetic desktop/mobile proof confirmed draft preservation, terminal account-switch/signout/initial-null states and cache0 after old read/unlock replies. It does not prove hosted-provider or retained-RSC behavior. Initial automatic push review lacked destination evidence; verified credential-free cljiahao/fynfo origin and standing owner authorization allowed the normal-hook retry, which passed. No bypass occurred.
+
+Spec097 shipped PR25 as13dd5b5681fe8beca6a6526e929c69fc7bb647f5 at05:01:44UTC after green exact-head checks. Distribution history loading/failure no longer becomes a false empty/yield state or unverified cached total; historical Scan requires successful deduplication context, while manual Add remains available.121files/990tests;93.51%lines,93.21%statements,90.78%functions,88.71%branches. Three baseline readiness failures, true-empty control, root review and synthetic actual-component desktop/mobile proof passed; successful retry is proved by mounted tests, not the preview's fixed-error adapter.
+
+The source/test inventory covers every11page and5HTTProute file at its explicitly pinned merged-main baseline; broader authenticated Next/browser/database workflows remain open. Source redirects have no newly proved wrong destination. Missing profile RHF error rendering alone was not accepted as a defect because normal numeric input already enforces matching min/max/integer constraints; browser-native confirmation remains useful. External reuse and52-candidate amount-hiding inventories guide scope and are not full-feature completion claims.
+
+Parallel098 protects dividend suggestion/editor lifetime and removes numeric global notifications;099 separates unavailable provider feeds from valid empty scan results;100 provides factual monthly-review next steps inside the existing disclosure. A fresh101 external schema/action experiment reproduced impossible calendar dates passing expense validation (five failures/five valid controls); no real stored corruption is claimed and source remediation has not begun. All further executable batches require recorded scope, full gates and second review before delivery.
+
+Draft080 is now preserved alongside079:090's shipped historical estimate corrections do not grant a dividend evidence source license or actual-receipt status model. Dividends.sg's primary indexed terms rechecked2026-10-10 still require written permission for automation; no dataset collection or outreach occurred.079's exact PDF dependency/configuration decision,083's distinct revision SQL confirmation,091's coherent restore migration and094's non-secret hosted configuration remain unresolved. No secret/private account access, dependency installation, unapproved migration or protected-file edit occurred. The full roadmap remains incomplete and continuation stays active.
+
+## 2026-10-10: dividend lifecycle, provider readiness and review guidance shipped
+
+- 098 / PR26 merged46f0f4913e3123cbbd6a76333b0c1a3dcad5db86 at05:28UTC after exact239274ba62ca070ccf2dc1dbdaed1e49a63c09d5 CI/Vercel success. Late suggestions/saves cannot affect another editor lifetime; actual-form delayed completion/browser-mobile qualification and1075tests. Coverage93.47 statements/88.82 branches/91.10 functions/93.78 lines.
+- 099 / PR27 merged dc91392eec1b9fb54254c72e602379dfe337a50d at05:30UTC after exact53f95ba42e84762de1e78ca97ef50b2fd7e76e69 green checks. Provider/whole-envelope failures are opaque errors; partial scans withheld and retry is available. Successful empty market data explicitly remains coverage-limited.1072tests, coverage93.45/88.89/91.02/93.74. Synthetic retry produced a reviewableSGD20 candidate; no live source accessed.
+- 100 / PR28 merged03de9f96ed740907d2ef07ea53b5b414de3ce649 at05:30UTC after exact1bb6b2e5cfa8f093ed22258a80abf4d9d8779b6c green checks. Existing disclosure gives truthful salary/expense/snapshot next steps; zero and absence stay distinct.1069tests, coverage93.41/88.87/90.99/93.72. Actual-component retry, keyboard and390px checks passed without new queries or certified-closing claims.
+
+101 / PR29 expense calendar-date boundary merged d082928910e59d2fb9533e0d8237fbf8c659de63 at05:43UTC after exact2216a5b9bffc8f15834aeae78b7c5844a95e6163 CI/Vercel success. Full125files/1074tests passed; coverage93.42/88.85/91.00/93.73 and existing security floors unchanged. Invalid dates reject before context/encryption/database, with valid timestamp semantics unchanged.102 source-backed monthly totals selected next without additional reads.103 named-scenario persistence is a draft requiring scoped approval.104 scan-to-received proposal records actual-payment-date/net-amount/currency and durable dedupe limitations; no implementation selected.083 still awaits its distinct revision migration confirmation,079 its precise PDF dependency decision,091 coherent recovery SQL/privacy approval and094 provider readiness. No whole-roadmap, private-production workflow or exhaustive audit completion claim.
+
+Delivery coordination: parallel source/reviews remain useful; subsequent heavy coverage/build jobs are serialized to avoid host contention. Automatic push review rejected100 before execution for missing destination evidence; root verified exact credential-free Fynfo origin, ADMIN permission and prior owner-authorized destination, and the evidence-based retry passed unchanged hooks. No denial or hook was bypassed.
+
+## 2026-10-10: PR15 production revision migration confirmed
+
+Clarence confirmed running the exact 20261009000001_snapshot_edit_revisions.sql after opening its complete local file. This satisfies the distinct spec083 production prerequisite. PR15 remains unmerged while current main is integrated and required gates are rerun. Preserve both identity/revision comparison and spec093 cancellation of pre-write replies, refreshing only confirmed writes. Keep spec092 complete export/error/lifetime tests and add the original concurrency-metadata omission regression. No migration or protected-file contract change; no production records or credentials accessed.

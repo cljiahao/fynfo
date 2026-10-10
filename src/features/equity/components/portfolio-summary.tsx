@@ -1,20 +1,13 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatSGD, formatUSD } from '@/lib/utils/currency';
-import {
-  AlertCircle,
-  ArrowDown,
-  ArrowUp,
-  DollarSign,
-  Loader2,
-  Percent,
-  TrendingUp,
-} from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/currency';
 import { useMemo } from 'react';
+import { VALUATION_MARKETS } from '../constants';
 import { useStockPrices } from '../hooks/use-prices';
 import { computeHoldings } from '../lib/holdings';
-import { buildCashFlows, computeIRR } from '../lib/mwr';
+import { buildCashFlows, verifiedIRR } from '../lib/mwr';
+import { marketValue, nativeCurrency } from '../lib/valuation';
 import type { EquityTradeData } from '../types';
 
 interface PortfolioSummaryProps {
@@ -22,198 +15,143 @@ interface PortfolioSummaryProps {
 }
 
 export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
-  // useMemo justified: iterates all trades to compute holdings on every render
   const holdings = useMemo(() => computeHoldings(trades), [trades]);
-
-  const heldTickers = holdings.map((h) => h.ticker);
   const {
     data: prices,
-    isLoading: pricesLoading,
-    isError: pricesError,
-  } = useStockPrices(heldTickers);
+    isLoading,
+    isError,
+    isFetching,
+    isStale,
+    dataUpdatedAt,
+  } = useStockPrices(holdings.map((holding) => holding.ticker));
+  const markets = VALUATION_MARKETS.map((market) => {
+    const rows = holdings.filter((holding) => holding.market === market);
+    const currency = nativeCurrency(market);
+    const rawInvested = rows.reduce(
+      (total, holding) => total + holding.totalBuyCost,
+      0
+    );
+    const rawCost = rows.reduce(
+      (total, holding) => total + holding.avgBuyPrice * holding.shares,
+      0
+    );
+    const invested = Number.isFinite(rawInvested) ? rawInvested : null;
+    const cost = Number.isFinite(rawCost) ? rawCost : null;
+    const value = isError && rows.length > 0 ? null : marketValue(rows, prices);
+    const flows =
+      value === null ? [] : buildCashFlows(trades, rows, prices ?? {}, market);
+    const result = verifiedIRR(flows);
+    return {
+      market,
+      currency,
+      invested,
+      value,
+      pnl:
+        value === null || cost === null || !Number.isFinite(value - cost)
+          ? null
+          : value - cost,
+      annualised: result !== null && Number.isFinite(result) ? result : null,
+    };
+  });
+  const unavailable =
+    holdings.length > 0 &&
+    (isError || markets.some((market) => market.value === null));
+  const sourceTimes = holdings
+    .map((holding) => prices?.[holding.ticker]?.asOf)
+    .filter((time): time is string => Boolean(time));
+  const oldestSource =
+    sourceTimes.length === holdings.length && sourceTimes.length > 0
+      ? [...sourceTimes].sort()[0]
+      : null;
 
-  const sgHoldings = holdings.filter((h) => h.market === 'SG');
-  const usHoldings = holdings.filter((h) => h.market === 'US');
-
-  // Total cost (what was spent)
-  const sgCost = sgHoldings.reduce((s, h) => s + h.totalBuyCost, 0);
-  const usCost = usHoldings.reduce((s, h) => s + h.totalBuyCost, 0);
-
-  // Current value (shares × current price)
-  const sgValue = sgHoldings.reduce((s, h) => {
-    const p = prices?.[h.ticker]?.price ?? 0;
-    return s + h.shares * p;
-  }, 0);
-  const usValue = usHoldings.reduce((s, h) => {
-    const p = prices?.[h.ticker]?.price ?? 0;
-    return s + h.shares * p;
-  }, 0);
-
-  const totalCost = sgCost + usCost;
-  const totalValue = sgValue + usValue;
-  const totalPnl = totalValue - totalCost;
-
-  const sgPnl = sgValue - sgCost;
-  const usPnl = usValue - usCost;
-
-  // Money-Weighted Return (IRR): annualised return accounting for cash flow timing
-  const mwrPct = useMemo(
-    () => (prices ? computeIRR(buildCashFlows(trades, holdings, prices)) : 0),
-    [trades, holdings, prices]
-  );
-  const sgMwrPct = useMemo(
-    () =>
-      prices ? computeIRR(buildCashFlows(trades, holdings, prices, 'SG')) : 0,
-    [trades, holdings, prices]
-  );
-  const usMwrPct = useMemo(
-    () =>
-      prices ? computeIRR(buildCashFlows(trades, holdings, prices, 'US')) : 0,
-    [trades, holdings, prices]
-  );
+  function amounts(key: 'invested' | 'value' | 'pnl' | 'annualised') {
+    return markets.map((market) => {
+      const amount = market[key];
+      const signed = key === 'pnl' || key === 'annualised';
+      return (
+        <div
+          key={market.market}
+          className="flex items-baseline justify-between gap-3"
+        >
+          <span className="text-muted-foreground text-sm">
+            {market.market} · {market.currency}
+          </span>
+          <span
+            className={`text-lg font-semibold tabular-nums ${signed && amount !== null ? (amount >= 0 ? 'text-gain' : 'text-loss') : ''}`}
+          >
+            {amount === null
+              ? '—'
+              : `${signed && amount >= 0 ? '+' : ''}${key === 'annualised' ? `${amount.toFixed(2)}%` : formatCurrency(amount, market.currency)}`}
+          </span>
+        </div>
+      );
+    });
+  }
 
   return (
     <div className="space-y-4">
+      <p className="text-muted-foreground text-sm">
+        SGD and USD are shown separately. Returns exclude dividends and currency
+        movements.
+      </p>
+      {isLoading && holdings.length > 0 ? (
+        <p role="status" className="text-muted-foreground text-sm">
+          Loading…
+        </p>
+      ) : unavailable ? (
+        <p role="status" className="text-warning text-sm">
+          Prices unavailable for some holdings. Incomplete market values and
+          returns are hidden.
+        </p>
+      ) : null}
+      {holdings.length > 0 && dataUpdatedAt > 0 && (
+        <p className="text-muted-foreground text-sm">
+          Quote check: {new Date(dataUpdatedAt).toLocaleString()}.
+          {isFetching
+            ? ' Updating quotes…'
+            : isStale
+              ? ' Cached quotes await refresh.'
+              : ''}
+        </p>
+      )}
+      {holdings.length > 0 && prices && (
+        <p className="text-muted-foreground text-sm">
+          {oldestSource
+            ? `Oldest provider quote: ${new Date(oldestSource).toLocaleString()}. Quotes may be delayed.`
+            : 'Provider quote time unavailable. Quotes may be delayed.'}
+        </p>
+      )}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Cost */}
         <Card>
-          <CardHeader className="flex-row items-center justify-between pb-2">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
               Total Invested
             </CardTitle>
-            <DollarSign className="text-muted-foreground size-4" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold tabular-nums">
-              {formatSGD(totalCost)}
-            </div>
-            <div className="text-muted-foreground mt-1 space-y-0.5 text-xs">
-              <div className="flex-between">
-                <span>SG</span>
-                <span>{formatSGD(sgCost)}</span>
-              </div>
-              <div className="flex-between">
-                <span>US</span>
-                <span>{formatUSD(usCost)}</span>
-              </div>
-            </div>
-          </CardContent>
+          <CardContent className="space-y-2">{amounts('invested')}</CardContent>
         </Card>
-
-        {/* Current Value */}
         <Card>
-          <CardHeader className="flex-row items-center justify-between pb-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Current Value</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">{amounts('value')}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
-              Current Value
-              {pricesLoading && (
-                <Loader2 className="ml-2 inline size-3 animate-spin" />
-              )}
-              {pricesError && (
-                <AlertCircle className="text-warning ml-2 inline size-3" />
-              )}
+              Unrealised P&amp;L
             </CardTitle>
-            <TrendingUp className="text-muted-foreground size-4" />
           </CardHeader>
-          <CardContent>
-            {pricesError || pricesLoading ? (
-              <p className="text-muted-foreground text-sm">
-                {pricesError ? 'Prices unavailable' : 'Loading…'}
-              </p>
-            ) : (
-              <>
-                <div className="text-2xl font-bold tabular-nums">
-                  {formatSGD(totalValue)}
-                </div>
-                <div className="text-muted-foreground mt-1 space-y-0.5 text-xs">
-                  <div className="flex-between">
-                    <span>SG</span>
-                    <span>{formatSGD(sgValue)}</span>
-                  </div>
-                  <div className="flex-between">
-                    <span>US</span>
-                    <span>{formatUSD(usValue)}</span>
-                  </div>
-                </div>
-              </>
-            )}
-          </CardContent>
+          <CardContent className="space-y-2">{amounts('pnl')}</CardContent>
         </Card>
-
-        {/* Unrealised P&L */}
         <Card>
-          <CardHeader className="flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Unrealised P&L
-            </CardTitle>
-            {totalPnl >= 0 ? (
-              <ArrowUp className="text-gain size-4" />
-            ) : (
-              <ArrowDown className="text-loss size-4" />
-            )}
-          </CardHeader>
-          <CardContent>
-            <div
-              className={`text-2xl font-bold tabular-nums ${totalPnl >= 0 ? 'text-gain' : 'text-loss'}`}
-            >
-              {totalPnl >= 0 ? '+' : ''}
-              {formatSGD(totalPnl)}
-            </div>
-            <div className="text-muted-foreground mt-1 space-y-0.5 text-xs">
-              <div className="flex-between">
-                <span>SG</span>
-                <span className={sgPnl >= 0 ? 'text-gain' : 'text-loss'}>
-                  {sgPnl >= 0 ? '+' : ''}
-                  {formatSGD(sgPnl)}
-                </span>
-              </div>
-              <div className="flex-between">
-                <span>US</span>
-                <span className={usPnl >= 0 ? 'text-gain' : 'text-loss'}>
-                  {usPnl >= 0 ? '+' : ''}
-                  {formatUSD(usPnl)}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* MWR (annualised) */}
-        <Card>
-          <CardHeader className="flex-row items-center justify-between pb-2">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
               Annualised Return
             </CardTitle>
-            <Percent className="text-muted-foreground size-4" />
           </CardHeader>
-          <CardContent>
-            {pricesError || pricesLoading ? (
-              <p className="text-muted-foreground text-sm">—</p>
-            ) : (
-              <>
-                <div
-                  className={`text-2xl font-bold tabular-nums ${mwrPct >= 0 ? 'text-gain' : 'text-loss'}`}
-                >
-                  {mwrPct >= 0 ? '+' : ''}
-                  {mwrPct.toFixed(2)}%
-                </div>
-                <div className="text-muted-foreground mt-1 space-y-0.5 text-xs">
-                  <div className="flex-between">
-                    <span>SG</span>
-                    <span className={sgMwrPct >= 0 ? 'text-gain' : 'text-loss'}>
-                      {sgMwrPct >= 0 ? '+' : ''}
-                      {sgMwrPct.toFixed(2)}%
-                    </span>
-                  </div>
-                  <div className="flex-between">
-                    <span>US</span>
-                    <span className={usMwrPct >= 0 ? 'text-gain' : 'text-loss'}>
-                      {usMwrPct >= 0 ? '+' : ''}
-                      {usMwrPct.toFixed(2)}%
-                    </span>
-                  </div>
-                </div>
-              </>
-            )}
+          <CardContent className="space-y-2">
+            {amounts('annualised')}
           </CardContent>
         </Card>
       </div>

@@ -17,16 +17,19 @@ import {
 } from '../lib/export-data';
 
 function downloadJson(content: string, filename: string): void {
+  const a = document.createElement('a');
   const url = URL.createObjectURL(
     new Blob([content], { type: 'application/json' })
   );
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  try {
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+  } finally {
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
 }
 
 /**
@@ -36,6 +39,7 @@ function downloadJson(content: string, filename: string): void {
 export function useExportData() {
   const [isExporting, setIsExporting] = useState(false);
   const mounted = useRef(false);
+  const pending = useRef(false);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -44,6 +48,8 @@ export function useExportData() {
   }, []);
 
   const exportData = async () => {
+    if (pending.current) return;
+    pending.current = true;
     setIsExporting(true);
     try {
       const [
@@ -87,6 +93,7 @@ export function useExportData() {
       if (mounted.current)
         toast.error('Export failed. Make sure your vault is unlocked.');
     } finally {
+      pending.current = false;
       if (mounted.current) setIsExporting(false);
     }
   };

@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { useState } from 'react';
 import { buildMonthlyReview } from '../lib/monthly-review';
+import { MonthlyReviewSources } from './monthly-review-sources';
 
 export function MonthlyReview() {
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
@@ -117,7 +118,8 @@ export function MonthlyReview() {
           </dl>
           <p className="text-muted-foreground text-xs">
             Recorded income is before CPF and tax. Missing records do not mean
-            zero income or spending.
+            zero income or spending. Recorded data is not a completed or
+            reconciled month.
           </p>
           <Accordion type="single" collapsible>
             <AccordionItem value="sources">
@@ -129,26 +131,56 @@ export function MonthlyReview() {
                   include contributions, withdrawals and valuation changes; they
                   are not investment returns.
                 </p>
-                <div className="flex flex-wrap gap-4">
-                  <Link
-                    className="underline underline-offset-4"
-                    href={PAGE_ROUTES.SALARY}
-                  >
-                    Review salary
-                  </Link>
-                  <Link
-                    className="underline underline-offset-4"
-                    href={PAGE_ROUTES.EXPENSES}
-                  >
-                    Review expenses
-                  </Link>
-                  <Link
-                    className="underline underline-offset-4"
-                    href={PAGE_ROUTES.ASSETS}
-                  >
-                    Review snapshots
-                  </Link>
-                </div>
+                <ul aria-label="Monthly review steps" className="space-y-3">
+                  <li>
+                    <Link
+                      className="underline underline-offset-4"
+                      href={PAGE_ROUTES.SALARY}
+                    >
+                      Compare salary with your payslip
+                    </Link>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {review.incomeRecorded
+                        ? 'Salary record available'
+                        : 'No salary record for this month'}
+                    </p>
+                  </li>
+                  <li>
+                    <Link
+                      className="underline underline-offset-4"
+                      href={PAGE_ROUTES.EXPENSES}
+                    >
+                      Compare expenses with your statement
+                    </Link>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {review.personalSpending === null
+                        ? 'Review shared splits before comparing totals'
+                        : review.expenseCount === 0
+                          ? 'No expenses recorded for this month'
+                          : review.expenseCount === 1
+                            ? '1 expense recorded'
+                            : `${review.expenseCount} expenses recorded`}
+                    </p>
+                  </li>
+                  <li>
+                    <Link
+                      className="underline underline-offset-4"
+                      href={PAGE_ROUTES.ASSETS}
+                    >
+                      Review month-end balances
+                    </Link>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {review.assetTotal !== null
+                        ? 'Snapshot available for this month'
+                        : 'No snapshot for this month'}
+                    </p>
+                  </li>
+                </ul>
+                <MonthlyReviewSources
+                  key={month}
+                  month={month}
+                  review={review}
+                />
               </AccordionContent>
             </AccordionItem>
           </Accordion>

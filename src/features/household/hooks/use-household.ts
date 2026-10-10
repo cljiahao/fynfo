@@ -1,5 +1,6 @@
 'use client';
 
+import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addContribution,
@@ -41,8 +42,8 @@ export function useCreateHousehold() {
   return useMutation({
     mutationFn: (name: string) => createHousehold({ name }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: HOUSEHOLD_KEY });
-      qc.invalidateQueries({ queryKey: GOALS_KEY });
+      void refreshQueriesAfterMutation(qc, HOUSEHOLD_KEY);
+      void refreshQueriesAfterMutation(qc, GOALS_KEY);
     },
   });
 }
@@ -52,8 +53,8 @@ export function useUnlockHousehold() {
   return useMutation({
     mutationFn: unlockHousehold,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: HOUSEHOLD_KEY });
-      qc.invalidateQueries({ queryKey: GOALS_KEY });
+      void refreshQueriesAfterMutation(qc, HOUSEHOLD_KEY);
+      void refreshQueriesAfterMutation(qc, GOALS_KEY);
     },
   });
 }
@@ -67,8 +68,8 @@ export function useAcceptInvite() {
   return useMutation({
     mutationFn: (secret: string) => acceptInvite({ secret }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: HOUSEHOLD_KEY });
-      qc.invalidateQueries({ queryKey: GOALS_KEY });
+      void refreshQueriesAfterMutation(qc, HOUSEHOLD_KEY);
+      void refreshQueriesAfterMutation(qc, GOALS_KEY);
     },
   });
 }
@@ -77,7 +78,7 @@ export function useCreateGoal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: createGoal,
-    onSuccess: () => qc.invalidateQueries({ queryKey: GOALS_KEY }),
+    onSuccess: () => refreshQueriesAfterMutation(qc, GOALS_KEY),
   });
 }
 
@@ -85,7 +86,7 @@ export function useAddContribution() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: addContribution,
-    onSuccess: () => qc.invalidateQueries({ queryKey: GOALS_KEY }),
+    onSuccess: () => refreshQueriesAfterMutation(qc, GOALS_KEY),
   });
 }
 
@@ -93,6 +94,6 @@ export function useDeleteGoal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: deleteGoal,
-    onSuccess: () => qc.invalidateQueries({ queryKey: GOALS_KEY }),
+    onSuccess: () => refreshQueriesAfterMutation(qc, GOALS_KEY),
   });
 }
