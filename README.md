@@ -65,6 +65,12 @@ Resetting an account password does not recover records encrypted with a forgotte
 PIN. First-use guidance offers a snapshot, expense or salary record and can be
 skipped. Tax/CPF estimates require a usable profile; reserve controls live under
 “Adjust reserves” and show their current settings while collapsed.
+On the overview, snapshot, salary, planner, expense and trade queries starting
+together share a guarded Server Function while each source resolves independently.
+Existing history caches and per-source retries remain; other pages keep their original
+read path. Query cancellation prevents late replies from overwriting removed
+or optimistically updated records.
+
 The dashboard's monthly review combines recorded gross income, your share of
 all expense categories and exact-month snapshot changes. It does not infer net
 savings, investment returns or zero activity from missing records. Its disclosed

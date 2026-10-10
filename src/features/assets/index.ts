@@ -1,4 +1,6 @@
+export { getPlannerSettings } from './actions/planner-actions';
 export { getScenarios } from './actions/scenario-actions';
+export { getSnapshots } from './actions/snapshot-actions';
 export * from './components';
 export { CATEGORY_LABELS } from './constants';
 export * from './hooks';
@@ -11,6 +13,7 @@ export {
 export type {
   AssetCategory,
   ChartDataPoint,
+  PlannerSettingsData,
   ScenarioRecord,
   SnapshotData,
   SnapshotRecord,

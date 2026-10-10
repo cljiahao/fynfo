@@ -30,6 +30,8 @@ vi.mock('@/features/expenses/actions/expense-actions', () => api);
 vi.mock('@/features/profile/actions/profile-actions', () => api);
 vi.mock('@/features/equity/actions/equity-actions', () => api);
 vi.mock('@/features/equity/actions/price-actions', () => api);
+// UI fixtures use the actual cohort action; boundary security is tested separately.
+vi.mock('@/lib/action-guard', () => ({ requireActionContext: vi.fn() }));
 beforeEach(() => {
   vi.resetAllMocks();
   localStorage.clear();

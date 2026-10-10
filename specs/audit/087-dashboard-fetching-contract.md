@@ -16,9 +16,30 @@ constitution_satisfies:
 
 # Dashboard fetching remediation contract review
 
+## Browser evidence recording batch — 2026-10-10
+
+Under Clarence's continuing audit/roadmap direction, record the completed public
+synthetic browser experiment in this spec and
+`docs/audit/2026-10-10-dashboard-browser-evidence.md`. This batch changes ordinary
+documentation only: no executable files, dependency, migration, crypto protocol,
+protected configuration or architecture selection. Acceptance is scoped formatting,
+diff review and independent comparison with the saved browser traces. Rollback is
+a documentation revert; existing historical proposals and approvals remain intact.
+
+The browser experiment now proves serial client Server Function execution,
+parallel public GET controls and pending RSC first-section disclosure for the
+installed stack. It also proves deliberately retained payload replay after cache
+clear, synthetic identity switch and lock/remount. These are public fixture
+observations, not a production gain or an account-data leak finding. Exact methods,
+five-run medians, successful failed-only recovery and cache/in-flight/navigation
+qualifications are in the evidence record. The owned local server was stopped and
+the temporary test tab closed. A separate nested-promise Server Function experiment
+is being prepared to test partial readiness without adding a financial HTTP route;
+its result is unknown and no product implementation is selected.
+
 ## Scope
 
-This is a proposal under Clarence's existing roadmap/audit authorization, prepared in the assigned parallel worktree after baseline085/transport086. No application change is implemented. No dependency, schema, crypto protocol, protected file, authorization cache or cross-request cache is proposed. Root reviews the contract and measured alternatives before selecting ordinary remediation; unresolved research is not an invented owner approval requirement.
+This is a proposal under Clarence's existing roadmap/audit authorization, prepared in the assigned parallel worktree after baseline 085/transport 086. No application change is implemented. No dependency, schema, crypto protocol, protected file, authorization cache or cross-request cache is proposed. Root reviews the contract and measured alternatives before selecting ordinary remediation; unresolved research is not an invented owner approval requirement.
 
 ## Actual lifecycle and consumers
 
@@ -49,7 +70,7 @@ A coordinator must be scoped to the mounted overview and QueryClient lifetime, n
 
 Only currently pending work may be shared. A second read of the same dataset after cancellation, invalidation or retry must start a fresh cohort, never reuse a pre-mutation promise. Each dataset may join a cohort once. An old cohort's cleanup cannot clear a newer cohort. Removed/canceled query objects and obsolete provider generations cannot publish after clear/unmount. Retrying one failed query must not accidentally republish other datasets. Strict Mode cancellation may add a bounded development request; production initial reads need explicit no-double-fetch proof.
 
-The response still waits for the slowest requested dataset. Fast asset/salary cards can regress while a slow expense history runs. The equal-delay transport proof086 demonstrates queuing, not suitability for the user's first-row complaint. This option is not selected without asymmetric first-visible-section and all-ready measurements.
+The response still waits for the slowest requested dataset. Fast asset/salary cards can regress while a slow expense history runs. The equal-delay transport proof 086 demonstrates queuing, not suitability for the user's first-row complaint. This option is not selected without asymmetric first-visible-section and all-ready measurements.
 
 ## Option C: bounded latest-two overview read
 
@@ -72,7 +93,7 @@ Acceptance must cover:
 
 ## Evidence and unresolved decisions
 
-[Next.js Server Function dispatch](https://nextjs.org/docs/app/getting-started/mutating-data), [TanStack advanced SSR](https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr), [TanStack QueryClient](https://tanstack.com/query/latest/docs/framework/react/reference/classes/QueryClient) and installed Query 5.97.0 hydration source inform this proposal. Baselines085/086 do not prove a production gain. The next independent experiment is asymmetric local RSC pending-hydration transport with fixed data and failures, plus lifecycle replay tests. No option is marked approved, implemented or shipped here.
+[Next.js Server Function dispatch](https://nextjs.org/docs/app/getting-started/mutating-data), [TanStack advanced SSR](https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr), [TanStack QueryClient](https://tanstack.com/query/latest/docs/framework/react/reference/classes/QueryClient) and installed Query 5.97.0 hydration source inform this proposal. Baselines 085/086 do not prove a production gain. The next independent experiment is asymmetric local RSC pending-hydration transport with fixed data and failures, plus lifecycle replay tests. No option is marked approved, implemented or shipped here.
 
 ## Independent bounded-window review
 
@@ -81,7 +102,7 @@ month. A separate exact-window structured key could preserve arbitrary review
 months without mounting full history on the dashboard. Keep full history for
 assets, forms and export. This must not assume the latest two snapshots correspond
 to the selected review months. Two independent bounded reads could reduce the
-1200-month stress fixture from68 DB pages to roughly4, but increase the12-month
-fixture from2 pages to4 and add client serialization overhead. Fresh/error cache
+1200-month stress fixture from 68 DB pages to roughly 4, but increase the 12-month
+fixture from 2 pages to 4 and add client serialization overhead. Fresh/error cache
 seeding and any shared-window reuse require proof. This is an unselected
 alternative, not a performance claim or approved implementation.

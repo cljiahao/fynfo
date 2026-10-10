@@ -1,3 +1,4 @@
+export { getExpenses } from './actions/expense-actions';
 export * from './components';
 export { EXPENSE_TYPE_LABELS } from './constants';
 export * from './hooks';

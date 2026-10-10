@@ -1,6 +1,9 @@
 import { deleteSnapshot } from '@/features/assets/actions/snapshot-actions';
 import { deleteDividend } from '@/features/equity/actions/dividend-actions';
-import { deleteTrade } from '@/features/equity/actions/equity-actions';
+import {
+  deleteTrade,
+  getTrades,
+} from '@/features/equity/actions/equity-actions';
 import {
   deleteExpense,
   getDistinctPeople,
@@ -8,6 +11,7 @@ import {
   settleSplit,
 } from '@/features/expenses/actions/expense-actions';
 import { deleteGoal } from '@/features/household/actions/goal-actions';
+import { getOverviewReads } from '@/features/overview/actions/overview-actions';
 import { deleteSalaryRecord } from '@/features/salary/actions/salary-actions';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeFakeSupabase } from '../helpers/fake-supabase';
@@ -49,6 +53,7 @@ describe('authenticated financial actions still require an unlocked key session'
     ],
     ['salary delete', () => deleteSalaryRecord('2026-10')],
     ['trade delete', () => deleteTrade('trade-fixture')],
+    ['trade history read', () => getTrades()],
     ['dividend delete', () => deleteDividend('dividend-fixture')],
     ['expense delete', () => deleteExpense('expense-fixture')],
     ['split settlement', () => settleSplit('expense-fixture', 'Partner', true)],
@@ -57,6 +62,17 @@ describe('authenticated financial actions still require an unlocked key session'
       () => settleMonthSplits(['expense-fixture'], 'Partner', true),
     ],
     ['people suggestion read', () => getDistinctPeople()],
+    [
+      'overview read cohort',
+      () =>
+        getOverviewReads([
+          'snapshots',
+          'salary',
+          'planner',
+          'expenses',
+          'trades',
+        ]),
+    ],
   ] as const)(
     '%s rejects without the personal vault before any financial DB access',
     async (_name, operation) => {
