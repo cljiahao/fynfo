@@ -1,6 +1,6 @@
 'use client';
 
-import { format, parse } from 'date-fns';
+import { formatRecordedMonth } from '@/lib/utils/month';
 import { useMemo } from 'react';
 import { CATEGORIES, INVESTMENT_CATEGORIES } from '../constants';
 import { calculateTotal } from '../lib/calculations';
@@ -28,7 +28,6 @@ export function useChartData(
   snapshots: SnapshotData[] | undefined,
   maxMonths = 12
 ): ChartDataPoint[] {
-  // useMemo justified: transforms full snapshot array into chart points on every render
   return useMemo(() => {
     if (!snapshots?.length) return [];
 
@@ -36,7 +35,7 @@ export function useChartData(
 
     return recent.map((snapshot) => {
       const point: ChartDataPoint = {
-        month: format(parse(snapshot.id, 'yyyy-MM', new Date()), 'MMM yyyy'),
+        month: formatRecordedMonth(snapshot.id),
         id: snapshot.id,
         savings: 0,
         bonds: 0,

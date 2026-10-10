@@ -9,7 +9,7 @@ import {
 } from '@/features/assets/lib/investment-math';
 import type { Holding } from '@/features/equity/lib/holdings';
 import type { EquityTradeData } from '@/features/equity/types';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('floorH', () => {
   it('floors to the nearest 100', () => {
@@ -197,3 +197,67 @@ it('requires real FX for combined equity and rejects converted overflow', () => 
     computeMarketEquity(rows, prices, Number.MAX_VALUE).usEquity
   ).toBeNull();
 });
+
+describe.each(['Asia/Singapore', 'UTC', 'America/New_York'])(
+  'inclusive local quarter in %s',
+  (zone) => {
+    it.each([4, 11])(
+      'includes final millisecond buys in month %s and retains market costs',
+      (month) => {
+        vi.stubEnv('TZ', zone);
+        try {
+          const q = getCurrentQuarter(new Date(2026, month, 15));
+          const endMonth = month === 4 ? 5 : 11;
+          const lastDay = endMonth === 5 ? 30 : 31;
+          const expectedOffset =
+            zone === 'Asia/Singapore'
+              ? -480
+              : zone === 'UTC'
+                ? 0
+                : month === 4
+                  ? 240
+                  : 300;
+          expect(q.end.getTimezoneOffset()).toBe(expectedOffset);
+          const point = (
+            date: Date,
+            ticker = 'D05',
+            action: 'buy' | 'sell' = 'buy'
+          ): EquityTradeData => ({
+            id: 'synthetic',
+            date: date.toISOString(),
+            broker: 'Synthetic',
+            ticker,
+            action,
+            shares: 2,
+            price: 10,
+            fees: 1,
+          });
+          const trades = [
+            point(new Date(q.start.getTime() - 1)),
+            point(q.start),
+            point(new Date(2026, endMonth, lastDay, 23, 59, 59, 0)),
+            point(new Date(2026, endMonth, lastDay, 23, 59, 59, 500)),
+            point(new Date(2026, endMonth, lastDay, 23, 59, 59, 999), 'AAPL'),
+            point(new Date(2026, endMonth + 1, 1)),
+            point(
+              new Date(2026, endMonth, lastDay, 23, 59, 59, 999),
+              'D05',
+              'sell'
+            ),
+          ];
+          expect(
+            computeQuarterSpend(trades, q.start, q.end, (t) =>
+              t === 'D05' ? 'SG' : 'US'
+            )
+          ).toEqual({ sgSpent: 63, usSpent: 21 });
+          expect(q.end.getMilliseconds()).toBe(999);
+          expect(q.start).toEqual(new Date(2026, month === 4 ? 3 : 9, 1));
+          expect(q.label).toBe(month === 4 ? 'Q2 2026' : 'Q4 2026');
+          expect(q.daysLeft).toBeGreaterThan(0);
+        } finally {
+          vi.unstubAllEnvs();
+        }
+      }
+    );
+  }
+);

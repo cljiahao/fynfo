@@ -121,6 +121,10 @@ reads offer retry instead of claiming an empty history. Manual Add stays availab
 Expense, trade and distribution saves reject impossible calendar days before
 requesting an encryption/database context.
 Supported valid dates and timestamps retain their existing timezone behavior.
+Legacy unsupported month keys remain unchanged in history and export; charts
+qualify their labels as invalid months without dropping amounts. This does not
+prevent new unsupported keys or repair existing records. Investment quarter
+spending includes the final millisecond of the existing local quarter.
 
 Expense spreadsheet paste uses explicit calendar dates and complete finite positive
 amounts. SG day/month order wins for ambiguous dates; unambiguous US and English
