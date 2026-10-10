@@ -311,8 +311,9 @@ describe('household workflows with real mutation hooks', () => {
               ...goal,
               id: 'g2',
               name: 'Trip',
-              targetAmount: 0,
+              targetAmount: 300,
               targetDate: null,
+              remaining: 0,
               pct: 100,
             },
           ]}

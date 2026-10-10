@@ -3,6 +3,8 @@
 Personal wealth management dashboard for savings, investments, equity trades,
 salary, Singapore tax/CPF calculations, and expenses. Two accounts can link a
 household for shared goals while keeping their personal vaults separate.
+Goal completion uses the contributed amount against a positive target; rounded
+progress percentages do not establish completion.
 
 ## Stack
 
