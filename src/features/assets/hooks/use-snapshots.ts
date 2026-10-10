@@ -1,5 +1,6 @@
 'use client';
 
+import { useOverviewReadTransport } from '@/lib/overview-read-context';
 import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -13,9 +14,12 @@ import type { SnapshotData, SnapshotVersion } from '../types';
 export const SNAPSHOTS_KEY = ['snapshots'] as const;
 
 export function useSnapshots() {
+  const transport = useOverviewReadTransport();
   return useQuery({
     queryKey: SNAPSHOTS_KEY,
-    queryFn: () => getSnapshots(),
+    queryFn: transport
+      ? ({ signal }) => transport.read('snapshots', signal)
+      : () => getSnapshots(),
   });
 }
 

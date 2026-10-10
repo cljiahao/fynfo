@@ -32,6 +32,18 @@ export default defineConfig({
         statements: 81,
         functions: 81,
         branches: 81,
+        'src/features/overview/actions/overview-actions.ts': {
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 90,
+        },
+        'src/features/overview/lib/read-cohorts.ts': {
+          lines: 95,
+          statements: 95,
+          functions: 100,
+          branches: 90,
+        },
         'src/features/auth/hooks/use-auth-identity.ts': {
           lines: 95,
           statements: 95,

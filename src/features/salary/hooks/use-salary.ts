@@ -1,5 +1,6 @@
 'use client';
 
+import { useOverviewReadTransport } from '@/lib/overview-read-context';
 import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -13,9 +14,12 @@ import type { SalaryData } from '../types';
 export const SALARY_KEY = ['salary'] as const;
 
 export function useSalaryRecords() {
+  const transport = useOverviewReadTransport();
   return useQuery({
     queryKey: SALARY_KEY,
-    queryFn: () => getSalaryRecords(),
+    queryFn: transport
+      ? ({ signal }) => transport.read('salary', signal)
+      : () => getSalaryRecords(),
   });
 }
 

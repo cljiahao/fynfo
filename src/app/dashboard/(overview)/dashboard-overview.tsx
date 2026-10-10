@@ -17,6 +17,7 @@ import {
 } from '@/features/assets';
 import { useTrades } from '@/features/equity';
 import { useExpenses } from '@/features/expenses';
+import { OverviewReadProvider } from '@/features/overview';
 import { MonthlyReview } from '@/features/review';
 import { SalarySummaryCards, useSalaryRecords } from '@/features/salary';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
@@ -25,6 +26,14 @@ import Link from 'next/link';
 import { useCallback, useState } from 'react';
 
 export function DashboardOverview() {
+  return (
+    <OverviewReadProvider>
+      <DashboardOverviewContent />
+    </OverviewReadProvider>
+  );
+}
+
+function DashboardOverviewContent() {
   const {
     data: snapshots,
     isPending: assetsPending,

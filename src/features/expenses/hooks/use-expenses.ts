@@ -1,5 +1,6 @@
 'use client';
 
+import { useOverviewReadTransport } from '@/lib/overview-read-context';
 import {
   type QueryClient,
   useMutation,
@@ -148,9 +149,12 @@ export function buildUpsertMutationOptions(queryClient: QueryClient) {
 }
 
 export const useExpenses = () => {
+  const transport = useOverviewReadTransport();
   return useQuery({
     queryKey: EXPENSE_KEY,
-    queryFn: () => getExpenses(),
+    queryFn: transport
+      ? ({ signal }) => transport.read('expenses', signal)
+      : () => getExpenses(),
   });
 };
 

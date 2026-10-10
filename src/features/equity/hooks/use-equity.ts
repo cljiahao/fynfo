@@ -1,5 +1,6 @@
 'use client';
 
+import { useOverviewReadTransport } from '@/lib/overview-read-context';
 import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -13,9 +14,12 @@ import type { EquityTradeData } from '../types';
 const TRADES_KEY = ['equity-trades'] as const;
 
 export function useTrades() {
+  const transport = useOverviewReadTransport();
   return useQuery({
     queryKey: TRADES_KEY,
-    queryFn: () => getTrades(),
+    queryFn: transport
+      ? ({ signal }) => transport.read('trades', signal)
+      : () => getTrades(),
   });
 }
 
