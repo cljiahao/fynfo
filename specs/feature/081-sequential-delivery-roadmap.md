@@ -31,7 +31,7 @@ dependency/source access and persistence questions.
 | Batch | Work                                                                            | Readiness                                                                                                                         |
 | ----- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | A     | Atomic snapshots, expenses and relief replacements                              | Shipped spec077 / PR13 after owner migration confirmation                                                                         |
-| B     | Concurrent edit detection and safe retries                                      | 082 shipped / PR14; 083 / PR15 exact revision SQL confirmed 2026-10-10; main integration/checks pending                           |
+| B     | Concurrent edit detection and safe retries                                      | 082 shipped / PR14; 083 shipped / PR15; distinct revision SQL confirmed 2026-10-10                                                |
 | C     | Quote/FX freshness, unavailable data and consistent investment currencies       | Shipped spec084 / PR17; provider metadata and accounting limits recorded                                                          |
 | D     | CPF eligibility, age and rounding accuracy                                      | Spec088 monthly full-rate corrections shipped / PR18; eligibility/profile contract still separate                                 |
 | E     | Measured dashboard latency and fetching architecture                            | 085/086 baseline shipped / PR16; 093 stale-read integrity shipped / PR22; 087 proposal unselected                                 |
@@ -51,15 +51,15 @@ dependency/source access and persistence questions.
 | S     | Budgets, recorded spending and annual reserves                                  | Reuse monthly-review calculations                                                                                                 |
 | T     | Monthly closing checklist                                                       | 100 derived review steps shipped / PR28; certification/closing state separate, no duplicate ledger                                |
 | U     | Encrypted revision history and undo                                             | Atomic append/retention/schema approval                                                                                           |
-| V     | Explain totals using contributing records and assumptions                       | 102 contributing-records increment in progress; reuse existing histories                                                          |
+| V     | Explain totals using contributing records and assumptions                       | 102 contributing records shipped / PR30; reuse existing histories                                                                 |
 | W     | Liabilities and repayment details                                               | Define schema and net-worth contract                                                                                              |
 | X     | Personal goals                                                                  | 096 shared-goal completion fixed / PR23; private goal ownership/persistence remains separate                                      |
-| Y     | Named planning scenarios                                                        | 103 encrypted named-scenario proposal draft; isolated from actuals                                                                |
+| Y     | Named planning scenarios                                                        | 103 shipped / PR33; exact production SQL owner-confirmed 2026-10-10                                                               |
 | Z     | Explain wealth changes and unresolved differences                               | Accurate flows and valuation prerequisites                                                                                        |
 | AA    | Investment concentration against owner targets                                  | Accurate currency/exposure data                                                                                                   |
 | AB    | Expense anomaly review                                                          | Suggestions only, explicit review                                                                                                 |
 | AC    | Financial timeline                                                              | Reuse source records                                                                                                              |
-| AD    | Global search and quick actions                                                 | Owner-scoped queries, bounded result sets                                                                                         |
+| AD    | Global search and quick actions                                                 | 106 personal-record search shipped / PR32                                                                                         |
 | AE    | Account archival with historical preservation                                   | Define account identity/lifecycle                                                                                                 |
 | AF    | Amount hiding for screen sharing                                                | Consumer/design proposal only; edit, chart, portal, accessibility and export proof required                                       |
 
@@ -86,4 +86,4 @@ scoped batches may be investigated, implemented and verified concurrently;
 merges remain individually gated on green required checks and any specific
 production readiness approval. This supersedes the earlier preparation sequence,
 without authorizing new dependencies, migrations, protected edits or crypto
-contracts. Snapshot spec083 still awaits its distinct owner SQL confirmation.
+contracts. Snapshot spec083 is shipped after its distinct owner SQL confirmation and green updated-head CI.

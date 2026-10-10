@@ -2,12 +2,12 @@
 id: 102
 slug: monthly-review-contributing-records
 area: feature
-status: owner-authorized
+status: shipped
 author: Codex
 created: 2026-10-10
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/30
 supersedes:
 constitution_satisfies:
   - '§2.4'

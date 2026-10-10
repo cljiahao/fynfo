@@ -2,13 +2,13 @@
 id: '103'
 slug: named-planning-scenarios
 area: feature
-status: approved
+status: shipped
 author: Codex
 created: 2026-10-10
 approved: 2026-10-10
 approved_hash: 2498ba2643b102354f0c1b7e33dd749c6c2800226c5c4567fcb9698e20d8aadc
-shipped:
-impl_pr:
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/33
 supersedes:
 constitution_satisfies:
   [
@@ -148,3 +148,7 @@ Integrated-main gate repair (root-approved): `test/features/assets/failed-reads.
 Integrated verification on main `52edfff730d4dbd33a2d6d00d8c5cafc6e72f1d2`: route check and all five gates passed;138 test files/1,227 tests. Coverage statements92.85%, branches88.9%, functions90.91%, lines93.41%; unchanged thresholds/security floors. Next production build used inline synthetic placeholders. Root opened the exact migration and requested owner execution/confirmation on2026-10-10; application merge remains blocked on that owner-only confirmation. The original scoped integration stash is retained for proof/rollback; no reset/force push or hook bypass occurred.
 
 Owner production migration confirmation (2026-10-10): Clarence replied "migration done" directly to the exact103 migration handoff. This confirms owner execution of `supabase/migrations/20261010000103_personal_planning_scenarios.sql`, reviewed SHA256 `65ed0d8fe3ff2e34486cc94d70f0e223456ccb3c7c8ca80e526a7727e7e1c9a6`; it does not authorize secret access or a different migration. The production prerequisite is satisfied; normal commit/push hooks and exact-head CI remain delivery gates. Approved hash remains unchanged.
+
+Delivery confirmation (2026-10-10): PR33 (`https://github.com/cljiahao/fynfo/pull/33`) merged exact reviewed head `d0761f22746a94b7642018c8241e0ceaa02fde04` after all exact-head CI and Vercel checks succeeded, at2026-10-10T07:59:51Z; merge commit `82d311cbb02e93b5f46ca1e81536387f744c5b15`. A fresh independent exact-head read-only review found no scoped blocker. Owner confirmation of the exact production migration preceded delivery; approved hash and tested SQL hash remain unchanged. Production browser verification is owned by root and is not claimed by this implementation record.
+
+Owner final integrated confirmation requirement (2026-10-10): after all roadmap tasks are completed and merged, perform a final project-wide confirmation sweep covering integrated synthetic page flows, saves and redirects, calculations, security, performance, documentation and coverage, with explicit remaining blockers. This103 delivery does not establish roadmap completion or satisfy that later integrated sweep.

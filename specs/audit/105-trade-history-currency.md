@@ -1,7 +1,9 @@
 ---
 id: '105'
 area: audit
-status: owner-authorized
+status: shipped
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/31
 created: 2026-10-10
 author: Codex
 constitution_satisfies: ['§2.1', '§3.2', '§4.2', '§4.4', '§7.4', '§8.2']
@@ -36,3 +38,7 @@ Mounted baseline: four expected behavior failures and one zero-fee control pass 
 Root synthetic browser desktop proof passed mixed labels, edit callback, overflow and pagination. Initial390px mobile captures appeared narrow; root traced this to tab.screenshot capture API rather than product layout. Actual DOM root/main390, h1/card342, header/content340, with no zoom/transform; getScreenshot returned proper390px viewport evidence (105-trade-mobile-proof.jpg), inspected by this agent too. Inference helper readable; table retains existing cramped columns and horizontal scrolling with document width390. External preview wrapper now matches actual page w-full contract; no product layout changes. These are actual-component synthetic-row checks, not full Next/auth/private workflows. Root closed tabs/reset viewport and owns server cleanup. Final built105 CSS/local fonts refreshed; one final proper getScreenshot remains pending root confirmation.
 
 All five gates passed in the released shared slot (105-gates.log):129 files/1101 tests; statements93.51%, branches89.16%, functions91.12%, lines93.80%; stricter floors unchanged and optimized build green. Root confirmed101 does not alter TradeTable; no overlapping date change needs integration. Normal hooks/CI and merge remain pending; not shipped.
+
+## Delivery closeout
+
+PR31 merged as 9fcfcddc8cf49af15419b8c3634e2a45a22b5afa at 2026-10-10 06:30:12 UTC after exact e0be4e446118225b247bf9a96578afd346c2aa06 passed all required CI and Vercel checks. Normal commit and push hooks passed. Final synthetic desktop/mobile proof used the built CSS and qualified the existing cramped/horizontally scrolling table; no production record or verified settlement-currency claim.
