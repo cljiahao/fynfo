@@ -67,7 +67,9 @@ skipped. Tax/CPF estimates require a usable profile; reserve controls live under
 “Adjust reserves” and show their current settings while collapsed.
 The dashboard's monthly review combines recorded gross income, your share of
 all expense categories and exact-month snapshot changes. It does not infer net
-savings, investment returns or zero activity from missing records.
+savings, investment returns or zero activity from missing records. Its disclosed
+next steps show recorded-data availability and links for checking payslips,
+statements and balances; they do not certify a completed or reconciled month.
 
 Successful non-optimistic saves and deletes discard pending pre-write reads before
 refreshing the affected records. Existing background refresh behavior remains;
