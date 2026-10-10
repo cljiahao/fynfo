@@ -20,7 +20,7 @@ import {
   YAxis,
 } from '@/lib/recharts';
 import { formatSGDWhole } from '@/lib/utils/currency';
-import { format, parse } from 'date-fns';
+import { formatRecordedMonth } from '@/lib/utils/month';
 import { TrendingUp } from 'lucide-react';
 import type { SalaryData } from '../types';
 
@@ -61,7 +61,7 @@ export function SalaryChart({ records }: SalaryChartProps) {
   >((acc, r) => {
     const prev = acc.length > 0 ? acc[acc.length - 1].cumulative : 0;
     acc.push({
-      month: format(parse(r.id, 'yyyy-MM', new Date()), 'MMM yyyy'),
+      month: formatRecordedMonth(r.id),
       salary: r.salary,
       bonus: r.bonus,
       cumulative: prev + r.salary + r.bonus,

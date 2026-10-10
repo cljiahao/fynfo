@@ -2,12 +2,12 @@
 id: 111
 slug: equity-calendar-dates
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-10
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/37
 supersedes:
 constitution_satisfies:
   - '§2.1'
@@ -169,7 +169,7 @@ interpretation; the batch does not invent a timezone.
       gates with root; keep all normal hooks.
 - [x] Fresh independent source/tests/README review passes; exactly six scoped paths
       and unchanged application contracts verified. Record exact SHA/evidence before PR.
-- [ ] PR/merge only after required exact-head CI/deployment checks are green;
+- [x] PR/merge only after required exact-head CI/deployment checks are green;
       record shipped metadata only after actual merge. No whole-roadmap claim.
 
 ## Risk & reversibility
@@ -192,6 +192,6 @@ interpretation; the batch does not invent a timezone.
 
 Scope was recorded before product edits on branch `impl/111-equity-calendar-dates`, based on merged main `5c19555ddbcf448dfc41cd5f70d3c6a1da4ddb2c`. The baseline regression against shipped source produced 20 failures and 17 passing controls: five schema failures and 15 independent rejection-before-context failures across all five actual action entry points. The corrected targeted suite passed 112 tests across five files, including existing action, expense calendar and mounted equity form checks. Logs are retained externally as `111-baseline-red.log` and `111-targeted.log`.
 
-All five gates passed sequentially in the isolated fixture: route checks, formatting, zero-warning ESLint and TypeScript (`111-full-check.log`), coverage (`111-full-test-ci.log`) and the normal Next.js 16.3.8 Turbopack production build (`111-full-build.log`). Coverage passed 142 files and 1,379 tests: 93.08% statements, 89.30% branches, 91.24% functions and 93.62% lines, with every existing stricter floor unchanged. Root and the independent latency reviewer found no scoped blocker in source/tests/README; all six recorded path hashes matched the managed tree and fixture. Only final evidence/prose recording changed after source freeze. Normal commit/push hooks and exact-head CI remain required; no commit, PR or merge is claimed yet. Boundary tests use synthetic inputs and inert action context/encryption/database spies; they do not prove authenticated production persistence. Valid timestamps retain existing UTC trade conversion and original-prefix distribution storage. Year-zero database compatibility, historical normalized values and broader calendar findings remain separate residuals.
+All five gates passed sequentially in the isolated fixture: route checks, formatting, zero-warning ESLint and TypeScript (`111-full-check.log`), coverage (`111-full-test-ci.log`) and the normal Next.js 16.3.8 Turbopack production build (`111-full-build.log`). Coverage passed 142 files and 1,379 tests: 93.08% statements, 89.30% branches, 91.24% functions and 93.62% lines, with every existing stricter floor unchanged. Root and the independent latency reviewer found no scoped blocker in source/tests/README; all six recorded path hashes matched the managed tree and fixture. Only final evidence/prose recording changed after source freeze. Normal commit/push hooks and exact-head CI subsequently passed; PR37 merged exact head `0f2a22533d2c3eff792a544a5479363ebf6f2c3b` as `349bf026da12980eb62a99274d4221d8ccfe6727` at 2026-10-10T16:25:47Z after required CI 38067279606 completed successfully at 16:24:35Z and Vercel preview success. Normal hooks passed; root verified public production deployment success, not private workflow behavior. Boundary tests use synthetic inputs and inert action context/encryption/database spies; they do not prove authenticated production persistence. Valid timestamps retain existing UTC trade conversion and original-prefix distribution storage. Year-zero database compatibility, historical normalized values and broader calendar findings remain separate residuals.
 
 README and comments were reviewed: the durable calendar-boundary contract was updated, and the private reusable schema adds no redundant inline narration or commented-out code. The implementation reuses the existing101 validation pattern and installed Zod; no frontend layout work or new skill installation was needed.

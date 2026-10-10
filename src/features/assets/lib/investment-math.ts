@@ -47,12 +47,12 @@ export function sumCat(
     .reduce((s, e) => s + e.amount, 0);
 }
 
-/** Current calendar quarter bounds + days remaining. `now` injectable for tests. */
+/** Inclusive local calendar quarter bounds and elapsed days remaining. */
 export function getCurrentQuarter(now: Date = new Date()) {
   const q = Math.ceil((now.getMonth() + 1) / 3);
   const year = now.getFullYear();
   const sm = (q - 1) * 3;
-  const end = new Date(year, sm + 3, 0, 23, 59, 59);
+  const end = new Date(year, sm + 3, 0, 23, 59, 59, 999);
   const daysLeft = Math.max(
     0,
     Math.ceil((end.getTime() - now.getTime()) / 86_400_000)
