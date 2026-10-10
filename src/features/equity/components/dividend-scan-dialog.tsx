@@ -44,6 +44,8 @@ export function DividendScanDialog({
 }: DividendScanDialogProps) {
   const createMany = useCreateDividends();
   const [scanning, setScanning] = useState(false);
+  const [scanFailed, setScanFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [rows, setRows] = useState<ScanRow[]>([]);
 
   useEffect(() => {
@@ -52,6 +54,7 @@ export function DividendScanDialog({
 
     async function scan() {
       setScanning(true);
+      setScanFailed(false);
       setRows([]);
       try {
         const tickers = dividendScanTickers(trades);
@@ -86,7 +89,10 @@ export function DividendScanDialog({
           setRows(candidates.map((c) => ({ ...c, selected: true })));
         }
       } catch {
-        if (!cancelled) toast.error('Could not scan for distributions');
+        if (!cancelled) {
+          setScanFailed(true);
+          toast.error('Could not scan for distributions');
+        }
       } finally {
         if (!cancelled) setScanning(false);
       }
@@ -96,7 +102,7 @@ export function DividendScanDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, trades, existing]);
+  }, [open, trades, existing, attempt]);
 
   const selectedCount = rows.filter((r) => r.selected).length;
 
@@ -150,11 +156,28 @@ export function DividendScanDialog({
             <Loader2 className="size-4 animate-spin" />
             Scanning your trade history…
           </div>
+        ) : scanFailed ? (
+          <div
+            role="alert"
+            aria-label="Couldn’t scan distributions"
+            className="space-y-3 py-10 text-center"
+          >
+            <p className="font-medium">Couldn’t scan distributions</p>
+            <p className="text-muted-foreground text-sm">
+              Market data is unavailable. Try again before reviewing estimates.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => setAttempt((current) => current + 1)}
+            >
+              Try again
+            </Button>
+          </div>
         ) : rows.length === 0 ? (
           <EmptyState
             icon={Coins}
             title="No new distributions found"
-            description="Either there's no market data for your tickers, or everything is already recorded."
+            description="No eligible new estimates in the returned market data. Compare against your received payments; source coverage may be incomplete."
             className="border-0"
           />
         ) : (

@@ -340,11 +340,14 @@ describe('price-actions — fetchDividends', () => {
     ]);
   });
 
-  it('returns [] when the response is not ok', async () => {
+  it('rejects opaque when the response is not ok', async () => {
     fetchMock.mockResolvedValue({ ok: false } as Response);
     const { fetchDividends } =
       await import('@/features/equity/actions/price-actions');
-    expect(await fetchDividends('MLT')).toEqual([]);
+    await expect(fetchDividends('MLT')).rejects.toMatchObject({
+      code: 'EXTERNAL_API',
+      message: 'Dividend data unavailable',
+    });
   });
 
   it('returns [] when there are no dividend events', async () => {
@@ -357,10 +360,13 @@ describe('price-actions — fetchDividends', () => {
     expect(await fetchDividends('MLT')).toEqual([]);
   });
 
-  it('returns [] when the fetch throws', async () => {
+  it('rejects opaque when the fetch throws', async () => {
     fetchMock.mockRejectedValue(new Error('network'));
     const { fetchDividends } =
       await import('@/features/equity/actions/price-actions');
-    expect(await fetchDividends('MLT')).toEqual([]);
+    await expect(fetchDividends('MLT')).rejects.toMatchObject({
+      code: 'EXTERNAL_API',
+      message: 'Dividend data unavailable',
+    });
   });
 });

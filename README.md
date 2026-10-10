@@ -88,6 +88,9 @@ the existing SG/US ticker-based inference. Check amounts, currency and payment d
 against received records; provider failures and actual payment evidence require
 the separate source/reconciliation contract.
 
+Dividend scans offer retry when market feeds are unavailable. An empty scan means
+no eligible estimates were returned; it does not confirm every payment is recorded.
+
 Distribution totals, yield and scans require a successful history read; failed
 reads offer retry instead of claiming an empty history. Manual Add stays available.
 
