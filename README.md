@@ -88,6 +88,9 @@ the existing SG/US ticker-based inference. Check amounts, currency and payment d
 against received records; provider failures and actual payment evidence require
 the separate source/reconciliation contract.
 
+Distribution totals, yield and scans require a successful history read; failed
+reads offer retry instead of claiming an empty history. Manual Add stays available.
+
 Shared expense saves reject allocations exceeding the bill at cent precision.
 Equal splits distribute remainder cents in person order, with your share last
 when included. The dialog shows your actual remainder even in “Paid for” mode;
