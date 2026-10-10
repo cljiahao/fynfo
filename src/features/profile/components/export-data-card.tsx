@@ -25,7 +25,11 @@ export function ExportDataCard() {
           file contains plaintext. Household data is not included.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        <p className="text-muted-foreground text-sm">
+          This export cannot be restored in Fynfo. Edits made during export may
+          appear inconsistently; avoid changing records until it finishes.
+        </p>
         <Button onClick={exportData} disabled={isExporting} variant="outline">
           {isExporting ? (
             <Loader2 className="mr-2 size-4 animate-spin" />
