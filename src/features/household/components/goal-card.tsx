@@ -14,11 +14,6 @@ interface GoalCardProps {
   onDelete: (goal: HouseholdGoal) => void;
 }
 
-/**
- * Signature element: a two-tone progress bar splitting each goal into *your*
- * share and *your partner's* share of the target — the visual that makes the
- * saving feel joint. The remainder reads as the track.
- */
 export function GoalCard({ goal, onContribute, onDelete }: GoalCardProps) {
   const self = goal.contributions
     .filter((c) => c.isSelf)
@@ -31,7 +26,11 @@ export function GoalCard({ goal, onContribute, onDelete }: GoalCardProps) {
       : 0;
   const selfPct = pctOf(self);
   const partnerPct = Math.min(100 - selfPct, pctOf(partner));
-  const funded = goal.pct >= 100;
+  const funded =
+    Number.isFinite(goal.targetAmount) &&
+    goal.targetAmount > 0 &&
+    Number.isFinite(goal.contributed) &&
+    goal.contributed >= goal.targetAmount;
 
   return (
     <Card className={cn(funded && 'border-gain/50')}>
