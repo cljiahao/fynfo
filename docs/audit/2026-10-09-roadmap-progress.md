@@ -330,3 +330,48 @@ PR33 merged exact reviewed head `d0761f22746a94b7642018c8241e0ceaa02fde04` at07:
 After the earlier pause, the owner left and explicitly requested continuation. The continuation schedule was re-enabled hourly on2026-10-10; the previous pause entry remains historical. The roadmap is still incomplete. Remaining tasks and separately scoped provider/dependency/production decisions retain their own approval requirements; no credential or private-record discovery is authorized.
 
 The owner additionally requires a final project-wide integrated confirmation sweep after all roadmap tasks are completed and merged: synthetic page flows, saves and redirects, calculations, security, performance, documentation and coverage, with explicit remaining blockers. Current103 delivery and its isolated proof do not substitute for that later sweep. Continue remaining roadmap work and evidence-backed blockers rather than marking the roadmap complete.
+
+## 108 delivery closeout scope — 2026-10-10
+
+Root delegated an ordinary documentation-only closeout under Constitution §7.4
+on `impl/081-108-closeout`, based on merged main
+`c8714072d1ccd2b5630646439cf7a200bd511fbd`. Exactly three files are in scope:
+this progress record, `specs/feature/081-sequential-delivery-roadmap.md` and
+`specs/fix/108-overview-read-cohorts.md`. Record merged PR35 and verified local
+metrics; preserve blank separate approval metadata, prior history and remaining
+SSR/workflow work. Acceptance is scoped formatting/diff review and an independent
+factual pass, with no executable edits or heavy runtime gates. Rollback is a
+scoped documentation revert. The retained original 087 path-scoped stash
+`83e4a9a74d018dfdcacff4f017796c32028a552e` remains untouched.
+
+## 2026-10-10: verified overview read cohorts shipped
+
+PR35 merged at 14:59:52 UTC as
+`c8714072d1ccd2b5630646439cf7a200bd511fbd`, after exact published head
+`154c07fb80f927e0691ea44b5333e9ae8efae657` passed required CI run
+`38044385694` and Vercel checks. Root verified the merged commit's public Vercel
+production deployment status is successful; private production behavior was not
+tested. Spec108 is now
+shipped under the recorded ordinary §7.4 audit authorization; its separate
+approval field stays blank. All five local gates and unchanged normal hooks
+passed: 141 files/1,278 tests, coverage 93.01% statements, 89.02% branches,
+91.22% functions and 93.58% lines, with stricter security floors unchanged.
+Independent source/tests/documentation review passed.
+
+Five existing overview histories coalesce into one guarded streamed action while
+retaining independent query keys, readiness/errors/retries, cancellation and
+optimistic expense rollback. The rejected four-source prototype remains recorded
+as counterexample evidence. Thirty alternating public synthetic component samples
+showed inferred outer Server Function calls of seven versus three, one completed
+read per source and earlier core-card disclosure in the slow-trades control.
+That control's salary median increased by 17 ms; this is not a universal speed
+gain. The fixture's emitted initial JavaScript union increased by 559 gzip bytes.
+Generated-data guards, fixed delays and diagnostic polling do not establish
+production latency, whole-dashboard readiness, private-account workflows or a
+coherent database snapshot.
+
+Roadmap E's bounded108 client fetching remediation is verified and shipped.
+Initial SSR await-all behavior remains unchanged; broader actual Next workflows
+and the owner's final integrated project-wide sweep remain open. Other roadmap
+features and their scoped approvals are still outstanding. This closeout does
+not mark the whole roadmap complete or delete retained 087 work.

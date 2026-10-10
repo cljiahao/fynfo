@@ -2,12 +2,12 @@
 id: 108
 slug: overview-read-cohorts
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-10
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/35
 constitution_satisfies:
   - '§2.1'
   - '§2.2'
@@ -94,7 +94,7 @@ Risk is stale financial cache being accepted after cancellation, overly broad su
 
 ## Review status and final verification
 
-The implemented five-source cohort covers snapshots, salary, planner settings, expenses and trades. Root reviewed the ordinary §7.4 scope before edits, and the independent final source review matched all 18 application paths. All 28 scoped files match between the managed worktree and isolated synthetic fixture. No dependency, migration, crypto, shared Query default or protected-file change is included. The approved frontmatter remains blank; this is owner-authorized remediation, not an agent-approved feature. Application source is frozen. PR delivery and exact-head CI remain pending; no shipped status is claimed.
+The implemented five-source cohort covers snapshots, salary, planner settings, expenses and trades. Root reviewed the ordinary §7.4 scope before edits, and the independent final source review matched all 18 application paths. At verification freeze, all 28 scoped files matched between the managed worktree and isolated synthetic fixture. No dependency, migration, crypto, shared Query default or protected-file change is included. The approved frontmatter remains blank; this is owner-authorized remediation, not an agent-approved feature. [PR35](https://github.com/cljiahao/fynfo/pull/35) subsequently merged on 2026-10-10 at 14:59:52 UTC as `c8714072d1ccd2b5630646439cf7a200bd511fbd`, after exact head `154c07fb80f927e0691ea44b5333e9ae8efae657` passed [CI run38044385694](https://github.com/cljiahao/fynfo/actions/runs/38044385694) and Vercel checks. Root verified the merged commit's public Vercel production deployment status is successful; private production behavior was not tested.
 
 Final product gates passed: `pnpm check`, `pnpm test:ci` and `pnpm build` in the isolated fixture. There were 141 passing test files and 1,278 passing tests; aggregate coverage was 93.01% statements, 89.02% branches, 91.22% functions and 93.58% lines. The new action measured 100% coverage; the cohort helper measured 98.03% statements, 95% branches and 100% functions/lines. All existing and additive strict floors remain enforced. The product build used Next.js 16.3.8 Turbopack. Evidence: `108-five-source-check.log`, `108-five-source-test-ci.log`, `108-five-source-build.log`.
 

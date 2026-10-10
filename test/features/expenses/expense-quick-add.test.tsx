@@ -108,3 +108,23 @@ describe('ExpenseQuickAdd reset-on-submit', () => {
     expect(screen.getByPlaceholderText('0.00')).toHaveValue(null);
   });
 });
+
+it('keeps rapid independent manual entries usable while previous saves remain pending', async () => {
+  render(<ExpenseQuickAdd />);
+  const amount = screen.getByPlaceholderText('0.00');
+  fireEvent.change(amount, { target: { value: '12' } });
+  fireEvent.keyDown(amount, { key: 'Enter' });
+  await userEvent.keyboard('{Enter}');
+  fireEvent.change(amount, { target: { value: '13' } });
+  fireEvent.keyDown(amount, { key: 'Enter' });
+  expect(mutate).toHaveBeenCalledTimes(2);
+  expect(mutate).toHaveBeenNthCalledWith(
+    1,
+    expect.objectContaining({ amount: 12 })
+  );
+  expect(mutate).toHaveBeenNthCalledWith(
+    2,
+    expect.objectContaining({ amount: 13 })
+  );
+  expect(amount).toHaveValue(null);
+});
