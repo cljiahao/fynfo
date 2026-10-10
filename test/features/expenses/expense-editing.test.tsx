@@ -47,6 +47,51 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+it('names inline expense amount without changing the saved payload', async () => {
+  const save = vi.fn();
+  render(
+    <table>
+      <tbody>
+        <EditableRow
+          row={row}
+          isNew={false}
+          peopleSuggestions={[]}
+          onSave={save}
+          onDelete={vi.fn()}
+        />
+      </tbody>
+    </table>
+  );
+  const amount = screen.getByRole('spinbutton', { name: 'Amount (SGD)' });
+  fireEvent.change(amount, { target: { value: '91.25' } });
+  fireEvent.keyDown(amount, { key: 'Enter' });
+  expect(save).toHaveBeenCalledWith({ ...row, amount: 91.25 });
+});
+
+it('forwards only an optional category input ID while preserving its input ref and default', () => {
+  const ref = { current: null as HTMLInputElement | null };
+  const change = vi.fn();
+  const view = render(
+    <ExpenseTypeSelect
+      value="food_drink"
+      onChange={change}
+      inputRef={ref}
+      inputId="synthetic-category"
+    />
+  );
+  expect(screen.getByPlaceholderText('Category')).toHaveAttribute(
+    'id',
+    'synthetic-category'
+  );
+  expect(ref.current).toBe(screen.getByPlaceholderText('Category'));
+  view.rerender(
+    <ExpenseTypeSelect value="food_drink" onChange={change} inputRef={ref} />
+  );
+  expect(screen.getByPlaceholderText('Category')).not.toHaveAttribute('id');
+  expect(ref.current).toBeEnabled();
+  expect(change).not.toHaveBeenCalled();
+});
+
 it('calculates shared versus fully fronted amounts, manual edits, settlement, removal and confirmation', async () => {
   const confirm = vi.fn();
   const close = vi.fn();

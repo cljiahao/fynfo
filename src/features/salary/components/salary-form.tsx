@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useSalaryRecord, useUpsertSalary } from '../hooks/use-salary';
@@ -34,6 +34,7 @@ export function SalaryFormDialog({
   onOpenChange,
   editId,
 }: SalaryFormDialogProps) {
+  const fieldId = useId();
   const {
     data: existing,
     isLoading: loadingExisting,
@@ -114,9 +115,9 @@ export function SalaryFormDialog({
         ) : (
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="salary-month">Month</Label>
+              <Label htmlFor={fieldId + '-month'}>Month</Label>
               <Input
-                id="salary-month"
+                id={fieldId + '-month'}
                 type="month"
                 className="relative cursor-pointer pr-4 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
                 {...form.register('id')}
@@ -127,8 +128,9 @@ export function SalaryFormDialog({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Gross Salary</Label>
+                <Label htmlFor={fieldId + '-salary'}>Gross Salary</Label>
                 <Input
+                  id={fieldId + '-salary'}
                   type="number"
                   step="0.01"
                   min="0"
@@ -139,8 +141,9 @@ export function SalaryFormDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Bonus</Label>
+                <Label htmlFor={fieldId + '-bonus'}>Bonus</Label>
                 <Input
+                  id={fieldId + '-bonus'}
                   type="number"
                   step="0.01"
                   min="0"

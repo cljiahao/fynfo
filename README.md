@@ -140,6 +140,8 @@ Omitted fields retain the existing Quick Add fallback. Credits are unsupported;
 this paste convenience is not a bank statement adapter or duplicate detector.
 
 Quick Add clears accepted entries immediately and keeps rapid keyboard entry.
+Expense, salary and planner fields have accessible labels for keyboard and
+screen-reader use.
 Each multi-row paste reports its own confirmed, unconfirmed and skipped counts
 after its writes settle. An unconfirmed result requires checking the list before
 retrying; optimistic rollback does not prove database absence. Late notifications

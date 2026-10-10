@@ -4,6 +4,7 @@ import { MarketAllocationTable } from '@/features/assets/components/market-alloc
 import { SalaryPlanner } from '@/features/assets/components/salary-planner';
 import type { Holding } from '@/features/equity/lib/holdings';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import '@testing-library/jest-dom/vitest';
 import {
   cleanup,
   fireEvent,
@@ -209,6 +210,18 @@ it('uses salary and expenses to calculate goals and saves changed optional deduc
     />
   );
   await screen.findByText('Net (after CPF)');
+  expect(
+    screen.getByRole('spinbutton', { name: 'Tithe percentage' })
+  ).toHaveValue(10);
+  expect(
+    screen.getByRole('spinbutton', { name: 'Tithe percentage' })
+  ).toBeEnabled();
+  expect(
+    screen.getByRole('spinbutton', { name: 'Allowance percentage' })
+  ).toHaveValue(5);
+  expect(
+    screen.getByRole('spinbutton', { name: 'Allowance percentage' })
+  ).toBeDisabled();
   fireEvent.change(screen.getAllByRole('spinbutton')[1], {
     target: { value: '1000' },
   });
@@ -219,9 +232,18 @@ it('uses salary and expenses to calculate goals and saves changed optional deduc
   fireEvent.click(screen.getByRole('checkbox', { name: 'Tithe' }));
   fireEvent.click(screen.getByRole('checkbox', { name: 'Allowance' }));
   fireEvent.click(screen.getByRole('button', { name: 'Adjust reserves' }));
-  fireEvent.change(screen.getAllByRole('spinbutton')[5], {
-    target: { value: '7' },
-  });
+  expect(
+    screen.getByRole('spinbutton', { name: 'Tithe percentage' })
+  ).toBeDisabled();
+  expect(
+    screen.getByRole('spinbutton', { name: 'Allowance percentage' })
+  ).toBeEnabled();
+  fireEvent.change(
+    screen.getByRole('spinbutton', { name: 'Allowance percentage' }),
+    {
+      target: { value: '7' },
+    }
+  );
   fireEvent.change(screen.getAllByRole('spinbutton')[2], {
     target: { value: '4' },
   });

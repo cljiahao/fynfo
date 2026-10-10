@@ -7,6 +7,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -127,4 +128,43 @@ it('keeps rapid independent manual entries usable while previous saves remain pe
     expect.objectContaining({ amount: 13 })
   );
   expect(amount).toHaveValue(null);
+});
+
+it.each(['Category', 'Item / Brand', 'Notes'])(
+  'associates Quick Add %s with its native input and label focus',
+  async (name) => {
+    render(<ExpenseQuickAdd />);
+    const input = screen.getByRole('textbox', { name });
+    await userEvent.click(screen.getByText(name, { selector: 'label' }));
+    expect(input).toHaveFocus();
+    expect(
+      screen.getByRole('spinbutton', { name: 'Amount (SGD)' })
+    ).toBeEnabled();
+  }
+);
+
+it('keeps native Quick Add label targets unique across two instances', () => {
+  render(
+    <>
+      <section data-testid="first">
+        <ExpenseQuickAdd />
+      </section>
+      <section data-testid="second">
+        <ExpenseQuickAdd />
+      </section>
+    </>
+  );
+  const ids: string[] = [];
+  for (const instance of ['first', 'second']) {
+    const region = screen.getByTestId(instance);
+    for (const name of ['Category', 'Item / Brand', 'Notes']) {
+      const input = within(region).getByRole('textbox', { name });
+      const label = within(region).getByText(name, { selector: 'label' });
+      expect(label).toHaveAttribute('for', input.id);
+      expect(region.querySelector(`[id="${input.id}"]`)).toBe(input);
+      expect(input.id).not.toBe('');
+      ids.push(input.id);
+    }
+  }
+  expect(new Set(ids).size).toBe(ids.length);
 });

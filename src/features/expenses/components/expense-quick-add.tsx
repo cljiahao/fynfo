@@ -301,10 +301,14 @@ export function ExpenseQuickAdd() {
           </Popover>
         </div>
         <div className="space-y-1">
-          <label className="text-muted-foreground text-xs font-medium">
+          <label
+            htmlFor={feedbackId + '-category'}
+            className="text-muted-foreground text-xs font-medium"
+          >
             Category
           </label>
           <ExpenseTypeSelect
+            inputId={feedbackId + '-category'}
             value={type}
             onChange={setType}
             onSubmit={handleSubmit}
@@ -318,11 +322,15 @@ export function ExpenseQuickAdd() {
           />
         </div>
         <div className="space-y-1">
-          <label className="text-muted-foreground text-xs font-medium">
+          <label
+            htmlFor={feedbackId + '-item'}
+            className="text-muted-foreground text-xs font-medium"
+          >
             Item / Brand
           </label>
           <Input
             ref={itemRef}
+            id={feedbackId + '-item'}
             value={item}
             onChange={(e) => setItem(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -331,11 +339,15 @@ export function ExpenseQuickAdd() {
           />
         </div>
         <div className="min-w-[120px] flex-1 space-y-1">
-          <label className="text-muted-foreground text-xs font-medium">
+          <label
+            htmlFor={feedbackId + '-notes'}
+            className="text-muted-foreground text-xs font-medium"
+          >
             Notes
           </label>
           <Input
             value={info}
+            id={feedbackId + '-notes'}
             onChange={(e) => setInfo(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Optional description"
