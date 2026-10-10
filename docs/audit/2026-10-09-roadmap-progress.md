@@ -375,3 +375,35 @@ Initial SSR await-all behavior remains unchanged; broader actual Next workflows
 and the owner's final integrated project-wide sweep remain open. Other roadmap
 features and their scoped approvals are still outstanding. This closeout does
 not mark the whole roadmap complete or delete retained 087 work.
+
+## 111 remediation and linked 110 closeout scope — 2026-10-10
+
+Root accepted the scoped equity calendar-day correction after PR36 merged.
+Branch `impl/111-equity-calendar-dates` starts from
+`5c19555ddbcf448dfc41cd5f70d3c6a1da4ddb2c`; recorded scope is exactly
+`specs/fix/111-equity-calendar-dates.md`, `src/features/equity/schemas.ts`,
+`test/features/equity/equity-calendar-dates.test.ts`, `README.md`,
+`specs/audit/110-expense-paste-accuracy.md` and this progress record. Ordinary
+Constitution §7.4 remediation retains blank separate approval and existing valid
+timestamp/storage contracts. The last two files close out already merged 110;
+no protected/governance or other metadata edit. Existing 108 donor and original 087
+path-scoped stashes remain retained. 111 delivery is not claimed yet.
+
+## 2026-10-10: expense paste accuracy and save outcomes shipped
+
+PR36 merged at 15:45:25 UTC as `5c19555ddbcf448dfc41cd5f70d3c6a1da4ddb2c`,
+after exact head `81696acfd6b16b163e08d5f683f6173e7e38a940` passed required
+CI run 38064677924 (completed 15:44:47 UTC) and Vercel preview checks. Root verified
+public merged-commit Vercel production status is successful; private production
+workflows were not accessed. All five local gates and unchanged normal hooks
+passed: 141 files/1,342 tests, coverage 93.08% statements, 89.29% branches,
+91.24% functions and 93.62% lines, with strict security floors unchanged.
+
+Actual parser/form regressions and independent review qualify impossible dates,
+malformed money and credit markers without normalizing them into a different
+positive expense. Invalid fields remain visible despite prefilled values; mixed
+paste batches report confirmed/unconfirmed/skipped outcomes after settlement.
+Synthetic actual-form clipboard/rapid-entry/lifetime proof used fixed generated
+values and memory-only boundaries, not private provider/database/account access.
+PDF bank extraction, durable duplicate prevention and the final integrated whole
+project sweep remain separate. The whole roadmap is not complete.

@@ -2,12 +2,12 @@
 id: '110'
 slug: expense-paste-accuracy
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-10
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/36
 supersedes:
 constitution_satisfies:
   - '§2.1'
@@ -168,4 +168,4 @@ The owned preview server was stopped, browser tab closed and viewport reset. No 
 
 All five required gates passed serially with synthetic configuration and unchanged floors: route checks, Prettier, zero-warning ESLint and TypeScript (`110-check.log`), full coverage (`110-test-ci.log`) and the production Next.js 16.3.8 Turbopack build (`110-build.log`). Coverage ran 141 test files and 1,342 tests: 93.08% statements, 89.29% branches, 91.24% functions and 93.62% lines. Existing stricter security thresholds passed. Each gate exit code was checked before the next command; the overall sequence exited 0.
 
-The final browser, independent review and full gates accepted the same frozen six implementation/test hashes. Only evidence/documentation recording changed afterward; normal scoped formatting/diff checks and unchanged commit/push hooks follow. CI and deployment must pass on the exact PR head before root coordinates merge. Status remains draft until actual merge; no roadmap completion or private-account verification is claimed.
+The final browser, independent review and full gates accepted the same frozen six implementation/test hashes. Only evidence/documentation recording changed afterward; normal scoped formatting/diff checks and unchanged commit/push hooks follow. PR36 merged exact head `81696acfd6b16b163e08d5f683f6173e7e38a940` on 2026-10-10 at 15:45:25 UTC as `5c19555ddbcf448dfc41cd5f70d3c6a1da4ddb2c`, after required CI run 38064677924 and Vercel preview success. Root also verified the merged commit public Vercel production deployment status is successful. No roadmap completion or private-account verification is claimed.
