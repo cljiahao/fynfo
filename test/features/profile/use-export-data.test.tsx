@@ -22,9 +22,11 @@ const state = vi.hoisted(() => ({
   trades: vi.fn(),
   dividends: vi.fn(),
   plannerSettings: vi.fn(),
+  scenarios: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
 }));
+vi.mock('@/features/assets', () => ({ getScenarios: state.scenarios }));
 vi.mock('@/features/assets/actions/planner-actions', () => ({
   getPlannerSettings: state.plannerSettings,
 }));
@@ -62,8 +64,37 @@ const EMPTY: ExportData = {
   trades: [],
   dividends: [],
   plannerSettings: null,
+  scenarios: [],
 };
 const NONEMPTY: ExportData = {
+  scenarios: [
+    {
+      id: '11111111-1111-4111-8111-111111111111',
+      creationRequestId: '22222222-2222-4222-8222-222222222222',
+      revision: '9007199254740993',
+      createdAt: '2026-10-10T00:00:00.000Z',
+      updatedAt: '2026-10-10T00:00:00.000Z',
+      payload: {
+        schemaVersion: 1,
+        name: 'Synthetic scenario',
+        model: 'allocation-flat-cpf-v1',
+        currency: 'SGD',
+        capturedAt: '2026-10-10T00:00:00.000Z',
+        inputs: {
+          salary: 5000,
+          expenses: 1000,
+          emergencyMonths: 3.5,
+          warChestMonths: 9,
+          titheEnabled: false,
+          tithePctInput: 10,
+          allowanceEnabled: true,
+          allowancePctInput: 5,
+          currentSavings: -100,
+          currentBonds: 200,
+        },
+      },
+    },
+  ],
   profile: { birthYear: 1990, isNsman: false, residencyStatus: 'resident' },
   snapshots: [
     {
@@ -154,7 +185,7 @@ afterEach(() => {
 
 it.each([
   ['empty', EMPTY],
-  ['all eight nonempty domains', NONEMPTY],
+  ['all nine nonempty domains', NONEMPTY],
 ])(
   'downloads versioned %s export without changing values',
   async (_label, data) => {
@@ -167,7 +198,7 @@ it.each([
       await readBlob(download.mock.calls[0][0])
     );
     expect(parsed).toEqual({
-      version: 2,
+      version: 3,
       app: 'fynfo',
       exportedAt: expect.any(String),
       data,
@@ -196,7 +227,7 @@ it('omits internal snapshot identity and lossless revision from the export', asy
   });
   const parsed: unknown = JSON.parse(await readBlob(download.mock.calls[0][0]));
   expect(parsed).toEqual({
-    version: 2,
+    version: 3,
     app: 'fynfo',
     exportedAt: expect.any(String),
     data: NONEMPTY,

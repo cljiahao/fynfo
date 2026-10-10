@@ -25,6 +25,7 @@ import {
 import type { PlannerSettingsData, SnapshotData } from '../types';
 import { PlannerInputs } from './planner-inputs';
 import { PlannerResults } from './planner-results';
+import { PlanningScenarios } from './planning-scenarios';
 
 export interface PlannerValues {
   investmentAmount: number;
@@ -345,6 +346,22 @@ function SalaryPlannerInner({
             goalsFulfilled={goalsFulfilled}
           />
         )}
+
+        <PlanningScenarios
+          sourceSnapshotMonth={snapshot?.id}
+          inputs={{
+            salary,
+            expenses,
+            emergencyMonths,
+            warChestMonths,
+            titheEnabled,
+            tithePctInput,
+            allowanceEnabled,
+            allowancePctInput,
+            currentSavings,
+            currentBonds,
+          }}
+        />
 
         {salary === 0 && (
           <div className="flex-center text-muted-foreground py-8 text-sm">

@@ -1,5 +1,6 @@
 'use client';
 
+import { getScenarios } from '@/features/assets';
 import { getPlannerSettings } from '@/features/assets/actions/planner-actions';
 import { getSnapshots } from '@/features/assets/actions/snapshot-actions';
 import { getDividends } from '@/features/equity/actions/dividend-actions';
@@ -61,6 +62,7 @@ export function useExportData() {
         trades,
         dividends,
         plannerSettings,
+        scenarios,
       ] = await Promise.all([
         getProfile(),
         getSnapshots(),
@@ -70,6 +72,7 @@ export function useExportData() {
         getTrades(),
         getDividends(),
         getPlannerSettings(),
+        getScenarios(),
       ]);
 
       if (!mounted.current) return;
@@ -83,6 +86,7 @@ export function useExportData() {
           trades,
           dividends,
           plannerSettings,
+          scenarios,
         },
         new Date().toISOString()
       );

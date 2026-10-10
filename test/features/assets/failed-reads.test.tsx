@@ -105,7 +105,11 @@ it.each(['salaryError', 'settingsError', 'expensesError'] as const)(
 );
 it('cancels autosave when planner unmounts', () => {
   vi.useFakeTimers();
-  const view = render(<SalaryPlanner />);
+  const view = render(
+    <QueryClientProvider client={new QueryClient()}>
+      <SalaryPlanner />
+    </QueryClientProvider>
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Adjust reserves' }));
   fireEvent.change(screen.getAllByRole('spinbutton')[2], {
     target: { value: '6' },

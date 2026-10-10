@@ -2,10 +2,11 @@
 id: '103'
 slug: named-planning-scenarios
 area: feature
-status: draft
+status: approved
 author: Codex
 created: 2026-10-10
-approved:
+approved: 2026-10-10
+approved_hash: 2498ba2643b102354f0c1b7e33dd749c6c2800226c5c4567fcb9698e20d8aadc
 shipped:
 impl_pr:
 supersedes:
@@ -119,3 +120,31 @@ Blast radius is only private saved scenario storage/viewing and export. Primary 
 ## Primary references / guidance
 
 [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security) requires grants plus per-operation row policies and actual role tests. [PostgreSQL constraints](https://www.postgresql.org/docs/current/ddl-constraints.html) supplies scoped slot uniqueness and FK contracts. [INSERT](https://www.postgresql.org/docs/current/sql-insert.html) documents ON CONFLICT/RETURNING; slot conflicts must be retried rather than treating a skipped insert as success. Reuse previously reviewed project next-verify and Impeccable hardening guidance. TemplateCentral/frontend-design unavailable; no install/use claimed. No live providers/accounts/database or secret files inspected.
+
+## Recorded owner approval
+
+On 2026-10-10 Clarence answered **“Approve this scoped implementation”** to the exact spec103 proposal: one encrypted owner-only table capped at ten scenarios, revision-checked functions, isolated planner dialog and export version 3. The reviewed draft's raw SHA-256 is `2498ba2643b102354f0c1b7e33dd749c6c2800226c5c4567fcb9698e20d8aadc` at main `e635a336ad62d3bd9c26a5ce83f1602da6a0fd22`. This approval covers the proposed migration, payload bounds and concurrency/data-shape contract; it introduces no dependency, crypto or protected-file permission. Earlier draft-only statements describe the pre-approval proposal. Production SQL remains owner-executed; application merge requires exact migration confirmation after isolated SQL proof.
+
+Implementation started in the isolated spec103 worktree after approval. On 2026-10-10 the owner started Docker Desktop and the local Linux engine was verified; existing PostgreSQL and PostgREST images allow a fresh synthetic database test without installing a project dependency. No production database or credential was accessed. Real RLS/concurrency proof remains required; mocked action tests do not substitute for it.
+
+## Implementation record (2026-10-10)
+
+Approved source preparation started on `impl/103-named-planning-scenarios` from main. Exact test paths: `src/features/assets/__tests__/scenario-schemas.test.ts`, `src/features/assets/__tests__/scenario-actions.test.ts`, `src/features/assets/__tests__/planning-scenarios.test.tsx`, `supabase/tests/103_personal_planning_scenarios.sql`; existing profile export tests extended in place. SQL/schema/actions are the first review batch. Real isolated PostgreSQL execution remains required before any SQL proof claim. No live credentials or production database access.
+
+Necessary UI integration path clarification (root-reviewed 2026-10-10): `src/features/assets/components/planner-inputs.tsx`, `planner-results.tsx`, `constants.ts`, and `index.ts`. Both presentational planner components hardcoded IDs; mounting the saved dialog alongside the live planner would duplicate IDs and misdirect labels. Optional per-dialog ID prefixes preserve default live IDs. Shared chart definitions belong in constants; public scenario action/type exports let the profile consumer use the required feature barrel. Mounted integration tests cover label/ID and live/settings isolation. This records necessary implementation wiring; approved payload/SQL/crypto/hash are unchanged.
+
+Actual isolated SQL verification completed with PostgreSQL17-alpine and PostgRESTv14.14, using new synthetic users/roles and no production connection. The reusable runner `supabase/tests/103-personal-planning-scenarios.mjs` provisions fresh resources, enforces no image downloads/existing-DB fallback and cleans its owned resources in finally. It includes the sequential SQL fixture, eight simultaneous same-request creates/CAS saves/deletes, twelve simultaneous creates against the ten-slot limit, cross-owner request isolation, delete/replay fresh incarnation and PostgREST decimal-text bigint/anon/cross-owner/overflow/length boundary checks. First external runner's manually prepared resources are `fynfo103-synthetic-pg-20261010`, `fynfo103-synthetic-rest-20261010`, `fynfo103-synthetic-net`; they were stopped and removed by recorded resource IDs after root review; no original inspection resources remain. Reusable-runner resources are freshly generated and cleaned automatically. Proof log: synthetic artifacts `fynfo-103-sql-proof.log`. This SQL proof is distinct from mocked application tests; full application gates remain coordinated with the root gate slot.
+
+Impeccable new-work/operate/craft-floor guidance used to extend existing semantic tokens/primitives without changing the visual system. Vetted context loader was not executed because its credential-capability discovery and unrelated side effects conflict with this task's explicit no-private-discovery constraint; source inspection supplied the established Operate context. No skill/config or private account state changed.
+
+Browser review found controlled dialogs have no primitive DialogTrigger ref, so Escape initially returned focus to the page. Root approved capturing each actual initiating button and returning focus after close (connected visible source or stable disclosure fallback), with editor-generation and unmount guards. Wiring remains in the two scenario components; no shared primitive or protected edit. Mounted tests cover Escape and confirmed-save focus return. Mobile390px DOM width390/dialog358 showed no horizontal overflow; screenshot/keyboard proof uses generated-only fixtures with actual components and temporary in-memory hook responses, kept separate from actual SQL proof.
+
+Final targeted validation:83 tests passed across the three scenario suites and two existing export suites; lightweight typecheck and scoped ESLint passed. Browser proof confirmed both Escape and authoritative SAVED close return focus to the connected initiating row, visible save feedback, unchanged live inputs, isolated labels, fractional/zero reserves and keyboard-reachable mobile footer. Preview-only overrides were restored, server stopped, browser tab closed and viewport reset. Full five gates and owner confirmation of the exact production migration remain required before delivery/merge.
+
+Independent final review found finite raw ratios can overflow when multiplied by100 for displayed percentages. Scenario-only qualification now shares `src/features/assets/lib/scenario-plan.ts` across actions and dialog, checking actual breakdown and tooltip percentage expressions as well as all numeric model results. Meaningful regressions use salary1e-300/expenses1e8 (all raw fields finite) and verify create/save/read rejection and unavailable UI without Infinity. Live planner calculation/presentation contracts and SQL bytes remain unchanged.
+
+Integrated-main gate repair (root-approved): `test/features/assets/failed-reads.test.tsx` successful SalaryPlanner autosave/unmount fixture previously had no actual QueryClientProvider because all prior hooks were mocked. The new lazy scenario disclosure uses the existing application query provider, so wrap only that successful fixture in the real provider; retain the existing edit/unmount/timer/no-autosave assertion. No runtime behavior or live planner contract change.
+
+Integrated verification on main `52edfff730d4dbd33a2d6d00d8c5cafc6e72f1d2`: route check and all five gates passed;138 test files/1,227 tests. Coverage statements92.85%, branches88.9%, functions90.91%, lines93.41%; unchanged thresholds/security floors. Next production build used inline synthetic placeholders. Root opened the exact migration and requested owner execution/confirmation on2026-10-10; application merge remains blocked on that owner-only confirmation. The original scoped integration stash is retained for proof/rollback; no reset/force push or hook bypass occurred.
+
+Owner production migration confirmation (2026-10-10): Clarence replied "migration done" directly to the exact103 migration handoff. This confirms owner execution of `supabase/migrations/20261010000103_personal_planning_scenarios.sql`, reviewed SHA256 `65ed0d8fe3ff2e34486cc94d70f0e223456ccb3c7c8ca80e526a7727e7e1c9a6`; it does not authorize secret access or a different migration. The production prerequisite is satisfied; normal commit/push hooks and exact-head CI remain delivery gates. Approved hash remains unchanged.

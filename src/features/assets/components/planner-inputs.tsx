@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 interface PlannerInputsProps {
+  idPrefix?: string;
+  allowZeroFractionalReserves?: boolean;
   salary: number;
   expenses: number;
   emergencyMonths: number;
@@ -21,9 +23,10 @@ interface PlannerInputsProps {
   setWarChestMonths: (v: number) => void;
 }
 
-// The four planner number inputs. Presentational; state lives in the
-// SalaryPlanner container.
+// Presentational inputs; the caller owns hypothetical state.
 export function PlannerInputs({
+  idPrefix = 'planner',
+  allowZeroFractionalReserves = false,
   salary,
   expenses,
   emergencyMonths,
@@ -38,11 +41,11 @@ export function PlannerInputs({
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label htmlFor="planner-salary" className="text-xs">
+          <Label htmlFor={`${idPrefix}-salary`} className="text-xs">
             Gross Salary
           </Label>
           <Input
-            id="planner-salary"
+            id={`${idPrefix}-salary`}
             type="number"
             min="0"
             placeholder="0"
@@ -52,11 +55,11 @@ export function PlannerInputs({
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="planner-expenses" className="text-xs">
+          <Label htmlFor={`${idPrefix}-expenses`} className="text-xs">
             {avgExpenses > 0 ? 'Avg. Expenses' : 'Est. Expenses'}
           </Label>
           <Input
-            id="planner-expenses"
+            id={`${idPrefix}-expenses`}
             type="number"
             min="0"
             placeholder="0"
@@ -80,32 +83,42 @@ export function PlannerInputs({
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="planner-emergency" className="text-xs">
+                <Label htmlFor={`${idPrefix}-emergency`} className="text-xs">
                   Emergency Fund (months)
                 </Label>
                 <Input
-                  id="planner-emergency"
+                  id={`${idPrefix}-emergency`}
                   type="number"
-                  min="1"
+                  min={allowZeroFractionalReserves ? 0 : 1}
+                  step={allowZeroFractionalReserves ? 'any' : 1}
                   placeholder="3"
                   className="h-8 text-sm"
-                  value={emergencyMonths || ''}
+                  value={
+                    allowZeroFractionalReserves
+                      ? emergencyMonths
+                      : emergencyMonths || ''
+                  }
                   onChange={(e) =>
                     setEmergencyMonths(Number(e.target.value) || 0)
                   }
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="planner-war-chest" className="text-xs">
+                <Label htmlFor={`${idPrefix}-war-chest`} className="text-xs">
                   War Chest (months)
                 </Label>
                 <Input
-                  id="planner-war-chest"
+                  id={`${idPrefix}-war-chest`}
                   type="number"
-                  min="1"
+                  min={allowZeroFractionalReserves ? 0 : 1}
+                  step={allowZeroFractionalReserves ? 'any' : 1}
                   placeholder="9"
                   className="h-8 text-sm"
-                  value={warChestMonths || ''}
+                  value={
+                    allowZeroFractionalReserves
+                      ? warChestMonths
+                      : warChestMonths || ''
+                  }
                   onChange={(e) =>
                     setWarChestMonths(Number(e.target.value) || 0)
                   }
