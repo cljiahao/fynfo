@@ -6,6 +6,7 @@ import type { SalaryData } from '@/features/salary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -236,4 +237,128 @@ it('opens the named disclosure with keyboard and tabs through the existing revie
     await user.tab();
     expect(screen.getByRole('link', { name })).toHaveFocus();
   }
+});
+
+it('explains exact contributing values without exposing split names', async () => {
+  api.getSalaryRecords.mockResolvedValue([
+    { ...income, salary: 100.1, bonus: 0.2 },
+  ]);
+  api.getSnapshots.mockResolvedValue([
+    {
+      ...snapshot,
+      id: '2025-12',
+      entries: [
+        { category: 'savings', account: 'Synthetic account', amount: 80 },
+      ],
+    },
+    {
+      ...snapshot,
+      entries: [
+        { category: 'savings', account: 'Synthetic account', amount: 100 },
+      ],
+    },
+  ]);
+  api.getExpenses.mockResolvedValue([
+    {
+      ...expense,
+      amount: 100.1,
+      splitType: 'shared',
+      splits: [
+        { person: 'Never display this person', amount: 25.05, settled: true },
+      ],
+    },
+  ]);
+  mountReview();
+  await openSteps();
+  const sources = screen.getByRole('region', { name: 'Contributing records' });
+  expect(
+    within(sources).getByText('Salary: $100.10 · Bonus: $0.20')
+  ).toBeInTheDocument();
+  expect(
+    within(sources).getByText(
+      'Gross: $100.10 · Other shares: $25.05 · Your share: $75.05'
+    )
+  ).toBeInTheDocument();
+  expect(within(sources).getByText('2025-12: $80.00')).toBeInTheDocument();
+  expect(within(sources).getByText('2026-01: $100.00')).toBeInTheDocument();
+  expect(
+    screen.queryByText(/Never display this person/)
+  ).not.toBeInTheDocument();
+});
+
+it('bounds source rows while retaining all-record totals and resets pagination on month change', async () => {
+  api.getExpenses.mockResolvedValue([
+    ...Array.from({ length: 21 }, (_, index) => ({
+      ...expense,
+      id: `expense-${index}`,
+      item: `Source ${index}`,
+      amount: 1,
+    })),
+    {
+      ...expense,
+      id: 'february',
+      item: 'February source',
+      date: '2026-02-01',
+      amount: 5,
+    },
+  ]);
+  mountReview();
+  await openSteps();
+  const rows = screen.getByRole('list', { name: 'Contributing expenses' });
+  expect(within(rows).getAllByRole('listitem')).toHaveLength(20);
+  expect(screen.getByText('Showing 1–20 of 21 expenses')).toBeInTheDocument();
+  expect(screen.getByText('$21.00')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+  expect(within(rows).getAllByRole('listitem')).toHaveLength(1);
+  expect(screen.getByText('Source 20')).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Month'), {
+    target: { value: '2026-02' },
+  });
+  expect(screen.getByText('February source')).toBeInTheDocument();
+  expect(
+    await screen.findByText('Showing 1–1 of 1 expense')
+  ).toBeInTheDocument();
+  expect(api.getExpenses).toHaveBeenCalledTimes(1);
+});
+
+it('clamps a source page when cached expenses shrink and shows invalid personal rows truthfully', async () => {
+  const rows = Array.from({ length: 21 }, (_, index) => ({
+    ...expense,
+    id: `row-${index}`,
+    item: `Row ${index}`,
+  }));
+  api.getExpenses.mockResolvedValue(rows);
+  mountReview();
+  await openSteps();
+  fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+  expect(screen.getByText('Row 20')).toBeInTheDocument();
+  await act(async () => {
+    client.setQueryData(
+      ['expenses'],
+      [
+        {
+          ...rows[0],
+          amount: 1,
+          splitType: 'shared',
+          splits: [{ person: 'Secret split name', amount: 2, settled: false }],
+        },
+      ]
+    );
+  });
+  expect(
+    await screen.findByText('Showing 1–1 of 1 expense')
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(
+      'Gross: $1.00 · Other shares: $2.00 · Your share: Check shared splits'
+    )
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/Secret split name/)).not.toBeInTheDocument();
+});
+
+it('keeps unnamed source records identifiable without fabricating their label', async () => {
+  api.getExpenses.mockResolvedValue([{ ...expense, item: '   ' }]);
+  mountReview();
+  await openSteps();
+  expect(screen.getByText('Unnamed expense')).toBeInTheDocument();
 });

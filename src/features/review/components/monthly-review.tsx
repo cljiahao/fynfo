@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { useState } from 'react';
 import { buildMonthlyReview } from '../lib/monthly-review';
+import { MonthlyReviewSources } from './monthly-review-sources';
 
 export function MonthlyReview() {
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
@@ -175,6 +176,11 @@ export function MonthlyReview() {
                     </p>
                   </li>
                 </ul>
+                <MonthlyReviewSources
+                  key={month}
+                  month={month}
+                  review={review}
+                />
               </AccordionContent>
             </AccordionItem>
           </Accordion>

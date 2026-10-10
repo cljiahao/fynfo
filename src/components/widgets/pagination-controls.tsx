@@ -14,6 +14,7 @@ import { useId } from 'react';
 const PAGE_SIZES = [10, 25, 50] as const;
 
 interface PaginationControlsProps {
+  pageSizes?: readonly number[];
   page: number;
   pageSize: number;
   total: number;
@@ -23,6 +24,7 @@ interface PaginationControlsProps {
 }
 
 export function PaginationControls({
+  pageSizes = PAGE_SIZES,
   page,
   pageSize,
   total,
@@ -43,24 +45,26 @@ export function PaginationControls({
         {plural}
       </span>
       <div className="flex items-center gap-2">
-        <Select
-          value={String(pageSize)}
-          onValueChange={(v) => {
-            onPageSizeChange(Number(v));
-            onPageChange(0);
-          }}
-        >
-          <SelectTrigger className="h-8 w-[70px] text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PAGE_SIZES.map((s) => (
-              <SelectItem key={s} value={String(s)}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {pageSizes.length > 1 && (
+          <Select
+            value={String(pageSize)}
+            onValueChange={(v) => {
+              onPageSizeChange(Number(v));
+              onPageChange(0);
+            }}
+          >
+            <SelectTrigger className="h-8 w-[70px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {pageSizes.map((s) => (
+                <SelectItem key={s} value={String(s)}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
           <label htmlFor={pageInputId}>Page</label>
           <input
