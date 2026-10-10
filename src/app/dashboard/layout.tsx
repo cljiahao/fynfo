@@ -1,13 +1,17 @@
 import { DashboardNavbar, SiteFooter, VaultGate } from '@/components/layout';
 import { UserMenu } from '@/components/layout/user-menu';
-import { IdleLockWatcher, VaultLockProvider } from '@/features/auth';
+import {
+  AuthIdentityWatcher,
+  IdleLockWatcher,
+  VaultLockProvider,
+} from '@/features/auth';
 import { requireUserId } from '@/lib/auth-guard';
 import { getVaultDekSession } from '@/lib/keystore';
 
-async function checkVaultUnlocked(): Promise<boolean> {
+async function getVaultIdentity() {
   const userId = await requireUserId();
   const dek = await getVaultDekSession(userId);
-  return dek !== null;
+  return { userId, isVaultUnlocked: dek !== null };
 }
 
 export default async function DashboardLayout({
@@ -15,10 +19,11 @@ export default async function DashboardLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const isVaultUnlocked = await checkVaultUnlocked();
+  const { userId, isVaultUnlocked } = await getVaultIdentity();
 
   return (
-    <VaultLockProvider initiallyUnlocked={isVaultUnlocked}>
+    <VaultLockProvider initiallyUnlocked={isVaultUnlocked} userId={userId}>
+      <AuthIdentityWatcher userId={userId} />
       <IdleLockWatcher />
       <VaultGate>
         <div className="flex min-h-screen flex-col">

@@ -44,6 +44,11 @@ Supabase Auth account. There is no development authentication bypass. Failed
 sign-ins show opaque retry messages. Refreshed sessions preserve cookie options
 and private/no-store cache headers through proxy redirects; authentication
 callback responses are uncached.
+A detected account change or signout hides financial editors and clears cached
+records before returning to login. An unavailable initial browser session blocks
+financial content with a manual sign-in link; ordinary same-account refreshes
+preserve the current editor. Server authorization and user-bound vault cookies
+remain mandatory.
 
 ```powershell
 pnpm dev
