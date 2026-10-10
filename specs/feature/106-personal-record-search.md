@@ -2,12 +2,12 @@
 id: '106'
 slug: personal-record-search
 area: feature
-status: owner-authorized
+status: shipped
 author: Codex
 created: 2026-10-10
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/32
 supersedes:
 constitution_satisfies:
   ['§1.1', '§2.1', '§2.3', '§2.5', '§3.2', '§4', '§5.4', '§7.4', '§8.2']
@@ -163,3 +163,7 @@ Independent final split review found no scoped blocker: no static task graph in 
 ## Final local gates
 
 All five required gates pass on the frozen executable source: format:check, zero-warning lint, typecheck, test:ci and production build. The full suite passed 132 files/1,129 tests; aggregate coverage is 93.66% statements, 89.39% branches, 91.45% functions and 93.94% lines. Existing stricter security floors remain unchanged and passed. External logs are 106-format.log, 106-lint.log, 106-types.log, 106-coverage.log and 106-final-build.log. All fifteen scoped fixture/worktree paths matched before these gates; later additions are documentation-only evidence. Normal commit/pre-push hooks and exact-head CI remain required before merge; this record is not marked shipped.
+
+## Delivery record
+
+PR32 merged on 2026-10-10 at 07:10:10 UTC after exact implementation head eb243dfa7edc4e6713f9eafb4770e073ecb1dc27 passed required CI and Vercel preview checks. Merge commit: e950bea2967626740ee636def166c42f2d071f24. Normal commit/pre-push hooks passed without bypass. This completes the scoped record-search feature; synthetic browser and measured bundle limitations above remain unchanged.

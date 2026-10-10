@@ -1,10 +1,12 @@
 ---
 id: '083'
 area: fix
-status: approved
+status: shipped
 created: 2026-10-09
 author: Codex
 approved: 2026-10-09
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/15
 constitution_satisfies:
   ['§2.1', '§2.2', '§2.3', '§4', '§5.2', '§5.4', '§6.3', '§7.4', '§8.2']
 ---
@@ -202,3 +204,7 @@ frozen-lockfile installation reuses the existing dependencies for the normal bui
 The normal Turbopack production build subsequently passes with the unchanged
 configuration and fixture-local locked dependencies. Normal hooks and updated-head
 CI still precede merge.
+
+## Delivery confirmation — 2026-10-10
+
+PR15 merged at 07:28:34 UTC after updated-head CI and Vercel checks passed on e8866bcc02a843f22d27ae1318a21ab4e3212187. Merge commit: 52edfff730d4dbd33a2d6d00d8c5cafc6e72f1d2. Normal commit/pre-push hooks pass, repeating 1,139 tests and unchanged coverage/security floors. The merge commit's Vercel production deployment status is success. Owner production revision migration confirmation remains recorded above.
