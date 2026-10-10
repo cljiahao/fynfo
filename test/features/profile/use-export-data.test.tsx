@@ -331,6 +331,8 @@ it('releases temporary download resources after click failure and permits retry'
 
 it('explains material export limitations beside the existing action', () => {
   render(<ExportDataCard />);
+  expect(screen.getByText(/saved planning scenarios/)).toBeVisible();
+  expect(screen.getByText(/Household data is not included/)).toBeVisible();
   expect(screen.getByText(/file contains plaintext/)).toBeVisible();
   expect(screen.getByText(/cannot be restored in Fynfo/)).toBeVisible();
   expect(screen.getByText(/Edits made during export/)).toBeVisible();

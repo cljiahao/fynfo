@@ -2,12 +2,12 @@
 id: 117
 slug: expense-salary-field-labels
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-11
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/41
 supersedes:
 constitution_satisfies:
   - '§2.1'
@@ -140,8 +140,14 @@ Root subsequently verified119 public production SUCCESS updated2026-10-10T19:10:
 
 ## Full local gates and isolated runtime qualification — 2026-10-11
 
-Root and a second independent reviewer accepted the integrated fourteen-path source/diff before full gates. The retained check passed route logging, formatting, zero-warning lint and TypeScript (`117-full-check.log`). Full coverage passed144 files/1445 tests (`117-full-test-ci.log`), statements93.10%, branches89.11%, functions91.49%, lines93.81%, retaining every existing strict floor. Normal `pnpm build` passed after external runtime qualification (`117-full-build-isolated-closure.log`): Turbopack compiled8.8s, TypeScript10.9s and17 pages generated. These are synthetic local gates, not authenticated production, auth/RLS or whole-project accessibility proof. Exact-head CI and normal delivery hooks remain required;117 is not shipped.
+Root and a second independent reviewer accepted the integrated fourteen-path source/diff before full gates. The retained check passed route logging, formatting, zero-warning lint and TypeScript (`117-full-check.log`). Full coverage passed144 files/1445 tests (`117-full-test-ci.log`), statements93.10%, branches89.11%, functions91.49%, lines93.81%, retaining every existing strict floor. Normal `pnpm build` passed after external runtime qualification (`117-full-build-isolated-closure.log`): Turbopack compiled8.8s, TypeScript10.9s and17 pages generated. These are synthetic local gates, not authenticated production, auth/RLS or whole-project accessibility proof. Exact-head CI and normal delivery hooks remained pending at this local verification boundary; verified delivery is recorded below.
 
 Earlier build attempts failed on an external fixture boundary, first the090 dependency junction and then a stale090 path during PostCSS traversal. All failed logs are preserved. Root authorized materializing already-installed pinned public dependencies inside117, preserving the original junction, remapping only generated launcher/metadata fixture-name paths with exact backups and setting the public module-search path explicitly for synthetic subprocesses. Actual pnpm resolution qualified Next/PostCSS/Tailwind/Node/Oxide under117. Retained runtime junction/cache backups were moved outside the project under checked task-root paths; the subsequent fresh normal build passed. Tailwind automatic source scanning supports the retained-junction hypothesis, while the experiment proves only this fixture correction. No package implementation, project dependency/configuration, source behavior, protected file or existing hook was changed. The green check/coverage were retained instead of repeated during runtime-only diagnosis.
 
 The exact generated Husky runners copied into the external117 fixture match the approved085 originals byte-for-byte. Existing tracked pre-commit/pre-push scripts remain unchanged and must run normally. All fourteen scoped files remain the only delivery paths; external runtime/proof artifacts are not product additions. The scoped stash remains retained.118 recovery and091 schema/dependency decisions remain pending their separate owner decisions.
+
+## Verified 117 delivery — linked 120 closeout
+
+Root independently verified PR41 exact head `7b7a4769ed5bf1477b9e0f4f8abe61254aee6ec6` immediately before normal merge: all required CI/preview checks SUCCESS. CI run 38080961693/job 114297603905 completed 2026-10-10T19:47:08Z; preview DrGxnfcdWFsMQkFmVj8qVyaWGop5 succeeded. PR41 merged as `de63922bb62c0b55e36625a66db508832a61671f` at 2026-10-10T19:48:31Z. Local five gates and unchanged normal commit/push hooks passed; retained coverage evidence is 144 files/1,445 tests, statements 93.10%, branches 89.11%, functions 91.49%, lines 93.81%, with existing security floors unchanged.
+
+Root subsequently verified merged-commit [public production deployment](https://vercel.com/noxynx/fynfo/AtZ995GLW3GMvroNheGZH55JDdzR) SUCCESS updated 2026-10-10T19:49:02Z. This public status is not private authenticated workflow, RLS/encryption or whole-project accessibility proof. Earlier pending statements are historical preparation/local-freeze boundaries. The approved field remains blank under the recorded owner audit; no agent spec approval is claimed. Linked 120 records these verified metadata facts only; original label product/test source and historical runtime diagnosis remain unchanged.
