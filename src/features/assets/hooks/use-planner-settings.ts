@@ -7,9 +7,10 @@ import {
   getPlannerSettings,
   upsertPlannerSettings,
 } from '../actions/planner-actions';
+import { PLANNER_KEY } from '../constants';
 import type { PlannerSettingsData } from '../types';
 
-export const PLANNER_KEY = ['planner-settings'] as const;
+export { PLANNER_KEY } from '../constants';
 
 export function usePlannerSettings() {
   const transport = useOverviewReadTransport();

@@ -78,3 +78,7 @@ export const SCENARIO_SLICES = [
     enabled: 'allowanceEnabled',
   },
 ] as const;
+
+export const SNAPSHOTS_KEY = ['snapshots'] as const;
+
+export const PLANNER_KEY = ['planner-settings'] as const;

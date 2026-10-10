@@ -3,6 +3,7 @@ import { DashboardOverview } from '@/app/dashboard/(overview)/dashboard-overview
 import DashboardOverviewPage from '@/app/dashboard/(overview)/page';
 import { Providers } from '@/components/layout/providers';
 import * as calculations from '@/features/assets/lib/calculations';
+import { OverviewPrefetch } from '@/features/overview';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   cleanup,
@@ -61,6 +62,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+async function getPrefetchedOverview() {
+  const page = DashboardOverviewPage();
+  expect(page.type).toBe(OverviewPrefetch);
+  return OverviewPrefetch(page.props);
+}
 function getAllocationInput(ticker: string, market: string) {
   const trigger = screen.getByRole('button', { name: market });
   if (trigger.getAttribute('aria-expanded') === 'false')
@@ -81,7 +87,7 @@ it('calculates summary totals only for the latest two months of a long history',
       ],
     }))
   );
-  render(<Providers>{await DashboardOverviewPage()}</Providers>);
+  render(<Providers>{await getPrefetchedOverview()}</Providers>);
   expect(await screen.findByText('Total Assets')).toBeTruthy();
   expect(screen.getAllByText('$10,000')).toHaveLength(2);
   expect(screen.getByText('+$100')).toBeTruthy();
@@ -157,7 +163,7 @@ it('keeps a failed salary summary unavailable while loaded assets remain visible
 });
 
 it('hydrates all four server datasets into the real overview without fetching them again on mount', async () => {
-  const page = await DashboardOverviewPage();
+  const page = await getPrefetchedOverview();
   render(<Providers>{page}</Providers>);
   expect(await screen.findByText('Net (after CPF)')).toBeTruthy();
   expect(screen.getAllByText('$15,000')).toHaveLength(2);
@@ -206,7 +212,7 @@ it('keeps planner inputs unavailable after an upstream error and restores calcul
 it('shows zero-state salary/planner values when all prefetched datasets are empty', async () => {
   api.getSnapshots.mockResolvedValue([]);
   api.getSalaryRecords.mockResolvedValue([]);
-  render(<Providers>{await DashboardOverviewPage()}</Providers>);
+  render(<Providers>{await getPrefetchedOverview()}</Providers>);
   expect(
     await screen.findByText('Enter salary to see allocation')
   ).toBeTruthy();
@@ -280,7 +286,7 @@ it('connects calculated market budgets to real ticker allocation edits without p
   });
   render(
     <QueryClientProvider client={client}>
-      {await DashboardOverviewPage()}
+      {await getPrefetchedOverview()}
     </QueryClientProvider>
   );
   await screen.findByRole('button', { name: 'SG Stocks' });

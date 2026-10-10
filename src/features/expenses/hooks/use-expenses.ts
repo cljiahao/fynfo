@@ -15,10 +15,11 @@ import {
   settleSplit,
   upsertExpense,
 } from '../actions/expense-actions';
+import { EXPENSE_KEY } from '../constants';
 import { applySplitSettlement } from '../lib/utils';
 import type { ExpenseData } from '../types';
 
-export const EXPENSE_KEY = ['expenses'] as const;
+export { EXPENSE_KEY } from '../constants';
 const PEOPLE_KEY = ['expense-people'] as const;
 
 type SettleVars = { expenseIds: string[]; person: string; settled: boolean };
