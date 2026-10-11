@@ -5,11 +5,20 @@ import {
   type TaxProfileContext,
   type TaxSummary,
 } from '../lib/tax-cpf';
+import {
+  buildInitialState,
+  buildReliefItems,
+  computeTotal,
+} from '../lib/tax-reliefs';
 import type { SalaryData } from '../types';
+import { useTaxReliefs } from './use-tax-reliefs';
 
 export interface SalaryYtdStats {
   profileState: 'loading' | 'error' | 'incomplete' | 'ready';
   retryProfile: () => void;
+  reliefState: 'loading' | 'error' | 'ready';
+  retryReliefs: () => void;
+  reliefItems: ReturnType<typeof buildReliefItems>;
   currentYear: number;
   taxProfile: TaxProfileContext;
   currentYearRecords: SalaryData[];
@@ -22,10 +31,7 @@ export interface SalaryYtdStats {
   trueSummary: TaxSummary | null;
 }
 
-export function useSalaryYtdStats(
-  records: SalaryData[],
-  additionalReliefsTotal = 0
-): SalaryYtdStats {
+export function useSalaryYtdStats(records: SalaryData[]): SalaryYtdStats {
   const { data: profile, isPending, isError, refetch } = useProfile();
   const profileState = isPending
     ? 'loading'
@@ -35,12 +41,30 @@ export function useSalaryYtdStats(
         ? 'incomplete'
         : 'ready';
   const currentYear = new Date().getFullYear();
+  const reliefs = useTaxReliefs(currentYear);
 
   const taxProfile: TaxProfileContext = {
     birthYear: profile?.birthYear ?? null,
     isNsman: profile?.isNsman ?? false,
     residencyStatus: profile?.residencyStatus ?? 'resident',
   };
+  const reliefState =
+    taxProfile.residencyStatus === 'non_resident'
+      ? 'ready'
+      : reliefs.isPending
+        ? 'loading'
+        : reliefs.isError
+          ? 'error'
+          : 'ready';
+  const savedReliefState = buildInitialState(reliefs.data ?? null);
+  const reliefItems =
+    reliefState === 'ready' && taxProfile.residencyStatus !== 'non_resident'
+      ? buildReliefItems(savedReliefState)
+      : [];
+  const additionalReliefsTotal =
+    reliefState === 'ready' && taxProfile.residencyStatus !== 'non_resident'
+      ? computeTotal(savedReliefState)
+      : 0;
 
   const currentYearRecords = records.filter((r) =>
     r.id.startsWith(`${currentYear}-`)
@@ -55,7 +79,7 @@ export function useSalaryYtdStats(
 
   const recordedCpf = estimateRecordedCpf(currentYearRecords, currentYear);
   const estSummary =
-    recordedCpf === null
+    recordedCpf === null || reliefState !== 'ready'
       ? null
       : calculateTaxSummary(
           estAnnualSalary,
@@ -65,7 +89,7 @@ export function useSalaryYtdStats(
           additionalReliefsTotal
         );
   const trueSummary =
-    recordedCpf === null
+    recordedCpf === null || reliefState !== 'ready'
       ? null
       : calculateTaxSummary(
           ytdSalary,
@@ -81,6 +105,11 @@ export function useSalaryYtdStats(
     retryProfile: () => {
       void refetch();
     },
+    reliefState,
+    retryReliefs: () => {
+      void reliefs.refetch();
+    },
+    reliefItems,
     currentYear,
     taxProfile,
     currentYearRecords,
