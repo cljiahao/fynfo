@@ -22,6 +22,7 @@ type ProfileRow = {
 
 interface CookieJar {
   set: ReturnType<typeof vi.fn>;
+  delete: ReturnType<typeof vi.fn>;
   get: (name: string) => { value: string } | undefined;
 }
 
@@ -31,6 +32,8 @@ let profileError: { code: string } | null;
 let upsertSpy: ReturnType<typeof vi.fn>;
 let readBarrier: (() => Promise<void>) | null;
 let updateSpy: ReturnType<typeof vi.fn>;
+let fromSpy: ReturnType<typeof vi.fn<typeof buildFromBuilder>>;
+let updatePredicateSpy: ReturnType<typeof vi.fn>;
 let getUserResult: {
   data: { user: { id: string; email: string } | null };
   error: { message: string } | null;
@@ -45,7 +48,7 @@ vi.mock('next/headers', () => ({
 vi.mock('@/integrations/services/supabase', () => ({
   createSupabaseServerClient: async () => ({
     auth: { getUser: async () => getUserResult },
-    from: (table: string) => buildFromBuilder(table),
+    from: (table: string) => fromSpy(table),
     rpc: async (fn: string) =>
       fn === 'vault_unlock_locked' ? rpcLocked : rpcRecord,
   }),
@@ -93,7 +96,7 @@ async function freshPost() {
   return mod.POST;
 }
 
-describe('POST /api/vault', () => {
+describe('/api/vault lifecycle', () => {
   it.each([
     DEK.toString('base64') + '!'.repeat(100),
     DEK.toString('base64').replace('=', ''),
@@ -124,9 +127,12 @@ describe('POST /api/vault', () => {
     );
     cookieJar = {
       set: vi.fn(),
+      delete: vi.fn(),
       get: () => undefined,
     };
     readBarrier = null;
+    fromSpy = vi.fn(buildFromBuilder);
+    updatePredicateSpy = vi.fn();
     upsertSpy = vi.fn(
       async (row: ProfileRow, options?: { ignoreDuplicates?: boolean }) => {
         if (!options?.ignoreDuplicates || !profileRow) profileRow = { ...row };
@@ -409,4 +415,178 @@ describe('POST /api/vault', () => {
     expect(res.status).toBe(500);
     expect(cookieJar.set).not.toHaveBeenCalled();
   });
+  describe('DELETE /api/vault', () => {
+    it('resets only the authenticated profile before clearing the personal vault cookie', async () => {
+      let finishWrite: () => void = () => {};
+      const writeCompleted = vi.fn();
+      const write = new Promise<{ error: null }>((resolve) => {
+        finishWrite = () => {
+          writeCompleted();
+          resolve({ error: null });
+        };
+      });
+      updatePredicateSpy.mockReturnValue(write);
+      updateSpy.mockReturnValue({ eq: updatePredicateSpy });
+      const { DELETE } = await import('@/app/api/vault/route');
+      const pending = DELETE(
+        new Request('http://localhost/api/vault', { method: 'DELETE' })
+      );
+      await vi.waitFor(() =>
+        expect(updatePredicateSpy).toHaveBeenCalledExactlyOnceWith(
+          'id',
+          USER_ID
+        )
+      );
+      expect(cookieJar.delete).not.toHaveBeenCalled();
+      expect(cookieJar.set).not.toHaveBeenCalled();
+      expect(writeCompleted).not.toHaveBeenCalled();
+      finishWrite();
+      const response = await pending;
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ success: true });
+      expect(fromSpy).toHaveBeenCalledExactlyOnceWith('users_profile');
+      expect(updateSpy).toHaveBeenCalledExactlyOnceWith({
+        vault_check_v2: null,
+        vault_version: 1,
+      });
+      expect(updatePredicateSpy).toHaveBeenCalledExactlyOnceWith('id', USER_ID);
+      expect(cookieJar.delete).toHaveBeenCalledExactlyOnceWith(
+        'fynfo_vault_dek'
+      );
+      expect(cookieJar.set).not.toHaveBeenCalled();
+      expect(upsertSpy).not.toHaveBeenCalled();
+      expect(securityRpc).not.toHaveBeenCalled();
+      expect(writeCompleted.mock.invocationCallOrder[0]).toBeLessThan(
+        cookieJar.delete.mock.invocationCallOrder[0]
+      );
+    });
+
+    it.each(['missing-user', 'auth-error'] as const)(
+      'rejects %s without database or cookie changes',
+      async (mode) => {
+        getUserResult =
+          mode === 'missing-user'
+            ? { data: { user: null }, error: null }
+            : {
+                data: { user: { id: USER_ID, email: 'user@test' } },
+                error: { message: 'private auth provider detail' },
+              };
+        const { DELETE } = await import('@/app/api/vault/route');
+        const response = await DELETE(
+          new Request('http://localhost/api/vault', { method: 'DELETE' })
+        );
+        expect(response.status).toBe(401);
+        expect(await response.json()).toEqual({
+          error: 'Unauthorized',
+          code: 'UNAUTHORIZED',
+        });
+        expect(fromSpy).not.toHaveBeenCalled();
+        expect(updateSpy).not.toHaveBeenCalled();
+        expect(cookieJar.delete).not.toHaveBeenCalled();
+        expect(cookieJar.set).not.toHaveBeenCalled();
+        expect(securityRpc).not.toHaveBeenCalled();
+      }
+    );
+
+    it('keeps the cookie when the owner-scoped reset write fails and returns an opaque error', async () => {
+      updatePredicateSpy.mockResolvedValue({
+        error: { code: 'private-reset-constraint' },
+      });
+      updateSpy.mockReturnValue({ eq: updatePredicateSpy });
+      const { DELETE } = await import('@/app/api/vault/route');
+      const response = await DELETE(
+        new Request('http://localhost/api/vault', { method: 'DELETE' })
+      );
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({
+        error: 'Failed to reset vault',
+        code: 'INTERNAL',
+      });
+      expect(updateSpy).toHaveBeenCalledExactlyOnceWith({
+        vault_check_v2: null,
+        vault_version: 1,
+      });
+      expect(updatePredicateSpy).toHaveBeenCalledExactlyOnceWith('id', USER_ID);
+      expect(cookieJar.delete).not.toHaveBeenCalled();
+      expect(cookieJar.set).not.toHaveBeenCalled();
+      expect(upsertSpy).not.toHaveBeenCalled();
+      expect(securityRpc).not.toHaveBeenCalled();
+    });
+  });
+
+  it.each([
+    Buffer.alloc(31, 2).toString('base64'),
+    DEK.toString('base64').slice(0, -2) + 'J=',
+  ])(
+    'rejects a noncanonical 44-character key without profile or cookie changes',
+    async (derivedKey) => {
+      expect(derivedKey).toHaveLength(44);
+      const POST = await freshPost();
+      const response = await POST(makeRequest({ derivedKey }));
+      expect(response.status).toBe(400);
+      expect(fromSpy).not.toHaveBeenCalled();
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect(upsertSpy).not.toHaveBeenCalled();
+      expect(securityRpc).not.toHaveBeenCalled();
+      expect(cookieJar.set).not.toHaveBeenCalled();
+      expect(cookieJar.delete).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['short', 'fynfo_vault_no'])(
+    'rejects a decrypted wrong canary without reinitializing or setting a cookie',
+    async (plaintext) => {
+      expect(plaintext.length === VAULT_CANARY.length).toBe(
+        plaintext === 'fynfo_vault_no'
+      );
+      profileRow = {
+        vault_check_v2: encryptPayload(plaintext, DEK),
+        vault_version: 2,
+      };
+      const POST = await freshPost();
+      const response = await POST(
+        makeRequest({ derivedKey: DEK.toString('base64') })
+      );
+      expect(response.status).toBe(401);
+      expect(await response.json()).toEqual({ error: 'Incorrect PIN' });
+      expect(securityRpc).toHaveBeenCalledWith('finish_vault_unlock', {
+        p_user_id: USER_ID,
+        p_attempt_id: ATTEMPT_ID,
+        p_success: false,
+      });
+      expect(upsertSpy).not.toHaveBeenCalled();
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect(cookieJar.set).not.toHaveBeenCalled();
+      expect(cookieJar.delete).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['correct', 'incorrect'] as const)(
+    'fails closed when finalization fails after a %s canary',
+    async (mode) => {
+      profileRow = {
+        vault_check_v2: encryptPayload(
+          mode === 'correct' ? VAULT_CANARY : 'fynfo_vault_no',
+          DEK
+        ),
+        vault_version: 2,
+      };
+      rpcRecord = { data: null, error: { code: 'private-finalization-error' } };
+      const POST = await freshPost();
+      const response = await POST(
+        makeRequest({ derivedKey: DEK.toString('base64') })
+      );
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({ error: 'Internal Server Error' });
+      expect(securityRpc).toHaveBeenCalledWith('finish_vault_unlock', {
+        p_user_id: USER_ID,
+        p_attempt_id: ATTEMPT_ID,
+        p_success: mode === 'correct',
+      });
+      expect(upsertSpy).not.toHaveBeenCalled();
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect(cookieJar.set).not.toHaveBeenCalled();
+      expect(cookieJar.delete).not.toHaveBeenCalled();
+    }
+  );
 });
