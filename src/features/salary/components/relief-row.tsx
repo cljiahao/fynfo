@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/tooltip';
 import { formatSGD } from '@/lib/utils/currency';
 import { Info } from 'lucide-react';
+import { useId } from 'react';
 import { RELIEF_CATALOG } from '../constants';
 import type { ReliefState } from '../lib/tax-reliefs';
 
@@ -51,9 +52,9 @@ interface ReliefRowProps {
   onUpdate: (update: Partial<ReliefState>) => void;
 }
 
-// One additional-relief row. Renders the countable / variant / standard variant
-// based on the catalog def. Presentational; relief state map lives in the dialog.
+// The relief state map is owned by the dialog.
 export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
+  const checkboxId = useId();
   const state = rawState ?? {
     enabled: false,
     amount: def.defaultAmount,
@@ -61,12 +62,11 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
     variant: def.variants?.[0]?.value ?? '',
   };
 
-  // Countable relief (child)
   if (def.maxCount) {
     return (
       <div className="flex items-center gap-3">
         <Checkbox
-          id={`relief-${def.key}`}
+          id={checkboxId}
           checked={state.enabled}
           onCheckedChange={(v) => {
             const enabled = v === true;
@@ -79,7 +79,7 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
           }}
         />
         <Label
-          htmlFor={`relief-${def.key}`}
+          htmlFor={checkboxId}
           className="min-w-0 flex-1 cursor-pointer text-sm"
         >
           <ReliefLabel label={def.label} description={def.description} />
@@ -92,7 +92,10 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
             onUpdate({ count, amount: def.defaultAmount * count });
           }}
         >
-          <SelectTrigger className="h-8 w-20 text-sm">
+          <SelectTrigger
+            aria-label={`${def.label} count`}
+            className="h-8 w-20 text-sm"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -110,12 +113,11 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
     );
   }
 
-  // Variant relief (parent)
   if (def.variants) {
     return (
       <div className="flex items-center gap-3">
         <Checkbox
-          id={`relief-${def.key}`}
+          id={checkboxId}
           checked={state.enabled}
           onCheckedChange={(v) => {
             const enabled = v === true;
@@ -129,7 +131,7 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
           }}
         />
         <Label
-          htmlFor={`relief-${def.key}`}
+          htmlFor={checkboxId}
           className="min-w-0 flex-1 cursor-pointer text-sm"
         >
           <ReliefLabel label={def.label} description={def.description} />
@@ -145,7 +147,10 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
             });
           }}
         >
-          <SelectTrigger className="h-8 w-40 text-sm">
+          <SelectTrigger
+            aria-label={`${def.label} option`}
+            className="h-8 w-40 text-sm"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -163,23 +168,23 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
     );
   }
 
-  // Standard relief
   return (
     <div className="flex items-center gap-3">
       <Checkbox
-        id={`relief-${def.key}`}
+        id={checkboxId}
         checked={state.enabled}
         onCheckedChange={(v) => onUpdate({ enabled: v === true })}
       />
       <div className="flex flex-1 items-center gap-2">
         <Label
-          htmlFor={`relief-${def.key}`}
+          htmlFor={checkboxId}
           className="min-w-0 flex-1 cursor-pointer text-sm"
         >
           <ReliefLabel label={def.label} description={def.description} />
         </Label>
         <Input
           type="number"
+          aria-label={`${def.label} amount (SGD)`}
           min={0}
           className="h-8 w-24 text-sm"
           disabled={!state.enabled}

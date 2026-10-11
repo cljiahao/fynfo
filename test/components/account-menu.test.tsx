@@ -53,19 +53,19 @@ it('exposes account destinations and clears financial cache before logout teardo
 });
 
 it.each([undefined, 'fixture-correlation'])(
-  'contains private errors and offers a real reset callback (%s)',
+  'contains private errors and offers a real retry callback (%s)',
   (digest) => {
-    const reset = vi.fn();
+    const retry = vi.fn();
     render(
       <DashboardRouteError
         error={Object.assign(new Error('private financial detail'), { digest })}
-        reset={reset}
+        retry={retry}
       />
     );
     expect(screen.queryByText('private financial detail')).toBeNull();
     if (digest) expect(screen.getByText(`Reference: ${digest}`)).toBeTruthy();
     else expect(screen.queryByText(/Reference:/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(reset).toHaveBeenCalledOnce();
+    expect(retry).toHaveBeenCalledOnce();
   }
 );

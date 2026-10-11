@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useCreateTrade, useUpdateTrade } from '../hooks/use-equity';
@@ -43,6 +43,7 @@ export function TradeFormDialog({
   onOpenChange,
   editTrade,
 }: TradeFormDialogProps) {
+  const fieldId = useId();
   const create = useCreateTrade();
   const update = useUpdateTrade();
   const isPending = create.isPending || update.isPending;
@@ -83,8 +84,6 @@ export function TradeFormDialog({
   const currency = market === 'US' ? 'USD' : 'SGD';
 
   const tradeValue = shares * price;
-
-  // Compute fees as derived state (no useMemo needed per templateCentral standards)
   const calculatedFees = resolveTradeFees({
     ticker,
     action,
@@ -173,11 +172,11 @@ export function TradeFormDialog({
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {/* Row 1: Ticker | Buy/Sell */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Ticker</Label>
+              <Label htmlFor={`${fieldId}-ticker`}>Ticker</Label>
               <Input
+                id={`${fieldId}-ticker`}
                 placeholder="e.g. AAPL, DBS"
                 {...form.register('ticker', {
                   onChange: () => setTimeout(autoFillFees, 0),
@@ -220,15 +219,17 @@ export function TradeFormDialog({
               </div>
             </div>
           </div>
-
-          {/* Row 2: Date | Broker + CDP */}
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>Date</Label>
-              <Input type="date" {...form.register('date')} />
+              <Label htmlFor={`${fieldId}-date`}>Date</Label>
+              <Input
+                id={`${fieldId}-date`}
+                type="date"
+                {...form.register('date')}
+              />
             </div>
             <div className="col-span-2 space-y-2">
-              <Label>Broker</Label>
+              <Label htmlFor={`${fieldId}-broker`}>Broker</Label>
               <div className="flex items-center gap-3">
                 <Controller
                   name="broker"
@@ -248,7 +249,10 @@ export function TradeFormDialog({
                         disabled={isPO}
                         onValueChange={handleBrokerChange}
                       >
-                        <SelectTrigger className="flex-1">
+                        <SelectTrigger
+                          id={`${fieldId}-broker`}
+                          className="flex-1"
+                        >
                           <SelectValue placeholder="Select broker" />
                         </SelectTrigger>
                         <SelectContent>
@@ -265,7 +269,7 @@ export function TradeFormDialog({
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1.5">
                     <Checkbox
-                      id="cdp"
+                      id={`${fieldId}-cdp`}
                       checked={isCdp}
                       disabled={!cdpEnabled || isPO}
                       onCheckedChange={(checked) => {
@@ -274,7 +278,7 @@ export function TradeFormDialog({
                       }}
                     />
                     <Label
-                      htmlFor="cdp"
+                      htmlFor={`${fieldId}-cdp`}
                       className={`text-sm font-normal whitespace-nowrap ${!cdpEnabled || isPO ? 'text-muted-foreground' : ''}`}
                     >
                       CDP
@@ -282,7 +286,7 @@ export function TradeFormDialog({
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Checkbox
-                      id="po"
+                      id={`${fieldId}-po`}
                       checked={isPO}
                       disabled={!cdpEnabled}
                       onCheckedChange={(checked) => {
@@ -291,7 +295,7 @@ export function TradeFormDialog({
                       }}
                     />
                     <Label
-                      htmlFor="po"
+                      htmlFor={`${fieldId}-po`}
                       className={`text-sm font-normal whitespace-nowrap ${!cdpEnabled ? 'text-muted-foreground' : ''}`}
                     >
                       P/O
@@ -304,12 +308,13 @@ export function TradeFormDialog({
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label>Shares</Label>
+              <Label htmlFor={`${fieldId}-shares`}>Shares</Label>
               <Input
                 type="number"
                 step="any"
                 min="0"
                 placeholder="0"
+                id={`${fieldId}-shares`}
                 {...form.register('shares', {
                   setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
                   onChange: () => setTimeout(autoFillFees, 0),
@@ -317,12 +322,13 @@ export function TradeFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>Price per Share</Label>
+              <Label htmlFor={`${fieldId}-price`}>Price per Share</Label>
               <Input
                 type="number"
                 step="0.01"
                 min="0"
                 placeholder="0.00"
+                id={`${fieldId}-price`}
                 {...form.register('price', {
                   setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
                   onChange: () => setTimeout(autoFillFees, 0),
@@ -330,25 +336,22 @@ export function TradeFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>Fees</Label>
+              <Label htmlFor={`${fieldId}-fees`}>Fees</Label>
               <Input
                 type="number"
                 step="0.01"
                 min="0"
                 placeholder="0.00"
+                id={`${fieldId}-fees`}
                 {...form.register('fees', {
                   setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
                 })}
               />
             </div>
           </div>
-
-          {/* Fee breakdown */}
           {calculatedFees && tradeValue > 0 && (
             <TradeFeeBreakdown fees={calculatedFees} currency={currency} />
           )}
-
-          {/* Trade summary */}
           {shares > 0 && price > 0 && (
             <TradeSummary
               tradeValue={tradeValue}

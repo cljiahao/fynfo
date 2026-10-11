@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { format } from 'date-fns';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -48,7 +49,7 @@ interface DividendFormDialogProps {
 function defaults(d?: DividendData): DividendFormValues {
   return {
     ticker: d?.ticker ?? '',
-    date: d?.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+    date: d?.date?.slice(0, 10) ?? format(new Date(), 'yyyy-MM-dd'),
     amount: d?.amount ?? 0,
     currency: d?.currency ?? 'SGD',
   };
