@@ -2,12 +2,12 @@
 id: 127
 slug: vault-lifecycle-coverage
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-11
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-11
+impl_pr: https://github.com/cljiahao/fynfo/pull/47
 supersedes:
 constitution_satisfies:
   - '§2.1'
