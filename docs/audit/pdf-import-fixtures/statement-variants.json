@@ -1,0 +1,182 @@
+{
+  "fixtureKind": "constructed-text-and-expectations-only",
+  "supportedBankClaim": false,
+  "variants": [
+    {
+      "id": "uob-inspired-rollover",
+      "statementPeriod": { "from": "2025-12-15", "to": "2026-01-14" },
+      "pages": [
+        {
+          "page": 1,
+          "lines": [
+            "SYNTHETIC UOB-INSPIRED LAYOUT; NOT A REAL STATEMENT",
+            "Transaction date | Description | SGD billed",
+            "31 DEC | SYNTHETIC MARKET | 12.30",
+            "02 JAN | SYNTHETIC CAFE | 8.20",
+            "Total balance | 999.00"
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "page": 1,
+          "line": 3,
+          "date": "2025-12-31",
+          "billedAmountText": "12.30",
+          "currency": "SGD",
+          "classification": "expense-candidate",
+          "selected": false
+        },
+        {
+          "page": 1,
+          "line": 4,
+          "date": "2026-01-02",
+          "billedAmountText": "8.20",
+          "currency": "SGD",
+          "classification": "expense-candidate",
+          "selected": false
+        },
+        { "page": 1, "line": 5, "classification": "excluded-summary" }
+      ]
+    },
+    {
+      "id": "dbs-inspired-wrap-and-repeat",
+      "statementPeriod": { "from": "2026-09-01", "to": "2026-09-30" },
+      "pages": [
+        {
+          "page": 1,
+          "lines": [
+            "SYNTHETIC DBS-INSPIRED LAYOUT",
+            "15 SEP | SYNTHETIC LONG",
+            "MERCHANT DESCRIPTION | SGD 15.00",
+            "15 SEP | SYNTHETIC LONG MERCHANT DESCRIPTION | SGD 15.00"
+          ]
+        },
+        {
+          "page": 2,
+          "lines": [
+            "Transaction date | Description | Billed amount",
+            "16 SEP | SYNTHETIC BUS | SGD 2.40",
+            "Opening balance | SGD 800.00"
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "page": 1,
+          "lines": [2, 3],
+          "date": "2026-09-15",
+          "description": "SYNTHETIC LONG MERCHANT DESCRIPTION",
+          "billedAmountText": "15.00",
+          "classification": "expense-candidate",
+          "duplicateStatus": "possible-repeat-needs-review",
+          "selected": false
+        },
+        {
+          "page": 1,
+          "line": 4,
+          "date": "2026-09-15",
+          "billedAmountText": "15.00",
+          "classification": "expense-candidate",
+          "duplicateStatus": "possible-repeat-needs-review",
+          "selected": false
+        },
+        {
+          "page": 2,
+          "line": 2,
+          "date": "2026-09-16",
+          "billedAmountText": "2.40",
+          "classification": "expense-candidate",
+          "selected": false
+        },
+        { "page": 2, "line": 3, "classification": "excluded-summary" }
+      ]
+    },
+    {
+      "id": "citi-inspired-currency-and-credits",
+      "statementPeriod": { "from": "2026-09-01", "to": "2026-09-30" },
+      "pages": [
+        {
+          "page": 1,
+          "lines": [
+            "SYNTHETIC CITI-INSPIRED LAYOUT",
+            "10 SEP | SYNTHETIC STORE | USD 10.00 | SGD 13.80",
+            "11 SEP | SYNTHETIC REFUND | SGD 5.00 CR",
+            "12 SEP | CARD PAYMENT | SGD 100.00 CR",
+            "13 SEP | SYNTHETIC USD-ONLY | USD 7.00"
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "page": 1,
+          "line": 2,
+          "date": "2026-09-10",
+          "originalAmountText": "10.00",
+          "originalCurrency": "USD",
+          "billedAmountText": "13.80",
+          "currency": "SGD",
+          "classification": "expense-candidate",
+          "selected": false
+        },
+        {
+          "page": 1,
+          "line": 3,
+          "classification": "excluded-refund",
+          "reason": "positive-expense-model-only"
+        },
+        { "page": 1, "line": 4, "classification": "excluded-repayment" },
+        {
+          "page": 1,
+          "line": 5,
+          "classification": "unresolved",
+          "issues": ["missing-SGD-billed-amount"]
+        }
+      ]
+    },
+    {
+      "id": "hsbc-inspired-ambiguity",
+      "statementPeriod": { "from": "2026-02-01", "to": "2026-02-28" },
+      "pages": [
+        {
+          "page": 1,
+          "lines": [
+            "SYNTHETIC HSBC-INSPIRED LAYOUT",
+            "03/04 | SYNTHETIC DATE | SGD 10.00",
+            "31 FEB | SYNTHETIC INVALID | SGD 2.00",
+            "20 FEB | TRANSFER TO SAVINGS | SGD 200.00",
+            "21 FEB | DIVIDEND CREDIT | SGD 1.20 CR",
+            "22 FEB | SYNTHETIC MALFORMED | SGD 1,23.45"
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "page": 1,
+          "line": 2,
+          "classification": "unresolved",
+          "issues": ["ambiguous-or-outside-period-date"]
+        },
+        {
+          "page": 1,
+          "line": 3,
+          "classification": "unresolved",
+          "issues": ["invalid-calendar-date"]
+        },
+        { "page": 1, "line": 4, "classification": "excluded-transfer" },
+        {
+          "page": 1,
+          "line": 5,
+          "classification": "excluded-credit",
+          "reason": "separate-dividend-review-no-ticker-assumption"
+        },
+        {
+          "page": 1,
+          "line": 6,
+          "classification": "unresolved",
+          "issues": ["invalid-money-grouping"]
+        }
+      ]
+    }
+  ]
+}

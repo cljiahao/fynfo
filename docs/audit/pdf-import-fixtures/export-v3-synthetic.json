@@ -1,0 +1,100 @@
+{
+  "version": 3,
+  "app": "fynfo",
+  "exportedAt": "2026-10-11T08:00:00.000Z",
+  "data": {
+    "profile": {
+      "birthYear": 1990,
+      "isNsman": false,
+      "residencyStatus": "resident"
+    },
+    "snapshots": [
+      {
+        "id": "2026-09",
+        "entries": [
+          {
+            "category": "savings",
+            "account": "Synthetic savings",
+            "amount": 1234.56
+          }
+        ]
+      }
+    ],
+    "expenses": [
+      {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "date": "2026-09-30T00:00:00.000Z",
+        "type": "groceries",
+        "item": "Synthetic market",
+        "info": "Constructed example",
+        "amount": 30.25,
+        "splitType": "shared",
+        "splits": [
+          { "person": "Synthetic member", "amount": 10.25, "settled": false }
+        ]
+      }
+    ],
+    "salary": [{ "id": "2026-09", "salary": 4000, "bonus": 100 }],
+    "taxReliefs": [{ "year": 2026, "reliefKey": "srs", "amount": 200 }],
+    "trades": [
+      {
+        "id": "10000000-0000-4000-8000-000000000002",
+        "date": "2026-09-20T00:00:00.000Z",
+        "broker": "Synthetic broker",
+        "ticker": "D05.SI",
+        "action": "buy",
+        "shares": 2,
+        "price": 10.5,
+        "fees": 0.2,
+        "isCdp": false,
+        "isPO": false
+      }
+    ],
+    "dividends": [
+      {
+        "id": "10000000-0000-4000-8000-000000000003",
+        "ticker": "D05.SI",
+        "amount": 1.25,
+        "currency": "SGD",
+        "date": "2026-09-25T00:00:00.000Z"
+      }
+    ],
+    "plannerSettings": {
+      "emergencyMonths": 3,
+      "warChestMonths": 2,
+      "titheEnabled": false,
+      "tithePct": 0,
+      "allowanceEnabled": true,
+      "allowancePct": 5
+    },
+    "scenarios": [
+      {
+        "id": "10000000-0000-4000-8000-000000000004",
+        "creationRequestId": "10000000-0000-4000-8000-000000000005",
+        "revision": "7",
+        "createdAt": "2026-09-30T01:00:00.000Z",
+        "updatedAt": "2026-10-01T01:00:00.000Z",
+        "payload": {
+          "schemaVersion": 1,
+          "name": "Synthetic plan",
+          "model": "allocation-flat-cpf-v1",
+          "currency": "SGD",
+          "capturedAt": "2026-09-30T01:00:00.000Z",
+          "sourceSnapshotMonth": "2026-09",
+          "inputs": {
+            "salary": 4000,
+            "expenses": 1000,
+            "emergencyMonths": 3,
+            "warChestMonths": 2,
+            "titheEnabled": false,
+            "tithePctInput": 0,
+            "allowanceEnabled": true,
+            "allowancePctInput": 5,
+            "currentSavings": 1234.56,
+            "currentBonds": 0
+          }
+        }
+      }
+    ]
+  }
+}

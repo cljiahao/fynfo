@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
+    "dev": "node scripts/copy-pdfjs-assets.mjs && next dev --turbopack",
+    "build": "node scripts/copy-pdfjs-assets.mjs && next build",
     "build:standalone": "pnpm build && cp -a .next/static .next/standalone/.next/ && cp -a public .next/standalone/",
     "start": "next start",
     "start:standalone": "node --env-file=.env.local .next/standalone/server.js",
@@ -36,6 +36,7 @@
     "lucide-react": "0.563.0",
     "next": "16.3.8",
     "next-themes": "0.4.6",
+    "pdfjs-dist": "6.4.299",
     "pino": "^10.3.1",
     "radix-ui": "1.4.3",
     "react": "19.2.5",

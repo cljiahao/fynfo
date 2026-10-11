@@ -291,6 +291,29 @@ records during export: independent domain reads do not form one database snapsho
 A failed domain read prevents download; temporary download resources are released
 even if browser activation fails, and overlapping export requests are ignored.
 
+Profile also reviews an existing JSON export locally, showing only domain counts,
+export timestamp and legacy omissions. Versions 1–3 are supported within the
+1 MiB / 10,000 aggregate-row review limits (including snapshot entries and expense
+splits). Nested JSON is limited to 32 levels, general strings to 4,096 characters
+and saved scenarios to ten. Files with unsupported fields/values, repeated JSON
+keys or record identities are rejected rather than rewritten. This review does
+not upload, save, restore, authenticate or prove completeness/snapshot consistency.
+Version 1 omits dividends and scenarios; version 2 omits scenarios. Clearing,
+replacing the file or leaving the protected view discards review state and prevents
+late results from being shown. Existing export size/format behavior is unchanged.
+
+Expenses includes **Review bank PDF** for local, unsaved expense drafts with an
+original-page preview and editable date, description, category and SGD amount.
+Choose UOB, DBS, HSBC or Citibank and enter the actual statement period. These
+labels cover tested constructed date/description/SGD-billed variants; real bank
+layouts are not yet qualified. Credits, transfers and repayments are excluded;
+ambiguous dates/amounts and possible duplicates remain visible for review.
+Only unprotected text PDFs up to 10 MiB and 100 pages are supported. No statement
+is uploaded and no expense is saved. Clear, replace or close to discard drafts
+and destroy the local worker. Image-only, protected and unsupported layouts need
+manual entry. Dev/build copies pinned PDF.js worker/font/decoder resources to
+`public/pdfjs/6.4.299`; the optional native canvas dependency is excluded.
+
 ## Production artifact
 
 `next.config.ts` configures standalone output. Build with the intended public
