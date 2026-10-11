@@ -2,12 +2,12 @@
 id: 124
 slug: dashboard-route-retry
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-11
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-11
+impl_pr: https://github.com/cljiahao/fynfo/pull/44
 supersedes:
 constitution_satisfies:
   - '§2.5'
@@ -104,3 +104,9 @@ The first light typecheck identified the additional existing account-menu direct
 Both existing test files passed all seven cases (`124-final-targeted.log`): the actual route delegates once to framework retry without directly invoking reset, shared reset controls remain unchanged, and account-menu logout/cache plus both private-error/digest controls are retained. Strict TypeScript and zero-warning scoped ESLint exited 0 (`124-final-typecheck.log`, `124-final-scoped-lint.log`); scoped formatting passed. The source/test correction is frozen with the four exact donor hashes in `124-four-path-freeze.json`. No full coverage run, production build, normal hooks, commit, push or independent PR was performed for this donor.
 
 Root reviewed the original minimal callback approach and selected the narrow test-consumer extension. Fresh independent four-path review and actual Next synthetic refetch qualification remain required in combined125. Persistent Server Component failures may remain opaque after retry; this patch does not certify guaranteed recovery, production identity/RLS/encryption or faster loading. The initial proposal and early pending entries above are historical preparation records; current delivery is the combined125 candidate only.
+
+## Verified delivery — 121 closeout
+
+Root verified [PR44](https://github.com/cljiahao/fynfo/pull/44) exact head `b384ba3c07dc2a19540f8324819760c60f8eaab0` before normal merge. Required CI 38112259967/job114390083246 and preview checks succeeded; CI completed 2026-10-11T04:43:13Z. The merge is `03dadad7b1bfd835da4b597d68a7b8997621f0f3` at 2026-10-11T04:43:39Z. Root verified [public merged-commit production deployment](https://vercel.com/noxynx/fynfo/A8kaVnv4jEz9Cb44Sr6x7cfGe6Ny) SUCCESS updated 2026-10-11T04:44:26Z. Public deployment status does not prove private account, database/RLS, provider or cryptographic behavior.
+
+This record shipped within combined 125, not through a separate donor PR. Unchanged normal hooks passed formatting, lint, strict types, production build and coverage: 144 files / 1,476 tests; statements 93.18%, branches 89.28%, functions 91.70%, lines 93.89%. Security floors remain unchanged. Earlier pending/candidate statements retain their historical stage; the approved field remains blank under owner-authorized remediation.

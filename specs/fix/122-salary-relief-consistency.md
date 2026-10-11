@@ -2,12 +2,12 @@
 id: '122'
 slug: salary-relief-consistency
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-11
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-11
+impl_pr: https://github.com/cljiahao/fynfo/pull/43
 supersedes:
 constitution_satisfies:
   [
@@ -90,3 +90,9 @@ Final focused verification passed three files / 77 tests, including the unchange
 Full isolated product gates passed: check, test:ci and build each exited zero. Vitest passed 144 files / 1,453 tests with statements 93.18%, branches 89.22%, functions 91.70% and lines 93.89%; existing security floors were unchanged and passed. Next.js 16.3.8 Turbopack compiled and generated all 17 pages. Logs: `122-full-check.log`, `122-full-test-ci.log`, `122-full-build.log`; exits: `122-full-gate-exits.json`. The independent six-path review passed against the source freeze. Corrected actual Next browser qualification and normal-hook delivery remain pending; these product gates are not evidence of live authentication, private records or production behavior.
 
 Corrected actual Next browser qualification passed on the exact three salary source bytes copied into the separately reviewed synthetic memory fixture. Dashboard and salary details both showed projected tax 1,033 with saved SRS 100. In the actual Reliefs dialog, changing SRS to 200 and Confirm saved and automatically closed; details refreshed to tax 1,026 and client navigation back to Dashboard showed 1,026. The external webpack build exited zero; evidence is retained in `122-next-corrected-browser-proof.md`. Fixed-memory identity/vault/action adapters do not prove production authentication, database durability or real financial records. Cancel/failure/readiness behavior remains qualified by actual-hook regressions rather than additional browser claims. Root accepted this bounded proof, independent source review and full gates for normal-hook delivery; shipment remains unclaimed until exact-head green merge.
+
+## Verified delivery — 121 closeout
+
+Root verified [PR43](https://github.com/cljiahao/fynfo/pull/43) exact head `dd9f061490b62a6ea167b988b8cc734da52b9ef4` before normal merge. Required CI 38110059133/job114383585281 and preview checks succeeded; CI completed 2026-10-11T04:01:04Z. The merge is `89ed0cbaabac774d612da32f86adeeedaeadb962` at 2026-10-11T04:02:42Z. Root verified [public merged-commit production deployment](https://vercel.com/noxynx/fynfo/G3LGxkzFjpaaPjvCp2mi3uuKWCQw) SUCCESS updated 2026-10-11T04:03:33Z. Public deployment status does not prove private account, database/RLS, provider or cryptographic behavior.
+
+Unchanged full gates and normal hooks passed 144 files / 1,453 tests; coverage statements 93.18%, branches 89.22%, functions 91.70%, lines 93.89%. The bounded actual Next proof showed saved SRS 100 gives dashboard/detail tax 1033; saving 200 gives 1026 in both. Existing calculation/catalog contracts remain unchanged; unknown relief keys remain a recorded limitation. Earlier pending statements are historical. Approval remains blank under the owner audit.

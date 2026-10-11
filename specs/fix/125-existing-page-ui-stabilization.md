@@ -2,12 +2,12 @@
 id: 125
 slug: existing-page-ui-stabilization
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-11
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-11
+impl_pr: https://github.com/cljiahao/fynfo/pull/44
 supersedes:
 constitution_satisfies:
   - '§2.5'
@@ -110,3 +110,9 @@ Fresh independent review of the five optional source/test paths found no scoped 
 Root qualified the six frozen product overrides against merged 122 in the existing isolated Next lab. The production webpack build exited zero; its closure had 25 entries / 289 modules with no missing or unsafe imports. Actual browser workflows confirmed the five contextual allocation names and complementary deployable-cash updates, named relief amount/count/option controls and existing disabled states, native trade Date-label focus, and a new distribution date matching the read-only browser-local day. Cancel retained saved records; timezone-boundary and saved-prefix behavior remain focused regression evidence.
 
 The actual admin route recovered from a generated one-shot server read failure using Try again alone, without reload or navigation. Injecting another failure before retry kept the generic error opaque, and a subsequent retry recovered when it cleared. This qualifies the supplied pinned Next framework retry, not production identity, RLS, database availability, provider behavior or cryptography. The public fixed-memory action/identity/vault boundaries remained explicit. Proof: `125-next-corrected-browser-proof.md`. The owned server and tab were closed. Full unchanged normal-hook gates and exact-head green CI remain required; no speed or exhaustive accessibility/security claim is made.
+
+## Verified delivery — 121 closeout
+
+Root verified [PR44](https://github.com/cljiahao/fynfo/pull/44) exact head `b384ba3c07dc2a19540f8324819760c60f8eaab0` before normal merge. Required CI 38112259967/job114390083246 and preview checks succeeded; CI completed 2026-10-11T04:43:13Z. The merge is `03dadad7b1bfd835da4b597d68a7b8997621f0f3` at 2026-10-11T04:43:39Z. Root verified [public merged-commit production deployment](https://vercel.com/noxynx/fynfo/A8kaVnv4jEz9Cb44Sr6x7cfGe6Ny) SUCCESS updated 2026-10-11T04:44:26Z. Public deployment status does not prove private account, database/RLS, provider or cryptographic behavior.
+
+This record shipped within combined 125, not through a separate donor PR. Unchanged normal hooks passed formatting, lint, strict types, production build and coverage: 144 files / 1,476 tests; statements 93.18%, branches 89.28%, functions 91.70%, lines 93.89%. Security floors remain unchanged. Earlier pending/candidate statements retain their historical stage; the approved field remains blank under owner-authorized remediation.

@@ -2,12 +2,12 @@
 id: 123
 slug: equity-form-accessibility-and-local-date
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-11
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-11
+impl_pr: https://github.com/cljiahao/fynfo/pull/44
 supersedes:
 constitution_satisfies:
   - '§2.5'
@@ -113,3 +113,9 @@ Corrected focused tests passed66 cases in three files (`123-targeted.log`), incl
 To avoid repeated full pipelines, root selected123 and124 plus bounded existing optional-control naming for one incumbent UI stabilization PR125. Its exact13-path combined audit was published separately before additional product edits.123 remains exactly the four donor paths above; no additional allocation source path is included in this donor. No independent123 full gates, commit, push or PR is authorized. Full gates/unchanged hooks/exact-head CI and merge belong to the combined125 delivery after verified122 integration.123 is not shipped, and later shipment metadata must follow actual combined merge evidence. Independent fresh donor review remains required.
 
 Final light TypeScript and scoped zero-warning ESLint both exited0 (`123-typecheck.log`, `123-scoped-lint.log`, `123-light-exits.json`). Root independently read the actual product diff and found no scope or preserved-contract blocker. Formatting/diff checks and exact four-path hash freeze follow; no independent123 delivery or full-gate run occurred.
+
+## Verified delivery — 121 closeout
+
+Root verified [PR44](https://github.com/cljiahao/fynfo/pull/44) exact head `b384ba3c07dc2a19540f8324819760c60f8eaab0` before normal merge. Required CI 38112259967/job114390083246 and preview checks succeeded; CI completed 2026-10-11T04:43:13Z. The merge is `03dadad7b1bfd835da4b597d68a7b8997621f0f3` at 2026-10-11T04:43:39Z. Root verified [public merged-commit production deployment](https://vercel.com/noxynx/fynfo/A8kaVnv4jEz9Cb44Sr6x7cfGe6Ny) SUCCESS updated 2026-10-11T04:44:26Z. Public deployment status does not prove private account, database/RLS, provider or cryptographic behavior.
+
+This record shipped within combined 125, not through a separate donor PR. Unchanged normal hooks passed formatting, lint, strict types, production build and coverage: 144 files / 1,476 tests; statements 93.18%, branches 89.28%, functions 91.70%, lines 93.89%. Security floors remain unchanged. Earlier pending/candidate statements retain their historical stage; the approved field remains blank under owner-authorized remediation.
