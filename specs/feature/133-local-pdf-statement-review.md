@@ -53,6 +53,13 @@ Browser-memory-only editable date/description/category/SGD amount rows alongside
 
 ## Risk and reversibility
 
+Owner delivery authorization2026-10-12: “implement and PR and merge them once
+its clean” authorizes committing, publishing and merging this session's approved
+132/133 scope after local gates and CI pass. Final portability correction records
+`.gitattributes`: mark only `docs/audit/pdf-import-fixtures/*.pdf` as binary to
+prevent Windows newline conversion from corrupting PDF cross-reference offsets.
+No fixture content, dependency, protected harness or unrelated feature changes.
+
 Local implementation verification completed2026-10-11: `pnpm check`,149 test
 suites /1574 tests with unchanged coverage floors, production build with synthetic
 public settings, and actual synthetic browser worker/source/mobile/network checks
