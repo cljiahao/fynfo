@@ -1,6 +1,6 @@
 # Fynfo Constitution
 
-**Version:** 4.0.0
+**Version:** 4.1.0
 **Effective:** 2026-05-25
 **Owner:** Clarence (cljiahao27@gmail.com)
 **Status:** Living document. Amendments tracked in git history.
@@ -232,9 +232,12 @@ comment hygiene, and measured performance improvements. Preserve product scope
 and public contracts. Verify consumers before deleting files; require meaningful
 regression tests for behavior changes and measurements for performance claims.
 Review README and comments against each batch's resulting behavior, and run a
-second review pass after remediation. Follow §4 quality gates before commits or
-PRs; documentation-only edits may use formatting and diff review without an
-application build or runtime tests when no executable behavior changed.
+second review pass after remediation. Before commits, run meaningful targeted
+regression checks and all active Git hooks. Before opening an executable PR, all
+§4 quality gates must pass on its resulting source; an unchanged pre-push run may
+supply that full local verification. Documentation-only edits may use formatting
+and diff review without an application build or runtime tests when no executable
+behavior changed.
 
 The exception does not authorize new features, new dependencies, schema or data
 migrations, cryptographic protocol changes, deployment, or changes to protected
@@ -292,3 +295,4 @@ edit; uncertainty alone does not prohibit read-only investigation.
 | 3.0     | 2026-06-26 | Two-person household: §1.1/§1.2 allow linking two accounts into a household for household-scoped data only (personal vaults unchanged, server-readable key never introduced). §2.3 adds a third vault-gate exception — household actions do `requireUserId()`→`getHouseholdKhSession()`. §5.1a adds the household-key (`K_h`) invariant: stored only wrapped under each member's DEK, unwrapped only in the `fynfo_household_kh` cookie, no new PIN. Authorized by `specs/governance/052-household-two-person.md`. |
 | 3.0.1   | 2026-06-27 | §8.2 clarification: narrow the `.env*` hard-stop to real secret env files (`.env`, `.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.production.*`, `.env.staging`); `.env.example` (committed placeholder template per §5.3) is NOT a secret and IS agent-editable. No expansion of secret access. Authorized by `specs/governance/055-env-example-editable.md`.                                                                                                                         |
 | 4.0.0   | 2026-10-08 | Owner-authorized audit/remediation path (§7.4); scoped permission for rulebooks and enforcement/CI edits (§8.2); explicit prohibition on secret reads; independent work continues while protected operations await approval. Authorized by `specs/governance/069-owner-authorized-audit-remediation.md`.                                                                                                                                                                                                           |
+| 4.1.0   | 2026-10-11 | §7.4 verification timing: targeted regressions and active hooks before commit; all full local gates before executable PR, allowing an unchanged pre-push run to supply them. Hooks, HARD quality/security rules and green CI before merge remain unchanged. Explicitly approved by Clarence in `specs/governance/126-verification-timing.md`.                                                                                                                                                                      |
