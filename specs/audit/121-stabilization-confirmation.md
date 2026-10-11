@@ -2,12 +2,12 @@
 id: 121
 slug: stabilization-confirmation
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-11
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-11
+impl_pr: https://github.com/cljiahao/fynfo/pull/46
 supersedes:
 constitution_satisfies:
   - '§4.1'
