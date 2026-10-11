@@ -2,12 +2,12 @@
 id: '133'
 slug: local-pdf-statement-review
 area: feature
-status: approved
+status: shipped
 author: Codex
 created: 2026-10-11
 approved: 2026-10-11
-shipped:
-impl_pr:
+shipped: 2026-10-12
+impl_pr: https://github.com/cljiahao/fynfo/pull/49
 constitution_satisfies: ['§2', '§3', '§4', '§5', '§7.4', '§8.3']
 constitution_overrides: []
 ---
@@ -65,8 +65,9 @@ suites /1574 tests with unchanged coverage floors, production build with synthet
 public settings, and actual synthetic browser worker/source/mobile/network checks
 passed. Supplemental harness verification found pre-existing manifest drift for
 AGENTS.md and next-verify/SKILL.md, unchanged from HEAD. See the scoped audit for
-evidence and residual limits. This spec remains approved and unshipped; no CI,
-merge or real bank-layout qualification is claimed.
+evidence and residual limits. At that local verification stage, CI and merge
+were pending. PR49 subsequently passed all hosted checks and merged on2026-10-12
+Singapore time. Real bank-layout qualification remains unclaimed.
 
 Wrong layout interpretation can suggest wrong expenses; mandatory visible provenance/editing and no writes limit impact. Malicious PDFs can exhaust resources; explicit bounds/worker cleanup/local-only API are required, not a blanket safety guarantee. Revert scoped feature/dependency/config changes to remove review; no financial database mutation exists to undo.
 

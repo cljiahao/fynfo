@@ -2,12 +2,12 @@
 id: '132'
 slug: local-export-review
 area: feature
-status: approved
+status: shipped
 author: Codex
 created: 2026-10-11
 approved: 2026-10-11
-shipped:
-impl_pr:
+shipped: 2026-10-12
+impl_pr: https://github.com/cljiahao/fynfo/pull/49
 constitution_satisfies:
   ['§2.1', '§2.2', '§2.4', '§2.5', '§2.6', '§3', '§4', '§5', '§7.4', '§8']
 constitution_overrides: []

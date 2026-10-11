@@ -169,3 +169,16 @@ unmerged. Specs132/133 stay approved rather than shipped; no PR, CI, deployment,
 financial write or universal bank support is claimed. Temporary browser harness
 and rendered QA scratch files were removed from this worktree after inspection;
 the synthetic binary fixtures and executable unit/component regressions remain.
+
+### Delivery closeout (2026-10-12, Singapore)
+
+The owner explicitly authorized implementation, PR and merge once clean. The
+feature and binary fixture portability correction passed active commit hooks and
+the complete pre-push build/check/test sequence again:149 suites /1574 tests,
+94.38% line coverage and unchanged security floors. PR49 passed all GitHub CI
+and Vercel preview checks and merged as
+`d2324ff4d7f8c6a4445885267538f7c39012b155`. Specs132/133 are now marked shipped
+with that PR link. Earlier uncommitted/unmerged/local-only-gate statements above
+describe their dated preparation stages; they are superseded by this delivery
+record. No real-bank qualification, save/restore workflow, protected harness
+reconciliation or independently verified production deployment is claimed.
