@@ -2,12 +2,12 @@
 id: 120
 slug: export-scenario-disclosure
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-11
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-10
+impl_pr: https://github.com/cljiahao/fynfo/pull/42
 supersedes:
 constitution_satisfies:
   - '§1.1'
@@ -135,3 +135,9 @@ Root verified 117 PR41 merge de63922bb62c0b55e36625a66db508832a61671f and public
 Root's five-path diff review and the fresh independent read-only review passed against merged parent `de63922bb62c0b55e36625a66db508832a61671f`. Independent review verified all five hashes against freeze manifest SHA `3c17ff664ce8a701219307f67c10f3a562192a702a5479734dd6d817cae55051`, disclosure accuracy, retained warnings, test scope and factual linked 117 metadata. No scoped blocker remained; the reviewer ran no gates or edits.
 
 The unchanged full pipeline `pnpm check`, `pnpm test:ci`, `pnpm build` exited 0 in the isolated synthetic fixture. Route logging, full formatting, lint, TypeScript, all 144 test files / 1,445 tests, coverage and production build passed. Aggregate coverage: statements 93.10%, branches 89.11%, functions 91.49%, lines 93.81%; all existing stricter floors were retained and passed. External logs: `120-final-check.log`, `120-final-test-ci.log`, `120-final-build.log`. Existing physical pinned dependencies and normal config/hooks were reused; no real environment or private account data was read. No application change followed the frozen reviews. Normal commit/push hooks and exact-head CI remain required; this batch is not marked shipped before root verifies merge. Browser verification of the final integrated fixture remains separate and does not change the disclosure-copy acceptance.
+
+## Verified delivery — 121 closeout
+
+Root verified [PR42](https://github.com/cljiahao/fynfo/pull/42) exact head `db6c673caa02592f577e8948361654b7ad6dafe9` before normal merge. Required CI 38082690318/job114302687647 and preview checks succeeded; CI completed 2026-10-10T20:14:24Z. The merge is `422b9ff28d5d1b8a9e7cff42b0ca75ac1b90ab63` at 2026-10-10T20:14:41Z. Root verified [public merged-commit production deployment](https://vercel.com/noxynx/fynfo/4MEx9zUjRvHo4CmAfJC68whHZdXe) SUCCESS updated 2026-10-10T20:15:08Z. Public deployment status does not prove private account, database/RLS, provider or cryptographic behavior.
+
+Unchanged full gates and normal hooks passed 144 files / 1,445 tests; coverage statements 93.10%, branches 89.11%, functions 91.49%, lines 93.81%. The correction changes visible export disclosure only; nine-domain serialization, plaintext/household/non-restorable/concurrent-edit limits remain unchanged. Earlier pending statements are historical, not current shipment status. Approval remains blank under the owner audit.
