@@ -1,6 +1,7 @@
 'use client';
 
 import { EmptyState, PaginationControls } from '@/components/widgets';
+import { StatementReview } from '@/features/import-review';
 import { format } from 'date-fns';
 import { Receipt } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -136,6 +137,7 @@ export function ExpenseTable() {
 
   return (
     <div className="space-y-3">
+      <StatementReview />
       <ExpenseTableToolbar
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}

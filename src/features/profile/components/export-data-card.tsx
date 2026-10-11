@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Download, Loader2 } from 'lucide-react';
 import { useExportData } from '../hooks/use-export-data';
+import { ExportReview } from './export-review';
 
 export function ExportDataCard() {
   const { exportData, isExporting } = useExportData();
@@ -39,6 +40,7 @@ export function ExportDataCard() {
           )}
           {isExporting ? 'Exporting...' : 'Export my data'}
         </Button>
+        <ExportReview />
       </CardContent>
     </Card>
   );

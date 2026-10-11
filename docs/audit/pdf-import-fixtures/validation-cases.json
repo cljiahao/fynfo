@@ -1,0 +1,110 @@
+{
+  "base": "export-v3-synthetic.json",
+  "status": "proposed-expectations-not-executed-product-tests",
+  "cases": [
+    {
+      "id": "v3-complete",
+      "operation": "unchanged",
+      "expected": "nine-domain-preview-zero-writes"
+    },
+    {
+      "id": "v2-legacy",
+      "operation": "set-version-2-and-remove-scenarios",
+      "expected": "preview-with-scenarios-absent-warning"
+    },
+    {
+      "id": "v1-legacy",
+      "operation": "set-version-1-and-remove-dividends-and-scenarios",
+      "expected": "preview-with-both-absence-warnings"
+    },
+    {
+      "id": "future-version",
+      "operation": "set-version-4",
+      "expected": "reject-zero-writes"
+    },
+    {
+      "id": "missing-current-domain",
+      "operation": "remove-data.scenarios-with-version-3",
+      "expected": "reject-zero-writes"
+    },
+    {
+      "id": "unknown-sensitive-field",
+      "operation": "add-data.user_id-with-synthetic-value",
+      "expected": "reject-zero-writes"
+    },
+    {
+      "id": "wrong-app",
+      "operation": "set-app-other",
+      "expected": "reject-zero-writes"
+    },
+    {
+      "id": "invalid-date",
+      "operation": "set-first-expense-date-2026-02-30",
+      "expected": "reject-zero-writes"
+    },
+    {
+      "id": "refund",
+      "operation": "set-first-expense-amount-negative",
+      "expected": "reject-zero-writes"
+    },
+    {
+      "id": "invalid-shared-allocation",
+      "operation": "set-first-expense-split-amount-31",
+      "expected": "reject-zero-writes"
+    },
+    {
+      "id": "duplicate-month",
+      "operation": "duplicate-first-snapshot",
+      "expected": "reject-zero-writes"
+    },
+    {
+      "id": "duplicate-row-id",
+      "operation": "duplicate-first-expense",
+      "expected": "reject-zero-writes"
+    },
+    {
+      "id": "scenario-capacity",
+      "operation": "make-11-scenarios-with-distinct-synthetic-ids",
+      "expected": "reject-zero-writes"
+    },
+    {
+      "id": "source-scenario-revision",
+      "operation": "unchanged-revision-7",
+      "expected": "preview-preserves-source-metadata-future-restore-uses-new-identity-and-revision"
+    },
+    {
+      "id": "valid-null-and-empty",
+      "operation": "set-profile-plannerSettings-null-and-all-arrays-empty",
+      "expected": "empty-preview-zero-writes"
+    },
+    {
+      "id": "malformed-json",
+      "operation": "truncate-input-json",
+      "expected": "reject-zero-writes"
+    },
+    {
+      "id": "oversize",
+      "operation": "generate-one-byte-over-approved-UTF8-limit",
+      "expected": "reject-before-parse-zero-writes"
+    }
+  ],
+  "future-save-outcomes": [
+    {
+      "id": "mixed-selected-save",
+      "rows": ["confirmed", "uncertain-transport", "skipped-unresolved"],
+      "expected": "show-each-outcome-retain-unconfirmed-edits-no-blind-fresh-id-retry"
+    },
+    {
+      "id": "lock-during-save",
+      "expected": "clear-sensitive-review-no-late-disclosure-do-not-claim-write-cancelled"
+    },
+    {
+      "id": "restore-lost-reply",
+      "expected": "own-operation-status-before-retry-identical-prepared-request-only"
+    },
+    {
+      "id": "two-restore-operations",
+      "expected": "at-most-one-atomic-commit-in-approved-disposable-DB-proof"
+    }
+  ]
+}
