@@ -32,6 +32,12 @@ export default defineConfig({
         statements: 81,
         functions: 81,
         branches: 81,
+        'src/app/api/vault/route.ts': {
+          lines: 81,
+          statements: 81,
+          functions: 81,
+          branches: 81,
+        },
         'src/features/overview/actions/overview-actions.ts': {
           lines: 95,
           statements: 95,
