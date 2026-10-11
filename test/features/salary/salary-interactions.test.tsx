@@ -31,9 +31,12 @@ vi.mock('@/features/salary/actions/salary-actions', () => actions);
 vi.mock('@/features/salary/actions/relief-actions', () => actions);
 vi.mock('@/features/profile/actions/profile-actions', () => actions);
 
-function mount(ui: React.ReactNode) {
+function mount(ui: React.ReactNode, staleTime = 0) {
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    defaultOptions: {
+      queries: { retry: false, staleTime },
+      mutations: { retry: false },
+    },
   });
   return {
     client,
@@ -54,6 +57,36 @@ beforeEach(() => {
   actions.upsertTaxReliefs.mockResolvedValue(undefined);
 });
 afterEach(cleanup);
+
+it('uses saved SRS relief in both projected salary tax displays', async () => {
+  actions.getProfile.mockResolvedValue({
+    birthYear: 1990,
+    isNsman: false,
+    residencyStatus: 'resident',
+  });
+  actions.getTaxReliefs.mockResolvedValue([{ reliefKey: 'srs', amount: 100 }]);
+  const records = [
+    { id: `${new Date().getFullYear()}-01`, salary: 5000, bonus: 0 },
+  ];
+  mount(
+    <>
+      <section aria-label="Summary cards">
+        <SalarySummaryCards records={records} />
+      </section>
+      <section aria-label="Salary details">
+        <SalarySummary records={records} />
+      </section>
+    </>,
+    5 * 60 * 1000
+  );
+  const cards = screen.getByRole('region', { name: 'Summary cards' });
+  const details = screen.getByRole('region', { name: 'Salary details' });
+  await waitFor(() =>
+    expect(within(cards).getByText('$1,033')).toBeInTheDocument()
+  );
+  expect(within(details).getByText('$1,033.00')).toBeInTheDocument();
+  expect(actions.getTaxReliefs).toHaveBeenCalledTimes(1);
+});
 
 it.each(['Gross Salary', 'Bonus'])(
   'associates salary %s with its numeric input and label focus',
@@ -518,4 +551,190 @@ it('withholds overflowing income projections rather than formatting infinity', a
   await screen.findByText('CPF estimate unavailable');
   expect(screen.queryByText(/∞|Infinity/)).toBeNull();
   expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2);
+});
+
+describe('saved relief readiness across salary displays', () => {
+  function displays() {
+    const records = [
+      { id: `${new Date().getFullYear()}-01`, salary: 5000, bonus: 0 },
+    ];
+    actions.getProfile.mockResolvedValue({
+      birthYear: 1990,
+      isNsman: false,
+      residencyStatus: 'resident',
+    });
+    return mount(
+      <>
+        <section aria-label="Summary cards">
+          <SalarySummaryCards records={records} />
+        </section>
+        <section aria-label="Salary details">
+          <SalarySummary records={records} />
+        </section>
+      </>,
+      5 * 60 * 1000
+    );
+  }
+
+  async function expectTax(card: string, detail: string) {
+    await waitFor(() =>
+      expect(
+        within(
+          screen.getByRole('region', { name: 'Summary cards', hidden: true })
+        ).getByText(card)
+      ).toBeInTheDocument()
+    );
+    await waitFor(() =>
+      expect(
+        within(
+          screen.getByRole('region', { name: 'Salary details', hidden: true })
+        ).getByText(detail)
+      ).toBeInTheDocument()
+    );
+  }
+
+  it('retains gross income while a delayed saved relief read withholds tax', async () => {
+    let resolve!: (rows: { reliefKey: string; amount: number }[]) => void;
+    actions.getTaxReliefs.mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        })
+    );
+    displays();
+    await screen.findByText('Loading saved tax reliefs');
+    expect(screen.getAllByText('$5,000').length).toBeGreaterThan(0);
+    expect(screen.queryByText('$1,040')).toBeNull();
+    expect(screen.queryByText('$1,033')).toBeNull();
+    resolve([{ reliefKey: 'srs', amount: 100 }]);
+    await expectTax('$1,033', '$1,033.00');
+    expect(actions.getTaxReliefs).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a failed relief read without re-reading the profile', async () => {
+    actions.getTaxReliefs
+      .mockRejectedValueOnce(new Error('fixture'))
+      .mockResolvedValue([{ reliefKey: 'srs', amount: 100 }]);
+    displays();
+    await screen.findByText('Saved tax reliefs unavailable');
+    expect(screen.queryByText('$1,040')).toBeNull();
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Retry tax reliefs' })[0]
+    );
+    await expectTax('$1,033', '$1,033.00');
+    expect(actions.getTaxReliefs).toHaveBeenCalledTimes(2);
+    expect(actions.getProfile).toHaveBeenCalledTimes(1);
+  });
+
+  it('withholds cached estimates after a failed refresh and recovers with new saved values', async () => {
+    actions.getTaxReliefs
+      .mockResolvedValueOnce([{ reliefKey: 'srs', amount: 100 }])
+      .mockRejectedValueOnce(new Error('fixture'))
+      .mockResolvedValue([{ reliefKey: 'srs', amount: 200 }]);
+    const { client } = displays();
+    await expectTax('$1,033', '$1,033.00');
+    await client.refetchQueries({
+      queryKey: ['tax-reliefs', new Date().getFullYear()],
+    });
+    await screen.findByText('Saved tax reliefs unavailable');
+    expect(
+      client.getQueryData(['tax-reliefs', new Date().getFullYear()])
+    ).toEqual([{ reliefKey: 'srs', amount: 100 }]);
+    expect(screen.queryByText('$1,033')).toBeNull();
+    expect(screen.queryByText('$1,033.00')).toBeNull();
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Retry tax reliefs' })[0]
+    );
+    await expectTax('$1,026', '$1,026.00');
+  });
+
+  it('does not restore a late saved relief response after unmount and cache clear', async () => {
+    let resolve!: (rows: { reliefKey: string; amount: number }[]) => void;
+    const response = new Promise<{ reliefKey: string; amount: number }[]>(
+      (done) => {
+        resolve = done;
+      }
+    );
+    actions.getTaxReliefs.mockReturnValue(response);
+    const { client, unmount } = displays();
+    await screen.findByText('Loading saved tax reliefs');
+    expect(actions.getTaxReliefs).toHaveBeenCalledTimes(1);
+    unmount();
+    client.clear();
+    resolve([{ reliefKey: 'srs', amount: 100 }]);
+    await response;
+    expect(
+      client.getQueryData(['tax-reliefs', new Date().getFullYear()])
+    ).toBeUndefined();
+    expect(client.getQueryCache().getAll()).toHaveLength(0);
+  });
+
+  it('treats a successful empty relief list as confirmed zero', async () => {
+    displays();
+    await expectTax('$1,040', '$1,040.00');
+    expect(actions.getTaxReliefs).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not suppress non-resident estimates for an irrelevant relief failure', async () => {
+    actions.getTaxReliefs.mockRejectedValue(new Error('fixture'));
+    const records = [
+      { id: `${new Date().getFullYear()}-01`, salary: 5000, bonus: 0 },
+    ];
+    actions.getProfile.mockResolvedValue({
+      birthYear: 1990,
+      isNsman: false,
+      residencyStatus: 'non_resident',
+    });
+    mount(
+      <>
+        <section aria-label="Summary cards">
+          <SalarySummaryCards records={records} />
+        </section>
+        <section aria-label="Salary details">
+          <SalarySummary records={records} />
+        </section>
+      </>,
+      5 * 60 * 1000
+    );
+    await expectTax('$9,000', '$9,000.00');
+    expect(
+      screen.queryByRole('button', { name: 'Retry tax reliefs' })
+    ).toBeNull();
+  });
+
+  it('keeps canceled and failed drafts out of estimates and refreshes both displays after saving', async () => {
+    let saved = [{ reliefKey: 'srs', amount: 100 }];
+    actions.getTaxReliefs.mockImplementation(async () => saved);
+    actions.upsertTaxReliefs
+      .mockRejectedValueOnce(new Error('fixture'))
+      .mockImplementation(async (_year: number, rows: typeof saved) => {
+        saved = rows;
+      });
+    displays();
+    await expectTax('$1,033', '$1,033.00');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Reliefs' })[0]);
+    const checkbox = await screen.findByRole('checkbox', {
+      name: 'SRS Relief',
+    });
+    const row = checkbox.closest('.flex')!;
+    fireEvent.change(within(row as HTMLElement).getByRole('spinbutton'), {
+      target: { value: '200' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await expectTax('$1,033', '$1,033.00');
+    expect(actions.upsertTaxReliefs).not.toHaveBeenCalled();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Reliefs' })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    await waitFor(() =>
+      expect(actions.upsertTaxReliefs).toHaveBeenCalledTimes(1)
+    );
+    await expectTax('$1,033', '$1,033.00');
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    await expectTax('$1,026', '$1,026.00');
+    expect(actions.upsertTaxReliefs).toHaveBeenLastCalledWith(
+      new Date().getFullYear(),
+      [{ reliefKey: 'srs', amount: 200 }]
+    );
+    expect(actions.getTaxReliefs).toHaveBeenCalledTimes(2);
+  });
 });

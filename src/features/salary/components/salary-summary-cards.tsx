@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/widgets';
 import { formatSGDWhole } from '@/lib/utils/currency';
 import { Banknote, Calculator, Receipt, TrendingUp } from 'lucide-react';
@@ -24,6 +25,8 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
     ytdBonus,
     estSummary,
     profileState,
+    reliefState,
+    retryReliefs,
   } = useSalaryYtdStats(records);
 
   return (
@@ -64,13 +67,28 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
               ? 'Tax profile unavailable'
               : profileState === 'incomplete'
                 ? 'Complete your profile for tax estimates'
-                : estSummary === null
-                  ? 'CPF estimate unavailable'
-                  : estSummary.grossAnnual > 0
-                    ? `Effective ${(estSummary.effectiveRate * 100).toFixed(1)}%`
-                    : 'No records'
+                : reliefState === 'loading'
+                  ? 'Loading saved tax reliefs'
+                  : reliefState === 'error'
+                    ? 'Saved tax reliefs unavailable'
+                    : estSummary === null
+                      ? 'CPF estimate unavailable'
+                      : estSummary.grossAnnual > 0
+                        ? `Effective ${(estSummary.effectiveRate * 100).toFixed(1)}%`
+                        : 'No records'
         }
-      />
+      >
+        {profileState === 'ready' && reliefState === 'error' && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-2"
+            onClick={retryReliefs}
+          >
+            Retry tax reliefs
+          </Button>
+        )}
+      </StatCard>
       <StatCard
         label="YTD Income"
         value={formatIncome(ytdSalary + ytdBonus)}

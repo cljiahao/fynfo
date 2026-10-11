@@ -203,13 +203,6 @@ function SummaryColumn({
 
 export function SalarySummary({ records }: SalarySummaryProps) {
   const [reliefDialogOpen, setReliefDialogOpen] = useState(false);
-  const [reliefItems, setReliefItems] = useState<ReliefItem[]>([]);
-
-  const additionalReliefsTotal = reliefItems.reduce(
-    (sum, r) => sum + r.amount,
-    0
-  );
-
   const {
     currentYear,
     currentYearRecords,
@@ -218,7 +211,10 @@ export function SalarySummary({ records }: SalarySummaryProps) {
     trueSummary,
     profileState,
     retryProfile,
-  } = useSalaryYtdStats(records, additionalReliefsTotal);
+    reliefState,
+    retryReliefs,
+    reliefItems,
+  } = useSalaryYtdStats(records);
 
   if (profileState !== 'ready') {
     return (
@@ -248,6 +244,25 @@ export function SalarySummary({ records }: SalarySummaryProps) {
       </Card>
     );
   }
+
+  if (reliefState !== 'ready')
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Tax and CPF estimates</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p role={reliefState === 'error' ? 'alert' : 'status'}>
+            {reliefState === 'loading'
+              ? 'Loading your saved tax reliefs…'
+              : 'Couldn’t load your saved tax reliefs. Your income records are still available.'}
+          </p>
+          {reliefState === 'error' && (
+            <Button onClick={retryReliefs}>Retry tax reliefs</Button>
+          )}
+        </CardContent>
+      </Card>
+    );
 
   if (estSummary === null || trueSummary === null)
     return (
@@ -303,7 +318,6 @@ export function SalarySummary({ records }: SalarySummaryProps) {
         earnedIncomeRelief={estSummary.earnedIncomeRelief}
         nsmanRelief={estSummary.nsmanRelief}
         isNonResident={estSummary.isNonResident}
-        onConfirm={setReliefItems}
       />
     </>
   );
