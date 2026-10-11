@@ -62,6 +62,7 @@ export function MonthlyInvestmentTable({
                     <td className="py-2 text-center">
                       <Input
                         type="number"
+                        aria-label={`${row.label} monthly allocation (%)`}
                         min="0"
                         max="100"
                         step="1"

@@ -20,6 +20,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const api = vi.hoisted(() => ({
@@ -113,6 +114,8 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -131,6 +134,139 @@ it('loads real query history and reports server failures', async () => {
   const second = renderHook(() => useTrades(), { wrapper });
   await waitFor(() => expect(second.result.current.isError).toBe(true));
 });
+describe('123 trade field associations', () => {
+  it.each(['Ticker', 'Date', 'Broker', 'Shares', 'Price per Share', 'Fees'])(
+    'names the native trade %s control and associates its label',
+    async (name) => {
+      mount(<TradeFormDialog open onOpenChange={vi.fn()} editTrade={trade} />);
+      const control = screen.getByLabelText(name);
+      const label = screen.getByText(name, { selector: 'label' });
+      expect(label.getAttribute('for')).toBe(control.id);
+      expect((label as HTMLLabelElement).control).toBe(control);
+      if (name === 'Broker') {
+        expect(screen.getByRole('combobox', { name })).toBe(control);
+      } else {
+        if (name === 'Ticker') {
+          expect(screen.getByRole('textbox', { name })).toBe(control);
+        } else if (name !== 'Date') {
+          expect(screen.getByRole('spinbutton', { name })).toBe(control);
+        }
+        await userEvent.click(label);
+        expect(document.activeElement).toBe(control);
+      }
+    }
+  );
+
+  it('keeps field and checkbox targets inside their own mounted trade dialog', () => {
+    mount(
+      <>
+        <TradeFormDialog open onOpenChange={vi.fn()} editTrade={trade} />
+        <TradeFormDialog open onOpenChange={vi.fn()} editTrade={trade} />
+      </>
+    );
+    const dialogs = screen.getAllByRole('dialog', { hidden: true });
+    const ids: string[] = [];
+    for (const dialog of dialogs) {
+      for (const name of [
+        'Ticker',
+        'Date',
+        'Broker',
+        'Shares',
+        'Price per Share',
+        'Fees',
+        'CDP',
+        'P/O',
+      ]) {
+        const label = within(dialog).getByText(name, { selector: 'label' });
+        const id = label.getAttribute('for');
+        expect(id).toBeTruthy();
+        const control = dialog.querySelector(`[id="${id}"]`);
+        expect(control).not.toBeNull();
+        expect((label as HTMLLabelElement).control).toBe(control);
+        if (name === 'CDP' || name === 'P/O') {
+          expect(control?.getAttribute('data-state')).toBe(
+            name === 'CDP' ? 'checked' : 'unchecked'
+          );
+        }
+        ids.push(id!);
+      }
+    }
+    expect(ids).toHaveLength(16);
+    expect(new Set(ids).size).toBe(16);
+  });
+});
+
+describe('123 distribution local default', () => {
+  it.each([
+    ['Asia/Singapore', '2026-10-10T16:30:00Z', -480, '2026-10-11'],
+    ['UTC', '2026-10-10T16:30:00Z', 0, '2026-10-10'],
+    ['America/New_York', '2026-10-11T00:30:00Z', 240, '2026-10-10'],
+  ] as const)(
+    'uses the verified %s local calendar for a new distribution',
+    (zone, instant, offset, expected) => {
+      vi.stubEnv('TZ', zone);
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(instant));
+      expect(new Date().getTimezoneOffset()).toBe(offset);
+      mount(<DividendFormDialog open onOpenChange={vi.fn()} trades={[]} />);
+      expect(
+        (screen.getByLabelText('Payment date') as HTMLInputElement).value
+      ).toBe(expected);
+      expect(
+        (screen.getByLabelText('Amount received') as HTMLInputElement).value
+      ).toBe('0');
+      expect(screen.getByLabelText('Currency').textContent).toContain('SGD');
+    }
+  );
+
+  it('recomputes the local day when a new distribution editor reopens', () => {
+    vi.stubEnv('TZ', 'Asia/Singapore');
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-10T16:30:00Z'));
+    expect(new Date().getTimezoneOffset()).toBe(-480);
+    const view = mount(
+      <DividendFormDialog open onOpenChange={vi.fn()} trades={[]} />
+    );
+    expect(
+      (screen.getByLabelText('Payment date') as HTMLInputElement).value
+    ).toBe('2026-10-11');
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <DividendFormDialog open={false} onOpenChange={vi.fn()} trades={[]} />
+      </QueryClientProvider>
+    );
+    vi.setSystemTime(new Date('2026-10-11T16:30:00Z'));
+    view.rerender(
+      <QueryClientProvider client={view.client}>
+        <DividendFormDialog open onOpenChange={vi.fn()} trades={[]} />
+      </QueryClientProvider>
+    );
+    expect(
+      (screen.getByLabelText('Payment date') as HTMLInputElement).value
+    ).toBe('2026-10-12');
+  });
+
+  it('keeps the saved payment-date prefix despite local timezone conversion', () => {
+    vi.stubEnv('TZ', 'Asia/Singapore');
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-10T16:30:00Z'));
+    mount(
+      <DividendFormDialog
+        open
+        onOpenChange={vi.fn()}
+        trades={[]}
+        editDividend={{ ...dividend, date: '2026-10-10T20:00:00-07:00' }}
+      />
+    );
+    expect(
+      (screen.getByLabelText('Payment date') as HTMLInputElement).value
+    ).toBe('2026-10-10');
+    expect(
+      (screen.getByLabelText('Amount received') as HTMLInputElement).value
+    ).toBe('20');
+  });
+});
+
 describe('real equity dialogs', () => {
   it('reports a cleared trade date without sending a mutation', async () => {
     const view = mount(

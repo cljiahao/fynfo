@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
+import { DeployableCashBreakdown } from '@/features/assets/components/deployable-cash-breakdown';
 import { InvestmentBreakdown } from '@/features/assets/components/investment-breakdown';
 import { MarketAllocationTable } from '@/features/assets/components/market-allocation-table';
+import { MonthlyInvestmentTable } from '@/features/assets/components/monthly-investment-table';
 import { SalaryPlanner } from '@/features/assets/components/salary-planner';
 import type { Holding } from '@/features/equity/lib/holdings';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -333,3 +335,63 @@ it('does not propose shares from incomplete or overflowing allocation data', () 
     screen.getByRole('spinbutton', { name: 'Allocation for DBS' })
   ).toBeTruthy();
 });
+
+it.each([
+  ['RSP', 'rsp', 20],
+  ['SG Market', 'sg', 30],
+  ['US Market', 'us', 50],
+] as const)(
+  'names the %s monthly allocation without changing its update',
+  (label, key, value) => {
+    const updateRatio = vi.fn();
+    mount(
+      <MonthlyInvestmentTable
+        investmentAmount={1000}
+        ratios={{ rsp: 20, sg: 30, us: 50 }}
+        rspMonthly={200}
+        sgMonthly={300}
+        usMonthly={500}
+        totalRatio={100}
+        updateRatio={updateRatio}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Monthly Investment/ }));
+    const input = screen.getByRole('spinbutton', {
+      name: label + ' monthly allocation (%)',
+    });
+    expect(input).toHaveValue(value);
+    fireEvent.change(input, { target: { value: '40' } });
+    expect(updateRatio).toHaveBeenCalledWith(key, 40);
+  }
+);
+
+it.each(['SG', 'US'] as const)(
+  'names the %s deployable allocation and preserves complementary percentages',
+  (market) => {
+    const updateCashAlloc = vi.fn();
+    mount(
+      <DeployableCashBreakdown
+        totalDeployable={10000}
+        currentSavings={15000}
+        emergencyFundGoal={3000}
+        currentBonds={1000}
+        warChestGoal={3000}
+        bondsShortfall={2000}
+        bondsSurplus={0}
+        cashAlloc={{ sg: 60, us: 40 }}
+        sgCash={6000}
+        usCash={4000}
+        updateCashAlloc={updateCashAlloc}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Deployable Cash/ }));
+    const input = screen.getByRole('spinbutton', {
+      name: market + ' deployable cash allocation (%)',
+    });
+    expect(input).toHaveValue(market === 'SG' ? 60 : 40);
+    fireEvent.change(input, { target: { value: '30' } });
+    expect(updateCashAlloc).toHaveBeenCalledWith(
+      market === 'SG' ? { sg: 30, us: 70 } : { sg: 70, us: 30 }
+    );
+  }
+);

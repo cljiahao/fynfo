@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import DashboardRouteError from '@/app/dashboard/error';
 import { DashboardError } from '@/components/layout';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
@@ -27,4 +28,18 @@ describe('DashboardError', () => {
     await userEvent.click(screen.getByRole('button', { name: /try again/i }));
     expect(reset).toHaveBeenCalledOnce();
   });
+});
+
+it('uses framework refetching retry at the actual route boundary', async () => {
+  const props = {
+    error: withDigest,
+    reset: vi.fn(),
+    retry: vi.fn(),
+  };
+  render(<DashboardRouteError {...props} />);
+  await userEvent.click(screen.getByRole('button', { name: /try again/i }));
+  expect(props.retry).toHaveBeenCalledOnce();
+  expect(props.reset).not.toHaveBeenCalled();
+  expect(screen.getByText(/abc123/)).toBeInTheDocument();
+  expect(screen.queryByText('boom')).not.toBeInTheDocument();
 });

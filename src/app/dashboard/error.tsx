@@ -2,11 +2,12 @@
 
 import { DashboardError } from '@/components/layout';
 
-// Single error boundary for the whole dashboard subtree (assets, salary,
-// equity, expenses, entry, profile, overview). Next requires a default export.
-export default function DashboardRouteError(props: {
+export default function DashboardRouteError({
+  error,
+  retry,
+}: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
-  return <DashboardError {...props} />;
+  return <DashboardError error={error} reset={retry} />;
 }

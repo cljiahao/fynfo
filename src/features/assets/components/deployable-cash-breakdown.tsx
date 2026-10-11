@@ -110,6 +110,7 @@ export function DeployableCashBreakdown({
                       <span className="w-6 font-medium">{row.label}</span>
                       <Input
                         type="number"
+                        aria-label={`${row.label} deployable cash allocation (%)`}
                         min="0"
                         max="100"
                         className="h-6 w-16 text-center text-xs"
