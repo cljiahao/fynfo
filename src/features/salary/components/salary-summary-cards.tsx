@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/widgets';
 import { formatSGDWhole } from '@/lib/utils/currency';
@@ -16,6 +18,7 @@ function formatIncome(value: number): string {
 }
 
 export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
+  const { mask } = useAmountVisibility();
   const latest = records[records.length - 1];
   const {
     currentYear,
@@ -33,16 +36,18 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
         label="Current Salary"
-        value={latest ? formatIncome(latest.salary) : '-'}
+        value={mask(latest ? formatIncome(latest.salary) : '-')}
         icon={Banknote}
         hint={latest?.id ?? 'No records'}
       />
       <StatCard
         label="Est. Annual"
-        value={formatIncome(
-          monthsRecorded > 0
-            ? ((ytdSalary + ytdBonus) / monthsRecorded) * 12
-            : 0
+        value={mask(
+          formatIncome(
+            monthsRecorded > 0
+              ? ((ytdSalary + ytdBonus) / monthsRecorded) * 12
+              : 0
+          )
         )}
         icon={TrendingUp}
         hint={
@@ -55,7 +60,7 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
         label="Est. Tax"
         value={
           profileState === 'ready' && estSummary !== null
-            ? formatIncome(estSummary.taxPayable)
+            ? mask(formatIncome(estSummary.taxPayable))
             : '—'
         }
         icon={Receipt}
@@ -74,7 +79,9 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
                     : estSummary === null
                       ? 'CPF estimate unavailable'
                       : estSummary.grossAnnual > 0
-                        ? `Effective ${(estSummary.effectiveRate * 100).toFixed(1)}%`
+                        ? mask(
+                            `Effective ${(estSummary.effectiveRate * 100).toFixed(1)}%`
+                          )
                         : 'No records'
         }
       >
@@ -91,7 +98,7 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
       </StatCard>
       <StatCard
         label="YTD Income"
-        value={formatIncome(ytdSalary + ytdBonus)}
+        value={mask(formatIncome(ytdSalary + ytdBonus))}
         icon={Calculator}
         hint={
           currentYearRecords.length > 0

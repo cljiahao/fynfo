@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -31,6 +33,7 @@ export function ExpenseTypeSelect({
   inputId,
   disabled = false,
 }: ExpenseTypeSelectProps) {
+  const { hidden, canReveal, getHideEpoch } = useAmountVisibility();
   const [typeQuery, setTypeQuery] = useState('');
   const [typeEditing, setTypeEditing] = useState(false);
   const [typeOpen, setTypeOpenState] = useState(false);
@@ -48,7 +51,7 @@ export function ExpenseTypeSelect({
     : EXPENSE_TYPES;
 
   const selectType = (t: ExpenseType) => {
-    if (disabled) return;
+    if (disabled || !canReveal()) return;
     onChange(t);
     setTypeQuery('');
     setTypeEditing(false);
@@ -57,7 +60,7 @@ export function ExpenseTypeSelect({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (disabled) return;
+    if (disabled || !canReveal()) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setTypeIndex((i) => Math.min(i + 1, filtered.length - 1));
@@ -94,17 +97,19 @@ export function ExpenseTypeSelect({
       <Input
         id={inputId}
         ref={inputRef}
-        disabled={disabled}
-        value={typeEditing ? typeQuery : EXPENSE_TYPE_LABELS[value]}
+        disabled={hidden || disabled}
+        value={
+          hidden ? '' : typeEditing ? typeQuery : EXPENSE_TYPE_LABELS[value]
+        }
         onChange={(e) => {
-          if (disabled) return;
+          if (disabled || !canReveal()) return;
           setTypeEditing(true);
           setTypeQuery(e.target.value);
           setTypeOpen(true);
           setTypeIndex(0);
         }}
         onFocus={(e) => {
-          if (disabled) return;
+          if (disabled || !canReveal()) return;
           setTypeEditing(false);
           setTypeQuery('');
           setTypeOpen(true);
@@ -112,7 +117,9 @@ export function ExpenseTypeSelect({
           e.target.select();
         }}
         onBlur={() => {
+          const epoch = getHideEpoch();
           setTimeout(() => {
+            if (!canReveal() || getHideEpoch() !== epoch) return;
             setTypeOpen(false);
             setTypeQuery('');
             setTypeEditing(false);
@@ -122,7 +129,7 @@ export function ExpenseTypeSelect({
         placeholder="Category"
         className={cn('h-9 w-full', inputClassName)}
       />
-      {typeOpen && !disabled && (
+      {typeOpen && !disabled && !hidden && (
         <div className="bg-popover absolute top-full z-50 mt-1 w-full overflow-hidden rounded-md border shadow-md">
           <div className="max-h-48 overflow-y-auto py-1">
             {filtered.map((t, i) => (

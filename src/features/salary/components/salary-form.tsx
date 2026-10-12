@@ -1,5 +1,7 @@
 'use client';
 
+import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useId } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useSalaryRecord, useUpsertSalary } from '../hooks/use-salary';
 
@@ -34,6 +36,7 @@ export function SalaryFormDialog({
   onOpenChange,
   editId,
 }: SalaryFormDialogProps) {
+  const { hidden, canReveal } = useAmountVisibility();
   const fieldId = useId();
   const {
     data: existing,
@@ -74,6 +77,10 @@ export function SalaryFormDialog({
   }, [open, editId, form, defaultMonth]);
 
   async function onSubmit(values: SalaryFormValues) {
+    if (!canReveal()) {
+      toast.info('Show amounts before saving salary');
+      return;
+    }
     try {
       await upsert.mutateAsync({
         id: values.id,
@@ -113,7 +120,18 @@ export function SalaryFormDialog({
             </Button>
           </div>
         ) : (
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            onSubmit={(event) => {
+              if (!canReveal()) {
+                event.preventDefault();
+                toast.info('Show amounts before saving salary');
+                return;
+              }
+              void form.handleSubmit(onSubmit)(event);
+            }}
+            className="space-y-4"
+          >
+            <AmountsHiddenNotice />
             <div className="space-y-2">
               <Label htmlFor={fieldId + '-month'}>Month</Label>
               <Input
@@ -121,7 +139,7 @@ export function SalaryFormDialog({
                 type="month"
                 className="relative cursor-pointer pr-4 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
                 {...form.register('id')}
-                disabled={!!editId}
+                disabled={hidden || !!editId}
                 onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               />
             </div>
@@ -129,28 +147,46 @@ export function SalaryFormDialog({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor={fieldId + '-salary'}>Gross Salary</Label>
-                <Input
-                  id={fieldId + '-salary'}
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  {...form.register('salary', {
-                    setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
-                  })}
+                <Controller
+                  name="salary"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      id={fieldId + '-salary'}
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder={hidden ? 'Hidden' : '0.00'}
+                      disabled={hidden}
+                      value={hidden ? '' : field.value}
+                      onChange={(event) => {
+                        if (canReveal()) field.onChange(event.target.value);
+                      }}
+                    />
+                  )}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor={fieldId + '-bonus'}>Bonus</Label>
-                <Input
-                  id={fieldId + '-bonus'}
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  {...form.register('bonus', {
-                    setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
-                  })}
+                <Controller
+                  name="bonus"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Input
+                      {...field}
+                      id={fieldId + '-bonus'}
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder={hidden ? 'Hidden' : '0.00'}
+                      disabled={hidden}
+                      value={hidden ? '' : field.value}
+                      onChange={(event) => {
+                        if (canReveal()) field.onChange(event.target.value);
+                      }}
+                    />
+                  )}
                 />
               </div>
             </div>
@@ -163,7 +199,7 @@ export function SalaryFormDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={upsert.isPending}>
+              <Button type="submit" disabled={hidden || upsert.isPending}>
                 {upsert.isPending && (
                   <Loader2 className="mr-2 size-4 animate-spin" />
                 )}

@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { EmptyState, PaginationControls } from '@/components/widgets';
 import { StatementReview } from '@/features/import-review';
 import { format } from 'date-fns';
@@ -36,6 +38,7 @@ const EMPTY_ROW: ExpenseData = {
 };
 
 export function ExpenseTable() {
+  const { canReveal } = useAmountVisibility();
   const { data: expenses, isLoading } = useExpenses();
   const { data: people } = useDistinctPeople();
   const upsert = useUpsertExpense();
@@ -97,6 +100,7 @@ export function ExpenseTable() {
   const paginated = sorted.slice(page * pageSize, (page + 1) * pageSize);
 
   const addRow = () => {
+    if (!canReveal()) return;
     const row = {
       ...EMPTY_ROW,
       id: generateId(),
@@ -106,6 +110,7 @@ export function ExpenseTable() {
   };
 
   const handleSave = async (data: ExpenseData) => {
+    if (!canReveal()) return;
     const instance = lifetime.current;
     try {
       await upsert.mutateAsync(data);
@@ -118,6 +123,7 @@ export function ExpenseTable() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!canReveal()) return;
     const instance = lifetime.current;
     try {
       await remove.mutateAsync(id);

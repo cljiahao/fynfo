@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { EmptyState } from '@/components/widgets';
 import { formatSGD } from '@/lib/utils/currency';
 import { ArrowDown, ArrowUp, ArrowUpDown, PiggyBank } from 'lucide-react';
@@ -26,6 +28,7 @@ export function YieldOnCostTable({
   usdSgdRate,
   asOf,
 }: YieldOnCostTableProps) {
+  const { mask } = useAmountVisibility();
   const [sortKey, setSortKey] = useState<SortKey>('yield');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
@@ -158,10 +161,12 @@ export function YieldOnCostTable({
           <tr key={r.ticker} className="border-b last:border-0">
             <td className="py-2 font-medium">{r.ticker}</td>
             <td className="py-2 text-right tabular-nums">
-              {r.ttm === null ? 'Calculation unavailable' : formatSGD(r.ttm)}
+              {r.ttm === null
+                ? 'Calculation unavailable'
+                : mask(formatSGD(r.ttm))}
             </td>
             <td className="text-gain py-2 text-right font-semibold tabular-nums">
-              {r.yoc === null ? '—' : `${(r.yoc * 100).toFixed(2)}%`}
+              {r.yoc === null ? '—' : mask(`${(r.yoc * 100).toFixed(2)}%`)}
             </td>
           </tr>
         ))}

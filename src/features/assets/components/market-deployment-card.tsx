@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import {
   Tooltip,
   TooltipContent,
@@ -35,6 +37,7 @@ export function MarketDeploymentCard({
   qDaysLeft,
   cashAllocPct,
 }: MarketDeploymentCardProps) {
+  const { hidden, mask } = useAmountVisibility();
   const qPct =
     m.quarterly > 0 ? Math.min((m.spent / m.quarterly) * 100, 100) : 0;
   const targetPct =
@@ -66,19 +69,19 @@ export function MarketDeploymentCard({
                 income for the quarter.
               </p>
               <p className="text-primary-foreground/60 leading-relaxed">
-                Spent {formatSGD(m.spent)} of {formatSGD(m.quarterly)} this
-                quarter.
+                Spent {mask(formatSGD(m.spent))} of{' '}
+                {mask(formatSGD(m.quarterly))} this quarter.
               </p>
             </TooltipContent>
           </Tooltip>
           <span>
-            {formatSGD(m.spent)} / {formatSGD(m.quarterly)}
+            {mask(formatSGD(m.spent))} / {mask(formatSGD(m.quarterly))}
           </span>
         </div>
         <div className="bg-muted h-1.5 overflow-hidden rounded-full">
           <div
             className={`h-full rounded-full ${qPct >= 100 ? 'bg-gain' : 'bg-chart-1'}`}
-            style={{ width: `${qPct}%` }}
+            style={{ width: hidden ? '0%' : `${qPct}%` }}
           />
         </div>
       </div>
@@ -99,18 +102,19 @@ export function MarketDeploymentCard({
                 allocation target.
               </p>
               <p className="text-primary-foreground/60 leading-relaxed">
-                Holding {formatSGD(m.equity)} of {formatSGD(m.target)} target.
+                Holding {mask(formatSGD(m.equity))} of{' '}
+                {mask(formatSGD(m.target))} target.
               </p>
             </TooltipContent>
           </Tooltip>
           <span>
-            {formatSGD(m.equity)} / {formatSGD(m.target)}
+            {mask(formatSGD(m.equity))} / {mask(formatSGD(m.target))}
           </span>
         </div>
         <div className="bg-muted h-1.5 overflow-hidden rounded-full">
           <div
             className={`h-full rounded-full ${targetPct >= 100 ? 'bg-gain' : 'bg-chart-4'}`}
-            style={{ width: `${targetPct}%` }}
+            style={{ width: hidden ? '0%' : `${targetPct}%` }}
           />
         </div>
       </div>
@@ -118,21 +122,21 @@ export function MarketDeploymentCard({
       <div className="space-y-1 text-xs">
         <div className="flex-between">
           <span className="text-muted-foreground">
-            Target ({cashAllocPct}%)
+            Target ({mask(`${cashAllocPct}%`)})
           </span>
-          <span className="font-medium">{formatSGD(m.target)}</span>
+          <span className="font-medium">{mask(formatSGD(m.target))}</span>
         </div>
         <div className="flex-between">
           <span className="text-muted-foreground">Current equity</span>
-          <span>{formatSGD(m.equity)}</span>
+          <span>{mask(formatSGD(m.equity))}</span>
         </div>
         <div className="flex-between">
           <span className="text-muted-foreground">Quarterly budget</span>
-          <span>{formatSGD(m.quarterly)}</span>
+          <span>{mask(formatSGD(m.quarterly))}</span>
         </div>
         <div className="flex-between">
           <span className="text-muted-foreground">Spent this quarter</span>
-          <span>{formatSGD(m.spent)}</span>
+          <span>{mask(formatSGD(m.spent))}</span>
         </div>
         <div className="flex-between border-t pt-1 font-semibold">
           <span className="flex items-center gap-1.5">
@@ -140,23 +144,25 @@ export function MarketDeploymentCard({
             <Tooltip>
               <TooltipTrigger asChild>
                 <span
-                  className={`cursor-help text-[10px] font-bold ${deployPctColor(m.deployPct)}`}
+                  className={`cursor-help text-[10px] font-bold ${hidden ? 'text-muted-foreground' : deployPctColor(m.deployPct)}`}
                 >
-                  {pctLabel}%
+                  {mask(`${pctLabel}%`)}
                 </span>
               </TooltipTrigger>
               <TooltipContent className="max-w-64 space-y-1.5 p-3">
                 <p className="font-semibold">Deployment Status</p>
                 <p className="text-primary-foreground/80 leading-relaxed">
-                  {m.deployPct > 50
-                    ? 'High cash available — consider deploying more into the market.'
-                    : m.deployPct > 20
-                      ? 'Moderate cash remaining to be deployed.'
-                      : 'Well deployed — most of your cash is invested.'}
+                  {hidden
+                    ? 'Show amounts to view deployment status.'
+                    : m.deployPct > 50
+                      ? 'High cash available — consider deploying more into the market.'
+                      : m.deployPct > 20
+                        ? 'Moderate cash remaining to be deployed.'
+                        : 'Well deployed — most of your cash is invested.'}
                 </p>
                 <p className="text-primary-foreground/60 leading-relaxed">
-                  {formatSGD(m.available)} of {formatSGD(m.target)} still
-                  available.
+                  {mask(formatSGD(m.available))} of {mask(formatSGD(m.target))}{' '}
+                  still available.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -164,7 +170,7 @@ export function MarketDeploymentCard({
           <span
             className={m.available > 0 ? 'text-gain' : 'text-muted-foreground'}
           >
-            {formatSGD(m.available)}
+            {mask(formatSGD(m.available))}
           </span>
         </div>
       </div>

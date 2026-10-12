@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect, useRef, useState } from 'react';
@@ -17,6 +19,7 @@ export function PlanningScenarios({
   inputs,
   sourceSnapshotMonth,
 }: PlanningScenariosProps) {
+  const { hidden, mask, canReveal } = useAmountVisibility();
   const [expanded, setExpanded] = useState(false);
   const query = useScenarios(expanded);
   const { remove } = useScenarioMutations();
@@ -45,6 +48,7 @@ export function PlanningScenarios({
     record?: ScenarioRecord,
     trigger: HTMLButtonElement | null = null
   ) => {
+    if (!canReveal()) return;
     const payload: ScenarioPayload = record?.payload ?? {
       schemaVersion: 1,
       name: '',
@@ -59,7 +63,7 @@ export function PlanningScenarios({
     setEditor({ key, payload, record, trigger });
   };
   const deleteSaved = async (record: ScenarioRecord) => {
-    if (pending.current || reloadRequired) return;
+    if (!canReveal() || pending.current || reloadRequired) return;
     pending.current = true;
     const operation = ++request.current;
     try {
@@ -124,6 +128,7 @@ export function PlanningScenarios({
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
+              disabled={hidden}
               onClick={(event) => open(undefined, event.currentTarget)}
             >
               Save current plan
@@ -158,7 +163,7 @@ export function PlanningScenarios({
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium break-words">
-                      {record.payload.name}
+                      {mask(record.payload.name)}
                     </p>
                     <p className="text-muted-foreground text-xs">
                       Hypothetical · saved{' '}
@@ -169,18 +174,24 @@ export function PlanningScenarios({
                     <Button
                       size="sm"
                       variant="outline"
-                      aria-label={`Open ${record.payload.name}`}
+                      aria-label={`Open ${mask(record.payload.name)}`}
+                      disabled={hidden}
                       onClick={(event) => open(record, event.currentTarget)}
                     >
                       Open
-                      <span className="sr-only"> {record.payload.name}</span>
+                      <span className="sr-only">
+                        {' '}
+                        {mask(record.payload.name)}
+                      </span>
                     </Button>
                     {confirmDelete === record.id ? (
                       <>
                         <Button
                           size="sm"
                           variant="destructive"
-                          disabled={remove.isPending || reloadRequired}
+                          disabled={
+                            hidden || remove.isPending || reloadRequired
+                          }
                           onClick={() => {
                             void deleteSaved(record);
                           }}
@@ -188,7 +199,7 @@ export function PlanningScenarios({
                           Confirm delete
                           <span className="sr-only">
                             {' '}
-                            {record.payload.name}
+                            {mask(record.payload.name)}
                           </span>
                         </Button>
                         <Button
@@ -203,11 +214,16 @@ export function PlanningScenarios({
                       <Button
                         size="sm"
                         variant="ghost"
-                        disabled={reloadRequired}
-                        onClick={() => setConfirmDelete(record.id)}
+                        disabled={hidden || reloadRequired}
+                        onClick={() => {
+                          if (canReveal()) setConfirmDelete(record.id);
+                        }}
                       >
                         Delete
-                        <span className="sr-only"> {record.payload.name}</span>
+                        <span className="sr-only">
+                          {' '}
+                          {mask(record.payload.name)}
+                        </span>
                       </Button>
                     )}
                   </div>

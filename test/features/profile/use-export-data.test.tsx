@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 import type { SnapshotRecord } from '@/features/assets/types';
+import {
+  AmountVisibilityProvider,
+  useAmountVisibility,
+} from '@/features/privacy';
 import { ExportDataCard } from '@/features/profile/components/export-data-card';
 import { useExportData } from '@/features/profile/hooks/use-export-data';
 import type { ExportData } from '@/features/profile/lib/export-data';
@@ -338,3 +342,48 @@ it('explains material export limitations beside the existing action', () => {
   expect(screen.getByText(/Edits made during export/)).toBeVisible();
   expect(screen.getByRole('button', { name: 'Export my data' })).toBeEnabled();
 });
+
+it('blocks a hidden export before reading any domain', async () => {
+  const view = renderHook(
+    () => ({ visibility: useAmountVisibility(), exporter: useExportData() }),
+    { wrapper: AmountVisibilityProvider }
+  );
+  act(() => view.result.current.visibility.hideAmounts());
+  await act(async () => view.result.current.exporter.exportData());
+  for (const domain of DOMAINS) expect(state[domain]).not.toHaveBeenCalled();
+  expect(download).not.toHaveBeenCalled();
+});
+
+it.each([false, true])(
+  'suppresses pending download after Hide, even when Show follows: %s',
+  async (showAgain) => {
+    let finish: (value: null) => void = () => undefined;
+    state.profile.mockImplementationOnce(
+      () =>
+        new Promise<null>((resolve) => {
+          finish = resolve;
+        })
+    );
+    const view = renderHook(
+      () => ({ visibility: useAmountVisibility(), exporter: useExportData() }),
+      { wrapper: AmountVisibilityProvider }
+    );
+    let pending: Promise<void> = Promise.resolve();
+    act(() => {
+      pending = view.result.current.exporter.exportData();
+    });
+    act(() => {
+      view.result.current.visibility.hideAmounts();
+      if (showAgain) view.result.current.visibility.showAmounts();
+    });
+    await act(async () => {
+      finish(null);
+      await pending;
+    });
+    expect(download).not.toHaveBeenCalled();
+    expect(state.success).not.toHaveBeenCalled();
+    act(() => view.result.current.visibility.showAmounts());
+    await act(async () => view.result.current.exporter.exportData());
+    expect(download).toHaveBeenCalledOnce();
+  }
+);

@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -80,6 +82,8 @@ function DividendFormEditor({
   trades,
   editDividend,
 }: Omit<DividendFormDialogProps, 'open'>) {
+  const { hidden, canReveal, getHideEpoch, showAmounts } =
+    useAmountVisibility();
   const create = useCreateDividend();
   const update = useUpdateDividend();
   const isPending = create.isPending || update.isPending;
@@ -118,6 +122,8 @@ function DividendFormEditor({
   }
 
   async function handleSuggest() {
+    if (!canReveal()) return;
+    const hideEpoch = getHideEpoch();
     const inputs = { ...getValues() };
     const ticker = inputs.ticker.trim().toUpperCase();
     const date = inputs.date;
@@ -130,7 +136,12 @@ function DividendFormEditor({
     setSuggesting(true);
     try {
       const points = await fetchDividends(ticker);
-      if (request !== work.current.request || !isCurrent(revision, inputs))
+      if (
+        !canReveal() ||
+        hideEpoch !== getHideEpoch() ||
+        request !== work.current.request ||
+        !isCurrent(revision, inputs)
+      )
         return;
       const dpu = nearestDpu(points, date);
       if (dpu == null) {
@@ -157,6 +168,7 @@ function DividendFormEditor({
   }
 
   async function onSubmit(values: DividendFormValues) {
+    if (!canReveal()) return;
     const revision = work.current.revision;
     const inputs = { ...values };
     const payload = {
@@ -194,75 +206,100 @@ function DividendFormEditor({
         </DialogDescription>
       </DialogHeader>
 
+      {hidden && (
+        <div role="status" className="space-y-2">
+          <p>Show amounts before editing. Your draft is preserved.</p>
+          <Button type="button" onClick={showAmounts}>
+            Show amounts
+          </Button>
+        </div>
+      )}
       <form
         onSubmit={(e) => void handleSubmit(onSubmit)(e)}
         className="flex flex-col gap-4"
       >
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="div-ticker">Ticker</Label>
-          <Input
-            id="div-ticker"
-            placeholder="MLT"
-            {...register('ticker', { required: true })}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="div-date">Payment date</Label>
-          <Input
-            id="div-date"
-            type="date"
-            {...register('date', { required: true })}
-          />
-        </div>
-
-        <div className="flex items-end gap-2">
-          <div className="flex flex-1 flex-col gap-1">
-            <Label htmlFor="div-amount">Amount received</Label>
+        <fieldset disabled={hidden} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="div-ticker">Ticker</Label>
             <Input
-              id="div-amount"
-              type="number"
-              step="0.01"
-              min="0"
-              {...register('amount', { valueAsNumber: true, required: true })}
+              id="div-ticker"
+              placeholder="MLT"
+              {...register('ticker', { required: true })}
+              disabled={hidden}
+              value={hidden ? '' : watch('ticker')}
+              onChange={(event) => {
+                if (canReveal()) void register('ticker').onChange(event);
+              }}
             />
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleSuggest}
-            disabled={suggesting}
-          >
-            {suggesting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Sparkles className="size-4" />
-            )}
-            Suggest
-          </Button>
-        </div>
 
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="div-currency">Currency</Label>
-          <Select
-            value={currency}
-            onValueChange={(v) =>
-              setValue('currency', v as DividendCurrency, {
-                shouldDirty: true,
-              })
-            }
-          >
-            <SelectTrigger id="div-currency">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="SGD">SGD</SelectItem>
-              <SelectItem value="USD">USD</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="div-date">Payment date</Label>
+            <Input
+              id="div-date"
+              type="date"
+              {...register('date', { required: true })}
+              disabled={hidden}
+              onChange={(event) => {
+                if (canReveal()) void register('date').onChange(event);
+              }}
+            />
+          </div>
 
-        <Button type="submit" disabled={isPending}>
+          <div className="flex items-end gap-2">
+            <div className="flex flex-1 flex-col gap-1">
+              <Label htmlFor="div-amount">Amount received</Label>
+              <Input
+                id="div-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                {...register('amount', { valueAsNumber: true, required: true })}
+                disabled={hidden}
+                value={hidden ? '' : watch('amount')}
+                onChange={(event) => {
+                  if (canReveal()) void register('amount').onChange(event);
+                }}
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSuggest}
+              disabled={hidden || suggesting}
+            >
+              {suggesting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Sparkles className="size-4" />
+              )}
+              Suggest
+            </Button>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="div-currency">Currency</Label>
+            <Select
+              disabled={hidden}
+              value={currency}
+              onValueChange={(v) =>
+                canReveal() &&
+                setValue('currency', v as DividendCurrency, {
+                  shouldDirty: true,
+                })
+              }
+            >
+              <SelectTrigger id="div-currency">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SGD">SGD</SelectItem>
+                <SelectItem value="USD">USD</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </fieldset>
+        <Button type="submit" disabled={hidden || isPending}>
           {isPending && <Loader2 className="size-4 animate-spin" />}
           {editDividend ? 'Save changes' : 'Add distribution'}
         </Button>

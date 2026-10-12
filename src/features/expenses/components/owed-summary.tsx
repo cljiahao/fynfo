@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import {
   Accordion,
   AccordionContent,
@@ -20,6 +22,7 @@ interface OwedSummaryProps {
 }
 
 export function OwedSummary({ expenses }: OwedSummaryProps) {
+  const { hidden, mask, canReveal } = useAmountVisibility();
   const settle = useSettleMonthSplits();
 
   const groups = buildPersonGroups(expenses);
@@ -30,6 +33,7 @@ export function OwedSummary({ expenses }: OwedSummaryProps) {
     person: string,
     settled: boolean
   ) => {
+    if (!canReveal()) return;
     try {
       await settle.mutateAsync({ expenseIds, person, settled });
       toast.success(settled ? 'Marked as settled' : 'Marked as unsettled');
@@ -50,7 +54,7 @@ export function OwedSummary({ expenses }: OwedSummaryProps) {
           </CardTitle>
           {totalUnsettled > 0 && (
             <span className="text-gain text-lg font-bold">
-              {formatSGD(totalUnsettled)}
+              {mask(formatSGD(totalUnsettled))}
             </span>
           )}
         </div>
@@ -65,10 +69,12 @@ export function OwedSummary({ expenses }: OwedSummaryProps) {
             >
               <AccordionTrigger className="py-2 hover:no-underline">
                 <div className="flex-between w-full pr-2">
-                  <span className="text-sm font-medium">{group.person}</span>
+                  <span className="text-sm font-medium">
+                    {mask(group.person)}
+                  </span>
                   {group.totalOwed > 0 ? (
                     <span className="text-gain text-sm font-semibold">
-                      {formatSGD(group.totalOwed)}
+                      {mask(formatSGD(group.totalOwed))}
                     </span>
                   ) : (
                     <span className="text-muted-foreground text-xs">
@@ -91,7 +97,7 @@ export function OwedSummary({ expenses }: OwedSummaryProps) {
                         onClick={() =>
                           handleSettle(m.expenseIds, group.person, !m.settled)
                         }
-                        disabled={settle.isPending}
+                        disabled={hidden || settle.isPending}
                         aria-label={
                           m.settled
                             ? 'Mark month unsettled'
@@ -108,7 +114,7 @@ export function OwedSummary({ expenses }: OwedSummaryProps) {
                       <span
                         className={`w-20 shrink-0 text-right font-medium tabular-nums ${m.settled ? 'text-muted-foreground line-through' : ''}`}
                       >
-                        {formatSGD(m.total)}
+                        {mask(formatSGD(m.total))}
                       </span>
                     </div>
                   ))}

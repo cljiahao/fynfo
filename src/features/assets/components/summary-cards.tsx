@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { StatCard } from '@/components/widgets';
 import { formatSGDWhole } from '@/lib/utils/currency';
 import { Wallet } from 'lucide-react';
@@ -35,6 +37,7 @@ function ChangeCard({
   previous: number;
   previousId: string | undefined;
 }) {
+  const { hidden, mask } = useAmountVisibility();
   const { absolute: change, percentage: pct } = calculateMoMChange(
     current,
     previous
@@ -42,12 +45,12 @@ function ChangeCard({
   return (
     <StatCard
       label={title}
-      value={`${change >= 0 ? '+' : ''}${formatSGDWhole(change)}`}
-      tone={change >= 0 ? 'gain' : 'loss'}
-      trend={change >= 0 ? 'up' : 'down'}
+      value={mask(`${change >= 0 ? '+' : ''}${formatSGDWhole(change)}`)}
+      tone={hidden ? 'default' : change >= 0 ? 'gain' : 'loss'}
+      trend={hidden ? undefined : change >= 0 ? 'up' : 'down'}
       hint={
         previousId
-          ? `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% from ${previousId}`
+          ? `${mask(`${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`)} from ${previousId}`
           : 'No previous month'
       }
     />
@@ -55,6 +58,7 @@ function ChangeCard({
 }
 
 export function SummaryCards({ snapshots }: SummaryCardsProps) {
+  const { mask } = useAmountVisibility();
   const latest = getLatestSnapshot(snapshots);
   const previous = latest
     ? getPreviousSnapshot(snapshots, latest.id)
@@ -81,13 +85,13 @@ export function SummaryCards({ snapshots }: SummaryCardsProps) {
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
         label="Total Assets"
-        value={formatSGDWhole(currentTotal)}
+        value={mask(formatSGDWhole(currentTotal))}
         icon={Wallet}
         hint={latest?.id ?? 'No data'}
       />
       <StatCard
         label="Excl. Pension"
-        value={formatSGDWhole(latestExPension)}
+        value={mask(formatSGDWhole(latestExPension))}
         icon={Wallet}
         hint={latest?.id ?? 'No data'}
       />

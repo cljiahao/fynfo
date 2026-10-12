@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import {
   Accordion,
   AccordionContent,
@@ -40,6 +42,7 @@ function MarketTable({
   displayCurrency: 'SGD' | 'USD';
   rate: number | null;
 }) {
+  const { hidden, mask } = useAmountVisibility();
   const sorted = [...holdings].sort((a, b) => a.ticker.localeCompare(b.ticker));
 
   return (
@@ -72,22 +75,24 @@ function MarketTable({
                 {price !== null && rate !== null
                   ? finiteProduct(price, rate) === null
                     ? '—'
-                    : formatCurrency(price * rate, displayCurrency)
+                    : mask(formatCurrency(price * rate, displayCurrency))
                   : '-'}
               </td>
               <td className="py-2 text-center tabular-nums">
-                {h.shares.toLocaleString()}
+                {mask(h.shares.toLocaleString())}
               </td>
               <td className="py-2 text-center tabular-nums">
                 {rate === null
                   ? '—'
                   : finiteProduct(h.avgBuyPrice, rate) === null
                     ? '—'
-                    : formatCurrency(h.avgBuyPrice * rate, displayCurrency)}
+                    : mask(
+                        formatCurrency(h.avgBuyPrice * rate, displayCurrency)
+                      )}
               </td>
               <td
                 className={`py-2 text-center font-medium tabular-nums ${
-                  winLose === null
+                  hidden || winLose === null
                     ? ''
                     : winLose >= 0
                       ? 'text-gain'
@@ -95,7 +100,7 @@ function MarketTable({
                 }`}
               >
                 {price !== null && rate !== null && winLose !== null
-                  ? `${winLose >= 0 ? '▲' : '▼'} ${formatPct(winLose)}`
+                  ? mask(`${winLose >= 0 ? '▲' : '▼'} ${formatPct(winLose)}`)
                   : '-'}
               </td>
             </tr>
@@ -129,6 +134,7 @@ function MarketCard({
   onToggle: () => void;
   currencyToggle?: React.ReactNode;
 }) {
+  const { mask } = useAmountVisibility();
   const accordionValue = expanded ? title : '';
 
   return (
@@ -147,7 +153,7 @@ function MarketCard({
               <span className="text-muted-foreground text-sm font-normal">
                 {total === null
                   ? 'Prices or exchange rate unavailable'
-                  : formatCurrency(total, displayCurrency)}
+                  : mask(formatCurrency(total, displayCurrency))}
                 {pricesLoading && (
                   <Loader2 className="ml-2 inline size-3 animate-spin" />
                 )}

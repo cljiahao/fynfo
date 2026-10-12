@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -33,6 +35,7 @@ export function ExpenseTableToolbar({
   onSplitChange,
   onAddRow,
 }: ExpenseTableToolbarProps) {
+  const { hidden, canReveal } = useAmountVisibility();
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative max-w-xs min-w-[180px] flex-1">
@@ -40,8 +43,11 @@ export function ExpenseTableToolbar({
           <Search className="text-muted-foreground size-4" />
         </div>
         <Input
-          value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
+          value={hidden ? '' : searchQuery}
+          disabled={hidden}
+          onChange={(e) => {
+            if (canReveal()) onSearchChange(e.target.value);
+          }}
           placeholder="Search item, info, type..."
           className="h-9 pl-8 text-sm"
         />
@@ -69,7 +75,13 @@ export function ExpenseTableToolbar({
           <SelectItem value="shared">Shared</SelectItem>
         </SelectContent>
       </Select>
-      <Button size="sm" onClick={onAddRow}>
+      <Button
+        size="sm"
+        disabled={hidden}
+        onClick={() => {
+          if (canReveal()) onAddRow();
+        }}
+      >
         <Plus className="mr-1 size-4" />
         Add Row
       </Button>

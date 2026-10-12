@@ -20,6 +20,8 @@ interface ConfirmDeleteDialogProps {
   description: ReactNode;
   isPending: boolean;
   onConfirm: () => Promise<void>;
+  disabled?: boolean;
+  notice?: ReactNode;
 }
 
 export function ConfirmDeleteDialog({
@@ -29,6 +31,8 @@ export function ConfirmDeleteDialog({
   description,
   isPending,
   onConfirm,
+  disabled = false,
+  notice,
 }: ConfirmDeleteDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -39,6 +43,7 @@ export function ConfirmDeleteDialog({
             <span>{description}</span>
           </DialogDescription>
         </DialogHeader>
+        {notice}
         <DialogFooter>
           <DialogClose asChild>
             <Button variant="outline">Cancel</Button>
@@ -46,7 +51,7 @@ export function ConfirmDeleteDialog({
           <Button
             variant="destructive"
             onClick={onConfirm}
-            disabled={isPending}
+            disabled={isPending || disabled}
           >
             {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
             Delete

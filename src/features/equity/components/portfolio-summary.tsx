@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils/currency';
 import { useMemo } from 'react';
@@ -15,6 +17,7 @@ interface PortfolioSummaryProps {
 }
 
 export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
+  const { hidden, mask } = useAmountVisibility();
   const holdings = useMemo(() => computeHoldings(trades), [trades]);
   const {
     data: prices,
@@ -77,11 +80,13 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
             {market.market} · {market.currency}
           </span>
           <span
-            className={`text-lg font-semibold tabular-nums ${signed && amount !== null ? (amount >= 0 ? 'text-gain' : 'text-loss') : ''}`}
+            className={`text-lg font-semibold tabular-nums ${!hidden && signed && amount !== null ? (amount >= 0 ? 'text-gain' : 'text-loss') : ''}`}
           >
             {amount === null
               ? '—'
-              : `${signed && amount >= 0 ? '+' : ''}${key === 'annualised' ? `${amount.toFixed(2)}%` : formatCurrency(amount, market.currency)}`}
+              : mask(
+                  `${signed && amount >= 0 ? '+' : ''}${key === 'annualised' ? `${amount.toFixed(2)}%` : formatCurrency(amount, market.currency)}`
+                )}
           </span>
         </div>
       );

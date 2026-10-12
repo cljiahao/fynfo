@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -43,6 +45,7 @@ export function TradeFormDialog({
   onOpenChange,
   editTrade,
 }: TradeFormDialogProps) {
+  const { hidden, canReveal, showAmounts } = useAmountVisibility();
   const fieldId = useId();
   const create = useCreateTrade();
   const update = useUpdateTrade();
@@ -95,6 +98,7 @@ export function TradeFormDialog({
 
   // Auto-populate fees when calculation inputs change (via event handlers below)
   const autoFillFees = () => {
+    if (!canReveal()) return;
     const fees = resolveTradeFees({
       ticker: form.getValues('ticker'),
       action: form.getValues('action'),
@@ -112,16 +116,19 @@ export function TradeFormDialog({
 
   // DBS SG is always CDP — auto-tick on broker change
   const handleBrokerChange = (v: string) => {
+    if (!canReveal()) return;
     form.setValue('broker', v);
     const tickerVal = form.getValues('ticker');
     const mkt = tickerVal ? getMarket(tickerVal.toUpperCase()) : null;
     if (mkt === 'SG' && (v === 'DBS Vickers' || v === 'FSMOne')) {
+      if (!canReveal()) return;
       form.setValue('isCdp', true);
     }
     autoFillFees();
   };
 
   async function onSubmit(values: TradeFormValues) {
+    if (!canReveal()) return;
     const date = new Date(values.date);
     if (!Number.isFinite(date.getTime())) {
       toast.error('Please fill in all required fields');
@@ -171,196 +178,240 @@ export function TradeFormDialog({
           <DialogDescription>Record a stock trade</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor={`${fieldId}-ticker`}>Ticker</Label>
-              <Input
-                id={`${fieldId}-ticker`}
-                placeholder="e.g. AAPL, DBS"
-                {...form.register('ticker', {
-                  onChange: () => setTimeout(autoFillFees, 0),
-                })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Action</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={action === 'buy' ? 'default' : 'outline'}
-                  className={
-                    action === 'buy'
-                      ? 'bg-gain hover:bg-gain/90 flex-1'
-                      : 'flex-1'
-                  }
-                  onClick={() => {
-                    form.setValue('action', 'buy');
-                    autoFillFees();
-                  }}
-                >
-                  Buy
-                </Button>
-                <Button
-                  type="button"
-                  variant={action === 'sell' ? 'default' : 'outline'}
-                  className={
-                    action === 'sell'
-                      ? 'bg-loss hover:bg-loss/90 flex-1'
-                      : 'flex-1'
-                  }
-                  onClick={() => {
-                    form.setValue('action', 'sell');
-                    autoFillFees();
-                  }}
-                >
-                  Sell
-                </Button>
-              </div>
-            </div>
+        {hidden && (
+          <div role="status" className="space-y-2">
+            <p>Show amounts before editing. Your draft is preserved.</p>
+            <Button type="button" onClick={showAmounts}>
+              Show amounts
+            </Button>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor={`${fieldId}-date`}>Date</Label>
-              <Input
-                id={`${fieldId}-date`}
-                type="date"
-                {...form.register('date')}
-              />
-            </div>
-            <div className="col-span-2 space-y-2">
-              <Label htmlFor={`${fieldId}-broker`}>Broker</Label>
-              <div className="flex items-center gap-3">
-                <Controller
-                  name="broker"
-                  control={form.control}
-                  render={({ field }) => {
-                    // Show the saved broker even if it isn't one of the canonical
-                    // BROKERS (the trade schema allows any string), so edit never
-                    // renders blank and the value round-trips.
-                    const options =
-                      field.value &&
-                      !(BROKERS as readonly string[]).includes(field.value)
-                        ? [field.value, ...BROKERS]
-                        : [...BROKERS];
-                    return (
-                      <Select
-                        value={field.value || ''}
-                        disabled={isPO}
-                        onValueChange={handleBrokerChange}
-                      >
-                        <SelectTrigger
-                          id={`${fieldId}-broker`}
-                          className="flex-1"
-                        >
-                          <SelectValue placeholder="Select broker" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {options.map((b) => (
-                            <SelectItem key={b} value={b}>
-                              {b}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    );
+        )}
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <fieldset disabled={hidden} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor={`${fieldId}-ticker`}>Ticker</Label>
+                <Input
+                  id={`${fieldId}-ticker`}
+                  placeholder="e.g. AAPL, DBS"
+                  {...form.register('ticker', {
+                    onChange: () => setTimeout(autoFillFees, 0),
+                  })}
+                  value={hidden ? '' : (ticker ?? '')}
+                  onChange={(event) => {
+                    if (!canReveal()) return;
+                    void form.register('ticker').onChange(event);
+                    setTimeout(autoFillFees, 0);
                   }}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Action</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={action === 'buy' ? 'default' : 'outline'}
+                    className={
+                      action === 'buy'
+                        ? 'bg-gain hover:bg-gain/90 flex-1'
+                        : 'flex-1'
+                    }
+                    onClick={() => {
+                      if (!canReveal()) return;
+                      form.setValue('action', 'buy');
+                      autoFillFees();
+                    }}
+                  >
+                    Buy
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={action === 'sell' ? 'default' : 'outline'}
+                    className={
+                      action === 'sell'
+                        ? 'bg-loss hover:bg-loss/90 flex-1'
+                        : 'flex-1'
+                    }
+                    onClick={() => {
+                      if (!canReveal()) return;
+                      form.setValue('action', 'sell');
+                      autoFillFees();
+                    }}
+                  >
+                    Sell
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor={`${fieldId}-date`}>Date</Label>
+                <Input
+                  id={`${fieldId}-date`}
+                  type="date"
+                  {...form.register('date')}
+                  disabled={hidden}
+                  onChange={(event) => {
+                    if (canReveal()) void form.register('date').onChange(event);
+                  }}
+                />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor={`${fieldId}-broker`}>Broker</Label>
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5">
-                    <Checkbox
-                      id={`${fieldId}-cdp`}
-                      checked={isCdp}
-                      disabled={!cdpEnabled || isPO}
-                      onCheckedChange={(checked) => {
-                        form.setValue('isCdp', checked === true);
-                        autoFillFees();
-                      }}
-                    />
-                    <Label
-                      htmlFor={`${fieldId}-cdp`}
-                      className={`text-sm font-normal whitespace-nowrap ${!cdpEnabled || isPO ? 'text-muted-foreground' : ''}`}
-                    >
-                      CDP
-                    </Label>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Checkbox
-                      id={`${fieldId}-po`}
-                      checked={isPO}
-                      disabled={!cdpEnabled}
-                      onCheckedChange={(checked) => {
-                        form.setValue('isPO', checked === true);
-                        autoFillFees();
-                      }}
-                    />
-                    <Label
-                      htmlFor={`${fieldId}-po`}
-                      className={`text-sm font-normal whitespace-nowrap ${!cdpEnabled ? 'text-muted-foreground' : ''}`}
-                    >
-                      P/O
-                    </Label>
+                  <Controller
+                    name="broker"
+                    control={form.control}
+                    render={({ field }) => {
+                      // Show the saved broker even if it isn't one of the canonical
+                      // BROKERS (the trade schema allows any string), so edit never
+                      // renders blank and the value round-trips.
+                      const options =
+                        field.value &&
+                        !(BROKERS as readonly string[]).includes(field.value)
+                          ? [field.value, ...BROKERS]
+                          : [...BROKERS];
+                      return (
+                        <Select
+                          value={hidden ? '' : field.value || ''}
+                          disabled={hidden || isPO}
+                          onValueChange={handleBrokerChange}
+                        >
+                          <SelectTrigger
+                            id={`${fieldId}-broker`}
+                            className="flex-1"
+                          >
+                            <SelectValue placeholder="Select broker" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {!hidden &&
+                              options.map((b) => (
+                                <SelectItem key={b} value={b}>
+                                  {b}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      );
+                    }}
+                  />
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <Checkbox
+                        id={`${fieldId}-cdp`}
+                        checked={isCdp}
+                        disabled={hidden || !cdpEnabled || isPO}
+                        onCheckedChange={(checked) => {
+                          if (!canReveal()) return;
+                          form.setValue('isCdp', checked === true);
+                          autoFillFees();
+                        }}
+                      />
+                      <Label
+                        htmlFor={`${fieldId}-cdp`}
+                        className={`text-sm font-normal whitespace-nowrap ${!cdpEnabled || isPO ? 'text-muted-foreground' : ''}`}
+                      >
+                        CDP
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Checkbox
+                        id={`${fieldId}-po`}
+                        checked={isPO}
+                        disabled={hidden || !cdpEnabled}
+                        onCheckedChange={(checked) => {
+                          if (!canReveal()) return;
+                          form.setValue('isPO', checked === true);
+                          autoFillFees();
+                        }}
+                      />
+                      <Label
+                        htmlFor={`${fieldId}-po`}
+                        className={`text-sm font-normal whitespace-nowrap ${!cdpEnabled ? 'text-muted-foreground' : ''}`}
+                      >
+                        P/O
+                      </Label>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor={`${fieldId}-shares`}>Shares</Label>
-              <Input
-                type="number"
-                step="any"
-                min="0"
-                placeholder="0"
-                id={`${fieldId}-shares`}
-                {...form.register('shares', {
-                  setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
-                  onChange: () => setTimeout(autoFillFees, 0),
-                })}
-              />
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor={`${fieldId}-shares`}>Shares</Label>
+                <Input
+                  type="number"
+                  step="any"
+                  min="0"
+                  placeholder="0"
+                  id={`${fieldId}-shares`}
+                  {...form.register('shares', {
+                    setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
+                    onChange: () => setTimeout(autoFillFees, 0),
+                  })}
+                  disabled={hidden}
+                  value={hidden ? '' : (sharesRaw ?? '')}
+                  onChange={(event) => {
+                    if (!canReveal()) return;
+                    void form.register('shares').onChange(event);
+                    setTimeout(autoFillFees, 0);
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`${fieldId}-price`}>Price per Share</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  id={`${fieldId}-price`}
+                  {...form.register('price', {
+                    setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
+                    onChange: () => setTimeout(autoFillFees, 0),
+                  })}
+                  disabled={hidden}
+                  value={hidden ? '' : (priceRaw ?? '')}
+                  onChange={(event) => {
+                    if (!canReveal()) return;
+                    void form.register('price').onChange(event);
+                    setTimeout(autoFillFees, 0);
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`${fieldId}-fees`}>Fees</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  id={`${fieldId}-fees`}
+                  {...form.register('fees', {
+                    setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
+                  })}
+                  disabled={hidden}
+                  value={hidden ? '' : (feesRaw ?? '')}
+                  onChange={(event) => {
+                    if (!canReveal()) return;
+                    void form.register('fees').onChange(event);
+                  }}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${fieldId}-price`}>Price per Share</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                id={`${fieldId}-price`}
-                {...form.register('price', {
-                  setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
-                  onChange: () => setTimeout(autoFillFees, 0),
-                })}
+            {calculatedFees && tradeValue > 0 && (
+              <TradeFeeBreakdown fees={calculatedFees} currency={currency} />
+            )}
+            {shares > 0 && price > 0 && (
+              <TradeSummary
+                tradeValue={tradeValue}
+                fees={fees}
+                action={action}
+                currency={currency}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${fieldId}-fees`}>Fees</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                id={`${fieldId}-fees`}
-                {...form.register('fees', {
-                  setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
-                })}
-              />
-            </div>
-          </div>
-          {calculatedFees && tradeValue > 0 && (
-            <TradeFeeBreakdown fees={calculatedFees} currency={currency} />
-          )}
-          {shares > 0 && price > 0 && (
-            <TradeSummary
-              tradeValue={tradeValue}
-              fees={fees}
-              action={action}
-              currency={currency}
-            />
-          )}
-
+            )}
+          </fieldset>
           <div className="flex justify-end gap-3">
             <Button
               type="button"
@@ -369,7 +420,7 @@ export function TradeFormDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={hidden || isPending}>
               {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               {editTrade ? 'Update' : 'Add'} Trade
             </Button>

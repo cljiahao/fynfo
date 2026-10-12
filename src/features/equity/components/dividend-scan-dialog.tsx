@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -42,19 +44,24 @@ export function DividendScanDialog({
   trades,
   existing,
 }: DividendScanDialogProps) {
+  const { hidden, mask, canReveal, getHideEpoch, showAmounts } =
+    useAmountVisibility();
   const createMany = useCreateDividends();
   const [scanning, setScanning] = useState(false);
   const [scanFailed, setScanFailed] = useState(false);
+  const [scanInterrupted, setScanInterrupted] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [rows, setRows] = useState<ScanRow[]>([]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !canReveal()) return;
+    const hideEpoch = getHideEpoch();
     let cancelled = false;
 
     async function scan() {
       setScanning(true);
       setScanFailed(false);
+      setScanInterrupted(false);
       setRows([]);
       try {
         const tickers = dividendScanTickers(trades);
@@ -63,7 +70,13 @@ export function DividendScanDialog({
         let cursor = 0;
         let failed = false;
         async function worker() {
-          while (!cancelled && !failed && cursor < tickers.length) {
+          while (
+            !cancelled &&
+            !failed &&
+            canReveal() &&
+            hideEpoch === getHideEpoch() &&
+            cursor < tickers.length
+          ) {
             const ticker = tickers[cursor++];
             try {
               pointsByTicker[ticker] = await fetchDividends(ticker);
@@ -80,6 +93,10 @@ export function DividendScanDialog({
           )
         );
         if (cancelled) return;
+        if (!canReveal() || hideEpoch !== getHideEpoch()) {
+          setScanInterrupted(true);
+          return;
+        }
         const candidates = buildDividendCandidates(
           trades,
           pointsByTicker,
@@ -102,21 +119,24 @@ export function DividendScanDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, trades, existing, attempt]);
+  }, [open, trades, existing, attempt, canReveal, getHideEpoch]);
 
   const selectedCount = rows.filter((r) => r.selected).length;
 
   function toggle(index: number) {
+    if (!canReveal()) return;
     setRows((prev) =>
       prev.map((r, i) => (i === index ? { ...r, selected: !r.selected } : r))
     );
   }
 
   function setAmount(index: number, amount: number) {
+    if (!canReveal()) return;
     setRows((prev) => prev.map((r, i) => (i === index ? { ...r, amount } : r)));
   }
 
   async function handleImport() {
+    if (!canReveal()) return;
     const toAdd = rows
       .filter((r) => r.selected && Number.isFinite(r.amount) && r.amount > 0)
       .map((r) => ({
@@ -131,7 +151,11 @@ export function DividendScanDialog({
     }
     try {
       await createMany.mutateAsync(toAdd);
-      toast.success(`Imported ${toAdd.length} distributions`);
+      toast.success(
+        canReveal()
+          ? `Imported ${toAdd.length} distributions`
+          : 'Distributions imported'
+      );
       onOpenChange(false);
     } catch {
       toast.error('Failed to import distributions');
@@ -151,10 +175,31 @@ export function DividendScanDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {hidden && (
+          <div role="status">
+            <p>Show amounts before editing or scanning.</p>
+            <Button onClick={showAmounts}>Show amounts</Button>
+          </div>
+        )}
         {scanning ? (
           <div className="text-muted-foreground flex items-center justify-center gap-2 py-12 text-sm">
             <Loader2 className="size-4 animate-spin" />
             Scanning your trade history…
+          </div>
+        ) : scanInterrupted ? (
+          <div role="status" className="space-y-3 py-10 text-center">
+            <p>
+              Scan paused when amounts were hidden. Show amounts and scan again.
+            </p>
+            <Button
+              variant="outline"
+              disabled={hidden}
+              onClick={() => {
+                if (canReveal()) setAttempt((current) => current + 1);
+              }}
+            >
+              Scan again
+            </Button>
           </div>
         ) : scanFailed ? (
           <div
@@ -201,20 +246,24 @@ export function DividendScanDialog({
                     <td className="py-2">
                       <Checkbox
                         checked={r.selected}
+                        disabled={hidden}
                         onCheckedChange={() => toggle(i)}
                         aria-label={`Include ${r.ticker} ${r.date}`}
                       />
                     </td>
                     <td className="py-2 font-medium">{r.ticker}</td>
                     <td className="py-2">{r.date}</td>
-                    <td className="py-2 text-right tabular-nums">{r.shares}</td>
+                    <td className="py-2 text-right tabular-nums">
+                      {mask(r.shares)}
+                    </td>
                     <td className="py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Input
                           type="number"
                           step="0.01"
                           min="0"
-                          value={r.amount}
+                          value={hidden ? '' : r.amount}
+                          disabled={hidden}
                           onChange={(e) =>
                             setAmount(i, Number(e.target.value) || 0)
                           }
@@ -233,12 +282,12 @@ export function DividendScanDialog({
 
             <Button
               onClick={handleImport}
-              disabled={createMany.isPending || selectedCount === 0}
+              disabled={hidden || createMany.isPending || selectedCount === 0}
             >
               {createMany.isPending && (
                 <Loader2 className="size-4 animate-spin" />
               )}
-              Add {selectedCount} selected
+              Add {mask(selectedCount)} selected
             </Button>
           </>
         )}

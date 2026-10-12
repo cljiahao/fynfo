@@ -1,10 +1,12 @@
 'use client';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSnapshots } from '@/features/assets';
 import { useDividends, useTrades } from '@/features/equity';
 import { useExpenses } from '@/features/expenses';
+import { useAmountVisibility } from '@/features/privacy';
 import { useSalaryRecords } from '@/features/salary';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
@@ -12,6 +14,7 @@ import { SEARCH_SOURCES, SEARCH_TERM_LIMIT } from '../constants';
 import { searchPersonalRecords } from '../lib/record-search';
 import type { RecordSearchTaskProps } from '../types';
 export function RecordSearchTask({ onSelect }: RecordSearchTaskProps) {
+  const { hidden, canReveal } = useAmountVisibility();
   const snapshots = useSnapshots();
   const salary = useSalaryRecords();
   const expenses = useExpenses();
@@ -52,15 +55,17 @@ export function RecordSearchTask({ onSelect }: RecordSearchTaskProps) {
         <Input
           id="record-search-term"
           autoFocus
-          value={term}
+          value={hidden ? '' : term}
+          disabled={hidden}
           maxLength={SEARCH_TERM_LIMIT}
           onChange={(event) =>
+            canReveal() &&
             setTerm(event.target.value.slice(0, SEARCH_TERM_LIMIT))
           }
         />
       </div>
       <p className="text-muted-foreground text-xs">
-        {normalized
+        {!hidden && normalized
           ? 'Showing up to 4 matches per source. Refine your search for more.'
           : 'Try an account, category, ticker or recorded date.'}
       </p>
@@ -69,7 +74,7 @@ export function RecordSearchTask({ onSelect }: RecordSearchTaskProps) {
           Results are partial while sources load, update or need retry.
         </p>
       )}
-      {normalized && !incomplete && noMatches && (
+      {!hidden && normalized && !incomplete && noMatches && (
         <p role="status">No matches in the loaded personal histories.</p>
       )}
       <div className="space-y-4">
@@ -105,7 +110,7 @@ export function RecordSearchTask({ onSelect }: RecordSearchTaskProps) {
                     {query.data?.length ?? 0}{' '}
                     {query.data?.length === 1 ? 'record' : 'records'} loaded
                   </p>
-                  {!!normalized && (
+                  {!hidden && !!normalized && (
                     <ul className="space-y-2">
                       {group.results.map((result) => (
                         <li

@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -30,6 +32,7 @@ function SalaryActionButtons({
   id: string;
   onEdit?: (id: string) => void;
 }) {
+  const { hidden, canReveal } = useAmountVisibility();
   const [open, setOpen] = useState(false);
   const deleteMutation = useDeleteSalary();
 
@@ -38,7 +41,10 @@ function SalaryActionButtons({
       <Button
         variant="outline"
         size="sm"
-        onClick={() => onEdit?.(id)}
+        disabled={hidden}
+        onClick={() => {
+          if (canReveal()) onEdit?.(id);
+        }}
         aria-label="Edit salary record"
       >
         <Pencil className="size-4" />
@@ -46,7 +52,10 @@ function SalaryActionButtons({
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => setOpen(true)}
+        disabled={hidden}
+        onClick={() => {
+          if (canReveal()) setOpen(true);
+        }}
         aria-label="Delete salary record"
       >
         <Trash2 className="text-destructive size-4" />
@@ -64,6 +73,10 @@ function SalaryActionButtons({
         }
         isPending={deleteMutation.isPending}
         onConfirm={async () => {
+          if (!canReveal()) {
+            toast.info('Show amounts before deleting salary records');
+            return;
+          }
           await deleteMutation.mutateAsync(id);
           toast.success(`Deleted ${id}`);
         }}
@@ -73,6 +86,7 @@ function SalaryActionButtons({
 }
 
 export function SalaryTable({ onEdit }: SalaryTableProps) {
+  const { hidden, mask } = useAmountVisibility();
   const { data: records } = useSalaryRecords();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(10);
@@ -87,6 +101,11 @@ export function SalaryTable({ onEdit }: SalaryTableProps) {
         <CardDescription>All monthly salary records</CardDescription>
       </CardHeader>
       <CardContent>
+        {hidden && (
+          <p className="text-muted-foreground mb-3 text-sm">
+            Show amounts before editing or deleting salary records.
+          </p>
+        )}
         {reversed.length === 0 ? (
           <EmptyState
             icon={Wallet}
@@ -114,13 +133,13 @@ export function SalaryTable({ onEdit }: SalaryTableProps) {
                     <tr key={r.id} className="border-b last:border-0">
                       <td className="py-2 font-medium">{r.id}</td>
                       <td className="py-2 text-center tabular-nums">
-                        {formatSGD(r.salary)}
+                        {mask(formatSGD(r.salary))}
                       </td>
                       <td className="py-2 text-center tabular-nums">
-                        {r.bonus > 0 ? formatSGD(r.bonus) : '-'}
+                        {mask(r.bonus > 0 ? formatSGD(r.bonus) : '-')}
                       </td>
                       <td className="py-2 text-center font-semibold tabular-nums">
-                        {formatSGD(r.salary + r.bonus)}
+                        {mask(formatSGD(r.salary + r.bonus))}
                       </td>
                       <td className="py-2 text-center">
                         <SalaryActionButtons id={r.id} onEdit={onEdit} />

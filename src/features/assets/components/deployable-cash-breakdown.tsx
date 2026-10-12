@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import {
   Accordion,
   AccordionContent,
@@ -39,6 +41,7 @@ export function DeployableCashBreakdown({
   usCash,
   updateCashAlloc,
 }: DeployableCashBreakdownProps) {
+  const { hidden, mask, canReveal } = useAmountVisibility();
   const allocRows = [
     {
       label: 'SG',
@@ -59,36 +62,40 @@ export function DeployableCashBreakdown({
       <Accordion type="single" collapsible>
         <AccordionItem value="deployable" className="border-none">
           <AccordionTrigger className="text-muted-foreground p-0 text-xs font-medium">
-            Deployable Cash — {formatSGD(totalDeployable)}
+            Deployable Cash — {mask(formatSGD(totalDeployable))}
           </AccordionTrigger>
           <AccordionContent className="px-0 pt-2 pb-0">
             <div className="space-y-1.5">
               <div className="flex-between text-xs">
                 <span>Savings</span>
-                <span className="font-medium">{formatSGD(currentSavings)}</span>
+                <span className="font-medium">
+                  {mask(formatSGD(currentSavings))}
+                </span>
               </div>
               <div className="flex-between text-muted-foreground text-xs">
                 <span>− Emergency Fund</span>
-                <span>{formatSGD(emergencyFundGoal)}</span>
+                <span>{mask(formatSGD(emergencyFundGoal))}</span>
               </div>
               <div className="flex-between text-xs">
                 <span>Bonds (war chest)</span>
-                <span className="font-medium">{formatSGD(currentBonds)}</span>
+                <span className="font-medium">
+                  {mask(formatSGD(currentBonds))}
+                </span>
               </div>
               <div className="flex-between text-muted-foreground text-xs">
                 <span>− War chest goal</span>
-                <span>{formatSGD(warChestGoal)}</span>
+                <span>{mask(formatSGD(warChestGoal))}</span>
               </div>
               {bondsShortfall > 0 && (
                 <div className="flex-between text-warning text-xs">
                   <span>− War chest shortfall</span>
-                  <span>{formatSGD(bondsShortfall)}</span>
+                  <span>{mask(formatSGD(bondsShortfall))}</span>
                 </div>
               )}
               {bondsSurplus > 0 && (
                 <div className="flex-between text-gain text-xs">
                   <span>+ Bonds surplus</span>
-                  <span>{formatSGD(bondsSurplus)}</span>
+                  <span>{mask(formatSGD(bondsSurplus))}</span>
                 </div>
               )}
               <div className="flex-between border-t pt-1.5 font-semibold">
@@ -96,7 +103,7 @@ export function DeployableCashBreakdown({
                 <span
                   className={totalDeployable > 0 ? 'text-gain' : 'text-loss'}
                 >
-                  {formatSGD(totalDeployable)}
+                  {mask(formatSGD(totalDeployable))}
                 </span>
               </div>
             </div>
@@ -109,20 +116,22 @@ export function DeployableCashBreakdown({
                     <span className="flex items-center gap-1.5">
                       <span className="w-6 font-medium">{row.label}</span>
                       <Input
+                        disabled={hidden}
                         type="number"
                         aria-label={`${row.label} deployable cash allocation (%)`}
                         min="0"
                         max="100"
                         className="h-6 w-16 text-center text-xs"
-                        value={row.value || ''}
+                        value={hidden ? '' : row.value || ''}
                         onChange={(e) =>
+                          canReveal() &&
                           row.onChange(Number(e.target.value) || 0)
                         }
                       />
                       <span className="text-muted-foreground">%</span>
                     </span>
                     <span className="font-semibold">
-                      {formatSGD(row.amount)}
+                      {mask(formatSGD(row.amount))}
                     </span>
                   </div>
                 ))}

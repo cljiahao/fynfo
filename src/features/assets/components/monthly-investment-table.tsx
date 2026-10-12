@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import {
   Accordion,
   AccordionContent,
@@ -33,6 +35,7 @@ export function MonthlyInvestmentTable({
   totalRatio,
   updateRatio,
 }: MonthlyInvestmentTableProps) {
+  const { hidden, mask, canReveal } = useAmountVisibility();
   const rows = [
     { label: 'RSP', key: 'rsp' as const, monthly: rspMonthly },
     { label: 'SG Market', key: 'sg' as const, monthly: sgMonthly },
@@ -44,7 +47,7 @@ export function MonthlyInvestmentTable({
       <Accordion type="single" collapsible>
         <AccordionItem value="monthly" className="border-none">
           <AccordionTrigger className="text-muted-foreground p-0 text-xs font-medium">
-            Monthly Investment — {formatSGD(investmentAmount)}
+            Monthly Investment — {mask(formatSGD(investmentAmount))}
           </AccordionTrigger>
           <AccordionContent className="px-0 pt-2 pb-0">
             <table className="w-full text-sm">
@@ -61,21 +64,23 @@ export function MonthlyInvestmentTable({
                     <td className="py-2 font-medium">{row.label}</td>
                     <td className="py-2 text-center">
                       <Input
+                        disabled={hidden}
                         type="number"
                         aria-label={`${row.label} monthly allocation (%)`}
                         min="0"
                         max="100"
                         step="1"
                         className="mx-auto h-7 w-16 text-center text-xs"
-                        value={ratios[row.key] || ''}
+                        value={hidden ? '' : ratios[row.key] || ''}
                         placeholder="0"
                         onChange={(e) =>
+                          canReveal() &&
                           updateRatio(row.key, Number(e.target.value) || 0)
                         }
                       />
                     </td>
                     <td className="py-2 text-right tabular-nums">
-                      {formatSGD(row.monthly)}
+                      {mask(formatSGD(row.monthly))}
                     </td>
                   </tr>
                 ))}
@@ -86,10 +91,10 @@ export function MonthlyInvestmentTable({
                   <td
                     className={`py-2 text-center font-semibold tabular-nums ${totalRatio !== 100 ? 'text-loss' : ''}`}
                   >
-                    {totalRatio}%
+                    {mask(`${totalRatio}%`)}
                   </td>
                   <td className="py-2 text-right font-semibold tabular-nums">
-                    {formatSGD(investmentAmount)}
+                    {mask(formatSGD(investmentAmount))}
                   </td>
                 </tr>
               </tfoot>

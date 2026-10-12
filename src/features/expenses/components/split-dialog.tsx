@@ -1,5 +1,7 @@
 'use client';
 
+import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -37,6 +39,7 @@ export function SplitDialog({
   peopleSuggestions,
   onConfirm,
 }: SplitDialogProps) {
+  const { hidden, mask, canReveal } = useAmountVisibility();
   const [splits, setSplits] = useState<ExpenseSplitData[]>(initialSplits);
   const [newName, setNewName] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -74,6 +77,7 @@ export function SplitDialog({
     computeEvenSplitsFor(list, paidFor);
 
   const addPerson = (name: string) => {
+    if (!canReveal()) return;
     const trimmed = name.trim();
     if (!trimmed || existingNames.includes(trimmed)) return;
 
@@ -87,6 +91,7 @@ export function SplitDialog({
   };
 
   const removePerson = (name: string) => {
+    if (!canReveal()) return;
     const newSplits = splits.filter((s) => s.person !== name);
     if (newSplits.length === 0) {
       setSplits([]);
@@ -96,18 +101,21 @@ export function SplitDialog({
   };
 
   const updateSplitAmount = (person: string, amount: number) => {
+    if (!canReveal()) return;
     setSplits((prev) =>
       prev.map((s) => (s.person === person ? { ...s, amount } : s))
     );
   };
 
   const toggleSettled = (person: string) => {
+    if (!canReveal()) return;
     setSplits((prev) =>
       prev.map((s) => (s.person === person ? { ...s, settled: !s.settled } : s))
     );
   };
 
   const resetToEven = () => {
+    if (!canReveal()) return;
     setSplits((prev) => computeEvenSplits(prev));
   };
 
@@ -124,14 +132,19 @@ export function SplitDialog({
       <DialogContent className="top-8 max-h-[calc(100vh-4rem)] translate-y-0 overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Split Expense</DialogTitle>
-          <DialogDescription>Total: {formatSGD(totalAmount)}</DialogDescription>
+          <DialogDescription>
+            Total: {mask(formatSGD(totalAmount))}
+          </DialogDescription>
         </DialogHeader>
+        <AmountsHiddenNotice />
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 rounded-lg border p-1 text-xs font-medium">
             <button
               type="button"
+              disabled={hidden}
               onClick={() => {
+                if (!canReveal()) return;
                 setPaidFor(false);
                 setSplits((prev) => computeEvenSplitsFor(prev, false));
               }}
@@ -141,7 +154,9 @@ export function SplitDialog({
             </button>
             <button
               type="button"
+              disabled={hidden}
               onClick={() => {
+                if (!canReveal()) return;
                 setPaidFor(true);
                 setSplits((prev) => computeEvenSplitsFor(prev, true));
               }}
@@ -159,7 +174,8 @@ export function SplitDialog({
           <div className="relative">
             <div className="flex gap-2">
               <Input
-                value={newName}
+                value={hidden ? '' : newName}
+                disabled={hidden}
                 onChange={(e) => {
                   setNewName(e.target.value);
                   setShowSuggestions(true);
@@ -180,26 +196,30 @@ export function SplitDialog({
                 size="sm"
                 variant="outline"
                 onClick={() => addPerson(newName)}
-                disabled={!newName.trim()}
+                disabled={hidden || !newName.trim()}
                 aria-label="Add person"
               >
                 <Plus className="size-4" />
               </Button>
             </div>
-            {showSuggestions && filtered.length > 0 && newName.length > 0 && (
-              <div className="bg-popover absolute top-full z-10 mt-1 w-full rounded-md border py-1 shadow-md">
-                {filtered.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    className="hover:bg-muted w-full px-3 py-1.5 text-left text-sm"
-                    onMouseDown={() => addPerson(s)}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
+            {!hidden &&
+              showSuggestions &&
+              filtered.length > 0 &&
+              newName.length > 0 && (
+                <div className="bg-popover absolute top-full z-10 mt-1 w-full rounded-md border py-1 shadow-md">
+                  {filtered.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      disabled={hidden}
+                      className="hover:bg-muted w-full px-3 py-1.5 text-left text-sm"
+                      onMouseDown={() => addPerson(s)}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
           </div>
 
           {splits.length > 0 && (
@@ -219,15 +239,18 @@ export function SplitDialog({
                   <tbody>
                     {splits.map((s) => (
                       <tr key={s.person} className="border-b last:border-0">
-                        <td className="px-3 py-1.5 font-medium">{s.person}</td>
+                        <td className="px-3 py-1.5 font-medium">
+                          {mask(s.person)}
+                        </td>
                         <td className="px-3 py-1.5">
                           <Input
                             type="number"
                             step="0.01"
                             min="0"
-                            aria-label={`Amount owed by ${s.person}`}
+                            aria-label={`Amount owed by ${mask(s.person)}`}
                             aria-invalid={Boolean(allocationError)}
-                            value={s.amount || ''}
+                            value={hidden ? '' : s.amount || ''}
+                            disabled={hidden}
                             onChange={(e) =>
                               updateSplitAmount(
                                 s.person,
@@ -239,8 +262,9 @@ export function SplitDialog({
                         </td>
                         <td className="px-3 py-1.5 text-center">
                           <Checkbox
+                            disabled={hidden}
                             checked={s.settled}
-                            aria-label={`Settled by ${s.person}`}
+                            aria-label={`Settled by ${mask(s.person)}`}
                             onCheckedChange={() => toggleSettled(s.person)}
                           />
                         </td>
@@ -248,9 +272,10 @@ export function SplitDialog({
                           <Button
                             variant="ghost"
                             size="icon"
+                            disabled={hidden}
                             className="text-destructive hover:text-destructive size-6"
                             onClick={() => removePerson(s.person)}
-                            aria-label={`Remove ${s.person}`}
+                            aria-label={`Remove ${mask(s.person)}`}
                           >
                             <Trash2 className="size-3" />
                           </Button>
@@ -265,6 +290,7 @@ export function SplitDialog({
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={hidden}
                   onClick={resetToEven}
                   className="text-xs"
                 >
@@ -281,12 +307,14 @@ export function SplitDialog({
               <div className="space-y-1 text-sm">
                 <div className="flex-between">
                   <span className="text-muted-foreground">They owe you</span>
-                  <span className="font-medium">{formatSGD(othersTotal)}</span>
+                  <span className="font-medium">
+                    {mask(formatSGD(othersTotal))}
+                  </span>
                 </div>
                 <div className="flex-between">
                   <span className="font-medium">Your share</span>
                   <span className="font-semibold">
-                    {allocationError ? '—' : formatSGD(yourShare)}
+                    {mask(allocationError ? '—' : formatSGD(yourShare))}
                   </span>
                 </div>
               </div>
@@ -309,9 +337,9 @@ export function SplitDialog({
               Cancel
             </Button>
             <Button
-              disabled={Boolean(allocationError)}
+              disabled={hidden || Boolean(allocationError)}
               onClick={() => {
-                if (allocationError) return;
+                if (!canReveal() || allocationError) return;
                 onConfirm(splits);
                 onOpenChange(false);
               }}

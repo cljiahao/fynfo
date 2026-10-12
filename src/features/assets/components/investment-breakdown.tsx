@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import {
   Card,
   CardContent,
@@ -53,6 +55,7 @@ export function InvestmentBreakdown({
   snapshot,
   onBudgetsChange,
 }: InvestmentBreakdownProps) {
+  const { mask, canReveal } = useAmountVisibility();
   const { data: trades, isError: tradesError } = useTrades();
 
   // useMemo justified: iterates all trades to aggregate holdings by market
@@ -81,6 +84,7 @@ export function InvestmentBreakdown({
   );
 
   const updateRatio = (key: 'rsp' | 'us' | 'sg', v: number) =>
+    canReveal() &&
     setRatios((p) => {
       const next = { ...p, [key]: v };
       saveLocal(RATIOS_KEY, next);
@@ -88,6 +92,7 @@ export function InvestmentBreakdown({
     });
 
   const updateCashAlloc = (next: { sg: number; us: number }) => {
+    if (!canReveal()) return;
     setCashAlloc(next);
     saveLocal(CASH_ALLOC_KEY, next);
   };
@@ -220,7 +225,8 @@ export function InvestmentBreakdown({
         <CardHeader>
           <CardTitle>Investment Breakdown</CardTitle>
           <CardDescription>
-            How your monthly {formatSGD(investmentAmount)} is split and tracked
+            How your monthly {mask(formatSGD(investmentAmount))} is split and
+            tracked
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -232,8 +238,9 @@ export function InvestmentBreakdown({
               </p>
               <p className="mt-0.5">
                 {sgAvailable > 0 &&
-                  `SG: ${formatSGD(sgAvailable)} undeployed. `}
-                {usAvailable > 0 && `US: ${formatSGD(usAvailable)} undeployed.`}
+                  `SG: ${mask(formatSGD(sgAvailable))} undeployed. `}
+                {usAvailable > 0 &&
+                  `US: ${mask(formatSGD(usAvailable))} undeployed.`}
               </p>
             </div>
           )}

@@ -1,5 +1,7 @@
 'use client';
 
+import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -34,6 +36,7 @@ function TradeActionButtons({
   trade: EquityTradeData;
   onEdit?: (trade: EquityTradeData) => void;
 }) {
+  const { hidden, mask, canReveal } = useAmountVisibility();
   const [open, setOpen] = useState(false);
   const deleteMutation = useDeleteTrade();
 
@@ -42,7 +45,10 @@ function TradeActionButtons({
       <Button
         variant="outline"
         size="sm"
-        onClick={() => onEdit?.(trade)}
+        onClick={() => {
+          if (canReveal()) onEdit?.(trade);
+          else toast.info('Show amounts before editing.');
+        }}
         aria-label="Edit trade"
       >
         <Pencil className="size-4" />
@@ -50,7 +56,10 @@ function TradeActionButtons({
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          if (canReveal()) setOpen(true);
+          else toast.info('Show amounts before editing.');
+        }}
         aria-label="Delete trade"
       >
         <Trash2 className="text-destructive size-4" />
@@ -61,14 +70,16 @@ function TradeActionButtons({
         title="Delete Trade"
         description={
           <>
-            Delete {trade.action.toUpperCase()} {trade.shares}{' '}
+            Delete {trade.action.toUpperCase()} {mask(trade.shares)}{' '}
             <span className="font-semibold">{trade.ticker}</span>? This cannot
             be undone.
           </>
         }
         isPending={deleteMutation.isPending}
+        disabled={hidden}
+        notice={<AmountsHiddenNotice />}
         onConfirm={async () => {
-          if (!trade.id) return;
+          if (!canReveal() || !trade.id) return;
           try {
             await deleteMutation.mutateAsync(trade.id);
             toast.success('Trade deleted');
@@ -82,6 +93,7 @@ function TradeActionButtons({
 }
 
 export function TradeTable({ trades, onEdit }: TradeTableProps) {
+  const { mask } = useAmountVisibility();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(10);
   const paged = trades.slice(page * pageSize, (page + 1) * pageSize);
@@ -130,7 +142,7 @@ export function TradeTable({ trades, onEdit }: TradeTableProps) {
                     <td className="py-2 font-medium">
                       {format(new Date(t.date), 'dd MMM yyyy')}
                     </td>
-                    <td className="py-2 text-center">{t.broker}</td>
+                    <td className="py-2 text-center">{mask(t.broker)}</td>
                     <td className="py-2 text-center font-mono font-medium">
                       {t.ticker}
                     </td>
@@ -146,17 +158,19 @@ export function TradeTable({ trades, onEdit }: TradeTableProps) {
                       </span>
                     </td>
                     <td className="py-2 text-center tabular-nums">
-                      {t.shares}
+                      {mask(t.shares)}
                     </td>
                     <td className="py-2 text-center tabular-nums">
-                      {formatCurrency(t.price, currency)}
+                      {mask(formatCurrency(t.price, currency))}
                     </td>
                     <td className="py-2 text-center tabular-nums">
-                      {t.fees > 0 ? formatCurrency(t.fees, currency) : '-'}
+                      {t.fees > 0
+                        ? mask(formatCurrency(t.fees, currency))
+                        : '-'}
                     </td>
                     <td className="py-2 text-center font-semibold tabular-nums">
                       {Number.isFinite(total)
-                        ? formatCurrency(total, currency)
+                        ? mask(formatCurrency(total, currency))
                         : 'Unavailable'}
                     </td>
                     <td className="py-2 text-center">

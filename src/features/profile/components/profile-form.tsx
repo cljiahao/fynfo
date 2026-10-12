@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -34,6 +36,7 @@ const DEFAULT_PROFILE: ProfileData = {
 };
 
 function ProfileFormInner({ initial }: { initial: ProfileData }) {
+  const { hidden, canReveal } = useAmountVisibility();
   const upsertProfile = useUpsertProfile();
 
   const { control, handleSubmit } = useForm<ProfileFormValues>({
@@ -42,6 +45,7 @@ function ProfileFormInner({ initial }: { initial: ProfileData }) {
   });
 
   const onSubmit = async (values: ProfileFormValues) => {
+    if (!canReveal()) return;
     try {
       await upsertProfile.mutateAsync(values);
       toast.success('Profile saved');
@@ -68,6 +72,7 @@ function ProfileFormInner({ initial }: { initial: ProfileData }) {
                 control={control}
                 render={({ field }) => (
                   <Input
+                    disabled={hidden}
                     id="birthYear"
                     type="number"
                     min={1940}
@@ -93,7 +98,11 @@ function ProfileFormInner({ initial }: { initial: ProfileData }) {
                 name="residencyStatus"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    disabled={hidden}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
                     <SelectTrigger id="residency">
                       <SelectValue />
                     </SelectTrigger>
@@ -122,6 +131,7 @@ function ProfileFormInner({ initial }: { initial: ProfileData }) {
             render={({ field }) => (
               <div className="flex items-start gap-3">
                 <Checkbox
+                  disabled={hidden}
                   id="nsman"
                   checked={field.value}
                   onCheckedChange={(v) => field.onChange(v === true)}
@@ -138,7 +148,7 @@ function ProfileFormInner({ initial }: { initial: ProfileData }) {
             )}
           />
 
-          <Button type="submit" disabled={upsertProfile.isPending}>
+          <Button type="submit" disabled={hidden || upsertProfile.isPending}>
             {upsertProfile.isPending && (
               <Loader2 className="mr-2 size-4 animate-spin" />
             )}

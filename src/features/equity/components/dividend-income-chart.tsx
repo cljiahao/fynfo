@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import {
   Bar,
   BarChart,
@@ -23,6 +25,11 @@ export function DividendIncomeChart({
   dividends,
   usdSgdRate,
 }: DividendIncomeChartProps) {
+  const { hidden } = useAmountVisibility();
+  if (hidden)
+    return (
+      <p className="text-muted-foreground text-sm">Distribution chart hidden</p>
+    );
   const data = incomeByYear(dividends, usdSgdRate);
 
   return (

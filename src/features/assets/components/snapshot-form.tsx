@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -14,6 +16,7 @@ import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { formatSGD } from '@/lib/utils/currency';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import type { FormEvent } from 'react';
 import { CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants';
 import { useSnapshotEditor } from '../hooks/use-snapshot-editor';
 import type { AssetCategory } from '../types';
@@ -23,6 +26,7 @@ interface SnapshotFormProps {
 }
 
 export function SnapshotForm({ editId }: SnapshotFormProps) {
+  const { hidden, mask, canReveal, getHideEpoch } = useAmountVisibility();
   const router = useRouter();
   const editor = useSnapshotEditor(editId);
   const {
@@ -39,7 +43,18 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
     (record) => record.id === selectedMonth && record.id !== editId
   );
 
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canReveal()) return;
+    const hideEpoch = getHideEpoch();
+    await form.handleSubmit(async function submitVisibleSnapshot(values) {
+      if (canReveal() && getHideEpoch() === hideEpoch)
+        await editor.submit(values);
+    })(event);
+  }
+
   function addRow(category: AssetCategory) {
+    if (!canReveal()) return;
     append({ category, account: '', amount: '' as unknown as number });
   }
 
@@ -78,7 +93,7 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
   }
 
   return (
-    <form onSubmit={form.handleSubmit(editor.submit)}>
+    <form onSubmit={handleSubmit}>
       <Card>
         <CardHeader>
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -93,7 +108,7 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
               <Input
                 id="month"
                 type="month"
-                disabled={isSaving || editor.isReviewing}
+                disabled={hidden || isSaving || editor.isReviewing}
                 className="relative w-44 cursor-pointer pr-4 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
                 {...form.register('id')}
                 onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
@@ -143,15 +158,17 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
               <Button
                 type="button"
                 variant="outline"
-                disabled={editor.isReviewing}
-                onClick={() => void editor.reviewLatest()}
+                disabled={hidden || editor.isReviewing}
+                onClick={() => {
+                  if (canReveal()) void editor.reviewLatest();
+                }}
               >
                 {editor.isReviewing ? 'Checking…' : 'Check latest and reload'}
               </Button>
             </div>
           )}
           <fieldset
-            disabled={isSaving || editor.isReviewing}
+            disabled={hidden || isSaving || editor.isReviewing}
             className="space-y-6"
           >
             {CATEGORIES.map((cat) => {
@@ -169,7 +186,7 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
                       {CATEGORY_LABELS[cat]}
                       {rows.length > 0 && (
                         <span className="text-muted-foreground text-sm font-normal">
-                          ({formatSGD(catTotal)})
+                          ({mask(formatSGD(catTotal))})
                         </span>
                       )}
                     </Label>
@@ -200,6 +217,15 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
                             placeholder="Account name"
                             aria-label={`${CATEGORY_LABELS[cat]} account ${idx + 1}`}
                             {...form.register(`entries.${idx}.account`)}
+                            value={
+                              hidden ? '' : (currentEntries[idx]?.account ?? '')
+                            }
+                            onChange={(event) => {
+                              if (canReveal())
+                                void form
+                                  .register(`entries.${idx}.account`)
+                                  .onChange(event);
+                            }}
                           />
                           <Input
                             type="number"
@@ -211,12 +237,23 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
                               setValueAs: (v: string) =>
                                 v === '' ? 0 : parseFloat(v),
                             })}
+                            value={
+                              hidden ? '' : currentEntries[idx]?.amount || ''
+                            }
+                            onChange={(event) => {
+                              if (canReveal())
+                                void form
+                                  .register(`entries.${idx}.amount`)
+                                  .onChange(event);
+                            }}
                           />
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => remove(idx)}
+                            onClick={() => {
+                              if (canReveal()) remove(idx);
+                            }}
                             aria-label={`Remove ${CATEGORY_LABELS[cat]} account ${idx + 1}`}
                           >
                             <Trash2 className="text-destructive size-4" />
@@ -254,7 +291,7 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
             <div className="flex gap-3">
               <Button
                 type="submit"
-                disabled={isSaving || isDuplicate || !!editor.issue}
+                disabled={hidden || isSaving || isDuplicate || !!editor.issue}
               >
                 {isSaving && <Loader2 className="mr-2 size-4 animate-spin" />}
                 {editId ? 'Update' : 'Save'} Snapshot

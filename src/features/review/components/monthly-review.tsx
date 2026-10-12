@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import {
   Accordion,
   AccordionContent,
@@ -22,6 +24,7 @@ import { buildMonthlyReview } from '../lib/monthly-review';
 import { MonthlyReviewSources } from './monthly-review-sources';
 
 export function MonthlyReview() {
+  const { mask } = useAmountVisibility();
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
   const snapshots = useSnapshots();
   const salary = useSalaryRecords();
@@ -89,7 +92,7 @@ export function MonthlyReview() {
               </dt>
               <dd className="text-lg font-semibold tabular-nums">
                 {review.incomeRecorded
-                  ? formatSGD(review.grossIncome)
+                  ? mask(formatSGD(review.grossIncome))
                   : 'Not recorded'}
               </dd>
             </div>
@@ -101,7 +104,7 @@ export function MonthlyReview() {
                 {review.personalSpending === null
                   ? 'Check shared splits'
                   : review.expenseCount
-                    ? formatSGD(review.personalSpending)
+                    ? mask(formatSGD(review.personalSpending))
                     : 'Not recorded'}
               </dd>
             </div>
@@ -112,7 +115,7 @@ export function MonthlyReview() {
               <dd className="text-lg font-semibold tabular-nums">
                 {review.assetChange === null
                   ? 'Needs both snapshots'
-                  : formatSGD(review.assetChange)}
+                  : mask(formatSGD(review.assetChange))}
               </dd>
             </div>
           </dl>
