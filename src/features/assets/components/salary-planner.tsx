@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -133,6 +135,7 @@ function SalaryPlannerInner({
   initialSettings: PlannerSettingsData;
   avgExpenses: number;
 }) {
+  const { canReveal, getHideEpoch } = useAmountVisibility();
   const upsertSettings = useUpsertPlannerSettings();
   const mutateRef = useRef(upsertSettings.mutate);
   useEffect(() => {
@@ -168,12 +171,18 @@ function SalaryPlannerInner({
     []
   );
   const isFirstRender = useRef(true);
-  const debouncedSave = useCallback((data: PlannerSettingsData) => {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      mutateRef.current(data);
-    }, 800);
-  }, []);
+  const debouncedSave = useCallback(
+    (data: PlannerSettingsData) => {
+      if (!canReveal()) return;
+      const hideEpoch = getHideEpoch();
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        if (canReveal() && getHideEpoch() === hideEpoch)
+          mutateRef.current(data);
+      }, 800);
+    },
+    [canReveal, getHideEpoch]
+  );
 
   useEffect(() => {
     if (isFirstRender.current) {

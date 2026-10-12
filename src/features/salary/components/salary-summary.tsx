@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import {
   Accordion,
   AccordionContent,
@@ -39,6 +41,7 @@ function Row({
   variant?: 'default' | 'muted' | 'negative' | 'positive' | 'bold';
   indent?: boolean;
 }) {
+  const { hidden, mask } = useAmountVisibility();
   const valueClass = {
     default: 'font-medium',
     muted: 'text-muted-foreground',
@@ -50,9 +53,13 @@ function Row({
   return (
     <div className="flex-between py-1">
       <span className={`${indent ? 'text-muted-foreground pl-3' : ''} text-sm`}>
-        {label}
+        {hidden
+          ? label.split(' — ')[0].replace(/\s*\([^)]*×[^)]*\)$/, '')
+          : label}
       </span>
-      <span className={`text-sm ${valueClass}`}>{value}</span>
+      <span className={`text-sm ${valueClass}`}>
+        {value === 'No personal reliefs' ? value : mask(value)}
+      </span>
     </div>
   );
 }
@@ -202,6 +209,7 @@ function SummaryColumn({
 }
 
 export function SalarySummary({ records }: SalarySummaryProps) {
+  const { hidden, canReveal } = useAmountVisibility();
   const [reliefDialogOpen, setReliefDialogOpen] = useState(false);
   const {
     currentYear,
@@ -290,7 +298,9 @@ export function SalarySummary({ records }: SalarySummaryProps) {
           }
           summary={estSummary}
           reliefItems={reliefItems}
-          onOpenReliefs={() => setReliefDialogOpen(true)}
+          onOpenReliefs={() => {
+            if (canReveal()) setReliefDialogOpen(true);
+          }}
         />
         <SummaryColumn
           title={`Recorded YTD (${currentYear})`}
@@ -299,7 +309,9 @@ export function SalarySummary({ records }: SalarySummaryProps) {
           months={monthsRecorded}
           summary={trueSummary}
           reliefItems={reliefItems}
-          onOpenReliefs={() => setReliefDialogOpen(true)}
+          onOpenReliefs={() => {
+            if (canReveal()) setReliefDialogOpen(true);
+          }}
         />
       </div>
 
@@ -312,6 +324,11 @@ export function SalarySummary({ records }: SalarySummaryProps) {
         is before rebates, eligible deductions and special exemptions.
       </p>
 
+      {hidden && (
+        <p className="text-muted-foreground text-sm">
+          Show amounts before editing tax reliefs.
+        </p>
+      )}
       <TaxReliefsDialog
         open={reliefDialogOpen}
         onOpenChange={setReliefDialogOpen}

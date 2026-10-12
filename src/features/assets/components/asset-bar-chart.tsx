@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -84,6 +86,7 @@ const ALL_LABELS: Record<string, string> = Object.fromEntries(
 );
 
 export function AssetLineChart({ data }: AssetLineChartProps) {
+  const { hidden, mask } = useAmountVisibility();
   const [visible, setVisible] = useState<Set<LineKey>>(
     () => new Set(ALL_LINES.map((l) => l.key))
   );
@@ -178,65 +181,69 @@ export function AssetLineChart({ data }: AssetLineChartProps) {
       </CardHeader>
       <CardContent className="flex-1">
         <div className="h-full min-h-[400px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
-              <XAxis
-                dataKey="month"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-                {...CHART_AXIS_TICK_PROPS}
-              />
-              <YAxis
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v: number) => formatSGDWhole(v)}
-                {...CHART_AXIS_TICK_PROPS}
-              />
-              <Tooltip
-                formatter={(value: unknown, name: unknown) => [
-                  formatSGDWhole(Number(value)),
-                  ALL_LABELS[String(name)] ?? String(name),
-                ]}
-                position={{ y: -150 }}
-                offset={20}
-                {...CHART_TOOLTIP_PROPS}
-              />
-              <Legend
-                formatter={(value: string) => ALL_LABELS[value] ?? value}
-              />
-              {/* Aggregate lines */}
-              {AGGREGATE_LINES.map((line) =>
-                visible.has(line.key) ? (
-                  <Line
-                    key={line.key}
-                    type="monotone"
-                    dataKey={line.key}
-                    stroke={line.color}
-                    strokeWidth={line.strokeWidth}
-                    strokeDasharray="6 3"
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                  />
-                ) : null
-              )}
-              {/* Individual category lines */}
-              {CATEGORIES.map((cat) =>
-                visible.has(cat) ? (
-                  <Line
-                    key={cat}
-                    type="monotone"
-                    dataKey={cat}
-                    stroke={CATEGORY_COLORS[cat]}
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                  />
-                ) : null
-              )}
-            </LineChart>
-          </ResponsiveContainer>
+          {hidden ? (
+            <p role="status">Amounts hidden</p>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data}>
+                <XAxis
+                  dataKey="month"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  {...CHART_AXIS_TICK_PROPS}
+                />
+                <YAxis
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: number) => mask(formatSGDWhole(v))}
+                  {...CHART_AXIS_TICK_PROPS}
+                />
+                <Tooltip
+                  formatter={(value: unknown, name: unknown) => [
+                    mask(formatSGDWhole(Number(value))),
+                    ALL_LABELS[String(name)] ?? String(name),
+                  ]}
+                  position={{ y: -150 }}
+                  offset={20}
+                  {...CHART_TOOLTIP_PROPS}
+                />
+                <Legend
+                  formatter={(value: string) => ALL_LABELS[value] ?? value}
+                />
+                {/* Aggregate lines */}
+                {AGGREGATE_LINES.map((line) =>
+                  visible.has(line.key) ? (
+                    <Line
+                      key={line.key}
+                      type="monotone"
+                      dataKey={line.key}
+                      stroke={line.color}
+                      strokeWidth={line.strokeWidth}
+                      strokeDasharray="6 3"
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                    />
+                  ) : null
+                )}
+                {/* Individual category lines */}
+                {CATEGORIES.map((cat) =>
+                  visible.has(cat) ? (
+                    <Line
+                      key={cat}
+                      type="monotone"
+                      dataKey={cat}
+                      stroke={CATEGORY_COLORS[cat]}
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                      activeDot={{ r: 5 }}
+                    />
+                  ) : null
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </CardContent>
     </Card>

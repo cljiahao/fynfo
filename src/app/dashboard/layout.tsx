@@ -5,6 +5,7 @@ import {
   IdleLockWatcher,
   VaultLockProvider,
 } from '@/features/auth';
+import { AmountVisibilityProvider } from '@/features/privacy';
 import { requireUserId } from '@/lib/auth-guard';
 import { getVaultDekSession } from '@/lib/keystore';
 
@@ -26,11 +27,13 @@ export default async function DashboardLayout({
       <AuthIdentityWatcher userId={userId} />
       <IdleLockWatcher />
       <VaultGate>
-        <div className="flex min-h-screen flex-col">
-          <DashboardNavbar userMenu={<UserMenu />} />
-          <main className="flex flex-1 flex-col">{children}</main>
-          <SiteFooter />
-        </div>
+        <AmountVisibilityProvider>
+          <div className="flex min-h-screen flex-col">
+            <DashboardNavbar userMenu={<UserMenu />} />
+            <main className="flex flex-1 flex-col">{children}</main>
+            <SiteFooter />
+          </div>
+        </AmountVisibilityProvider>
       </VaultGate>
     </VaultLockProvider>
   );

@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -13,6 +15,7 @@ import { useExportData } from '../hooks/use-export-data';
 import { ExportReview } from './export-review';
 
 export function ExportDataCard() {
+  const { hidden } = useAmountVisibility();
   const { exportData, isExporting } = useExportData();
 
   return (
@@ -32,7 +35,11 @@ export function ExportDataCard() {
           This export cannot be restored in Fynfo. Edits made during export may
           appear inconsistently; avoid changing records until it finishes.
         </p>
-        <Button onClick={exportData} disabled={isExporting} variant="outline">
+        <Button
+          onClick={exportData}
+          disabled={hidden || isExporting}
+          variant="outline"
+        >
           {isExporting ? (
             <Loader2 className="mr-2 size-4 animate-spin" />
           ) : (

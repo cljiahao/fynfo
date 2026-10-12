@@ -1,5 +1,7 @@
 'use client';
 
+import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -46,6 +48,7 @@ function TaxReliefsDialogInner({
   initialState,
   year,
 }: TaxReliefsDialogProps & { initialState: ReliefStateMap; year: number }) {
+  const { hidden, mask, canReveal } = useAmountVisibility();
   const upsertReliefs = useUpsertTaxReliefs(year);
   const [reliefState, setReliefState] = useState(initialState);
 
@@ -63,6 +66,7 @@ function TaxReliefsDialogInner({
   });
 
   const updateRelief = (key: string, update: Partial<ReliefState>) => {
+    if (!canReveal()) return;
     setReliefState((prev) => {
       const next = new Map(prev);
       const current = next.get(key) ?? {
@@ -77,6 +81,10 @@ function TaxReliefsDialogInner({
   };
 
   const handleConfirm = async () => {
+    if (!canReveal()) {
+      toast.info('Show amounts before saving tax reliefs');
+      return;
+    }
     // Save to DB
     const reliefs: TaxReliefData[] = [];
     reliefState.forEach((v, key) => {
@@ -108,6 +116,7 @@ function TaxReliefsDialogInner({
           </DialogDescription>
         </DialogHeader>
 
+        <AmountsHiddenNotice />
         {isNonResident ? (
           <p className="text-muted-foreground py-4 text-center text-sm">
             Non-resident employment uses the higher of 15% or resident rates,
@@ -128,7 +137,7 @@ function TaxReliefsDialogInner({
                       description="Based on your age from profile. Below 55: SGD 1,000 / 55–59: SGD 6,000 / 60+: SGD 8,000."
                     />
                     <span className="font-medium">
-                      {formatSGD(earnedIncomeRelief)}
+                      {mask(formatSGD(earnedIncomeRelief))}
                     </span>
                   </div>
                   <div className="flex-between text-sm">
@@ -137,7 +146,7 @@ function TaxReliefsDialogInner({
                       description="SGD 1,500 for operationally ready NSmen. Enable in your profile if you completed National Service."
                     />
                     <span className="font-medium">
-                      {nsmanRelief > 0 ? formatSGD(nsmanRelief) : '—'}
+                      {mask(nsmanRelief > 0 ? formatSGD(nsmanRelief) : '—')}
                     </span>
                   </div>
                 </div>
@@ -167,7 +176,7 @@ function TaxReliefsDialogInner({
               {/* Total */}
               <div className="flex-between text-sm font-semibold">
                 <span>Total Tax Reliefs</span>
-                <span>{formatSGD(grandTotal)}</span>
+                <span>{mask(formatSGD(grandTotal))}</span>
               </div>
               <p className="text-muted-foreground text-xs">
                 The SGD 80,000 personal relief cap includes CPF. These requested
@@ -178,7 +187,7 @@ function TaxReliefsDialogInner({
               <div className="flex justify-end">
                 <Button
                   onClick={handleConfirm}
-                  disabled={upsertReliefs.isPending}
+                  disabled={hidden || upsertReliefs.isPending}
                 >
                   {upsertReliefs.isPending && (
                     <Loader2 className="mr-2 size-4 animate-spin" />

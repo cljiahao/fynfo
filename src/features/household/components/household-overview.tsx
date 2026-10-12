@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/widgets';
 import { Lock, Plus } from 'lucide-react';
@@ -17,6 +19,7 @@ import { HouseholdSkeleton } from './household-skeleton';
 import { InvitePanel } from './invite-panel';
 
 export function HouseholdOverview() {
+  const { hidden, canReveal } = useAmountVisibility();
   const household = useHousehold();
   // Lock state is authoritative from the session (cookie), not inferred from a
   // failed goals read — so a real DB error doesn't masquerade as "locked".
@@ -66,7 +69,12 @@ export function HouseholdOverview() {
         action={
           !locked &&
           goals.data && (
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button
+              disabled={hidden}
+              onClick={() => {
+                if (canReveal()) setCreateOpen(true);
+              }}
+            >
               <Plus className="mr-1.5 size-4" />
               New goal
             </Button>

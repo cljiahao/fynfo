@@ -1,5 +1,7 @@
 'use client';
 
+import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -26,6 +28,7 @@ export function AddContributionDialog({
   goal,
   onOpenChange,
 }: AddContributionDialogProps) {
+  const { hidden, mask, canReveal } = useAmountVisibility();
   const addContribution = useAddContribution();
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -38,6 +41,7 @@ export function AddContributionDialog({
   };
 
   const submit = () => {
+    if (!canReveal()) return;
     if (!goal) return;
     const value = parseFloat(amount);
     if (!value || value <= 0 || !date) {
@@ -61,22 +65,26 @@ export function AddContributionDialog({
     <Dialog open={goal !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add to {goal?.name}</DialogTitle>
+          <DialogTitle>Add to {mask(goal?.name ?? '')}</DialogTitle>
           <DialogDescription>
             Log what you put toward this goal.
           </DialogDescription>
         </DialogHeader>
+        <AmountsHiddenNotice />
 
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="contrib-amount">Amount (SGD)</Label>
             <Input
+              disabled={hidden}
               id="contrib-amount"
               type="number"
               min="0"
               step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              value={hidden ? '' : amount}
+              onChange={(e) => {
+                if (canReveal()) setAmount(e.target.value);
+              }}
               placeholder="0.00"
               className="text-right tabular-nums"
               autoFocus
@@ -85,6 +93,7 @@ export function AddContributionDialog({
           <div className="space-y-1.5">
             <Label htmlFor="contrib-date">Date</Label>
             <Input
+              disabled={hidden}
               id="contrib-date"
               type="date"
               value={date}
@@ -94,9 +103,12 @@ export function AddContributionDialog({
           <div className="space-y-1.5">
             <Label htmlFor="contrib-note">Note (optional)</Label>
             <Input
+              disabled={hidden}
               id="contrib-note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
+              value={hidden ? '' : note}
+              onChange={(e) => {
+                if (canReveal()) setNote(e.target.value);
+              }}
               placeholder="e.g. December bonus"
               maxLength={200}
             />
@@ -107,7 +119,7 @@ export function AddContributionDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={addContribution.isPending}
+            disabled={hidden || addContribution.isPending}
           >
             Cancel
           </Button>

@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 
 import { Button } from '@/components/ui/button';
@@ -77,6 +79,7 @@ const COMPACT_COLUMNS = [
 ] as const;
 
 function SnapshotActionButtons({ snapshot }: { snapshot: SnapshotRecord }) {
+  const { hidden, canReveal } = useAmountVisibility();
   const { id } = snapshot;
   const [selected, setSelected] = useState<
     (SnapshotVersion & { id: string }) | null
@@ -93,8 +96,10 @@ function SnapshotActionButtons({ snapshot }: { snapshot: SnapshotRecord }) {
           variant="outline"
           size="sm"
           onClick={() =>
+            canReveal() &&
             router.push(`${PAGE_ROUTES.ENTRY}?edit=${encodeURIComponent(id)}`)
           }
+          disabled={hidden}
           aria-label="Edit snapshot"
         >
           <Pencil className="size-4" />
@@ -103,13 +108,14 @@ function SnapshotActionButtons({ snapshot }: { snapshot: SnapshotRecord }) {
           variant="ghost"
           size="sm"
           onClick={() =>
+            canReveal() &&
             setSelected({
               id,
               snapshotId: snapshot.snapshotId,
               revision: snapshot.revision,
             })
           }
-          disabled={!!failure || review.isPending}
+          disabled={hidden || !!failure || review.isPending}
           aria-label="Delete snapshot"
         >
           <Trash2 className="text-destructive size-4" />
@@ -129,7 +135,7 @@ function SnapshotActionButtons({ snapshot }: { snapshot: SnapshotRecord }) {
           }
           isPending={deleteMutation.isPending}
           onConfirm={async () => {
-            if (!selected || deleteMutation.isPending) return;
+            if (!canReveal() || !selected || deleteMutation.isPending) return;
             try {
               const result = await deleteMutation.mutateAsync({
                 id: selected.id,
@@ -180,6 +186,7 @@ function SnapshotActionButtons({ snapshot }: { snapshot: SnapshotRecord }) {
 }
 
 export function SnapshotTable({ snapshots }: SnapshotTableProps) {
+  const { mask } = useAmountVisibility();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(10);
 
@@ -228,12 +235,12 @@ export function SnapshotTable({ snapshots }: SnapshotTableProps) {
                       const amount = sumCategory(s.entries, cat);
                       return (
                         <td key={cat} className="py-2 text-center tabular-nums">
-                          {amount > 0 ? formatSGDWhole(amount) : '-'}
+                          {mask(amount > 0 ? formatSGDWhole(amount) : '-')}
                         </td>
                       );
                     })}
                     <td className="py-2 text-center font-semibold tabular-nums">
-                      {formatSGDWhole(total)}
+                      {mask(formatSGDWhole(total))}
                     </td>
                     <td className="py-2 text-center">
                       <SnapshotActionButtons snapshot={s} />
@@ -273,12 +280,12 @@ export function SnapshotTable({ snapshots }: SnapshotTableProps) {
                           key={col.label}
                           className="py-2 text-center tabular-nums"
                         >
-                          {amount > 0 ? formatSGDWhole(amount) : '-'}
+                          {mask(amount > 0 ? formatSGDWhole(amount) : '-')}
                         </td>
                       );
                     })}
                     <td className="py-2 text-center font-semibold tabular-nums">
-                      {formatSGDWhole(total)}
+                      {mask(formatSGDWhole(total))}
                     </td>
                     <td className="py-2 text-center">
                       <SnapshotActionButtons snapshot={s} />

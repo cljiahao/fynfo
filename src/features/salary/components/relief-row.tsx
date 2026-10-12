@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,6 +56,7 @@ interface ReliefRowProps {
 
 // The relief state map is owned by the dialog.
 export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
+  const { hidden, mask, canReveal } = useAmountVisibility();
   const checkboxId = useId();
   const state = rawState ?? {
     enabled: false,
@@ -67,8 +70,10 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
       <div className="flex items-center gap-3">
         <Checkbox
           id={checkboxId}
+          disabled={hidden}
           checked={state.enabled}
           onCheckedChange={(v) => {
+            if (!canReveal()) return;
             const enabled = v === true;
             const count = enabled ? Math.max(state.count, 1) : state.count;
             onUpdate({
@@ -85,9 +90,10 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
           <ReliefLabel label={def.label} description={def.description} />
         </Label>
         <Select
-          value={String(state.count)}
-          disabled={!state.enabled}
+          value={hidden ? '' : String(state.count)}
+          disabled={hidden || !state.enabled}
           onValueChange={(v) => {
+            if (!canReveal()) return;
             const count = Number(v);
             onUpdate({ count, amount: def.defaultAmount * count });
           }}
@@ -96,7 +102,7 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
             aria-label={`${def.label} count`}
             className="h-8 w-20 text-sm"
           >
-            <SelectValue />
+            <SelectValue placeholder={hidden ? 'Hidden' : undefined} />
           </SelectTrigger>
           <SelectContent>
             {Array.from({ length: def.maxCount }, (_, i) => (
@@ -107,7 +113,7 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
           </SelectContent>
         </Select>
         <span className="text-muted-foreground w-24 text-right text-sm tabular-nums">
-          {state.enabled ? formatSGD(state.amount) : '—'}
+          {mask(state.enabled ? formatSGD(state.amount) : '—')}
         </span>
       </div>
     );
@@ -118,8 +124,10 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
       <div className="flex items-center gap-3">
         <Checkbox
           id={checkboxId}
+          disabled={hidden}
           checked={state.enabled}
           onCheckedChange={(v) => {
+            if (!canReveal()) return;
             const enabled = v === true;
             const variant = state.variant || def.variants![0].value;
             const matched = def.variants!.find((vr) => vr.value === variant);
@@ -137,9 +145,10 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
           <ReliefLabel label={def.label} description={def.description} />
         </Label>
         <Select
-          value={state.variant}
-          disabled={!state.enabled}
+          value={hidden ? '' : state.variant}
+          disabled={hidden || !state.enabled}
           onValueChange={(v) => {
+            if (!canReveal()) return;
             const matched = def.variants!.find((vr) => vr.value === v);
             onUpdate({
               variant: v,
@@ -151,7 +160,7 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
             aria-label={`${def.label} option`}
             className="h-8 w-40 text-sm"
           >
-            <SelectValue />
+            <SelectValue placeholder={hidden ? 'Hidden' : undefined} />
           </SelectTrigger>
           <SelectContent>
             {def.variants.map((v) => (
@@ -162,7 +171,7 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
           </SelectContent>
         </Select>
         <span className="text-muted-foreground w-24 text-right text-sm tabular-nums">
-          {state.enabled ? formatSGD(state.amount) : '—'}
+          {mask(state.enabled ? formatSGD(state.amount) : '—')}
         </span>
       </div>
     );
@@ -172,8 +181,11 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
     <div className="flex items-center gap-3">
       <Checkbox
         id={checkboxId}
+        disabled={hidden}
         checked={state.enabled}
-        onCheckedChange={(v) => onUpdate({ enabled: v === true })}
+        onCheckedChange={(v) => {
+          if (canReveal()) onUpdate({ enabled: v === true });
+        }}
       />
       <div className="flex flex-1 items-center gap-2">
         <Label
@@ -187,9 +199,11 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
           aria-label={`${def.label} amount (SGD)`}
           min={0}
           className="h-8 w-24 text-sm"
-          disabled={!state.enabled}
-          value={state.amount || ''}
-          onChange={(e) => onUpdate({ amount: Number(e.target.value) || 0 })}
+          disabled={hidden || !state.enabled}
+          value={hidden ? '' : state.amount || ''}
+          onChange={(e) => {
+            if (canReveal()) onUpdate({ amount: Number(e.target.value) || 0 });
+          }}
         />
       </div>
     </div>

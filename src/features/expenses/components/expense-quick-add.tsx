@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
@@ -20,6 +22,7 @@ import type { ExpenseType } from '../types';
 import { ExpenseTypeSelect } from './expense-type-select';
 
 export function ExpenseQuickAdd() {
+  const { hidden, canReveal } = useAmountVisibility();
   const upsert = useUpsertExpense();
 
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -56,6 +59,7 @@ export function ExpenseQuickAdd() {
   };
 
   const handleContainerPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    if (!canReveal()) return;
     const text = e.clipboardData.getData('text/plain');
     if (!text.includes('\t')) return;
 
@@ -160,6 +164,7 @@ export function ExpenseQuickAdd() {
     resetForm();
   };
   const handleSubmit = () => {
+    if (!canReveal()) return;
     if (issues.length > 0) return;
     const amountNum = Number(amount);
     if (!date || !Number.isFinite(amountNum) || amountNum <= 0) {
@@ -249,9 +254,15 @@ export function ExpenseQuickAdd() {
           >
             Date
           </label>
-          <Popover open={dateOpen} onOpenChange={setDateOpen}>
+          <Popover
+            open={dateOpen && !hidden}
+            onOpenChange={(open) => {
+              if (canReveal()) setDateOpen(open);
+            }}
+          >
             <PopoverTrigger asChild>
               <Button
+                disabled={hidden}
                 id={feedbackId + '-date'}
                 aria-invalid={invalidDate || undefined}
                 aria-describedby={invalidDate ? feedbackId : undefined}
@@ -308,6 +319,7 @@ export function ExpenseQuickAdd() {
             Category
           </label>
           <ExpenseTypeSelect
+            disabled={hidden}
             inputId={feedbackId + '-category'}
             value={type}
             onChange={setType}
@@ -329,9 +341,10 @@ export function ExpenseQuickAdd() {
             Item / Brand
           </label>
           <Input
+            disabled={hidden}
             ref={itemRef}
             id={feedbackId + '-item'}
-            value={item}
+            value={hidden ? '' : item}
             onChange={(e) => setItem(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="e.g. Grab, NTUC"
@@ -346,7 +359,8 @@ export function ExpenseQuickAdd() {
             Notes
           </label>
           <Input
-            value={info}
+            disabled={hidden}
+            value={hidden ? '' : info}
             id={feedbackId + '-notes'}
             onChange={(e) => setInfo(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -362,13 +376,14 @@ export function ExpenseQuickAdd() {
             Amount (SGD)
           </label>
           <Input
+            disabled={hidden}
             id={feedbackId + '-amount'}
             aria-invalid={invalidAmount || undefined}
             aria-describedby={invalidAmount ? feedbackId : undefined}
             type="number"
             step="0.01"
             min="0"
-            value={amount}
+            value={hidden ? '' : amount}
             onChange={(e) => {
               const value = e.target.value;
               setAmount(value);
@@ -387,7 +402,7 @@ export function ExpenseQuickAdd() {
         <Button
           className="h-9 shrink-0"
           onClick={handleSubmit}
-          disabled={upsert.isPending || issues.length > 0}
+          disabled={hidden || upsert.isPending || issues.length > 0}
         >
           <Plus className="mr-1.5 size-4" />
           Add Expense

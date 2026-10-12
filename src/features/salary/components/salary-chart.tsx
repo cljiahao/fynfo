@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import {
   Card,
   CardContent,
@@ -35,6 +37,27 @@ const ALL_LABELS: Record<string, string> = {
 };
 
 export function SalaryChart({ records }: SalaryChartProps) {
+  const { hidden } = useAmountVisibility();
+  if (hidden) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Salary Growth</CardTitle>
+          <CardDescription>
+            Monthly salary, bonus, and cumulative earnings
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p
+            className="text-muted-foreground flex h-[350px] items-center justify-center"
+            role="status"
+          >
+            Show amounts to view the salary chart.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
   if (!records.length) {
     return (
       <Card>
