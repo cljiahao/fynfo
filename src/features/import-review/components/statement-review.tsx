@@ -14,9 +14,15 @@ import { Label } from '@/components/ui/label';
 import { EXPENSE_TYPE_LABELS } from '@/features/expenses';
 import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
 import { useEffect, useId, useRef, useState } from 'react';
-import { STATEMENT_BANKS, STATEMENT_LIMITS } from '../constants';
+import {
+  STATEMENT_BANKS,
+  STATEMENT_CLASSIFICATIONS,
+  STATEMENT_LIMITS,
+  STATEMENT_REVIEW_STATUS_LABELS,
+} from '../constants';
 import type { LocalStatementPdf } from '../lib/local-pdf';
 import {
+  getStatementReview,
   parseStatementLines,
   validStatementPeriod,
 } from '../lib/statement-parser';
@@ -179,7 +185,23 @@ function StatementReviewBody() {
       )
     );
   }
-  const visibleRows = rows.slice(rowPage * 20, (rowPage + 1) * 20);
+  function classify(rowId: string, value: string) {
+    if (!canReveal()) return;
+    const classification = STATEMENT_CLASSIFICATIONS.find(
+      (entry) => entry.value === value
+    )?.value;
+    if (!classification) return;
+    setRows((current) =>
+      current.map((row) =>
+        row.id === rowId && !row.isSummary ? { ...row, classification } : row
+      )
+    );
+  }
+  const reviewedRows = rows.map((row) => ({
+    ...row,
+    review: getStatementReview(row, { from, to }),
+  }));
+  const visibleRows = reviewedRows.slice(rowPage * 20, (rowPage + 1) * 20);
   const chosen = rows.find((row) => row.id === selected);
   return (
     <div className="space-y-4">
@@ -291,15 +313,29 @@ function StatementReviewBody() {
       </div>
       {rows.length > 0 && (
         <>
-          <p className="text-sm">
+          <p className="text-sm" role="status" aria-live="polite">
             {mask(rows.length)} source rows:{' '}
-            {mask(rows.filter((row) => row.status === 'candidate').length)}{' '}
+            {mask(
+              reviewedRows.filter((row) => row.review.status === 'candidate')
+                .length
+            )}{' '}
             expense suggestions,{' '}
-            {mask(rows.filter((row) => row.status === 'unresolved').length)}{' '}
+            {mask(
+              reviewedRows.filter((row) => row.review.status === 'unresolved')
+                .length
+            )}{' '}
             unresolved,{' '}
-            {mask(rows.filter((row) => row.status === 'excluded').length)}{' '}
+            {mask(
+              reviewedRows.filter((row) => row.review.status === 'excluded')
+                .length
+            )}{' '}
             excluded. Edits below are unsaved drafts; source issues remain
             visible.
+          </p>
+          <p className="text-muted-foreground text-sm">
+            Classification is a suggestion. Refunds, transfers, card repayments
+            and other credits are excluded from expenses. Unknown rows need
+            review. Changing a label does not change the source amount or sign.
           </p>
           <div className="flex gap-2 lg:hidden">
             <Button
@@ -363,7 +399,7 @@ function StatementReviewBody() {
               )}
             </section>
             <section
-              aria-label="Extracted expense drafts"
+              aria-label="Extracted transaction drafts"
               className={`${view === 'extracted' ? 'block' : 'hidden'} min-w-0 space-y-3 lg:block`}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -395,7 +431,8 @@ function StatementReviewBody() {
                   className="space-y-2 rounded-md border p-3"
                 >
                   <legend className="px-1 text-sm">
-                    Row {rowPage * 20 + index + 1}: {row.status}
+                    Row {rowPage * 20 + index + 1}:{' '}
+                    {STATEMENT_REVIEW_STATUS_LABELS[row.review.status]}
                   </legend>
                   <Button
                     type="button"
@@ -411,7 +448,52 @@ function StatementReviewBody() {
                     View source page {row.source[0].page}, line{' '}
                     {row.source[0].line}
                   </Button>
-                  {row.issues.map((issue) => (
+                  <div className="space-y-1">
+                    <Label htmlFor={`${id}-${row.id}-classification`}>
+                      Classification
+                    </Label>
+                    <select
+                      id={`${id}-${row.id}-classification`}
+                      className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm disabled:opacity-50"
+                      value={row.classification}
+                      disabled={row.isSummary}
+                      aria-describedby={`${id}-${row.id}-classification-reason`}
+                      onChange={(event) => classify(row.id, event.target.value)}
+                    >
+                      {STATEMENT_CLASSIFICATIONS.map((entry) => (
+                        <option key={entry.value} value={entry.value}>
+                          {entry.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p
+                      id={`${id}-${row.id}-classification-reason`}
+                      className="text-muted-foreground text-sm"
+                    >
+                      {row.isSummary
+                        ? 'Not a transaction'
+                        : `Suggested: ${STATEMENT_CLASSIFICATIONS.find((entry) => entry.value === row.suggestedClassification)?.label}`}
+                      . {row.classificationReason}
+                    </p>
+                    {row.classification !== row.suggestedClassification && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                        <span>
+                          Your classification overrides the suggestion.
+                        </span>
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="h-auto p-0"
+                          onClick={() =>
+                            classify(row.id, row.suggestedClassification)
+                          }
+                        >
+                          Restore suggestion
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  {row.review.issues.map((issue) => (
                     <p key={issue} className="text-sm">
                       {issue}
                     </p>
@@ -503,8 +585,8 @@ export function StatementReview() {
         <DialogHeader>
           <DialogTitle>Review a bank statement</DialogTitle>
           <DialogDescription>
-            Compare local expense suggestions with the original PDF. Nothing is
-            saved.
+            Classify local transaction drafts against the original PDF. Nothing
+            is saved.
           </DialogDescription>
         </DialogHeader>
         <StatementReviewBody />

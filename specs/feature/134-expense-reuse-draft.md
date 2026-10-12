@@ -2,12 +2,12 @@
 id: '134'
 slug: expense-reuse-draft
 area: feature
-status: approved
+status: shipped
 author: Codex
 created: 2026-10-12
 approved: 2026-10-12
-shipped:
-impl_pr:
+shipped: 2026-10-13
+impl_pr: https://github.com/cljiahao/fynfo/pull/51
 supersedes:
 constitution_satisfies: ['§1', '§2', '§3', '§4', '§5', '§7', '§8']
 constitution_overrides: []
@@ -296,3 +296,14 @@ Before resolving this normal main merge, select the existing Expenses page and c
 ## Synthetic native integrated reuse verification — 2026-10-12
 
 Hash-matched actual reuse components passed desktop and390px mobile checks in the isolated Next fixed-memory fixture. Keyboard Reuse created a today-dated editable self draft without a write; input Enter did not save. Cancel cleared the reuse draft. Keep draft retained ordinary unsaved text and explicit Replace populated the selected source. One explicit Add Expense caused one upsert and increased memory rows5→6, retaining the original visible date, description and amount. Hide blanked and disabled financial input properties/value attributes, removed source descriptions from the DOM, and Show restored the exact draft. Mobile document width and scroll width were both390.130 review still produced September120/median50/excess70, then invalidated when hidden. Images retained in parent work/134-reuse-desktop.png and134-reuse-mobile.png. Data/query boundaries are synthetic; committed-with-lost-acknowledgement/external conflict/auth/RLS/database branches are not native proof. Their retry semantics remain component-test evidence.
+
+## Verified delivery — 2026-10-13
+
+PR51 merged as `29394c8beb1f2d38954edd78fca17d7183c35390` at
+2026-10-12T16:14:28Z (2026-10-13 Singapore), after exact head
+`d28bfc3395a1889acbc437adb00da838c487012f` passed CI38275391567 at
+2026-10-12T16:13:59Z. Main recorded unchanged normal build/check/coverage hooks:
+165 suites, 1751 tests, S92.85/B88.49/F92.00/L94.49, with existing floors intact.
+Independent source reviews and qualified synthetic desktop/mobile composition
+passed. Earlier pending statements describe preparation stages. No private
+authenticated workflow or production deployment success is claimed here.

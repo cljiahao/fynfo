@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 import { StatementReview } from '@/features/import-review';
+import {
+  AmountVisibilityProvider,
+  AmountVisibilityToggle,
+} from '@/features/privacy';
 import '@testing-library/jest-dom/vitest';
 import {
   act,
@@ -8,6 +12,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
@@ -40,7 +45,12 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 function setup(read = async () => new ArrayBuffer(4), size = 4) {
-  render(<StatementReview />);
+  render(
+    <AmountVisibilityProvider>
+      <AmountVisibilityToggle />
+      <StatementReview />
+    </AmountVisibilityProvider>
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Review bank PDF' }));
   fireEvent.change(screen.getByLabelText('Period start'), {
     target: { value: '2025-12-15' },
@@ -85,6 +95,138 @@ it('reviews editable drafts, keeps provenance, navigates source pages and clears
   fireEvent.click(screen.getByRole('button', { name: 'Clear review' }));
   expect(mocks.destroy).toHaveBeenCalled();
   expect(screen.queryByText(/source rows:/)).not.toBeInTheDocument();
+});
+it('updates classification counts, preserves the suggestion and restores it without changing other edits', async () => {
+  setup();
+  expect(await screen.findByText(/1 expense suggestions/)).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Classification'), {
+    target: { value: 'transfer' },
+  });
+  expect(
+    screen.getByText(/0 expense suggestions, 0 unresolved, 1 excluded/)
+  ).toBeVisible();
+  expect(screen.getByText(/Suggested: Expense/)).toBeVisible();
+  expect(
+    screen.getByText('Your classification overrides the suggestion.')
+  ).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Description'), {
+    target: { value: 'My correction' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Restore suggestion' }));
+  expect(screen.getByLabelText('Classification')).toHaveValue('expense');
+  expect(screen.getByLabelText('Description')).toHaveValue('My correction');
+  expect(
+    screen.getByText(/1 expense suggestions, 0 unresolved, 0 excluded/)
+  ).toBeVisible();
+  expect(
+    screen.queryByText('Your classification overrides the suggestion.')
+  ).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Classification'), {
+    target: { value: 'unknown' },
+  });
+  expect(
+    screen.getByText(/0 expense suggestions, 1 unresolved, 0 excluded/)
+  ).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: /View source page/ }));
+  expect(screen.getByText(/31 DEC SYNTHETIC MARKET 12.30/)).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Extracted' }));
+  expect(screen.getByLabelText('Classification')).toHaveValue('unknown');
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Review bank PDF' }));
+  expect(screen.queryByLabelText('Classification')).not.toBeInTheDocument();
+});
+it('keeps source credit blockers after expense overrides and prevents summary classification', async () => {
+  mocks.extract.mockResolvedValue([
+    { page: 1, line: 1, text: 'UOB' },
+    { page: 1, line: 2, text: '31 DEC CARD PAYMENT SGD 100.00 CR' },
+    { page: 1, line: 3, text: '31 DEC TOTAL BALANCE SGD 100.00' },
+  ]);
+  setup();
+  expect(
+    await screen.findByText(/0 expense suggestions, 0 unresolved, 2 excluded/)
+  ).toBeVisible();
+  const repayment = within(
+    screen.getByRole('group', { name: 'Row 1: Excluded from expenses' })
+  );
+  expect(repayment.getByLabelText('Classification')).toHaveValue(
+    'card_repayment'
+  );
+  fireEvent.change(repayment.getByLabelText('Classification'), {
+    target: { value: 'expense' },
+  });
+  fireEvent.change(repayment.getByLabelText('SGD billed amount'), {
+    target: { value: '100.00' },
+  });
+  expect(
+    screen.getByText(/0 expense suggestions, 1 unresolved, 1 excluded/)
+  ).toBeVisible();
+  expect(
+    repayment.getByText(/A source credit cannot be converted/)
+  ).toBeVisible();
+  expect(repayment.getByText(/Suggested: Card repayment/)).toBeVisible();
+  const summary = within(
+    screen.getByRole('group', { name: 'Row 2: Excluded from expenses' })
+  );
+  expect(summary.getByLabelText('Classification')).toBeDisabled();
+  fireEvent.change(summary.getByLabelText('Classification'), {
+    target: { value: 'expense' },
+  });
+  expect(summary.getByLabelText('Classification')).toHaveValue('unknown');
+  expect(
+    screen.queryByRole('button', { name: /save|upload/i })
+  ).not.toBeInTheDocument();
+});
+it('shows invalid edited expense fields as needing review and recovers when corrected', async () => {
+  setup();
+  expect(await screen.findByText(/1 expense suggestions/)).toBeVisible();
+  fireEvent.change(screen.getByLabelText('SGD billed amount'), {
+    target: { value: '-12.30' },
+  });
+  expect(screen.getByText(/0 expense suggestions, 1 unresolved/)).toBeVisible();
+  expect(
+    screen.getByText(
+      'Enter a positive SGD amount with exactly two decimal places.'
+    )
+  ).toBeVisible();
+  fireEvent.change(screen.getByLabelText('SGD billed amount'), {
+    target: { value: '12.30' },
+  });
+  expect(screen.getByText(/1 expense suggestions, 0 unresolved/)).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Date'), {
+    target: { value: '2026-02-01' },
+  });
+  expect(
+    screen.getByText('Enter a valid date within the statement period.')
+  ).toBeVisible();
+});
+it('preserves classification through Hide/Show, rejects hidden changes and clears on owner teardown', async () => {
+  setup();
+  expect(await screen.findByText(/1 expense suggestions/)).toBeVisible();
+  const classification = screen.getByLabelText('Classification');
+  fireEvent.change(classification, { target: { value: 'transfer' } });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Hide amounts', hidden: true })
+  );
+  expect(classification).toBeDisabled();
+  expect(
+    screen.getByRole('button', { name: 'Restore suggestion' })
+  ).toBeDisabled();
+  expect(screen.getByText(/source rows:/).textContent).not.toMatch(/\d/);
+  fireEvent.change(classification, { target: { value: 'expense' } });
+  expect(classification).toHaveValue('transfer');
+  fireEvent.click(
+    within(screen.getByRole('dialog')).getByRole('button', {
+      name: 'Show amounts',
+    })
+  );
+  expect(classification).toBeEnabled();
+  expect(classification).toHaveValue('transfer');
+  expect(
+    screen.getByText(/0 expense suggestions, 0 unresolved, 1 excluded/)
+  ).toBeVisible();
+  cleanup();
+  setup();
+  expect(await screen.findByLabelText('Classification')).toHaveValue('expense');
 });
 it('rejects size before reading or opening a worker', async () => {
   const read = vi.fn();
