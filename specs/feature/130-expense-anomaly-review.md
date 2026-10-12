@@ -2,12 +2,12 @@
 id: 130
 slug: expense-anomaly-review
 area: feature
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-11
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-12
+impl_pr: https://github.com/cljiahao/fynfo/pull/53
 constitution_satisfies:
   [
     '§1.1',
@@ -183,3 +183,7 @@ TypeScript and two targeted files / 43 tests passed, including the actual visibi
 Native source-matched synthetic Next checks at desktop 1440 × 900 and mobile 390 × 844 verified explicit September review (120 selected, 50 median, 70 excess), qualifying month totals and source provenance, missing history distinctions, current-month rejection, disclosure keyboard access, and Hide/Show invalidation requiring a fresh review. Page width remained 390 at the mobile viewport. The preview uses fixed-memory records, actions and identity; no real records, credentials, cookies or PIN were used. No private authentication, RLS, cryptography, database completeness or financial-advice proof is claimed.
 
 Normal hooks, full coverage/build and exact-head hosted CI/merge remain pending; 130 is not shipped yet.
+
+## Verified delivery — 2026-10-12
+
+PR 53 merged as f8dc9e832e45fc772e4ca1d01c4173b9b96bb7f4 after hosted CI 38271525090 passed on exact reviewed head eb8b009276e89aa33c53108242406e2197fd615f. Unchanged normal hooks and full local gates passed 1680 tests. Aggregate statements / branches / functions / lines: 92.95 / 88.44 / 91.89 / 94.46 percent; every aggregate exceeds80 percent and stricter security floors remain unchanged. Independent review and the recorded synthetic UI evidence support the bounded scope. Earlier pending entries are historical preparation stages. The approved field remains unchanged; this records owner-authorized delivery rather than agent-granted approval. No private authentication, RLS, cryptographic or database guarantee, and no whole-roadmap completion, is claimed.

@@ -2,12 +2,12 @@
 id: 129
 slug: amount-hiding
 area: feature
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-11
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-12
+impl_pr: https://github.com/cljiahao/fynfo/pull/52
 constitution_satisfies:
   ['§2.4', '§2.5', '§2.6', '§2.7', '§3.1', '§4.1', '§4.4', '§5.1', '§8.2']
 constitution_overrides: []
@@ -131,3 +131,7 @@ Corrected targeted verification passed 17 files / 141 tests, covering actual pro
 Native synthetic Next browser proof now resolves the earlier cold-navigation timeout: known route GET warmup completed before direct in-app navigation. Reviewed source overrides were SHA256 matched to the actual checkout. Desktop1440×900 and mobile390×844 verified focused snapshot drafts survive pointer/keyboard Hide/Show, disabled blank financial inputs, no horizontal page overflow, and expense Hide does not blur-save (fixed-memory write counter unchanged after debounce) while a fresh visible outside-row blur saves once. All selected routes were inspected; final confirmation conceals planner percentage labels and positive/zero asset cells, clears body-level Recharts measurement text and enables keyboard Show within the search focus trap. Profile editing/export remain disabled while hidden; errors and static assumptions remain visible. Final desktop/mobile screenshots and server/first-failure logs are retained in the calling workspace. Owned browser servers were stopped before later gates.
 
 The browser uses explicit fixed-memory identity/vault/action/provider adapters. No real PIN, credentials, cookies or confidential records were accessed. Browser evidence is presentation/interaction proof, not actual authentication, RLS, crypto or database durability. Local PDF privacy tests use synthetic PDF session boundaries; no new real-bank parsing qualification is claimed. Conditional record availability and workflow state remain descriptive context under the named presentation-aid limitation. Normal hooks, full coverage/build and exact-head hosted CI/merge remain pending;129 is not shipped yet.
+
+## Verified delivery — 2026-10-12
+
+PR 52 merged as 88bcc52d29df5959291f9d2dcbbf9b11f749f2a1 after hosted CI 38255544054 passed on exact reviewed head 602a4030403080d1f8de6594978f89ea58b9d956. Unchanged normal hooks and full local gates passed 1637 tests. Aggregate statements / branches / functions / lines: 92.82 / 88.25 / 91.76 / 94.33 percent; every aggregate exceeds80 percent and stricter security floors remain unchanged. Independent review and the recorded synthetic UI evidence support the bounded scope. Earlier pending entries are historical preparation stages. The approved field remains unchanged; this records owner-authorized delivery rather than agent-granted approval. No private authentication, RLS, cryptographic or database guarantee, and no whole-roadmap completion, is claimed.
