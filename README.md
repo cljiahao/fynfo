@@ -339,3 +339,15 @@ Export version3 includes complete current scenarios as a ninth personal domain; 
 Apply `supabase/migrations/20261010000103_personal_planning_scenarios.sql` only through the owner's reviewed migration process. Application merge waits for the owner's exact migration confirmation. The reproducible SQL proof is `node supabase/tests/103-personal-planning-scenarios.mjs` (optional second argument: Docker executable path). It requires already-installed `postgres:17-alpine` and `public.ecr.aws/supabase/postgrest:v14.14` images and a running Docker Linux engine. It creates fresh synthetic roles/users, tmpfs database storage and an isolated network, binds HTTP only to loopback, exercises real RLS/CAS/concurrent capacity/PostgREST bigint JSON boundaries, and cleans only resources whose fresh creation IDs it owns. It never connects to an existing database or downloads images.
 
 Inline expense drafts keep independent identities: saving or cancelling one preserves the others. A new draft uses today’s local date when added and freezes only its own controls while saving. Failed saves retain its inputs and identity for retry. A dispatched save may still finish after leaving the page; UI cleanup does not cancel that write or guarantee exactly-once persistence.
+
+Saved self expenses offer **Reuse** when their row has no unsaved changes or
+pending save. Reuse fills Quick Add with today's local date and the prior category,
+item, notes and amount. Review those values and click **Add Expense** explicitly;
+Enter, blur and spreadsheet-row paste never save a reused draft. Replacing an
+existing draft asks first. Shared expenses are not converted to self expenses.
+An unconfirmed save freezes its values and retains its ID for **Retry same
+expense**. **Check expenses** uses a fresh read to confirm an exact saved match;
+absence or read failure does not prove the original save cannot still finish.
+Changed saved values disable retry. Reuse drafts last only while the unlocked
+page remains mounted; they are not recurring templates or durable duplicate
+prevention.

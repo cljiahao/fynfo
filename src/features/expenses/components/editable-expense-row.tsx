@@ -20,8 +20,10 @@ import { format } from 'date-fns';
 import { CalendarIcon, Trash2, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { sameExpenseValues } from '../lib/reuse-draft';
 import { getSplitAllocationError } from '../lib/split-amounts';
 import { generateId, resolveSplitConfirm } from '../lib/utils';
+import { expenseDataSchema } from '../schemas';
 import type { ExpenseData, ExpenseSplitData } from '../types';
 import { ExpenseTypeSelect } from './expense-type-select';
 import { SplitDialog } from './split-dialog';
@@ -33,6 +35,7 @@ interface EditableRowProps {
   onSave: (data: ExpenseData) => void | Promise<void>;
   onDelete: (id: string) => void;
   onCancel?: () => void;
+  onReuse?: (expense: ExpenseData, origin: HTMLButtonElement) => void;
 }
 
 // One inline-editable expense row. Owns its local draft + save/blur/split
@@ -44,6 +47,7 @@ export function EditableRow({
   onSave,
   onDelete,
   onCancel,
+  onReuse,
 }: EditableRowProps) {
   const [data, setData] = useState<ExpenseData>(row);
   const [saving, setSaving] = useState(false);
@@ -132,7 +136,7 @@ export function EditableRow({
       toast.error(error);
       return;
     }
-    if (isNew) {
+    if (isNew || onReuse) {
       savingRef.current = true;
       setSaving(true);
       setDateOpen(false);
@@ -144,7 +148,7 @@ export function EditableRow({
     } catch {
       return;
     } finally {
-      if (isNew && instance.active) {
+      if ((isNew || onReuse) && instance.active) {
         savingRef.current = false;
         setSaving(false);
       }
@@ -346,6 +350,31 @@ export function EditableRow({
         </td>
         <td className="px-2 py-2">
           <div className="flex items-center justify-center">
+            {!isNew && onReuse && data.splitType === 'self' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mr-1 h-8 px-2 text-xs"
+                disabled={
+                  saving ||
+                  !sameExpenseValues(data, row) ||
+                  !expenseDataSchema.safeParse(row).success
+                }
+                onKeyDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  if (savingRef.current || !sameExpenseValues(data, row))
+                    return;
+                  if (saveTimerRef.current) {
+                    clearTimeout(saveTimerRef.current);
+                    saveTimerRef.current = null;
+                  }
+                  skipNextBlurRef.current = true;
+                  onReuse(row, event.currentTarget);
+                }}
+              >
+                Reuse
+              </Button>
+            )}
             {isNew && onCancel ? (
               <Button
                 variant="outline"

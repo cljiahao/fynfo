@@ -4,8 +4,7 @@ import { DashboardError } from '@/components/layout/dashboard-error';
 import { PageHeader } from '@/components/widgets';
 import {
   ExpenseChart,
-  ExpenseQuickAdd,
-  ExpenseTable,
+  ExpenseEntry,
   OwedSummary,
   useExpenses,
 } from '@/features/expenses';
@@ -29,8 +28,7 @@ export default function ExpensesPage() {
         <OwedSummary expenses={expenses ?? []} />
       </div>
 
-      <ExpenseQuickAdd />
-      <ExpenseTable />
+      <ExpenseEntry />
     </div>
   );
 }
