@@ -45,7 +45,8 @@ export function TradeFormDialog({
   onOpenChange,
   editTrade,
 }: TradeFormDialogProps) {
-  const { hidden, canReveal, showAmounts } = useAmountVisibility();
+  const { hidden, canReveal, getHideEpoch, showAmounts } =
+    useAmountVisibility();
   const fieldId = useId();
   const create = useCreateTrade();
   const update = useUpdateTrade();
@@ -116,7 +117,9 @@ export function TradeFormDialog({
 
   // DBS SG is always CDP — auto-tick on broker change
   const handleBrokerChange = (v: string) => {
-    if (!canReveal()) return;
+    // Radix's native select mirror can emit its empty masking sentinel after Show.
+    // Empty is not a broker option; preserve the registered draft on that event.
+    if (!canReveal() || v === '') return;
     form.setValue('broker', v);
     const tickerVal = form.getValues('ticker');
     const mkt = tickerVal ? getMarket(tickerVal.toUpperCase()) : null;
@@ -186,7 +189,21 @@ export function TradeFormDialog({
             </Button>
           </div>
         )}
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form
+          onSubmit={(event) => {
+            if (!canReveal()) {
+              event.preventDefault();
+              toast.info('Show amounts before saving a trade');
+              return;
+            }
+            const submitEpoch = getHideEpoch();
+            void form.handleSubmit((values) => {
+              if (!canReveal() || getHideEpoch() !== submitEpoch) return;
+              return onSubmit(values);
+            })(event);
+          }}
+          className="space-y-4"
+        >
           <fieldset disabled={hidden} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -198,6 +215,9 @@ export function TradeFormDialog({
                     onChange: () => setTimeout(autoFillFees, 0),
                   })}
                   value={hidden ? '' : (ticker ?? '')}
+                  onBlur={(event) => {
+                    if (canReveal()) void form.register('ticker').onBlur(event);
+                  }}
                   onChange={(event) => {
                     if (!canReveal()) return;
                     void form.register('ticker').onChange(event);
@@ -251,6 +271,9 @@ export function TradeFormDialog({
                   type="date"
                   {...form.register('date')}
                   disabled={hidden}
+                  onBlur={(event) => {
+                    if (canReveal()) void form.register('date').onBlur(event);
+                  }}
                   onChange={(event) => {
                     if (canReveal()) void form.register('date').onChange(event);
                   }}
@@ -352,6 +375,9 @@ export function TradeFormDialog({
                   })}
                   disabled={hidden}
                   value={hidden ? '' : (sharesRaw ?? '')}
+                  onBlur={(event) => {
+                    if (canReveal()) void form.register('shares').onBlur(event);
+                  }}
                   onChange={(event) => {
                     if (!canReveal()) return;
                     void form.register('shares').onChange(event);
@@ -373,6 +399,9 @@ export function TradeFormDialog({
                   })}
                   disabled={hidden}
                   value={hidden ? '' : (priceRaw ?? '')}
+                  onBlur={(event) => {
+                    if (canReveal()) void form.register('price').onBlur(event);
+                  }}
                   onChange={(event) => {
                     if (!canReveal()) return;
                     void form.register('price').onChange(event);
@@ -393,6 +422,9 @@ export function TradeFormDialog({
                   })}
                   disabled={hidden}
                   value={hidden ? '' : (feesRaw ?? '')}
+                  onBlur={(event) => {
+                    if (canReveal()) void form.register('fees').onBlur(event);
+                  }}
                   onChange={(event) => {
                     if (!canReveal()) return;
                     void form.register('fees').onChange(event);

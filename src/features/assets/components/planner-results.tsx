@@ -185,16 +185,13 @@ export function PlannerResults({
             <span className="font-medium">{mask(formatSGD(netAfterCpf))}</span>
           </div>
           {breakdownItems.map((item) => (
-            <div
-              key={hidden ? item.label.split(' (')[0] : item.label}
-              className="flex-between"
-            >
+            <div key={item.label} className="flex-between">
               <span className="flex items-center gap-1.5">
                 <span
                   className="inline-block size-2.5 rounded-full"
                   style={{ backgroundColor: item.color }}
                 />
-                {item.label}
+                {hidden ? item.label.split(' (')[0] : item.label}
               </span>
               <span
                 className={

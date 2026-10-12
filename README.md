@@ -17,7 +17,7 @@ Previously submitted saves may still finish.
 
 The setting lasts only within the unlocked dashboard and resets on vault lock,
 account change or reload. It is a presentation aid, not encryption or access
-control: identifiers, dates and static financial assumptions may remain visible,
+control: identifiers, dates, record availability, workflow status and static financial assumptions may remain visible,
 and it cannot conceal a file already downloaded.
 
 ## Stack

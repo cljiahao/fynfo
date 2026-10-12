@@ -265,3 +265,212 @@ describe('Equity amount visibility', () => {
     expect(screen.getByText('Distribution chart hidden')).toBeTruthy();
   });
 });
+
+// Built-in React Hook Form validation is asynchronous even without a resolver.
+// Keep both visibility transitions in one synchronous turn before its callback.
+describe.each(['trade', 'distribution'] as const)(
+  '%s submission visibility boundary',
+  (kind) => {
+    function mountEditor() {
+      const editor =
+        kind === 'trade' ? (
+          <TradeFormDialog
+            open
+            onOpenChange={vi.fn()}
+            editTrade={{
+              id: 'synthetic-trade',
+              date: '2026-01-01',
+              ticker: 'AAPL',
+              broker: 'Synthetic broker',
+              action: 'buy',
+              shares: 5,
+              price: 10,
+              fees: 1,
+            }}
+          />
+        ) : (
+          <DividendFormDialog
+            open
+            onOpenChange={vi.fn()}
+            trades={[]}
+            editDividend={{
+              id: 'synthetic-dividend',
+              date: '2026-01-01',
+              ticker: 'AAPL',
+              amount: 5,
+              currency: 'USD',
+            }}
+          />
+        );
+      render(
+        <AmountVisibilityProvider>
+          <Control />
+          {editor}
+        </AmountVisibilityProvider>
+      );
+      const input = screen.getByLabelText(
+        kind === 'trade' ? 'Shares' : 'Amount received'
+      );
+      const form = input.closest('form');
+      if (!form) throw new Error('Expected equity editor form');
+      return { form, save: kind === 'trade' ? saveTrade : saveDividend };
+    }
+    it('rejects hidden initiation even if immediately shown, then permits a fresh visible submit', async () => {
+      const { form, save } = mountEditor();
+      act(() => {
+        fireEvent.click(screen.getByText('Hide'));
+        fireEvent.submit(form);
+        fireEvent.click(screen.getByText('Show'));
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(save).not.toHaveBeenCalled();
+      fireEvent.submit(form);
+      await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    });
+    it('rejects visible initiation followed by Hide/Show during validation, then permits fresh submit', async () => {
+      const { form, save } = mountEditor();
+      act(() => {
+        fireEvent.submit(form);
+        fireEvent.click(screen.getByText('Hide'));
+        fireEvent.click(screen.getByText('Show'));
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(save).not.toHaveBeenCalled();
+      fireEvent.submit(form);
+      await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    });
+  }
+);
+
+// Exercise actual registered field onBlur after DOM masking, rather than only
+// asserting presentation; a later save must retain the owner's typed draft.
+describe.each([
+  { kind: 'trade', label: 'Ticker', raw: 'MSFT', expected: { ticker: 'MSFT' } },
+  {
+    kind: 'trade',
+    label: 'Date',
+    raw: '2026-02-02',
+    expected: { date: '2026-02-02T00:00:00.000Z' },
+  },
+  { kind: 'trade', label: 'Shares', raw: '7', expected: { shares: 7 } },
+  {
+    kind: 'trade',
+    label: 'Price per Share',
+    raw: '34.56',
+    expected: { price: 34.56 },
+  },
+  { kind: 'trade', label: 'Fees', raw: '2.34', expected: { fees: 2.34 } },
+  {
+    kind: 'distribution',
+    label: 'Ticker',
+    raw: 'MSFT',
+    expected: { ticker: 'MSFT' },
+  },
+  {
+    kind: 'distribution',
+    label: 'Payment date',
+    raw: '2026-02-02',
+    expected: { date: '2026-02-02' },
+  },
+  {
+    kind: 'distribution',
+    label: 'Amount received',
+    raw: '987.65',
+    expected: { amount: 987.65 },
+  },
+])(
+  '$kind $label registered blur visibility',
+  ({ kind, label, raw, expected }) => {
+    it('retains the typed draft through Hide, native blur and Show, then saves its original payload', async () => {
+      const editor =
+        kind === 'trade' ? (
+          <TradeFormDialog
+            open
+            onOpenChange={vi.fn()}
+            editTrade={{
+              id: 'synthetic-trade',
+              date: '2026-01-01',
+              ticker: 'AAPL',
+              broker: 'Synthetic broker',
+              action: 'buy',
+              shares: 5,
+              price: 10,
+              fees: 1,
+            }}
+          />
+        ) : (
+          <DividendFormDialog
+            open
+            onOpenChange={vi.fn()}
+            trades={[]}
+            editDividend={{
+              id: 'synthetic-dividend',
+              date: '2026-01-01',
+              ticker: 'AAPL',
+              amount: 5,
+              currency: 'USD',
+            }}
+          />
+        );
+      render(
+        <AmountVisibilityProvider>
+          <Control />
+          {editor}
+        </AmountVisibilityProvider>
+      );
+      const input = screen.getByLabelText(label) as HTMLInputElement;
+      const form = input.closest('form');
+      if (!form) throw new Error('Expected equity form');
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: raw } });
+      await waitFor(() => expect(input.value).toBe(raw));
+      fireEvent.click(screen.getByText('Hide'));
+      fireEvent.blur(input);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      const save = kind === 'trade' ? saveTrade : saveDividend;
+      expect(save).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByText('Show'));
+      expect(input.value).toBe(raw);
+      if (kind === 'trade') {
+        // Check untouched fields as well: a masked blur must not corrupt another
+        // native input or the controlled broker while preserving only this one.
+        for (const [fieldLabel, defaultValue] of [
+          ['Ticker', 'AAPL'],
+          ['Date', '2026-01-01'],
+          ['Shares', '5'],
+          ['Price per Share', '10'],
+          ['Fees', '1'],
+        ]) {
+          expect(
+            (screen.getByLabelText(fieldLabel) as HTMLInputElement).value
+          ).toBe(fieldLabel === label ? raw : defaultValue);
+        }
+        expect(screen.getByLabelText('Broker').textContent).toContain(
+          'Synthetic broker'
+        );
+      }
+      // Ordinary visible blur still reaches React Hook Form for touched/validation.
+      fireEvent.blur(input);
+      fireEvent.submit(form);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(toast.error).not.toHaveBeenCalled();
+      await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+      expect(save).toHaveBeenCalledWith({
+        id: kind === 'trade' ? 'synthetic-trade' : 'synthetic-dividend',
+        data: expect.objectContaining(
+          kind === 'trade'
+            ? { ...expected, broker: 'Synthetic broker' }
+            : expected
+        ),
+      });
+    });
+  }
+);

@@ -235,7 +235,7 @@ export function SnapshotTable({ snapshots }: SnapshotTableProps) {
                       const amount = sumCategory(s.entries, cat);
                       return (
                         <td key={cat} className="py-2 text-center tabular-nums">
-                          {amount > 0 ? mask(formatSGDWhole(amount)) : '-'}
+                          {mask(amount > 0 ? formatSGDWhole(amount) : '-')}
                         </td>
                       );
                     })}
@@ -280,7 +280,7 @@ export function SnapshotTable({ snapshots }: SnapshotTableProps) {
                           key={col.label}
                           className="py-2 text-center tabular-nums"
                         >
-                          {amount > 0 ? mask(formatSGDWhole(amount)) : '-'}
+                          {mask(amount > 0 ? formatSGDWhole(amount) : '-')}
                         </td>
                       );
                     })}

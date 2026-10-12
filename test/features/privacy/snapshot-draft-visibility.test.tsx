@@ -88,6 +88,50 @@ function mountSnapshot(editId?: string) {
   );
 }
 describe('actual snapshot editor draft visibility', () => {
+  it('preserves focused registered account and amount drafts when masked inputs receive blur', async () => {
+    mountSnapshot('2026-01');
+    await screen.findByRole('button', { name: 'Update Snapshot' });
+    const account = screen.getByLabelText('Savings account 1');
+    const amount = screen.getByLabelText('Savings amount 1');
+    fireEvent.focus(account);
+    fireEvent.change(account, {
+      target: { value: 'Synthetic focused 765.43' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    expect(account).toHaveValue('');
+    fireEvent.blur(account);
+    fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
+    expect(account).toHaveValue('Synthetic focused 765.43');
+    fireEvent.focus(amount);
+    fireEvent.change(amount, { target: { value: '765.43' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    expect(amount).toHaveValue(null);
+    fireEvent.blur(amount);
+    expect(api.upsertSnapshot).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
+    expect(account).toHaveValue('Synthetic focused 765.43');
+    expect(amount).toHaveValue(765.43);
+    // Visible blur still flows through the established RHF handler.
+    fireEvent.blur(amount);
+    const form = amount.closest('form');
+    if (!form) throw new Error('Expected snapshot form');
+    fireEvent.submit(form);
+    await waitFor(() => expect(api.upsertSnapshot).toHaveBeenCalledTimes(1));
+    expect(api.upsertSnapshot).toHaveBeenCalledWith(
+      {
+        id: '2026-01',
+        entries: [
+          {
+            category: 'savings',
+            account: 'Synthetic focused 765.43',
+            amount: 765.43,
+          },
+        ],
+      },
+      '2026-01',
+      { snapshotId: 'synthetic-parent', revision: '1' }
+    );
+  });
   it.each([
     { editId: '2026-01', saveLabel: 'Update Snapshot' },
     { editId: undefined, saveLabel: 'Save Snapshot' },

@@ -251,9 +251,11 @@ export function MarketAllocationTable({
                       />
                     </td>
                     <td className="py-2 text-center tabular-nums">
-                      {r.alloc > 0 && r.tickerTarget !== null
-                        ? mask(formatCurrency(r.tickerTarget, currency))
-                        : '-'}
+                      {mask(
+                        r.alloc > 0 && r.tickerTarget !== null
+                          ? formatCurrency(r.tickerTarget, currency)
+                          : '-'
+                      )}
                     </td>
                     <td
                       className={`py-2 text-center tabular-nums ${
@@ -270,14 +272,18 @@ export function MarketAllocationTable({
                           : ''
                       }`}
                     >
-                      {r.alloc > 0 && r.lacking !== null
-                        ? mask(formatCurrency(r.lacking, currency))
-                        : '-'}
+                      {mask(
+                        r.alloc > 0 && r.lacking !== null
+                          ? formatCurrency(r.lacking, currency)
+                          : '-'
+                      )}
                     </td>
                     <td className="py-2 text-center font-mono tabular-nums">
-                      {r.alloc > 0 && r.sharesToBuy > 0
-                        ? mask(r.sharesToBuy.toLocaleString())
-                        : '-'}
+                      {mask(
+                        r.alloc > 0 && r.sharesToBuy > 0
+                          ? r.sharesToBuy.toLocaleString()
+                          : '-'
+                      )}
                     </td>
                   </tr>
                 ))}

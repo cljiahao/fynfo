@@ -164,9 +164,9 @@ export function TradeTable({ trades, onEdit }: TradeTableProps) {
                       {mask(formatCurrency(t.price, currency))}
                     </td>
                     <td className="py-2 text-center tabular-nums">
-                      {t.fees > 0
-                        ? mask(formatCurrency(t.fees, currency))
-                        : '-'}
+                      {mask(
+                        t.fees > 0 ? formatCurrency(t.fees, currency) : '-'
+                      )}
                     </td>
                     <td className="py-2 text-center font-semibold tabular-nums">
                       {Number.isFinite(total)

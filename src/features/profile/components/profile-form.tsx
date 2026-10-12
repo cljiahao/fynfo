@@ -23,6 +23,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
+import type { FormEvent } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useProfile, useUpsertProfile } from '../hooks/use-profile';
@@ -36,7 +37,7 @@ const DEFAULT_PROFILE: ProfileData = {
 };
 
 function ProfileFormInner({ initial }: { initial: ProfileData }) {
-  const { hidden, canReveal } = useAmountVisibility();
+  const { hidden, canReveal, getHideEpoch } = useAmountVisibility();
   const upsertProfile = useUpsertProfile();
 
   const { control, handleSubmit } = useForm<ProfileFormValues>({
@@ -54,6 +55,15 @@ function ProfileFormInner({ initial }: { initial: ProfileData }) {
     }
   };
 
+  async function submitProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canReveal()) return;
+    const hideEpoch = getHideEpoch();
+    await handleSubmit(async function submitVisibleProfile(values) {
+      if (canReveal() && getHideEpoch() === hideEpoch) await onSubmit(values);
+    })(event);
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -63,7 +73,7 @@ function ProfileFormInner({ initial }: { initial: ProfileData }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={submitProfile} className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="birthYear">Birth Year</Label>

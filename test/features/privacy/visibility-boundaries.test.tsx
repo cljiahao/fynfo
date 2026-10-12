@@ -19,6 +19,7 @@ import {
   renderHook,
   screen,
 } from '@testing-library/react';
+import { StrictMode, type ReactNode } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 
 function Controls() {
@@ -231,4 +232,171 @@ it('does not discard an incomplete new expense when keyboard focus moves toward 
   fireEvent.click(toggle);
   fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
   expect(item).toHaveValue('Unsaved synthetic draft');
+});
+
+it('invalidates captured presentation APIs on unmount and cannot be reactivated by stale callbacks', () => {
+  const owner = renderHook(() => useAmountVisibility(), {
+    wrapper: AmountVisibilityProvider,
+  });
+  const captured = owner.result.current;
+  const epoch = captured.getHideEpoch();
+  expect(captured.canReveal()).toBe(true);
+  expect(captured.mask('Synthetic 987.65')).toBe('Synthetic 987.65');
+  owner.unmount();
+  expect(captured.canReveal()).toBe(false);
+  expect(captured.getHideEpoch()).toBeGreaterThan(epoch);
+  expect(captured.mask('Synthetic 987.65')).toBe('Hidden');
+  act(function invokeStaleControls() {
+    captured.showAmounts();
+    captured.hideAmounts();
+    captured.showAmounts();
+  });
+  expect(captured.canReveal()).toBe(false);
+  expect(captured.mask('Synthetic 987.65')).toBe('Hidden');
+  const fresh = renderHook(() => useAmountVisibility(), {
+    wrapper: AmountVisibilityProvider,
+  });
+  expect(fresh.result.current.hidden).toBe(false);
+  expect(fresh.result.current.canReveal()).toBe(true);
+  expect(fresh.result.current.getHideEpoch()).toBe(0);
+  expect(captured.canReveal()).toBe(false);
+});
+
+function StrictVisibilityOwner({ children }: { children: ReactNode }) {
+  return (
+    <StrictMode>
+      <AmountVisibilityProvider>{children}</AmountVisibilityProvider>
+    </StrictMode>
+  );
+}
+
+it('stays initially visible and usable after StrictMode replay while teardown invalidates its lifetime', () => {
+  const renderPermissions: boolean[] = [];
+  const owner = renderHook(
+    function useObservePresentationOwner() {
+      const visibility = useAmountVisibility();
+      renderPermissions.push(!visibility.hidden && visibility.canReveal());
+      return visibility;
+    },
+    {
+      wrapper: StrictVisibilityOwner,
+    }
+  );
+  expect(renderPermissions.length).toBeGreaterThan(0);
+  expect(renderPermissions.every(Boolean)).toBe(true);
+  const captured = owner.result.current;
+  expect(captured.hidden).toBe(false);
+  expect(captured.canReveal()).toBe(true);
+  expect(captured.mask('Synthetic 123.45')).toBe('Synthetic 123.45');
+  const initialEpoch = captured.getHideEpoch();
+  act(function hideAfterReplay() {
+    captured.hideAmounts();
+  });
+  expect(owner.result.current.hidden).toBe(true);
+  expect(captured.canReveal()).toBe(false);
+  expect(captured.getHideEpoch()).toBe(initialEpoch + 1);
+  act(function showAfterReplay() {
+    captured.showAmounts();
+  });
+  expect(owner.result.current.hidden).toBe(false);
+  expect(captured.canReveal()).toBe(true);
+  owner.unmount();
+  expect(captured.canReveal()).toBe(false);
+  expect(captured.getHideEpoch()).toBeGreaterThan(initialEpoch + 1);
+  expect(captured.mask('Synthetic 123.45')).toBe('Hidden');
+});
+
+function appendSyntheticMeasurement(text: string) {
+  const measurement = document.createElement('span');
+  measurement.id = 'recharts_measurement_span';
+  measurement.setAttribute('aria-hidden', 'true');
+  measurement.style.position = 'absolute';
+  measurement.style.top = '-20000px';
+  measurement.textContent = text;
+  document.body.appendChild(measurement);
+  return measurement;
+}
+
+it('clears retained chart measurement text outside the app on Hide and preserves the node for Show', () => {
+  const view = render(
+    <AmountVisibilityProvider>
+      <AmountVisibilityToggle />
+      <FinancialValue>SGD 987.65</FinancialValue>
+    </AmountVisibilityProvider>
+  );
+  const measurement = appendSyntheticMeasurement('$987.65');
+  try {
+    expect(view.container.contains(measurement)).toBe(false);
+    expect(document.body.textContent).toContain('$987.65');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    expect(document.body.textContent).not.toContain('987.65');
+    expect(document.getElementById('recharts_measurement_span')).toBe(
+      measurement
+    );
+    expect(measurement.textContent).toBe('');
+    expect(measurement.getAttribute('aria-hidden')).toBe('true');
+    expect(measurement.style.top).toBe('-20000px');
+    fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
+    expect(screen.getByText('SGD 987.65')).toBeInTheDocument();
+    // The library can reuse the same global measurement element for the next visible chart.
+    measurement.textContent = '$123.45';
+    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    expect(measurement.textContent).toBe('');
+    expect(document.body.textContent).not.toContain('123.45');
+  } finally {
+    measurement.remove();
+  }
+});
+
+it('clears chart measurement text on presentation teardown without removing unrelated body content', () => {
+  const view = render(
+    <AmountVisibilityProvider>
+      <FinancialValue>SGD 876.54</FinancialValue>
+    </AmountVisibilityProvider>
+  );
+  const measurement = appendSyntheticMeasurement('$876.54');
+  const unrelated = document.createElement('span');
+  unrelated.textContent = 'Static unrelated content';
+  document.body.appendChild(unrelated);
+  try {
+    view.unmount();
+    expect(measurement.textContent).toBe('');
+    expect(document.getElementById('recharts_measurement_span')).toBe(
+      measurement
+    );
+    expect(document.body.textContent).not.toContain('876.54');
+    expect(unrelated.textContent).toBe('Static unrelated content');
+  } finally {
+    measurement.remove();
+    unrelated.remove();
+  }
+});
+
+it('preserves visible financial rendering and the measurement node during StrictMode cleanup replay', () => {
+  const measurement = appendSyntheticMeasurement('$654.32');
+  try {
+    render(
+      <StrictVisibilityOwner>
+        <AmountVisibilityToggle />
+        <FinancialValue>SGD 654.32</FinancialValue>
+      </StrictVisibilityOwner>
+    );
+    expect(screen.getByText('SGD 654.32')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Hide amounts', pressed: false })
+    ).toBeInTheDocument();
+    expect(document.getElementById('recharts_measurement_span')).toBe(
+      measurement
+    );
+    expect(measurement.style.top).toBe('-20000px');
+    measurement.textContent = '$654.32';
+    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    expect(document.body.textContent).not.toContain('654.32');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show amounts', pressed: true })
+    );
+    expect(screen.getByText('SGD 654.32')).toBeInTheDocument();
+  } finally {
+    measurement.remove();
+  }
 });

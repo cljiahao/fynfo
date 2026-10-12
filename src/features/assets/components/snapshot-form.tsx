@@ -226,6 +226,12 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
                                   .register(`entries.${idx}.account`)
                                   .onChange(event);
                             }}
+                            onBlur={(event) => {
+                              if (canReveal())
+                                void form
+                                  .register(`entries.${idx}.account`)
+                                  .onBlur(event);
+                            }}
                           />
                           <Input
                             type="number"
@@ -245,6 +251,12 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
                                 void form
                                   .register(`entries.${idx}.amount`)
                                   .onChange(event);
+                            }}
+                            onBlur={(event) => {
+                              if (canReveal())
+                                void form
+                                  .register(`entries.${idx}.amount`)
+                                  .onBlur(event);
                             }}
                           />
                           <Button

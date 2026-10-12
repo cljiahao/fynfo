@@ -215,7 +215,18 @@ function DividendFormEditor({
         </div>
       )}
       <form
-        onSubmit={(e) => void handleSubmit(onSubmit)(e)}
+        onSubmit={(event) => {
+          if (!canReveal()) {
+            event.preventDefault();
+            toast.info('Show amounts before saving a distribution');
+            return;
+          }
+          const submitEpoch = getHideEpoch();
+          void handleSubmit((values) => {
+            if (!canReveal() || getHideEpoch() !== submitEpoch) return;
+            return onSubmit(values);
+          })(event);
+        }}
         className="flex flex-col gap-4"
       >
         <fieldset disabled={hidden} className="flex flex-col gap-4">
@@ -227,6 +238,9 @@ function DividendFormEditor({
               {...register('ticker', { required: true })}
               disabled={hidden}
               value={hidden ? '' : watch('ticker')}
+              onBlur={(event) => {
+                if (canReveal()) void register('ticker').onBlur(event);
+              }}
               onChange={(event) => {
                 if (canReveal()) void register('ticker').onChange(event);
               }}
@@ -240,6 +254,9 @@ function DividendFormEditor({
               type="date"
               {...register('date', { required: true })}
               disabled={hidden}
+              onBlur={(event) => {
+                if (canReveal()) void register('date').onBlur(event);
+              }}
               onChange={(event) => {
                 if (canReveal()) void register('date').onChange(event);
               }}
@@ -257,6 +274,9 @@ function DividendFormEditor({
                 {...register('amount', { valueAsNumber: true, required: true })}
                 disabled={hidden}
                 value={hidden ? '' : watch('amount')}
+                onBlur={(event) => {
+                  if (canReveal()) void register('amount').onBlur(event);
+                }}
                 onChange={(event) => {
                   if (canReveal()) void register('amount').onChange(event);
                 }}

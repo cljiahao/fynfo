@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
-import { useEffect, useId } from 'react';
+import { useEffect, useId, type FormEvent } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { useSalaryRecord, useUpsertSalary } from '../hooks/use-salary';
@@ -36,7 +36,7 @@ export function SalaryFormDialog({
   onOpenChange,
   editId,
 }: SalaryFormDialogProps) {
-  const { hidden, canReveal } = useAmountVisibility();
+  const { hidden, canReveal, getHideEpoch } = useAmountVisibility();
   const fieldId = useId();
   const {
     data: existing,
@@ -94,6 +94,18 @@ export function SalaryFormDialog({
     }
   }
 
+  async function submitSalary(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canReveal()) {
+      toast.info('Show amounts before saving salary');
+      return;
+    }
+    const hideEpoch = getHideEpoch();
+    await form.handleSubmit(async function submitVisibleSalary(values) {
+      if (canReveal() && getHideEpoch() === hideEpoch) await onSubmit(values);
+    })(event);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
@@ -120,17 +132,7 @@ export function SalaryFormDialog({
             </Button>
           </div>
         ) : (
-          <form
-            onSubmit={(event) => {
-              if (!canReveal()) {
-                event.preventDefault();
-                toast.info('Show amounts before saving salary');
-                return;
-              }
-              void form.handleSubmit(onSubmit)(event);
-            }}
-            className="space-y-4"
-          >
+          <form onSubmit={submitSalary} className="space-y-4">
             <AmountsHiddenNotice />
             <div className="space-y-2">
               <Label htmlFor={fieldId + '-month'}>Month</Label>

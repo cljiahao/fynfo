@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { useSnapshots } from '@/features/assets';
 import { useDividends, useTrades } from '@/features/equity';
 import { useExpenses } from '@/features/expenses';
-import { useAmountVisibility } from '@/features/privacy';
+import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
 import { useSalaryRecords } from '@/features/salary';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
@@ -50,6 +50,7 @@ export function RecordSearchTask({ onSelect }: RecordSearchTaskProps) {
 
   return (
     <>
+      <AmountsHiddenNotice />
       <div className="space-y-2">
         <Label htmlFor="record-search-term">Search your records</Label>
         <Input
