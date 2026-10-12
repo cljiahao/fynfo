@@ -4,3 +4,5 @@ export { ExpenseTable } from './expense-table';
 export { ExpenseTypeSelect } from './expense-type-select';
 export { OwedSummary } from './owed-summary';
 export { SplitDialog } from './split-dialog';
+
+export { ExpenseAnomalyReview } from './expense-anomaly-review';

@@ -92,3 +92,29 @@ export const EXPENSE_PASTE_MONTH_ALIASES: Readonly<Record<string, number>> = {
 };
 
 export const EXPENSE_KEY = ['expenses'] as const;
+
+/** Fixed household review heuristic; not a statistical significance threshold. */
+export const EXPENSE_ANOMALY_BASELINE_MONTHS = 3;
+export const EXPENSE_ANOMALY_MULTIPLIER = 2;
+export const EXPENSE_ANOMALY_MINIMUM_EXCESS_CENTS = 5000;
+export const EXPENSE_ANOMALY_SOURCE_PAGE_SIZES = [10] as const;
+
+export const EXPENSE_ANOMALY_CATEGORY_MESSAGES = {
+  'missing-history':
+    'Recorded category history is missing for one or more comparison months.',
+  'invalid-record':
+    'A recorded amount or shared allocation needs review before comparison.',
+  'unsafe-total': 'Recorded totals exceed the supported comparison range.',
+  'zero-baseline':
+    'The recorded baseline is zero; no ratio comparison is made.',
+} as const;
+export const EXPENSE_ANOMALY_REVIEW_MESSAGES = {
+  'invalid-month':
+    'Choose a valid review month with three preceding calendar months.',
+  'month-not-elapsed':
+    'Choose a fully elapsed month before the current Singapore month.',
+  'invalid-date':
+    'A recorded expense date cannot be assigned to a comparison window.',
+  'invalid-metadata': 'Recorded category, split type or identity needs review.',
+  'duplicate-id': 'Repeated record identities prevent a reliable comparison.',
+} as const;
