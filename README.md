@@ -100,6 +100,23 @@ Contributing records explain salary and bonus, aggregate shared-expense deductio
 and both snapshot totals. Expense pages show at most 20 rows while totals include
 every matching record.
 
+The monthly review's **Budget and annual reserve plan** is a session-only
+worksheet. Enter your own monthly spending limit; the comparison uses recorded
+personal shares for the selected month, excludes other people's shares regardless
+of settlement, and withholds results for missing, invalid or unresolved records.
+Cached expense refetches and pending saves also withhold the comparison. It does
+not certify a complete month or show spendable cash.
+
+The annual reserve calculation takes an explicit target, amount already reserved
+and contribution count. It divides the remaining target into cent-rounded
+contributions with an adjusted final amount; later slots may be zero when an
+earlier contribution covers the target. It assumes no future income or payment
+dates, transfers no money and does not change saved expenses, asset balances or
+salary planning. Inputs are not saved: leaving the page, reloading, vault lock or
+account change clears them. Changing the review month clears only its monthly
+limit; Hide/Show preserves the local worksheet draft. Saved budgets and reserve
+goals remain a separately scoped persistence feature.
+
 Search records in the navbar searches the five personal histories only when opened.
 It matches recorded text, shows up to four results per source, and identifies
 loading, updating or failed sources with individual retry controls. Household
