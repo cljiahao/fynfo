@@ -1,5 +1,7 @@
 'use client';
 
+import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -37,6 +39,7 @@ export function ScenarioDialog({
   onSaved,
   onReturnFocus,
 }: ScenarioDialogProps) {
+  const { hidden, mask, canReveal } = useAmountVisibility();
   const [payload, setPayload] = useState(initialPayload);
   const [record, setRecord] = useState(initialRecord);
   const [message, setMessage] = useState('');
@@ -68,6 +71,7 @@ export function ScenarioDialog({
     key: K,
     value: SalaryPlanInput[K]
   ) =>
+    canReveal() &&
     setPayload((draft) => ({
       ...draft,
       inputs: { ...draft.inputs, [key]: value },
@@ -130,7 +134,13 @@ export function ScenarioDialog({
     }
   };
   const save = async (asNew: boolean) => {
-    if (pending.current || !valid || (blocked && (!asNew || !reloaded))) return;
+    if (
+      !canReveal() ||
+      pending.current ||
+      !valid ||
+      (blocked && (!asNew || !reloaded))
+    )
+      return;
     pending.current = true;
     setBusy(true);
     const ticket = ++operation.current;
@@ -177,7 +187,7 @@ export function ScenarioDialog({
     }
   };
   const review = () => {
-    if (!reviewRecord) return;
+    if (!canReveal() || !reviewRecord) return;
     setPayload(reviewRecord.payload);
     setRecord(reviewRecord);
     setReviewRecord(null);
@@ -215,28 +225,30 @@ export function ScenarioDialog({
             months.
           </DialogDescription>
         </DialogHeader>
+        <AmountsHiddenNotice />
         <p className="text-muted-foreground text-sm">
           Captured inputs stay separate from your live planner and actual
           records. Closing discards unsaved edits; an already submitted save may
           still finish.{' '}
           {payload.sourceSnapshotMonth &&
             `Snapshot source: ${payload.sourceSnapshotMonth}. `}
-          Captured savings: {formatSGD(payload.inputs.currentSavings)}; bonds:{' '}
-          {formatSGD(payload.inputs.currentBonds)}. These balances do not
-          refresh automatically.
+          Captured savings: {mask(formatSGD(payload.inputs.currentSavings))};
+          bonds: {mask(formatSGD(payload.inputs.currentBonds))}. These balances
+          do not refresh automatically.
         </p>
         <div className="space-y-2">
           <Label htmlFor={`${ids}-name`}>Scenario name</Label>
           <Input
             id={`${ids}-name`}
             maxLength={80}
-            disabled={busy}
+            disabled={hidden || busy}
             required
             aria-invalid={nameTouched && !payload.name.trim()}
             aria-describedby={`${ids}-name-guidance`}
             onBlur={() => setNameTouched(true)}
-            value={payload.name}
+            value={hidden ? '' : payload.name}
             onChange={(event) =>
+              canReveal() &&
               setPayload((draft) => ({ ...draft, name: event.target.value }))
             }
           />
@@ -249,7 +261,7 @@ export function ScenarioDialog({
               : 'Use a name with 1–80 characters.'}
           </p>
         </div>
-        <fieldset disabled={busy} className="space-y-5">
+        <fieldset disabled={hidden || busy} className="space-y-5">
           <legend className="sr-only">Hypothetical scenario inputs</legend>
           <PlannerInputs
             allowZeroFractionalReserves
@@ -291,7 +303,7 @@ export function ScenarioDialog({
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              disabled={busy}
+              disabled={hidden || busy}
               onClick={() => {
                 void reload();
               }}
@@ -299,7 +311,11 @@ export function ScenarioDialog({
               Reload saved rows
             </Button>
             {reviewRecord && (
-              <Button variant="outline" disabled={busy} onClick={review}>
+              <Button
+                variant="outline"
+                disabled={hidden || busy}
+                onClick={review}
+              >
                 Review saved row (replace draft)
               </Button>
             )}
@@ -311,7 +327,7 @@ export function ScenarioDialog({
           </Button>
           {record && (
             <Button
-              disabled={busy || blocked || !valid}
+              disabled={hidden || busy || blocked || !valid}
               onClick={() => {
                 void save(false);
               }}
@@ -321,7 +337,7 @@ export function ScenarioDialog({
           )}
           <Button
             variant={record ? 'outline' : 'default'}
-            disabled={busy || !valid || (blocked && !reloaded)}
+            disabled={hidden || busy || !valid || (blocked && !reloaded)}
             onClick={() => {
               void save(true);
             }}

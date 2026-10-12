@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { getScenarios } from '@/features/assets';
 import { getPlannerSettings } from '@/features/assets/actions/planner-actions';
 import { getSnapshots } from '@/features/assets/actions/snapshot-actions';
@@ -38,6 +40,7 @@ function downloadJson(content: string, filename: string): void {
  * A failed domain read prevents download; cross-domain reads are not atomic.
  */
 export function useExportData() {
+  const { canReveal, getHideEpoch } = useAmountVisibility();
   const [isExporting, setIsExporting] = useState(false);
   const mounted = useRef(false);
   const pending = useRef(false);
@@ -49,7 +52,9 @@ export function useExportData() {
   }, []);
 
   const exportData = async () => {
+    if (!canReveal()) return;
     if (pending.current) return;
+    const exportEpoch = getHideEpoch();
     pending.current = true;
     setIsExporting(true);
     try {
@@ -75,7 +80,8 @@ export function useExportData() {
         getScenarios(),
       ]);
 
-      if (!mounted.current) return;
+      if (!mounted.current || !canReveal() || getHideEpoch() !== exportEpoch)
+        return;
       const envelope = buildExportEnvelope(
         {
           profile,

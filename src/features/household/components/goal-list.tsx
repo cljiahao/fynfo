@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Target } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -9,12 +11,14 @@ import { AddContributionDialog } from './add-contribution-dialog';
 import { GoalCard } from './goal-card';
 
 export function GoalList({ goals }: { goals: HouseholdGoal[] }) {
+  const { canReveal } = useAmountVisibility();
   const deleteGoal = useDeleteGoal();
   const [contributingTo, setContributingTo] = useState<HouseholdGoal | null>(
     null
   );
 
   const remove = (goal: HouseholdGoal) => {
+    if (!canReveal()) return;
     deleteGoal.mutate(goal.id, {
       onSuccess: () => toast.success('Goal deleted'),
       onError: () => toast.error('Could not delete the goal'),

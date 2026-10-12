@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { PaginationControls } from '@/components/widgets';
 import { formatSGD } from '@/lib/utils/currency';
 import { useState } from 'react';
@@ -15,6 +17,7 @@ export function MonthlyReviewSources({
   month,
   review,
 }: MonthlyReviewSourcesProps) {
+  const { mask } = useAmountVisibility();
   const [page, setPage] = useState(0);
   const pageSize = REVIEW_PAGE_SIZES[0];
   const expenses = review.sources.expenses;
@@ -30,8 +33,8 @@ export function MonthlyReviewSources({
         {review.sources.income.length ? (
           review.sources.income.map((record) => (
             <p key={record.month} className="tabular-nums">
-              Salary: {formatSGD(record.salaryCents / 100)} · Bonus:{' '}
-              {formatSGD(record.bonusCents / 100)}
+              Salary: {mask(formatSGD(record.salaryCents / 100))} · Bonus:{' '}
+              {mask(formatSGD(record.bonusCents / 100))}
             </p>
           ))
         ) : (
@@ -50,17 +53,18 @@ export function MonthlyReviewSources({
                 .map((record) => (
                   <li key={record.id} className="min-w-0 space-y-1 break-words">
                     <p className="font-medium [overflow-wrap:anywhere]">
-                      {record.item.trim() || 'Unnamed expense'}
+                      {mask(record.item.trim() || 'Unnamed expense')}
                     </p>
                     <p className="text-muted-foreground text-xs">
                       {record.date.slice(0, 10)}
                     </p>
                     <p className="tabular-nums">
-                      Gross: {formatSGD(record.grossCents / 100)} · Other
-                      shares: {formatSGD(record.otherCents / 100)} · Your share:{' '}
+                      Gross: {mask(formatSGD(record.grossCents / 100))} · Other
+                      shares: {mask(formatSGD(record.otherCents / 100))} · Your
+                      share:{' '}
                       {record.personalCents === null
                         ? 'Check shared splits'
-                        : formatSGD(record.personalCents / 100)}
+                        : mask(formatSGD(record.personalCents / 100))}
                     </p>
                   </li>
                 ))}
@@ -93,13 +97,13 @@ export function MonthlyReviewSources({
           {review.previousMonth}:{' '}
           {review.sources.previousAssetTotal === null
             ? 'Not recorded'
-            : formatSGD(review.sources.previousAssetTotal)}
+            : mask(formatSGD(review.sources.previousAssetTotal))}
         </p>
         <p className="tabular-nums">
           {month}:{' '}
           {review.assetTotal === null
             ? 'Not recorded'
-            : formatSGD(review.assetTotal)}
+            : mask(formatSGD(review.assetTotal))}
         </p>
       </div>
     </section>

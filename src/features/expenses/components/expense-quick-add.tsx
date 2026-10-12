@@ -1,5 +1,7 @@
 'use client';
 
+import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -58,6 +60,7 @@ export function ExpenseQuickAdd({
   onReuseAvailabilityChange?: (available: boolean) => void;
   onSavedExpensesRead?: (records: ExpenseData[]) => void;
 } = {}) {
+  const { hidden, canReveal, getHideEpoch } = useAmountVisibility();
   const upsert = useUpsertExpense();
 
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -118,6 +121,7 @@ export function ExpenseQuickAdd({
   };
 
   const activateReuse = ({ source, origin }: ReuseRequest) => {
+    if (!canReveal()) return;
     const draft = createReuseDraft(source, format(new Date(), 'yyyy-MM-dd'));
     originRef.current = origin;
     setReuse(draft);
@@ -143,6 +147,7 @@ export function ExpenseQuickAdd({
 
   useImperativeHandle(ref, () => ({
     requestReuse(source, origin) {
+      if (!canReveal()) return;
       if (frozen || reuseGate.current || upsert.isPending || dialog) return;
       if (
         source.splitType !== 'self' ||
@@ -157,6 +162,7 @@ export function ExpenseQuickAdd({
   }));
 
   const cancelReuse = () => {
+    if (!canReveal()) return;
     resetForm();
     setDate(format(new Date(), 'yyyy-MM-dd'));
     setType('food_drink');
@@ -170,7 +176,7 @@ export function ExpenseQuickAdd({
   };
 
   const submitReuse = async (payload: ExpenseData) => {
-    if (reuseGate.current) return;
+    if (!canReveal() || reuseGate.current) return;
     reuseGate.current = true;
     submitted.current = payload;
     setPhase('saving');
@@ -194,7 +200,9 @@ export function ExpenseQuickAdd({
 
   const checkReuseSave = async () => {
     const payload = submitted.current;
-    if (!payload || !readSavedExpenses || reuseGate.current) return;
+    if (!canReveal() || !payload || !readSavedExpenses || reuseGate.current)
+      return;
+    const checkEpoch = getHideEpoch();
     reuseGate.current = true;
     setPhase('checking');
     const instance = lifetime.current;
@@ -202,6 +210,13 @@ export function ExpenseQuickAdd({
     try {
       const records = await readSavedExpenses();
       if (!instance.active) return;
+      if (!canReveal() || getHideEpoch() !== checkEpoch) {
+        setPhase(previousPhase === 'conflict' ? 'conflict' : 'unconfirmed');
+        setReuseError(
+          'Amounts were hidden while checking. Check expenses again before retrying.'
+        );
+        return;
+      }
       onSavedExpensesRead?.(records);
       const saved = records.find((record) => record.id === payload.id);
       if (saved && sameExpenseValues(saved, payload)) {
@@ -233,6 +248,7 @@ export function ExpenseQuickAdd({
   };
 
   const handleContainerPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    if (!canReveal()) return;
     const text = e.clipboardData.getData('text/plain');
     if (!text.includes('\t')) return;
 
@@ -343,7 +359,7 @@ export function ExpenseQuickAdd({
     resetForm();
   };
   const handleSubmit = () => {
-    if (reuse) return;
+    if (!canReveal() || reuse) return;
     if (issues.length > 0) return;
     const amountNum = Number(amount);
     if (!date || !Number.isFinite(amountNum) || amountNum <= 0) {
@@ -443,8 +459,9 @@ export function ExpenseQuickAdd({
             <Button
               variant="outline"
               size="sm"
-              disabled={frozen}
+              disabled={hidden || frozen}
               onClick={() => {
+                if (!canReveal()) return;
                 const current = {
                   ...reuse,
                   date,
@@ -465,7 +482,7 @@ export function ExpenseQuickAdd({
               <Button
                 variant="outline"
                 size="sm"
-                disabled={phase === 'checking' || !readSavedExpenses}
+                disabled={hidden || phase === 'checking' || !readSavedExpenses}
                 onClick={() => void checkReuseSave()}
               >
                 {phase === 'checking' ? 'Checking expenses…' : 'Check expenses'}
@@ -474,7 +491,9 @@ export function ExpenseQuickAdd({
             {phase === 'unconfirmed' && (
               <Button
                 size="sm"
+                disabled={hidden}
                 onClick={() => {
+                  if (!canReveal()) return;
                   if (submitted.current) void submitReuse(submitted.current);
                 }}
               >
@@ -506,11 +525,16 @@ export function ExpenseQuickAdd({
           >
             Date
           </label>
-          <Popover open={dateOpen} onOpenChange={setDateOpen}>
+          <Popover
+            open={dateOpen && !hidden && !frozen}
+            onOpenChange={(open) => {
+              if (canReveal() && !frozen) setDateOpen(open);
+            }}
+          >
             <PopoverTrigger asChild>
               <Button
                 id={feedbackId + '-date'}
-                disabled={frozen}
+                disabled={hidden || frozen}
                 aria-invalid={invalidDate || undefined}
                 aria-describedby={
                   invalidDate
@@ -536,6 +560,7 @@ export function ExpenseQuickAdd({
                 selected={date ? new Date(date) : undefined}
                 onSelect={(d) => {
                   if (d) {
+                    if (!canReveal() || frozen) return;
                     setDate(format(d, 'yyyy-MM-dd'));
                     setReuseInvalid((current) => ({ ...current, date: false }));
                     setIssues((current) =>
@@ -552,6 +577,7 @@ export function ExpenseQuickAdd({
                   size="sm"
                   className="w-full"
                   onClick={() => {
+                    if (!canReveal() || frozen) return;
                     setDate(format(new Date(), 'yyyy-MM-dd'));
                     setReuseInvalid((current) => ({ ...current, date: false }));
                     setIssues((current) =>
@@ -582,10 +608,12 @@ export function ExpenseQuickAdd({
             Category
           </label>
           <ExpenseTypeSelect
-            disabled={frozen}
+            disabled={hidden || frozen}
             inputId={feedbackId + '-category'}
             value={type}
-            onChange={setType}
+            onChange={(next) => {
+              if (canReveal()) setType(next);
+            }}
             onSubmit={handleSubmit}
             onAfterSelect={() => itemRef.current?.focus()}
             onOpenChange={(open) => {
@@ -604,11 +632,13 @@ export function ExpenseQuickAdd({
             Item / Brand
           </label>
           <Input
-            disabled={frozen}
+            disabled={hidden || frozen}
             ref={itemRef}
             id={feedbackId + '-item'}
-            value={item}
-            onChange={(e) => setItem(e.target.value)}
+            value={hidden ? '' : item}
+            onChange={(e) => {
+              if (canReveal()) setItem(e.target.value);
+            }}
             onKeyDown={handleKeyDown}
             placeholder="e.g. Grab, NTUC"
             className="bg-background h-9 w-[140px] text-sm"
@@ -622,10 +652,12 @@ export function ExpenseQuickAdd({
             Notes
           </label>
           <Input
-            disabled={frozen}
-            value={info}
+            disabled={hidden || frozen}
+            value={hidden ? '' : info}
             id={feedbackId + '-notes'}
-            onChange={(e) => setInfo(e.target.value)}
+            onChange={(e) => {
+              if (canReveal()) setInfo(e.target.value);
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Optional description"
             className="bg-background h-9 w-full text-sm"
@@ -639,7 +671,7 @@ export function ExpenseQuickAdd({
             Amount (SGD)
           </label>
           <Input
-            disabled={frozen}
+            disabled={hidden || frozen}
             id={feedbackId + '-amount'}
             aria-invalid={invalidAmount || undefined}
             aria-describedby={
@@ -652,8 +684,9 @@ export function ExpenseQuickAdd({
             type="number"
             step="0.01"
             min="0"
-            value={amount}
+            value={hidden ? '' : amount}
             onChange={(e) => {
+              if (!canReveal()) return;
               const value = e.target.value;
               setAmount(value);
               if (Number.isFinite(Number(value)) && Number(value) > 0) {
@@ -680,6 +713,7 @@ export function ExpenseQuickAdd({
         <Button
           className="h-9 shrink-0"
           onClick={() => {
+            if (!canReveal()) return;
             if (!reuse) {
               handleSubmit();
               return;
@@ -710,7 +744,7 @@ export function ExpenseQuickAdd({
             setReuseInvalid({ date: false, amount: false });
             void submitReuse(payload);
           }}
-          disabled={frozen || upsert.isPending || issues.length > 0}
+          disabled={hidden || frozen || upsert.isPending || issues.length > 0}
         >
           <Plus className="mr-1.5 size-4" />
           {phase === 'saving' && reuse ? 'Saving expense…' : 'Add Expense'}
@@ -737,6 +771,7 @@ export function ExpenseQuickAdd({
             Your current unsaved inputs will be discarded. No expense will be
             saved.
           </DialogDescription>
+          <AmountsHiddenNotice />
           <DialogFooter>
             <Button
               variant="outline"
@@ -748,7 +783,9 @@ export function ExpenseQuickAdd({
               Keep draft
             </Button>
             <Button
+              disabled={hidden}
               onClick={() => {
+                if (!canReveal()) return;
                 if (dialog === 'cancel') cancelReuse();
                 else if (dialog) activateReuse(dialog);
               }}

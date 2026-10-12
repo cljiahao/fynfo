@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -72,40 +74,45 @@ export function PlannerResults({
   currentBonds,
   goalsFulfilled,
 }: PlannerResultsProps) {
+  const { hidden, mask, canReveal } = useAmountVisibility();
   return (
     <div className="grid gap-6 sm:grid-cols-2">
       {/* Pie chart */}
       <div className="h-[250px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={pieData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              outerRadius={90}
-              innerRadius={45}
-              paddingAngle={2}
-              stroke="none"
-              isAnimationActive={false}
-              style={{ cursor: 'default', outline: 'none' }}
-            />
-            <Tooltip
-              formatter={(value: unknown) => {
-                const amt = Number(value);
-                const pct = netAfterCpf > 0 ? (amt / netAfterCpf) * 100 : 0;
-                return `${formatSGD(amt)} (${pct.toFixed(1)}%)`;
-              }}
-              {...CHART_TOOLTIP_PROPS}
-            />
-            <Legend
-              formatter={(value: string) => (
-                <span className="text-xs">{value}</span>
-              )}
-            />
-          </PieChart>
-        </ResponsiveContainer>
+        {hidden ? (
+          <p role="status">Amounts hidden</p>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={pieData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={90}
+                innerRadius={45}
+                paddingAngle={2}
+                stroke="none"
+                isAnimationActive={false}
+                style={{ cursor: 'default', outline: 'none' }}
+              />
+              <Tooltip
+                formatter={(value: unknown) => {
+                  const amt = Number(value);
+                  const pct = netAfterCpf > 0 ? (amt / netAfterCpf) * 100 : 0;
+                  return `${mask(formatSGD(amt))} (${pct.toFixed(1)}%)`;
+                }}
+                {...CHART_TOOLTIP_PROPS}
+              />
+              <Legend
+                formatter={(value: string) => (
+                  <span className="text-xs">{value}</span>
+                )}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* Breakdown + Goals */}
@@ -114,9 +121,12 @@ export function PlannerResults({
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           <div className="flex items-center gap-1.5">
             <Checkbox
+              disabled={hidden}
               id={idPrefix ? `${idPrefix}-tithe` : 'tithe'}
-              checked={titheEnabled}
-              onCheckedChange={(v) => setTitheEnabled(v === true)}
+              checked={hidden ? false : titheEnabled}
+              onCheckedChange={(v) =>
+                canReveal() && setTitheEnabled(v === true)
+              }
             />
             <Label
               htmlFor={idPrefix ? `${idPrefix}-tithe` : 'tithe'}
@@ -130,17 +140,22 @@ export function PlannerResults({
               min="0"
               max="100"
               className="h-6 w-14 text-xs"
-              disabled={!titheEnabled}
-              value={tithePctInput || ''}
-              onChange={(e) => setTithePctInput(Number(e.target.value) || 0)}
+              disabled={hidden || !titheEnabled}
+              value={hidden ? '' : tithePctInput || ''}
+              onChange={(e) =>
+                canReveal() && setTithePctInput(Number(e.target.value) || 0)
+              }
             />
             <span className="text-muted-foreground text-xs">%</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Checkbox
+              disabled={hidden}
               id={idPrefix ? `${idPrefix}-allowance` : 'allowance'}
-              checked={allowanceEnabled}
-              onCheckedChange={(v) => setAllowanceEnabled(v === true)}
+              checked={hidden ? false : allowanceEnabled}
+              onCheckedChange={(v) =>
+                canReveal() && setAllowanceEnabled(v === true)
+              }
             />
             <Label
               htmlFor={idPrefix ? `${idPrefix}-allowance` : 'allowance'}
@@ -154,10 +169,10 @@ export function PlannerResults({
               min="0"
               max="100"
               className="h-6 w-14 text-xs"
-              disabled={!allowanceEnabled}
-              value={allowancePctInput || ''}
+              disabled={hidden || !allowanceEnabled}
+              value={hidden ? '' : allowancePctInput || ''}
               onChange={(e) =>
-                setAllowancePctInput(Number(e.target.value) || 0)
+                canReveal() && setAllowancePctInput(Number(e.target.value) || 0)
               }
             />
             <span className="text-muted-foreground text-xs">%</span>
@@ -167,7 +182,7 @@ export function PlannerResults({
         <div className="space-y-1.5 text-sm">
           <div className="flex-between">
             <span className="text-muted-foreground">Net (after CPF)</span>
-            <span className="font-medium">{formatSGD(netAfterCpf)}</span>
+            <span className="font-medium">{mask(formatSGD(netAfterCpf))}</span>
           </div>
           {breakdownItems.map((item) => (
             <div key={item.label} className="flex-between">
@@ -176,14 +191,16 @@ export function PlannerResults({
                   className="inline-block size-2.5 rounded-full"
                   style={{ backgroundColor: item.color }}
                 />
-                {item.label}
+                {hidden ? item.label.split(' (')[0] : item.label}
               </span>
               <span
                 className={
-                  item.value < 0 ? 'text-loss font-medium' : 'font-medium'
+                  !hidden && item.value < 0
+                    ? 'text-loss font-medium'
+                    : 'font-medium'
                 }
               >
-                {formatSGD(item.value)}
+                {mask(formatSGD(item.value))}
               </span>
             </div>
           ))}
@@ -195,9 +212,9 @@ export function PlannerResults({
               Savings Goals
             </p>
             <div className="flex-between text-sm">
-              <span>Emergency Fund ({emergencyMonths}mo)</span>
+              <span>Emergency Fund ({mask(emergencyMonths)}mo)</span>
               <span className="font-semibold">
-                {formatSGD(emergencyFundGoal)}
+                {mask(formatSGD(emergencyFundGoal))}
               </span>
             </div>
             <div className="flex-between text-sm">
@@ -205,32 +222,38 @@ export function PlannerResults({
                 Current (Savings)
               </span>
               <span
-                className={`text-xs ${currentSavings >= emergencyFundGoal ? 'text-gain' : 'text-warning'}`}
+                className={`text-xs ${hidden ? 'text-muted-foreground' : currentSavings >= emergencyFundGoal ? 'text-gain' : 'text-warning'}`}
               >
-                {formatSGD(currentSavings)}{' '}
-                {currentSavings >= emergencyFundGoal
-                  ? '✓'
-                  : `(need ${formatSGD(emergencyFundGoal - currentSavings)})`}
+                {mask(formatSGD(currentSavings))}{' '}
+                {hidden
+                  ? ''
+                  : currentSavings >= emergencyFundGoal
+                    ? '✓'
+                    : `(need ${mask(formatSGD(emergencyFundGoal - currentSavings))})`}
               </span>
             </div>
             <div className="flex-between text-sm">
-              <span>War Chest ({warChestMonths}mo)</span>
-              <span className="font-semibold">{formatSGD(warChestGoal)}</span>
+              <span>War Chest ({mask(warChestMonths)}mo)</span>
+              <span className="font-semibold">
+                {mask(formatSGD(warChestGoal))}
+              </span>
             </div>
             <div className="flex-between text-sm">
               <span className="text-muted-foreground text-xs">
                 Current (Bonds)
               </span>
               <span
-                className={`text-xs ${currentBonds >= warChestGoal ? 'text-gain' : 'text-warning'}`}
+                className={`text-xs ${hidden ? 'text-muted-foreground' : currentBonds >= warChestGoal ? 'text-gain' : 'text-warning'}`}
               >
-                {formatSGD(currentBonds)}{' '}
-                {currentBonds >= warChestGoal
-                  ? '✓'
-                  : `(need ${formatSGD(warChestGoal - currentBonds)})`}
+                {mask(formatSGD(currentBonds))}{' '}
+                {hidden
+                  ? ''
+                  : currentBonds >= warChestGoal
+                    ? '✓'
+                    : `(need ${mask(formatSGD(warChestGoal - currentBonds))})`}
               </span>
             </div>
-            {goalsFulfilled && (
+            {!hidden && goalsFulfilled && (
               <p className="text-gain text-xs font-medium">
                 All goals fulfilled — surplus goes to investment
               </p>

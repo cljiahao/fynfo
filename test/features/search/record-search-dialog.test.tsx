@@ -4,6 +4,10 @@ import { VaultGate } from '@/components/layout/vault-gate';
 import type { SnapshotData } from '@/features/assets';
 import { AuthIdentityWatcher, VaultLockProvider } from '@/features/auth';
 import type { ExpenseData } from '@/features/expenses';
+import {
+  AmountVisibilityProvider,
+  useAmountVisibility,
+} from '@/features/privacy';
 import { RecordSearch } from '@/features/search';
 import * as loadedTask from '@/features/search/components/record-search-task';
 import * as taskLoader from '@/features/search/lib/load-search-task';
@@ -123,6 +127,83 @@ async function ready() {
     expect(screen.queryByText(/Results are partial/)).not.toBeInTheDocument()
   );
 }
+
+let visibility: ReturnType<typeof useAmountVisibility> | undefined;
+function CaptureVisibility() {
+  const value = useAmountVisibility();
+  useEffect(() => {
+    visibility = value;
+  }, [value]);
+  return null;
+}
+function mountPrivateSearch() {
+  client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, staleTime: Infinity, gcTime: Infinity },
+    },
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <AmountVisibilityProvider>
+        <CaptureVisibility />
+        <RecordSearch />
+      </AmountVisibilityProvider>
+    </QueryClientProvider>
+  );
+}
+
+it('offers keyboard-accessible Show amounts inside an already-hidden search dialog and then searches a fresh term', async () => {
+  const user = userEvent.setup();
+  api.getExpenses.mockResolvedValue([expense]);
+  mountPrivateSearch();
+  for (const read of Object.values(api)) expect(read).not.toHaveBeenCalled();
+  act(() => visibility?.hideAmounts());
+  const input = await openSearch();
+  await ready();
+  expect(input).toHaveValue('');
+  expect(input).toBeDisabled();
+  const dialog = screen.getByRole('dialog');
+  const show = within(dialog).getByRole('button', { name: 'Show amounts' });
+  expect(within(dialog).getByRole('status')).toHaveTextContent('Show amounts');
+  show.focus();
+  await user.keyboard('{Enter}');
+  expect(input).toBeEnabled();
+  await user.type(input, 'Synthetic meal');
+  expect(await within(dialog).findByText('Synthetic meal')).toBeInTheDocument();
+  for (const read of Object.values(api)) expect(read).toHaveBeenCalledOnce();
+});
+
+it('conceals an open search term and result descriptions on Hide and restores the retained term through local Show', async () => {
+  const user = userEvent.setup();
+  api.getExpenses.mockResolvedValue([
+    {
+      ...expense,
+      item: 'Synthetic figure 765.43',
+      info: 'Synthetic context 987.65',
+    },
+  ]);
+  mountPrivateSearch();
+  const input = await openSearch();
+  await ready();
+  await user.type(input, '765.43');
+  const dialog = screen.getByRole('dialog');
+  expect(
+    await within(dialog).findByText('Synthetic figure 765.43')
+  ).toBeInTheDocument();
+  act(() => visibility?.hideAmounts());
+  expect(input).toHaveValue('');
+  expect(input).toBeDisabled();
+  expect(dialog.textContent).not.toContain('765.43');
+  expect(dialog.textContent).not.toContain('987.65');
+  const show = within(dialog).getByRole('button', { name: 'Show amounts' });
+  show.focus();
+  await user.keyboard('{Enter}');
+  expect(input).toHaveValue('765.43');
+  expect(
+    within(dialog).getByText('Synthetic figure 765.43')
+  ).toBeInTheDocument();
+  for (const read of Object.values(api)) expect(read).toHaveBeenCalledOnce();
+});
 
 it('reads exactly five histories only when opened and keeps blank state instructional', async () => {
   mountSearch();

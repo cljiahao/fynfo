@@ -1,5 +1,7 @@
 'use client';
 
+import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,6 +26,7 @@ export function CreateGoalDialog({
   open,
   onOpenChange,
 }: CreateGoalDialogProps) {
+  const { hidden, canReveal } = useAmountVisibility();
   const createGoal = useCreateGoal();
   const [name, setName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
@@ -36,6 +39,7 @@ export function CreateGoalDialog({
   };
 
   const submit = () => {
+    if (!canReveal()) return;
     const amount = parseFloat(targetAmount);
     if (!name.trim() || !amount || amount <= 0) {
       toast.error('Name and a target amount are required');
@@ -67,14 +71,18 @@ export function CreateGoalDialog({
             A big-item you and your partner are saving toward.
           </DialogDescription>
         </DialogHeader>
+        <AmountsHiddenNotice />
 
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="goal-name">Name</Label>
             <Input
+              disabled={hidden}
               id="goal-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={hidden ? '' : name}
+              onChange={(e) => {
+                if (canReveal()) setName(e.target.value);
+              }}
               placeholder="e.g. New sofa"
               maxLength={80}
             />
@@ -82,12 +90,15 @@ export function CreateGoalDialog({
           <div className="space-y-1.5">
             <Label htmlFor="goal-target">Target amount (SGD)</Label>
             <Input
+              disabled={hidden}
               id="goal-target"
               type="number"
               min="0"
               step="0.01"
-              value={targetAmount}
-              onChange={(e) => setTargetAmount(e.target.value)}
+              value={hidden ? '' : targetAmount}
+              onChange={(e) => {
+                if (canReveal()) setTargetAmount(e.target.value);
+              }}
               placeholder="0.00"
               className="text-right tabular-nums"
             />
@@ -95,6 +106,7 @@ export function CreateGoalDialog({
           <div className="space-y-1.5">
             <Label htmlFor="goal-date">Target date (optional)</Label>
             <Input
+              disabled={hidden}
               id="goal-date"
               type="date"
               value={targetDate}
@@ -107,7 +119,7 @@ export function CreateGoalDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={createGoal.isPending}
+            disabled={hidden || createGoal.isPending}
           >
             Cancel
           </Button>

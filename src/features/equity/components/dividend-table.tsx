@@ -1,5 +1,7 @@
 'use client';
 
+import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import {
   ConfirmDeleteDialog,
@@ -26,6 +28,7 @@ function RowActions({
   dividend: DividendData;
   onEdit?: (dividend: DividendData) => void;
 }) {
+  const { hidden, mask, canReveal } = useAmountVisibility();
   const [open, setOpen] = useState(false);
   const deleteMutation = useDeleteDividend();
 
@@ -34,7 +37,10 @@ function RowActions({
       <Button
         variant="outline"
         size="sm"
-        onClick={() => onEdit?.(dividend)}
+        onClick={() => {
+          if (canReveal()) onEdit?.(dividend);
+          else toast.info('Show amounts before editing.');
+        }}
         aria-label="Edit distribution"
       >
         <Pencil className="size-4" />
@@ -42,7 +48,10 @@ function RowActions({
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          if (canReveal()) setOpen(true);
+          else toast.info('Show amounts before editing.');
+        }}
         aria-label="Delete distribution"
       >
         <Trash2 className="text-destructive size-4" />
@@ -53,14 +62,17 @@ function RowActions({
         title="Delete Distribution"
         description={
           <>
-            Delete the {formatCurrency(dividend.amount, dividend.currency)}{' '}
+            Delete the{' '}
+            {mask(formatCurrency(dividend.amount, dividend.currency))}{' '}
             <span className="font-semibold">{dividend.ticker}</span>{' '}
             distribution? This cannot be undone.
           </>
         }
         isPending={deleteMutation.isPending}
+        disabled={hidden}
+        notice={<AmountsHiddenNotice />}
         onConfirm={async () => {
-          if (!dividend.id) return;
+          if (!canReveal() || !dividend.id) return;
           try {
             await deleteMutation.mutateAsync(dividend.id);
             toast.success('Distribution deleted');
@@ -74,6 +86,7 @@ function RowActions({
 }
 
 export function DividendTable({ dividends, onEdit }: DividendTableProps) {
+  const { mask } = useAmountVisibility();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(10);
   const paged = dividends.slice(page * pageSize, (page + 1) * pageSize);
@@ -108,7 +121,7 @@ export function DividendTable({ dividends, onEdit }: DividendTableProps) {
               </td>
               <td className="py-2 font-medium">{d.ticker}</td>
               <td className="py-2 text-right tabular-nums">
-                {formatCurrency(d.amount, d.currency)}
+                {mask(formatCurrency(d.amount, d.currency))}
               </td>
               <td className="py-2">
                 <RowActions dividend={d} onEdit={onEdit} />

@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import {
   Card,
   CardContent,
@@ -46,6 +48,7 @@ const CPF_COLORS: Record<string, string> = {
 };
 
 export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
+  const { hidden, mask } = useAmountVisibility();
   if (!snapshot) {
     return (
       <Card>
@@ -89,9 +92,11 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
                   {CATEGORY_LABELS[cat]}
                 </span>
                 <span className="flex items-baseline gap-1.5">
-                  <span className="font-medium">{formatSGDWhole(amount)}</span>
+                  <span className="font-medium">
+                    {mask(formatSGDWhole(amount))}
+                  </span>
                   <span className="text-muted-foreground text-xs tabular-nums">
-                    {Math.round(pct)}%
+                    {mask(`${Math.round(pct)}%`)}
                   </span>
                 </span>
               </div>
@@ -99,7 +104,7 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
                 <div
                   className="h-2 rounded-full transition-all"
                   style={{
-                    width: `${pct}%`,
+                    width: hidden ? '0%' : `${pct}%`,
                     backgroundColor: CATEGORY_COLORS[cat],
                   }}
                 />
@@ -114,45 +119,51 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
               CPF Breakdown
             </p>
             <div className="h-[120px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={cpfData}
-                  layout="vertical"
-                  margin={{ right: 80 }}
-                >
-                  <XAxis type="number" hide />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                    width={30}
-                    {...CHART_AXIS_TICK_PROPS}
-                  />
-                  <Tooltip
-                    formatter={(value: unknown) =>
-                      formatSGDWhole(Number(value))
-                    }
-                    {...CHART_TOOLTIP_PROPS}
-                  />
-                  <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={16}>
-                    {cpfData.map((entry) => (
-                      <Cell
-                        key={entry.name}
-                        fill={CPF_COLORS[entry.name] ?? '#6b7280'}
-                      />
-                    ))}
-                    <LabelList
-                      dataKey="amount"
-                      position="right"
-                      fontSize={10}
-                      className="fill-foreground"
-                      formatter={(v: unknown) => formatSGDWhole(Number(v))}
+              {hidden ? (
+                <p role="status">Amounts hidden</p>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={cpfData}
+                    layout="vertical"
+                    margin={{ right: 80 }}
+                  >
+                    <XAxis type="number" hide />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      width={30}
+                      {...CHART_AXIS_TICK_PROPS}
                     />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+                    <Tooltip
+                      formatter={(value: unknown) =>
+                        mask(formatSGDWhole(Number(value)))
+                      }
+                      {...CHART_TOOLTIP_PROPS}
+                    />
+                    <Bar dataKey="amount" radius={[0, 4, 4, 0]} barSize={16}>
+                      {cpfData.map((entry) => (
+                        <Cell
+                          key={entry.name}
+                          fill={CPF_COLORS[entry.name] ?? '#6b7280'}
+                        />
+                      ))}
+                      <LabelList
+                        dataKey="amount"
+                        position="right"
+                        fontSize={10}
+                        className="fill-foreground"
+                        formatter={(v: unknown) =>
+                          mask(formatSGDWhole(Number(v)))
+                        }
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
         )}

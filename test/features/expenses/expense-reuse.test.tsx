@@ -10,6 +10,10 @@ import {
   sameExpenseValues,
 } from '@/features/expenses/lib/reuse-draft';
 import type { ExpenseData } from '@/features/expenses/types';
+import {
+  AmountVisibilityProvider,
+  AmountVisibilityToggle,
+} from '@/features/privacy';
 import '@testing-library/jest-dom/vitest';
 import {
   act,
@@ -503,4 +507,77 @@ it('only reuses clean saved self rows and suppresses source blur-save and Enter-
   expect(
     screen.queryByRole('button', { name: 'Reuse' })
   ).not.toBeInTheDocument();
+});
+
+function privacyEntry() {
+  return render(
+    <AmountVisibilityProvider>
+      <AmountVisibilityToggle />
+      <ExpenseEntry />
+    </AmountVisibilityProvider>
+  );
+}
+describe('reuse integration with actual amount visibility', () => {
+  it('conceals and preserves a reused draft while rejecting hidden entry and save controls', () => {
+    privacyEntry();
+    fireEvent.click(screen.getByRole('button', { name: 'Reuse' }));
+    const item = screen.getByRole('textbox', { name: 'Item / Brand' });
+    expect(item).toHaveValue(source.item);
+    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    expect(item).toHaveValue('');
+    expect(item).toBeDisabled();
+    expect(
+      screen.queryByRole('button', { name: 'Reuse' })
+    ).not.toBeInTheDocument();
+    const save = screen.getByRole('button', { name: 'Add Expense' });
+    expect(save).toBeDisabled();
+    fireEvent.click(save);
+    fireEvent.change(item, {
+      target: { value: 'Unexpected hidden overwrite' },
+    });
+    expect(boundary.save).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
+    expect(item).toHaveValue(source.item);
+    expect(save).not.toBeDisabled();
+  });
+  it('rejects a stale authoritative confirmation after Hide then Show without repopulating the cache', async () => {
+    boundary.save.mockRejectedValue(new Error('synthetic failure'));
+    let finish!: (records: ExpenseData[]) => void;
+    boundary.read.mockImplementation(
+      () =>
+        new Promise<ExpenseData[]>((resolve) => {
+          finish = resolve;
+        })
+    );
+    privacyEntry();
+    fireEvent.click(screen.getByRole('button', { name: 'Reuse' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add Expense' }));
+    await screen.findByRole('button', { name: 'Retry same expense' });
+    const submitted = boundary.save.mock.calls[0][0];
+    fireEvent.click(screen.getByRole('button', { name: 'Check expenses' }));
+    await waitFor(() => expect(boundary.read).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
+    await act(async () => {
+      finish([submitted]);
+    });
+    expect(boundary.setSaved).not.toHaveBeenCalled();
+    expect(boundary.success).not.toHaveBeenCalledWith('Expense save confirmed');
+    expect(boundary.save).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByRole('button', { name: 'Check expenses' })
+    ).not.toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Item / Brand' })).toHaveValue(
+      source.item
+    );
+    boundary.read.mockResolvedValue([submitted]);
+    fireEvent.click(screen.getByRole('button', { name: 'Check expenses' }));
+    await waitFor(() =>
+      expect(boundary.success).toHaveBeenCalledWith('Expense save confirmed')
+    );
+    expect(boundary.setSaved).toHaveBeenCalledWith(expect.anything(), [
+      submitted,
+    ]);
+    expect(boundary.save).toHaveBeenCalledTimes(1);
+  });
 });

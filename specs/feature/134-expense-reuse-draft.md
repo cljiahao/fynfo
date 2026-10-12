@@ -280,3 +280,11 @@ publication. The unchanged pre-push build/check/coverage run supplies the full
 local verification under §7.4; its results and exact-head hosted CI are recorded
 in the PR body and delivery report. Approval does not authorize merge and this
 spec stays approved until a separate delivery actually ships.
+
+## Prospective129/130 integration correction — 2026-10-12
+
+Owner requested PR51 merge after greenCI; the old09cf0ee head conflicts with merged129. Prepare a normal no-commit main merge, retaining134 reuse and129 masking/native lifecycle guards in the already scoped expense-entry, expense-quick-add, expense-table and editable-expense-row paths. Add actual privacy regressions to the selected expense-reuse test. The existing coordinator captures hide epoch before direct getExpenses and rejects stale/hidden/teardown results before cache refresh or confirmation; Quick Add guards all reuse/save/check/discard event initiation and preserves frozen drafts. Capture and recheck its epoch after reads. Keep all financial inputs blank/disabled while hidden and Show accessible inside replacement dialogs. Preserve130 disclosure when its exact source is normally integrated; record the page/barrel composition addition before doing so. No action/schema/dependency/crypto/protected change or gate bypass. This is source preparation; old-head greenCI does not authorize merging a changed conflicting head.
+
+## Integrated129 focused verification — 2026-10-12
+
+Independent source review found no remaining actionable privacy integration issue. Four focused suites passed 62 tests, including actual-provider Hide/Show draft and stale-read regressions plus incumbent Quick Add, draft preservation and visibility boundaries. Log retained in parent work/134-integrated-targeted.log. Data/query boundaries are mocked; no private auth/RLS/database proof is claimed. Final normal hooks, full coverage, native composition and exact changed-head CI remain required.

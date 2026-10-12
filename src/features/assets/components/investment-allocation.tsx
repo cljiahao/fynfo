@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import {
   Card,
   CardContent,
@@ -24,6 +26,7 @@ interface InvestmentAllocationProps {
 const STORAGE_KEY = 'fynfo-allocations';
 
 export function InvestmentAllocation({ budgets }: InvestmentAllocationProps) {
+  const { canReveal } = useAmountVisibility();
   const { data: trades, isError: tradesError } = useTrades();
   // useMemo justified: iterates all trades to aggregate net holdings per ticker
   const holdings = useMemo(() => computeHoldings(trades ?? []), [trades]);
@@ -47,6 +50,7 @@ export function InvestmentAllocation({ budgets }: InvestmentAllocationProps) {
   }, []);
 
   const handleAllocationChange = (ticker: string, pct: number) => {
+    if (!canReveal()) return;
     setAllocations((prev) => ({ ...prev, [ticker]: pct }));
   };
 

@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import {
   Accordion,
   AccordionContent,
@@ -37,6 +39,7 @@ export function PlannerInputs({
   setEmergencyMonths,
   setWarChestMonths,
 }: PlannerInputsProps) {
+  const { hidden, mask, canReveal } = useAmountVisibility();
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
@@ -45,13 +48,16 @@ export function PlannerInputs({
             Gross Salary
           </Label>
           <Input
+            disabled={hidden}
             id={`${idPrefix}-salary`}
             type="number"
             min="0"
             placeholder="0"
             className="h-8 text-sm"
-            value={salary || ''}
-            onChange={(e) => setSalary(Number(e.target.value) || 0)}
+            value={hidden ? '' : salary || ''}
+            onChange={(e) =>
+              canReveal() && setSalary(Number(e.target.value) || 0)
+            }
           />
         </div>
         <div className="space-y-1">
@@ -59,13 +65,16 @@ export function PlannerInputs({
             {avgExpenses > 0 ? 'Avg. Expenses' : 'Est. Expenses'}
           </Label>
           <Input
+            disabled={hidden}
             id={`${idPrefix}-expenses`}
             type="number"
             min="0"
             placeholder="0"
             className="h-8 text-sm"
-            value={expenses || ''}
-            onChange={(e) => setExpenses(Number(e.target.value) || 0)}
+            value={hidden ? '' : expenses || ''}
+            onChange={(e) =>
+              canReveal() && setExpenses(Number(e.target.value) || 0)
+            }
           />
         </div>
       </div>
@@ -73,8 +82,8 @@ export function PlannerInputs({
         <AccordionItem value="reserves">
           <AccordionTrigger>Adjust reserves</AccordionTrigger>
           <p className="text-muted-foreground pb-3 text-xs">
-            Emergency fund: {emergencyMonths} months · War chest:{' '}
-            {warChestMonths} months
+            Emergency fund: {mask(emergencyMonths)} months · War chest:{' '}
+            {mask(warChestMonths)} months
           </p>
           <AccordionContent>
             <p className="text-muted-foreground mb-3 text-xs">
@@ -87,6 +96,7 @@ export function PlannerInputs({
                   Emergency Fund (months)
                 </Label>
                 <Input
+                  disabled={hidden}
                   id={`${idPrefix}-emergency`}
                   type="number"
                   min={allowZeroFractionalReserves ? 0 : 1}
@@ -94,11 +104,14 @@ export function PlannerInputs({
                   placeholder="3"
                   className="h-8 text-sm"
                   value={
-                    allowZeroFractionalReserves
-                      ? emergencyMonths
-                      : emergencyMonths || ''
+                    hidden
+                      ? ''
+                      : allowZeroFractionalReserves
+                        ? emergencyMonths
+                        : emergencyMonths || ''
                   }
                   onChange={(e) =>
+                    canReveal() &&
                     setEmergencyMonths(Number(e.target.value) || 0)
                   }
                 />
@@ -108,6 +121,7 @@ export function PlannerInputs({
                   War Chest (months)
                 </Label>
                 <Input
+                  disabled={hidden}
                   id={`${idPrefix}-war-chest`}
                   type="number"
                   min={allowZeroFractionalReserves ? 0 : 1}
@@ -115,11 +129,14 @@ export function PlannerInputs({
                   placeholder="9"
                   className="h-8 text-sm"
                   value={
-                    allowZeroFractionalReserves
-                      ? warChestMonths
-                      : warChestMonths || ''
+                    hidden
+                      ? ''
+                      : allowZeroFractionalReserves
+                        ? warChestMonths
+                        : warChestMonths || ''
                   }
                   onChange={(e) =>
+                    canReveal() &&
                     setWarChestMonths(Number(e.target.value) || 0)
                   }
                 />

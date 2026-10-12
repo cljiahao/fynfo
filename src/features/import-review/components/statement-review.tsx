@@ -12,6 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EXPENSE_TYPE_LABELS } from '@/features/expenses';
+import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
 import { useEffect, useId, useRef, useState } from 'react';
 import { STATEMENT_BANKS, STATEMENT_LIMITS } from '../constants';
 import type { LocalStatementPdf } from '../lib/local-pdf';
@@ -22,6 +23,7 @@ import {
 import type { StatementBank, StatementCandidate } from '../types';
 
 function StatementReviewBody() {
+  const { hidden, mask, canReveal, getHideEpoch } = useAmountVisibility();
   const id = useId();
   const canvas = useRef<HTMLCanvasElement>(null);
   const session = useRef<LocalStatementPdf | null>(null);
@@ -49,6 +51,20 @@ function StatementReviewBody() {
     []
   );
 
+  useEffect(
+    function cancelHiddenExtraction() {
+      if (!hidden) return;
+      generation.current++;
+      if (busy) {
+        controller.current?.abort();
+        session.current?.destroy();
+        session.current = null;
+        setBusy(false);
+      }
+    },
+    [hidden, busy]
+  );
+
   function reset() {
     generation.current++;
     controller.current?.abort();
@@ -69,10 +85,11 @@ function StatementReviewBody() {
   useEffect(() => {
     const pdf = session.current;
     const target = canvas.current;
-    if (!pdf || !target || !pageCount) return;
+    if (hidden || !canReveal() || !pdf || !target || !pageCount) return;
+    const hideEpoch = getHideEpoch();
     let active = true;
     void pdf.render(page, target).catch(() => {
-      if (active)
+      if (active && canReveal() && getHideEpoch() === hideEpoch)
         setError(
           'This source page could not be rendered. Choose another file or clear the review.'
         );
@@ -80,9 +97,11 @@ function StatementReviewBody() {
     return () => {
       active = false;
     };
-  }, [page, pageCount, view]);
+  }, [page, pageCount, view, hidden, canReveal, getHideEpoch]);
 
   async function extract() {
+    if (!canReveal()) return;
+    const hideEpoch = getHideEpoch();
     reset();
     if (
       !file ||
@@ -99,18 +118,36 @@ function StatementReviewBody() {
     controller.current = cancellation;
     setBusy(true);
     let opened: LocalStatementPdf | undefined;
+    function isCurrentExtraction() {
+      return (
+        current === generation.current &&
+        canReveal() &&
+        getHideEpoch() === hideEpoch
+      );
+    }
+    function discardOpenedPdf() {
+      opened?.destroy();
+      if (session.current === opened) session.current = null;
+    }
     try {
       const bytes = await file.arrayBuffer();
-      if (current !== generation.current) return;
+      if (!isCurrentExtraction()) {
+        discardOpenedPdf();
+        return;
+      }
       const { openLocalStatementPdf } = await import('../lib/local-pdf');
+      if (!isCurrentExtraction()) return;
       opened = await openLocalStatementPdf(bytes, cancellation.signal);
-      if (current !== generation.current) {
-        opened.destroy();
+      if (!isCurrentExtraction()) {
+        discardOpenedPdf();
         return;
       }
       session.current = opened;
       const lines = await opened.extract();
-      if (current !== generation.current) return;
+      if (!isCurrentExtraction()) {
+        discardOpenedPdf();
+        return;
+      }
       const candidates = parseStatementLines(lines, bank, { from, to });
       setRows(candidates);
       setPage(1);
@@ -118,8 +155,8 @@ function StatementReviewBody() {
       setView('extracted');
       setFile(null);
     } catch {
-      opened?.destroy();
-      if (current === generation.current) {
+      discardOpenedPdf();
+      if (isCurrentExtraction()) {
         session.current = null;
         setError(
           'This PDF or layout could not be extracted. Check the bank and period. Use an unprotected text PDF; image-only and unsupported layouts need manual entry.'
@@ -135,6 +172,7 @@ function StatementReviewBody() {
     field: 'date' | 'description' | 'amount' | 'category',
     value: string
   ) {
+    if (!canReveal()) return;
     setRows((current) =>
       current.map((row) =>
         row.id === rowId ? { ...row, [field]: value } : row
@@ -145,6 +183,7 @@ function StatementReviewBody() {
   const chosen = rows.find((row) => row.id === selected);
   return (
     <div className="space-y-4">
+      <AmountsHiddenNotice />
       <p className="text-muted-foreground text-sm">
         Processed on this device. No file upload or record saving. Text PDFs
         only, up to 10 MiB and 100 pages. Password-protected and image-only
@@ -156,16 +195,18 @@ function StatementReviewBody() {
         className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
         onSubmit={(event) => {
           event.preventDefault();
-          void extract();
+          if (canReveal()) void extract();
         }}
       >
         <div className="space-y-2">
           <Label htmlFor={`${id}-bank`}>Statement bank</Label>
           <select
+            disabled={hidden}
             id={`${id}-bank`}
             value={bank}
             className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
             onChange={(event) => {
+              if (!canReveal()) return;
               reset();
               setBank(event.target.value as StatementBank);
             }}
@@ -180,11 +221,13 @@ function StatementReviewBody() {
         <div className="space-y-2">
           <Label htmlFor={`${id}-from`}>Period start</Label>
           <Input
+            disabled={hidden}
             id={`${id}-from`}
             type="date"
-            value={from}
+            value={hidden ? '' : from}
             required
             onChange={(event) => {
+              if (!canReveal()) return;
               reset();
               setFrom(event.target.value);
             }}
@@ -193,11 +236,13 @@ function StatementReviewBody() {
         <div className="space-y-2">
           <Label htmlFor={`${id}-to`}>Period end</Label>
           <Input
+            disabled={hidden}
             id={`${id}-to`}
             type="date"
-            value={to}
+            value={hidden ? '' : to}
             required
             onChange={(event) => {
+              if (!canReveal()) return;
               reset();
               setTo(event.target.value);
             }}
@@ -206,10 +251,12 @@ function StatementReviewBody() {
         <div className="space-y-2">
           <Label htmlFor={`${id}-file`}>Bank statement PDF</Label>
           <Input
+            disabled={hidden}
             id={`${id}-file`}
             type="file"
             accept=".pdf,application/pdf"
             onChange={(event) => {
+              if (!canReveal()) return;
               reset();
               setFile(event.currentTarget.files?.[0] ?? null);
               event.currentTarget.value = '';
@@ -217,13 +264,15 @@ function StatementReviewBody() {
           />
         </div>
         <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-4">
-          <Button type="submit" disabled={busy || !file}>
+          <Button type="submit" disabled={hidden || busy || !file}>
             {busy ? 'Extracting locally…' : 'Extract for review'}
           </Button>
           <Button
             type="button"
             variant="outline"
+            disabled={hidden}
             onClick={() => {
+              if (!canReveal()) return;
               reset();
               setFile(null);
             }}
@@ -243,11 +292,12 @@ function StatementReviewBody() {
       {rows.length > 0 && (
         <>
           <p className="text-sm">
-            {rows.length} source rows:{' '}
-            {rows.filter((row) => row.status === 'candidate').length} expense
-            suggestions,{' '}
-            {rows.filter((row) => row.status === 'unresolved').length}{' '}
-            unresolved, {rows.filter((row) => row.status === 'excluded').length}{' '}
+            {mask(rows.length)} source rows:{' '}
+            {mask(rows.filter((row) => row.status === 'candidate').length)}{' '}
+            expense suggestions,{' '}
+            {mask(rows.filter((row) => row.status === 'unresolved').length)}{' '}
+            unresolved,{' '}
+            {mask(rows.filter((row) => row.status === 'excluded').length)}{' '}
             excluded. Edits below are unsaved drafts; source issues remain
             visible.
           </p>
@@ -256,7 +306,8 @@ function StatementReviewBody() {
               type="button"
               variant={view === 'statement' ? 'default' : 'outline'}
               aria-pressed={view === 'statement'}
-              onClick={() => setView('statement')}
+              disabled={hidden}
+              onClick={() => canReveal() && setView('statement')}
             >
               Statement
             </Button>
@@ -264,7 +315,8 @@ function StatementReviewBody() {
               type="button"
               variant={view === 'extracted' ? 'default' : 'outline'}
               aria-pressed={view === 'extracted'}
-              onClick={() => setView('extracted')}
+              disabled={hidden}
+              onClick={() => canReveal() && setView('extracted')}
             >
               Extracted
             </Button>
@@ -278,8 +330,8 @@ function StatementReviewBody() {
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={page <= 1}
-                  onClick={() => setPage(page - 1)}
+                  disabled={hidden || page <= 1}
+                  onClick={() => canReveal() && setPage(page - 1)}
                 >
                   Previous page
                 </Button>
@@ -289,18 +341,20 @@ function StatementReviewBody() {
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={page >= pageCount}
-                  onClick={() => setPage(page + 1)}
+                  disabled={hidden || page >= pageCount}
+                  onClick={() => canReveal() && setPage(page + 1)}
                 >
                   Next page
                 </Button>
               </div>
-              <canvas
-                ref={canvas}
-                aria-label={`Original statement page ${page}`}
-                className="h-auto w-full rounded-md border"
-              />
-              {chosen && (
+              {!hidden && (
+                <canvas
+                  ref={canvas}
+                  aria-label={`Original statement page ${page}`}
+                  className="h-auto w-full rounded-md border"
+                />
+              )}
+              {!hidden && chosen && (
                 <p className="text-sm break-words">
                   Source page {chosen.source[0].page}, line{' '}
                   {chosen.source[0].line}:{' '}
@@ -316,8 +370,8 @@ function StatementReviewBody() {
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={rowPage === 0}
-                  onClick={() => setRowPage(rowPage - 1)}
+                  disabled={hidden || rowPage === 0}
+                  onClick={() => canReveal() && setRowPage(rowPage - 1)}
                 >
                   Previous rows
                 </Button>
@@ -328,8 +382,8 @@ function StatementReviewBody() {
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={(rowPage + 1) * 20 >= rows.length}
-                  onClick={() => setRowPage(rowPage + 1)}
+                  disabled={hidden || (rowPage + 1) * 20 >= rows.length}
+                  onClick={() => canReveal() && setRowPage(rowPage + 1)}
                 >
                   Next rows
                 </Button>
@@ -337,6 +391,7 @@ function StatementReviewBody() {
               {visibleRows.map((row, index) => (
                 <fieldset
                   key={row.id}
+                  disabled={hidden}
                   className="space-y-2 rounded-md border p-3"
                 >
                   <legend className="px-1 text-sm">
@@ -347,6 +402,7 @@ function StatementReviewBody() {
                     variant="link"
                     className="h-auto p-0"
                     onClick={() => {
+                      if (!canReveal()) return;
                       setSelected(row.id);
                       setPage(row.source[0].page);
                       setView('statement');
@@ -366,7 +422,7 @@ function StatementReviewBody() {
                       <Input
                         id={`${id}-${row.id}-date`}
                         type="date"
-                        value={row.date}
+                        value={hidden ? '' : row.date}
                         onChange={(event) =>
                           edit(row.id, 'date', event.target.value)
                         }
@@ -379,7 +435,7 @@ function StatementReviewBody() {
                       <Input
                         id={`${id}-${row.id}-amount`}
                         inputMode="decimal"
-                        value={row.amount}
+                        value={hidden ? '' : row.amount}
                         onChange={(event) =>
                           edit(row.id, 'amount', event.target.value)
                         }
@@ -391,7 +447,7 @@ function StatementReviewBody() {
                       </Label>
                       <Input
                         id={`${id}-${row.id}-description`}
-                        value={row.description}
+                        value={hidden ? '' : row.description}
                         maxLength={4096}
                         onChange={(event) =>
                           edit(row.id, 'description', event.target.value)
@@ -431,10 +487,15 @@ function StatementReviewBody() {
 }
 
 export function StatementReview() {
+  const { hidden, canReveal } = useAmountVisibility();
+  const [open, setOpen] = useState(false);
+  function changeOpen(next: boolean) {
+    if (!next || canReveal()) setOpen(next);
+  }
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline">
+        <Button type="button" variant="outline" disabled={hidden}>
           Review bank PDF
         </Button>
       </DialogTrigger>

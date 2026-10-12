@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { DashboardError } from '@/components/layout/dashboard-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatSGD } from '@/lib/utils/currency';
 import { Plus, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { useDividends } from '../hooks/use-dividends';
 import { useExchangeRate } from '../hooks/use-prices';
 import { totalSGD } from '../lib/dividend-metrics';
@@ -29,6 +32,7 @@ interface DistributionsSectionProps {
 }
 
 export function DistributionsSection({ trades }: DistributionsSectionProps) {
+  const { mask, canReveal } = useAmountVisibility();
   const {
     data: dividends,
     isPending,
@@ -55,11 +59,19 @@ export function DistributionsSection({ trades }: DistributionsSectionProps) {
   const asOf = new Date().toISOString().slice(0, 10);
 
   function handleAdd() {
+    if (!canReveal()) {
+      toast.info('Show amounts before editing.');
+      return;
+    }
     setEditDividend(undefined);
     setFormOpen(true);
   }
 
   function handleEdit(dividend: DividendData) {
+    if (!canReveal()) {
+      toast.info('Show amounts before editing.');
+      return;
+    }
     setEditDividend(dividend);
     setFormOpen(true);
   }
@@ -73,7 +85,7 @@ export function DistributionsSection({ trades }: DistributionsSectionProps) {
             <CardDescription>
               Dividends received
               {historyReady && rows.length > 0 && total !== null
-                ? ` — ${formatSGD(total)} total`
+                ? ` — ${mask(formatSGD(total))} total`
                 : ''}
             </CardDescription>
           </div>
@@ -164,13 +176,17 @@ function DistributionScan({
   trades: EquityTradeData[];
   existing: DividendData[];
 }) {
+  const { canReveal } = useAmountVisibility();
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button
         size="sm"
         variant="outline"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          if (canReveal()) setOpen(true);
+          else toast.info('Show amounts before editing.');
+        }}
         disabled={!ready || trades.length === 0}
       >
         <Sparkles className="size-4" />

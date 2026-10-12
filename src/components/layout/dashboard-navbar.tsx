@@ -9,6 +9,10 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { BrandText } from '@/components/widgets';
+import {
+  AmountVisibilityToggle,
+  AmountsHiddenNotice,
+} from '@/features/privacy';
 import { RecordSearch } from '@/features/search';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
@@ -74,6 +78,7 @@ export function DashboardNavbar({ userMenu }: { userMenu?: React.ReactNode }) {
         </div>
 
         <div className="flex items-center gap-2">
+          <AmountVisibilityToggle />
           <RecordSearch key={pathname} />
           <div className="flex items-center gap-2 md:hidden">
             {userMenu}
@@ -117,6 +122,7 @@ export function DashboardNavbar({ userMenu }: { userMenu?: React.ReactNode }) {
           </div>
         </div>
       </div>
+      <AmountsHiddenNotice />
     </nav>
   );
 }

@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import {
   Accordion,
   AccordionContent,
@@ -43,6 +45,7 @@ export function MarketAllocationTable({
   target: number | null;
   usdToSgd: number | null;
 }) {
+  const { hidden, mask, canReveal } = useAmountVisibility();
   const isSg = currency === 'SGD';
 
   // Target is in SGD from the breakdown. Convert to USD for US stocks.
@@ -62,6 +65,7 @@ export function MarketAllocationTable({
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const toggleSort = (key: SortKey) => {
+    if (!canReveal()) return;
     if (sortKey === key) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -184,14 +188,14 @@ export function MarketAllocationTable({
                 <span className="font-semibold">
                   {totalPortfolioValue === null
                     ? 'Quotes unavailable'
-                    : formatCurrency(totalPortfolioValue, currency)}
+                    : mask(formatCurrency(totalPortfolioValue, currency))}
                 </span>
               </span>
               {targetInCurrency !== null && targetInCurrency > 0 && (
                 <span>
                   <span className="text-muted-foreground">Target: </span>
                   <span className="text-chart-1 font-semibold">
-                    {formatCurrency(targetInCurrency, currency)}
+                    {mask(formatCurrency(targetInCurrency, currency))}
                   </span>
                 </span>
               )}
@@ -216,23 +220,29 @@ export function MarketAllocationTable({
               <tbody>
                 {sorted.map((r) => (
                   <tr key={r.ticker} className="border-b last:border-0">
-                    <td className="py-2 font-mono font-medium">{r.ticker}</td>
+                    <td className="py-2 font-mono font-medium">
+                      {mask(r.ticker)}
+                    </td>
                     <td className="py-2 text-center tabular-nums">
                       {r.currentValue !== null
-                        ? formatCurrency(r.currentValue, currency)
+                        ? mask(formatCurrency(r.currentValue, currency))
                         : '-'}
                     </td>
                     <td className="py-2 text-center">
                       <Input
-                        aria-label={`Allocation for ${r.ticker}`}
+                        disabled={hidden}
+                        aria-label={
+                          hidden ? 'Allocation' : `Allocation for ${r.ticker}`
+                        }
                         type="number"
                         min="0"
                         max="100"
                         step="1"
                         className="mx-auto h-7 w-16 text-center text-xs"
-                        value={r.alloc || ''}
+                        value={hidden ? '' : r.alloc || ''}
                         placeholder="0"
                         onChange={(e) =>
+                          canReveal() &&
                           onAllocationChange(
                             r.ticker,
                             Number(e.target.value) || 0
@@ -241,12 +251,15 @@ export function MarketAllocationTable({
                       />
                     </td>
                     <td className="py-2 text-center tabular-nums">
-                      {r.alloc > 0 && r.tickerTarget !== null
-                        ? formatCurrency(r.tickerTarget, currency)
-                        : '-'}
+                      {mask(
+                        r.alloc > 0 && r.tickerTarget !== null
+                          ? formatCurrency(r.tickerTarget, currency)
+                          : '-'
+                      )}
                     </td>
                     <td
                       className={`py-2 text-center tabular-nums ${
+                        !hidden &&
                         r.alloc > 0 &&
                         r.tickerTarget !== null &&
                         r.tickerTarget > 0 &&
@@ -259,14 +272,18 @@ export function MarketAllocationTable({
                           : ''
                       }`}
                     >
-                      {r.alloc > 0 && r.lacking !== null
-                        ? formatCurrency(r.lacking, currency)
-                        : '-'}
+                      {mask(
+                        r.alloc > 0 && r.lacking !== null
+                          ? formatCurrency(r.lacking, currency)
+                          : '-'
+                      )}
                     </td>
                     <td className="py-2 text-center font-mono tabular-nums">
-                      {r.alloc > 0 && r.sharesToBuy > 0
-                        ? r.sharesToBuy.toLocaleString()
-                        : '-'}
+                      {mask(
+                        r.alloc > 0 && r.sharesToBuy > 0
+                          ? r.sharesToBuy.toLocaleString()
+                          : '-'
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -280,7 +297,7 @@ export function MarketAllocationTable({
                     <td
                       className={`py-2 text-center font-medium tabular-nums ${totalAllocPct !== 100 ? 'text-loss' : ''}`}
                     >
-                      {totalAllocPct}%
+                      {mask(`${totalAllocPct}%`)}
                     </td>
                     <td colSpan={3} />
                   </tr>

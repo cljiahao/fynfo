@@ -1,5 +1,7 @@
 'use client';
 
+import { useAmountVisibility } from '@/features/privacy';
+
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
@@ -49,6 +51,7 @@ export function EditableRow({
   onCancel,
   onReuse,
 }: EditableRowProps) {
+  const { hidden, mask, canReveal, getHideEpoch } = useAmountVisibility();
   const [data, setData] = useState<ExpenseData>(row);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -84,12 +87,12 @@ export function EditableRow({
   }, []);
 
   const update = (patch: Partial<ExpenseData>) => {
-    if (savingRef.current) return;
+    if (!canReveal() || savingRef.current) return;
     setData((prev) => ({ ...prev, ...patch }));
   };
 
   const handleRowKeyDown = (e: React.KeyboardEvent) => {
-    if (savingRef.current) {
+    if (!canReveal() || savingRef.current) {
       if (e.key === 'Enter' || e.key === 'Escape') e.preventDefault();
       return;
     }
@@ -109,7 +112,7 @@ export function EditableRow({
   };
 
   const handleSplitTypeChange = (splitType: 'self' | 'shared') => {
-    if (savingRef.current) return;
+    if (!canReveal() || savingRef.current) return;
     if (splitType === 'self') {
       update({ splitType, splits: [] });
     } else {
@@ -119,14 +122,14 @@ export function EditableRow({
   };
 
   const handleSplitConfirm = (splits: ExpenseSplitData[]) => {
-    if (savingRef.current) return;
+    if (!canReveal() || savingRef.current) return;
     const { next, shouldSave } = resolveSplitConfirm(data, isNew, splits);
     setData(next);
     if (shouldSave) onSave(next);
   };
 
   const saveDraft = async (draft: ExpenseData) => {
-    if (savingRef.current) return;
+    if (!canReveal() || savingRef.current) return;
     const instance = lifetime.current;
     const error =
       draft.splitType === 'shared'
@@ -156,7 +159,7 @@ export function EditableRow({
   };
 
   const handleSave = () => {
-    if (savingRef.current) return;
+    if (!canReveal() || savingRef.current) return;
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
@@ -169,7 +172,12 @@ export function EditableRow({
   };
 
   const handleRowBlur = (e: React.FocusEvent<HTMLTableRowElement>) => {
-    if (savingRef.current) return;
+    if (
+      e.relatedTarget instanceof Element &&
+      e.relatedTarget.closest('[data-amount-visibility-toggle]')
+    )
+      return;
+    if (!canReveal() || savingRef.current) return;
     if (e.currentTarget.contains(e.relatedTarget as Node)) return;
     if (skipNextBlurRef.current) {
       skipNextBlurRef.current = false;
@@ -191,10 +199,11 @@ export function EditableRow({
       return;
     }
     const snapshot = { ...data };
+    const draftEpoch = getHideEpoch();
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       saveTimerRef.current = null;
-      saveDraft(snapshot);
+      if (getHideEpoch() === draftEpoch) saveDraft(snapshot);
     }, 400);
   };
 
@@ -214,15 +223,15 @@ export function EditableRow({
       >
         <td className="px-2 py-2">
           <Popover
-            open={dateOpen && !saving}
+            open={dateOpen && !saving && !hidden}
             onOpenChange={(open) => {
-              if (!savingRef.current) setDateOpen(open);
+              if (canReveal() && !savingRef.current) setDateOpen(open);
             }}
           >
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                disabled={saving}
+                disabled={hidden || saving}
                 className={cn(
                   'h-9 w-full justify-start gap-2 text-xs font-normal',
                   !data.date && 'text-muted-foreground'
@@ -252,7 +261,7 @@ export function EditableRow({
                   variant="ghost"
                   size="sm"
                   className="w-full"
-                  disabled={saving}
+                  disabled={hidden || saving}
                   onClick={() => {
                     update({ date: format(new Date(), 'yyyy-MM-dd') });
                     setDateOpen(false);
@@ -267,7 +276,7 @@ export function EditableRow({
         <td className="px-2 py-2">
           <ExpenseTypeSelect
             value={data.type}
-            disabled={saving}
+            disabled={hidden || saving}
             onChange={(t) => update({ type: t })}
             onSubmit={handleSave}
             onOpenChange={(open) => {
@@ -279,8 +288,8 @@ export function EditableRow({
         </td>
         <td className="px-2 py-2">
           <Input
-            value={data.item}
-            disabled={saving}
+            value={hidden ? '' : data.item}
+            disabled={hidden || saving}
             onChange={(e) => update({ item: e.target.value })}
             placeholder="Brand"
             className="h-9 w-full text-xs"
@@ -288,8 +297,8 @@ export function EditableRow({
         </td>
         <td className="px-2 py-2">
           <Input
-            value={data.info}
-            disabled={saving}
+            value={hidden ? '' : data.info}
+            disabled={hidden || saving}
             onChange={(e) => update({ info: e.target.value })}
             placeholder="Description"
             className="h-9 w-full text-xs"
@@ -301,8 +310,8 @@ export function EditableRow({
             aria-label="Amount (SGD)"
             step="0.01"
             min="0"
-            value={data.amount || ''}
-            disabled={saving}
+            value={hidden ? '' : data.amount || ''}
+            disabled={hidden || saving}
             onChange={(e) => update({ amount: Number(e.target.value) || 0 })}
             placeholder="0.00"
             className="h-9 w-full text-right text-xs tabular-nums"
@@ -310,15 +319,15 @@ export function EditableRow({
         </td>
         <td className="px-2 py-2">
           <Select
-            open={splitSelectOpen && !saving}
+            open={splitSelectOpen && !saving && !hidden}
             value={data.splitType}
             onValueChange={(v) => handleSplitTypeChange(v as 'self' | 'shared')}
             onOpenChange={(open) => {
-              if (!savingRef.current) setSplitSelectOpen(open);
+              if (canReveal() && !savingRef.current) setSplitSelectOpen(open);
             }}
           >
             <SelectTrigger
-              disabled={saving}
+              disabled={hidden || saving}
               className="h-9 w-full px-2 text-xs"
             >
               <SelectValue />
@@ -334,13 +343,13 @@ export function EditableRow({
             <button
               type="button"
               className="border-input hover:bg-accent flex h-9 w-full items-center gap-1.5 rounded-md border px-2 text-left text-xs transition-colors"
-              disabled={saving}
+              disabled={hidden || saving}
               onClick={() => {
-                if (!savingRef.current) setSplitDialogOpen(true);
+                if (canReveal() && !savingRef.current) setSplitDialogOpen(true);
               }}
             >
               <Users className="text-muted-foreground size-3.5 shrink-0" />
-              <span className="truncate">{splitSummary || 'Add...'}</span>
+              <span className="truncate">{mask(splitSummary || 'Add...')}</span>
             </button>
           ) : (
             <span className="text-muted-foreground block text-center text-xs">
@@ -356,13 +365,18 @@ export function EditableRow({
                 size="sm"
                 className="mr-1 h-8 px-2 text-xs"
                 disabled={
+                  hidden ||
                   saving ||
                   !sameExpenseValues(data, row) ||
                   !expenseDataSchema.safeParse(row).success
                 }
                 onKeyDown={(event) => event.stopPropagation()}
                 onClick={(event) => {
-                  if (savingRef.current || !sameExpenseValues(data, row))
+                  if (
+                    !canReveal() ||
+                    savingRef.current ||
+                    !sameExpenseValues(data, row)
+                  )
                     return;
                   if (saveTimerRef.current) {
                     clearTimeout(saveTimerRef.current);
@@ -380,7 +394,7 @@ export function EditableRow({
                 variant="outline"
                 size="icon"
                 className={saving ? 'h-8 px-2' : 'size-8'}
-                disabled={saving}
+                disabled={hidden || saving}
                 onClick={onCancel}
                 title={saving ? 'Saving expense' : 'Cancel'}
                 aria-label={saving ? 'Saving expense' : 'Cancel edit'}
@@ -403,7 +417,10 @@ export function EditableRow({
                     saveTimerRef.current = null;
                   }
                 }}
-                onClick={() => onDelete(data.id)}
+                disabled={hidden}
+                onClick={() => {
+                  if (canReveal()) onDelete(data.id);
+                }}
                 title="Delete"
                 aria-label="Delete expense"
               >
@@ -417,7 +434,7 @@ export function EditableRow({
       <SplitDialog
         open={splitDialogOpen && !saving}
         onOpenChange={(open) => {
-          if (!savingRef.current) setSplitDialogOpen(open);
+          if (canReveal() && !savingRef.current) setSplitDialogOpen(open);
         }}
         totalAmount={data.amount}
         initialSplits={data.splits}

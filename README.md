@@ -6,6 +6,20 @@ household for shared goals while keeping their personal vaults separate.
 Goal completion uses the contributed amount against a positive target; rounded
 progress percentages do not establish completion.
 
+## Screen sharing
+
+Use **Hide amounts** in the dashboard navigation to conceal financial figures,
+chart values and editable financial fields. Choose **Show amounts** before
+editing, searching records or exporting. Hiding preserves unfinished drafts; it
+does not save them. A pending export is suppressed if you hide amounts before its
+download starts, including if you show them again; start a fresh export instead.
+Previously submitted saves may still finish.
+
+The setting lasts only within the unlocked dashboard and resets on vault lock,
+account change or reload. It is a presentation aid, not encryption or access
+control: identifiers, dates, record availability, workflow status and static financial assumptions may remain visible,
+and it cannot conceal a file already downloaded.
+
 ## Stack
 
 - Next.js 16 App Router, React 19, TypeScript 5.9
