@@ -1,9 +1,16 @@
 'use client';
 
-import { useAmountVisibility } from '@/features/privacy';
+import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
   Popover,
@@ -13,16 +20,47 @@ import {
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { CalendarIcon, ClipboardPaste, Plus, Zap } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import {
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type Ref,
+} from 'react';
 import { toast } from 'sonner';
 import { useUpsertExpense } from '../hooks/use-expenses';
 import { parsePastedRow, type PasteIssue } from '../lib/paste-parser';
+import { createReuseDraft, sameExpenseValues } from '../lib/reuse-draft';
 import { buildSelfExpense } from '../lib/utils';
-import type { ExpenseType } from '../types';
+import { expenseDataSchema } from '../schemas';
+import type { ExpenseData, ExpenseType } from '../types';
 import { ExpenseTypeSelect } from './expense-type-select';
 
-export function ExpenseQuickAdd() {
-  const { hidden, canReveal } = useAmountVisibility();
+export interface ExpenseQuickAddHandle {
+  requestReuse: (source: ExpenseData, origin: HTMLButtonElement) => void;
+}
+
+type ReusePhase =
+  | 'editing'
+  | 'saving'
+  | 'unconfirmed'
+  | 'checking'
+  | 'conflict';
+type ReuseRequest = { source: ExpenseData; origin: HTMLButtonElement };
+
+export function ExpenseQuickAdd({
+  ref,
+  readSavedExpenses,
+  onReuseAvailabilityChange,
+  onSavedExpensesRead,
+}: {
+  ref?: Ref<ExpenseQuickAddHandle>;
+  readSavedExpenses?: () => Promise<ExpenseData[]>;
+  onReuseAvailabilityChange?: (available: boolean) => void;
+  onSavedExpensesRead?: (records: ExpenseData[]) => void;
+} = {}) {
+  const { hidden, canReveal, getHideEpoch } = useAmountVisibility();
   const upsert = useUpsertExpense();
 
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -33,9 +71,26 @@ export function ExpenseQuickAdd() {
   const [amount, setAmount] = useState('');
   const [pasted, setPasted] = useState(false);
   const [issues, setIssues] = useState<PasteIssue[]>([]);
+  const [reuse, setReuse] = useState<ExpenseData | null>(null);
+  const [phase, setPhase] = useState<ReusePhase>('editing');
+  const [reuseError, setReuseError] = useState('');
+  const [reuseInvalid, setReuseInvalid] = useState({
+    date: false,
+    amount: false,
+  });
+  const [dialog, setDialog] = useState<ReuseRequest | 'cancel' | null>(null);
+  const reuseGate = useRef(false);
+  const submitted = useRef<ExpenseData | null>(null);
+  const originRef = useRef<HTMLButtonElement | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLSpanElement>(null);
+  const dialogReturnFocus = useRef<HTMLElement | null>(null);
+  const frozen = reuse !== null && phase !== 'editing';
   const feedbackId = useId();
-  const invalidDate = issues.some((issue) => issue.field === 'date');
-  const invalidAmount = issues.some((issue) => issue.field === 'amount');
+  const invalidDate =
+    reuseInvalid.date || issues.some((issue) => issue.field === 'date');
+  const invalidAmount =
+    reuseInvalid.amount || issues.some((issue) => issue.field === 'amount');
   const lifetime = useRef({ active: true });
   useEffect(() => {
     const instance = { active: true };
@@ -55,13 +110,153 @@ export function ExpenseQuickAdd() {
     setAmount('');
     setPasted(false);
     setIssues([]);
+    setReuse(null);
+    setPhase('editing');
+    setReuseError('');
+    setReuseInvalid({ date: false, amount: false });
+    submitted.current = null;
+    reuseGate.current = false;
+    onReuseAvailabilityChange?.(true);
     typeRef.current?.focus();
+  };
+
+  const activateReuse = ({ source, origin }: ReuseRequest) => {
+    if (!canReveal()) return;
+    const draft = createReuseDraft(source, format(new Date(), 'yyyy-MM-dd'));
+    originRef.current = origin;
+    setReuse(draft);
+    setDate(draft.date);
+    setType(draft.type);
+    setItem(draft.item);
+    setInfo(draft.info);
+    setAmount(String(draft.amount));
+    setPasted(false);
+    setIssues([]);
+    setReuseError('');
+    setReuseInvalid({ date: false, amount: false });
+    setPhase('editing');
+    submitted.current = null;
+    setDialog(null);
+    itemRef.current?.focus();
+    dialogReturnFocus.current = itemRef.current;
+    containerRef.current?.scrollIntoView({
+      block: 'nearest',
+      behavior: 'smooth',
+    });
+  };
+
+  useImperativeHandle(ref, () => ({
+    requestReuse(source, origin) {
+      if (!canReveal()) return;
+      if (frozen || reuseGate.current || upsert.isPending || dialog) return;
+      if (
+        source.splitType !== 'self' ||
+        !expenseDataSchema.safeParse(source).success
+      )
+        return;
+      const request = { source: { ...source, splits: [] }, origin };
+      dialogReturnFocus.current = itemRef.current;
+      if (reuse || item || info || amount || pasted) setDialog(request);
+      else activateReuse(request);
+    },
+  }));
+
+  const cancelReuse = () => {
+    if (!canReveal()) return;
+    resetForm();
+    setDate(format(new Date(), 'yyyy-MM-dd'));
+    setType('food_drink');
+    setDialog(null);
+    if (originRef.current?.isConnected) originRef.current.focus();
+    else headingRef.current?.focus();
+    dialogReturnFocus.current = originRef.current?.isConnected
+      ? originRef.current
+      : headingRef.current;
+    originRef.current = null;
+  };
+
+  const submitReuse = async (payload: ExpenseData) => {
+    if (!canReveal() || reuseGate.current) return;
+    reuseGate.current = true;
+    submitted.current = payload;
+    setPhase('saving');
+    onReuseAvailabilityChange?.(false);
+    setReuseError('');
+    setDateOpen(false);
+    const instance = lifetime.current;
+    try {
+      await upsert.mutateAsync(payload);
+      if (!instance.active) return;
+      resetForm();
+      toast.success('Expense added');
+    } catch {
+      if (!instance.active) return;
+      setPhase('unconfirmed');
+      setReuseError('Save unconfirmed. Check expenses before retrying.');
+    } finally {
+      if (instance.active) reuseGate.current = false;
+    }
+  };
+
+  const checkReuseSave = async () => {
+    const payload = submitted.current;
+    if (!canReveal() || !payload || !readSavedExpenses || reuseGate.current)
+      return;
+    const checkEpoch = getHideEpoch();
+    reuseGate.current = true;
+    setPhase('checking');
+    const instance = lifetime.current;
+    const previousPhase = phase;
+    try {
+      const records = await readSavedExpenses();
+      if (!instance.active) return;
+      if (!canReveal() || getHideEpoch() !== checkEpoch) {
+        setPhase(previousPhase === 'conflict' ? 'conflict' : 'unconfirmed');
+        setReuseError(
+          'Amounts were hidden while checking. Check expenses again before retrying.'
+        );
+        return;
+      }
+      onSavedExpensesRead?.(records);
+      const saved = records.find((record) => record.id === payload.id);
+      if (saved && sameExpenseValues(saved, payload)) {
+        resetForm();
+        toast.success('Expense save confirmed');
+      } else if (saved) {
+        setPhase('conflict');
+        setReuseError(
+          'This expense has different saved values. Review it in the list before leaving this draft. Retry is disabled to protect those values.'
+        );
+      } else {
+        setPhase(previousPhase === 'conflict' ? 'conflict' : 'unconfirmed');
+        setReuseError(
+          previousPhase === 'conflict'
+            ? 'The expense was not found. A previous conflict remains unresolved; retry stays disabled.'
+            : 'The expense was not found. The original save may still finish; keep this draft unchanged and retry the same expense.'
+        );
+      }
+    } catch {
+      if (instance.active) {
+        setPhase(previousPhase === 'conflict' ? 'conflict' : 'unconfirmed');
+        setReuseError(
+          'Could not check expenses. The save remains unconfirmed.'
+        );
+      }
+    } finally {
+      if (instance.active) reuseGate.current = false;
+    }
   };
 
   const handleContainerPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     if (!canReveal()) return;
     const text = e.clipboardData.getData('text/plain');
     if (!text.includes('\t')) return;
+
+    if (reuse) {
+      e.preventDefault();
+      setReuseError('Finish or cancel this draft before pasting expense rows.');
+      return;
+    }
 
     e.preventDefault();
 
@@ -164,7 +359,7 @@ export function ExpenseQuickAdd() {
     resetForm();
   };
   const handleSubmit = () => {
-    if (!canReveal()) return;
+    if (!canReveal() || reuse) return;
     if (issues.length > 0) return;
     const amountNum = Number(amount);
     if (!date || !Number.isFinite(amountNum) || amountNum <= 0) {
@@ -193,6 +388,10 @@ export function ExpenseQuickAdd() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (reuse) {
+      if (e.key === 'Enter') e.preventDefault();
+      return;
+    }
     if (e.key === 'Enter' && !typeOpenRef.current && !dateOpen) {
       e.preventDefault();
       handleSubmit();
@@ -201,6 +400,7 @@ export function ExpenseQuickAdd() {
 
   return (
     <div
+      ref={containerRef}
       className="border-primary/20 bg-primary/5 rounded-xl border-2 p-4"
       onPaste={handleContainerPaste}
     >
@@ -209,7 +409,13 @@ export function ExpenseQuickAdd() {
           <div className="flex-center bg-primary size-7 rounded-lg">
             <Zap className="text-primary-foreground size-3.5" />
           </div>
-          <span className="text-sm font-semibold">Quick Add Expense</span>
+          <span
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-sm font-semibold"
+          >
+            Quick Add Expense
+          </span>
           {pasted && (
             <span className="bg-gain-subtle text-gain-strong flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium">
               <ClipboardPaste className="size-3" />
@@ -217,21 +423,86 @@ export function ExpenseQuickAdd() {
             </span>
           )}
         </div>
-        <span className="text-muted-foreground hidden text-xs sm:block">
-          <kbd className="bg-background rounded border px-1.5 py-0.5 font-mono text-[11px]">
-            ↵ Enter
-          </kbd>{' '}
-          to add &middot;{' '}
-          <kbd className="bg-background rounded border px-1.5 py-0.5 font-mono text-[11px]">
-            Tab
-          </kbd>{' '}
-          to advance &middot;{' '}
-          <kbd className="bg-background rounded border px-1.5 py-0.5 font-mono text-[11px]">
-            ⌘V
-          </kbd>{' '}
-          to paste row
-        </span>
+        {!reuse && (
+          <span className="text-muted-foreground hidden text-xs sm:block">
+            <kbd className="bg-background rounded border px-1.5 py-0.5 font-mono text-[11px]">
+              ↵ Enter
+            </kbd>{' '}
+            to add &middot;{' '}
+            <kbd className="bg-background rounded border px-1.5 py-0.5 font-mono text-[11px]">
+              Tab
+            </kbd>{' '}
+            to advance &middot;{' '}
+            <kbd className="bg-background rounded border px-1.5 py-0.5 font-mono text-[11px]">
+              ⌘V
+            </kbd>{' '}
+            to paste row
+          </span>
+        )}
       </div>
+
+      {reuse && (
+        <div className="mb-3 space-y-2">
+          <p role="status" className="text-sm">
+            Reused expense · Date set to today · Self expense
+          </p>
+          {reuseError && (
+            <p
+              id={feedbackId + '-reuse'}
+              role="alert"
+              className="text-loss-strong text-sm"
+            >
+              {reuseError}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={hidden || frozen}
+              onClick={() => {
+                if (!canReveal()) return;
+                const current = {
+                  ...reuse,
+                  date,
+                  type,
+                  item,
+                  info,
+                  amount: Number(amount),
+                };
+                if (sameExpenseValues(current, reuse)) cancelReuse();
+                else setDialog('cancel');
+              }}
+            >
+              Cancel reuse
+            </Button>
+            {(phase === 'unconfirmed' ||
+              phase === 'conflict' ||
+              phase === 'checking') && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={hidden || phase === 'checking' || !readSavedExpenses}
+                onClick={() => void checkReuseSave()}
+              >
+                {phase === 'checking' ? 'Checking expenses…' : 'Check expenses'}
+              </Button>
+            )}
+            {phase === 'unconfirmed' && (
+              <Button
+                size="sm"
+                disabled={hidden}
+                onClick={() => {
+                  if (!canReveal()) return;
+                  if (submitted.current) void submitReuse(submitted.current);
+                }}
+              >
+                Retry same expense
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {issues.length > 0 && (
         <p
@@ -255,17 +526,23 @@ export function ExpenseQuickAdd() {
             Date
           </label>
           <Popover
-            open={dateOpen && !hidden}
+            open={dateOpen && !hidden && !frozen}
             onOpenChange={(open) => {
-              if (canReveal()) setDateOpen(open);
+              if (canReveal() && !frozen) setDateOpen(open);
             }}
           >
             <PopoverTrigger asChild>
               <Button
-                disabled={hidden}
                 id={feedbackId + '-date'}
+                disabled={hidden || frozen}
                 aria-invalid={invalidDate || undefined}
-                aria-describedby={invalidDate ? feedbackId : undefined}
+                aria-describedby={
+                  invalidDate
+                    ? reuse
+                      ? feedbackId + '-reuse-date'
+                      : feedbackId
+                    : undefined
+                }
                 variant="outline"
                 className={cn(
                   'bg-background h-9 w-[140px] justify-start gap-2 text-sm font-normal',
@@ -283,7 +560,9 @@ export function ExpenseQuickAdd() {
                 selected={date ? new Date(date) : undefined}
                 onSelect={(d) => {
                   if (d) {
+                    if (!canReveal() || frozen) return;
                     setDate(format(d, 'yyyy-MM-dd'));
+                    setReuseInvalid((current) => ({ ...current, date: false }));
                     setIssues((current) =>
                       current.filter((issue) => issue.field !== 'date')
                     );
@@ -298,7 +577,9 @@ export function ExpenseQuickAdd() {
                   size="sm"
                   className="w-full"
                   onClick={() => {
+                    if (!canReveal() || frozen) return;
                     setDate(format(new Date(), 'yyyy-MM-dd'));
+                    setReuseInvalid((current) => ({ ...current, date: false }));
                     setIssues((current) =>
                       current.filter((issue) => issue.field !== 'date')
                     );
@@ -310,6 +591,14 @@ export function ExpenseQuickAdd() {
               </div>
             </PopoverContent>
           </Popover>
+          {reuseInvalid.date && (
+            <p
+              id={feedbackId + '-reuse-date'}
+              className="text-loss-strong text-xs"
+            >
+              Choose a valid date.
+            </p>
+          )}
         </div>
         <div className="space-y-1">
           <label
@@ -319,10 +608,12 @@ export function ExpenseQuickAdd() {
             Category
           </label>
           <ExpenseTypeSelect
-            disabled={hidden}
+            disabled={hidden || frozen}
             inputId={feedbackId + '-category'}
             value={type}
-            onChange={setType}
+            onChange={(next) => {
+              if (canReveal()) setType(next);
+            }}
             onSubmit={handleSubmit}
             onAfterSelect={() => itemRef.current?.focus()}
             onOpenChange={(open) => {
@@ -341,11 +632,13 @@ export function ExpenseQuickAdd() {
             Item / Brand
           </label>
           <Input
-            disabled={hidden}
+            disabled={hidden || frozen}
             ref={itemRef}
             id={feedbackId + '-item'}
             value={hidden ? '' : item}
-            onChange={(e) => setItem(e.target.value)}
+            onChange={(e) => {
+              if (canReveal()) setItem(e.target.value);
+            }}
             onKeyDown={handleKeyDown}
             placeholder="e.g. Grab, NTUC"
             className="bg-background h-9 w-[140px] text-sm"
@@ -359,10 +652,12 @@ export function ExpenseQuickAdd() {
             Notes
           </label>
           <Input
-            disabled={hidden}
+            disabled={hidden || frozen}
             value={hidden ? '' : info}
             id={feedbackId + '-notes'}
-            onChange={(e) => setInfo(e.target.value)}
+            onChange={(e) => {
+              if (canReveal()) setInfo(e.target.value);
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Optional description"
             className="bg-background h-9 w-full text-sm"
@@ -376,18 +671,26 @@ export function ExpenseQuickAdd() {
             Amount (SGD)
           </label>
           <Input
-            disabled={hidden}
+            disabled={hidden || frozen}
             id={feedbackId + '-amount'}
             aria-invalid={invalidAmount || undefined}
-            aria-describedby={invalidAmount ? feedbackId : undefined}
+            aria-describedby={
+              invalidAmount
+                ? reuse
+                  ? feedbackId + '-reuse-amount'
+                  : feedbackId
+                : undefined
+            }
             type="number"
             step="0.01"
             min="0"
             value={hidden ? '' : amount}
             onChange={(e) => {
+              if (!canReveal()) return;
               const value = e.target.value;
               setAmount(value);
               if (Number.isFinite(Number(value)) && Number(value) > 0) {
+                setReuseInvalid((current) => ({ ...current, amount: false }));
                 setIssues((current) =>
                   current.filter((issue) => issue.field !== 'amount')
                 );
@@ -398,16 +701,100 @@ export function ExpenseQuickAdd() {
             placeholder="0.00"
             className="bg-background h-9 w-[110px] text-right text-sm tabular-nums"
           />
+          {reuseInvalid.amount && (
+            <p
+              id={feedbackId + '-reuse-amount'}
+              className="text-loss-strong text-xs"
+            >
+              Enter a positive finite amount.
+            </p>
+          )}
         </div>
         <Button
           className="h-9 shrink-0"
-          onClick={handleSubmit}
-          disabled={hidden || upsert.isPending || issues.length > 0}
+          onClick={() => {
+            if (!canReveal()) return;
+            if (!reuse) {
+              handleSubmit();
+              return;
+            }
+            const payload = {
+              ...reuse,
+              date,
+              type,
+              item,
+              info,
+              amount: Number(amount),
+            };
+            const validation = expenseDataSchema.safeParse(payload);
+            if (!validation.success) {
+              setReuseInvalid({
+                date: validation.error.issues.some(
+                  (issue) => issue.path[0] === 'date'
+                ),
+                amount: validation.error.issues.some(
+                  (issue) => issue.path[0] === 'amount'
+                ),
+              });
+              setReuseError(
+                'Choose a valid date and enter a positive finite amount.'
+              );
+              return;
+            }
+            setReuseInvalid({ date: false, amount: false });
+            void submitReuse(payload);
+          }}
+          disabled={hidden || frozen || upsert.isPending || issues.length > 0}
         >
           <Plus className="mr-1.5 size-4" />
-          Add Expense
+          {phase === 'saving' && reuse ? 'Saving expense…' : 'Add Expense'}
         </Button>
       </div>
+      <Dialog
+        open={dialog !== null}
+        onOpenChange={(open) => {
+          if (!open) setDialog(null);
+        }}
+      >
+        <DialogContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            (dialogReturnFocus.current ?? itemRef.current)?.focus();
+          }}
+        >
+          <DialogTitle>
+            {dialog === 'cancel'
+              ? 'Discard changes to this draft?'
+              : 'Replace current draft?'}
+          </DialogTitle>
+          <DialogDescription>
+            Your current unsaved inputs will be discarded. No expense will be
+            saved.
+          </DialogDescription>
+          <AmountsHiddenNotice />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                dialogReturnFocus.current = itemRef.current;
+                setDialog(null);
+              }}
+            >
+              Keep draft
+            </Button>
+            <Button
+              disabled={hidden}
+              onClick={() => {
+                if (!canReveal()) return;
+                if (dialog === 'cancel') cancelReuse();
+                else if (dialog) activateReuse(dialog);
+              }}
+            >
+              {dialog === 'cancel' ? 'Discard draft' : 'Replace draft'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

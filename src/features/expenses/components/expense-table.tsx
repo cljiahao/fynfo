@@ -37,7 +37,11 @@ const EMPTY_ROW: ExpenseData = {
   splits: [],
 };
 
-export function ExpenseTable() {
+export function ExpenseTable({
+  onReuse,
+}: {
+  onReuse?: (expense: ExpenseData, origin: HTMLButtonElement) => void;
+}) {
   const { canReveal } = useAmountVisibility();
   const { data: expenses, isLoading } = useExpenses();
   const { data: people } = useDistinctPeople();
@@ -164,7 +168,7 @@ export function ExpenseTable() {
             <col className="w-[115px]" />
             <col className="w-[100px]" />
             <col className="w-[100px]" />
-            <col className="w-[90px]" />
+            <col className="w-[145px]" />
           </colgroup>
           <thead>
             <tr className="bg-muted/50 border-b text-xs font-semibold tracking-wide">
@@ -231,6 +235,7 @@ export function ExpenseTable() {
                 peopleSuggestions={people ?? []}
                 onSave={handleSave}
                 onDelete={handleDelete}
+                onReuse={onReuse}
               />
             ))}
             {filtered.length === 0 && newRows.length === 0 && (

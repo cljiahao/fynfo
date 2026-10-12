@@ -2,12 +2,12 @@
 id: '131'
 slug: budget-reserve-proposal
 area: feature
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-11
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-12
+impl_pr: https://github.com/cljiahao/fynfo/pull/54
 constitution_satisfies:
   [
     '§1.1',
@@ -176,3 +176,7 @@ Independent reviews found no remaining actionable issues in the selected scope. 
 ## Feature130 composition — 2026-10-12
 
 All nine selected131 paths were preserved in retained named stash retained-131-before-130-integration-2026-10-12. The branch fast-forwarded to reviewed local130 commit eb8b009, then applied the retained stash without conflicts. README contains both feature scopes. No behavior was changed during integration; final normal gates remain pending.
+
+## Verified delivery — 2026-10-12
+
+PR 54 merged as 6b63ce5ec168c04e26fee4b62a30b3f1417e9eed after hosted CI 38272939801 passed on exact reviewed head b5d2b6128fc8e60881544311730a683a2bd1db92. Unchanged normal hooks and full local gates passed 1731 tests. Aggregate statements / branches / functions / lines: 93.00 / 88.65 / 91.97 / 94.48 percent; every aggregate exceeds80 percent and stricter security floors remain unchanged. Independent review and the recorded synthetic UI evidence support the bounded scope. Earlier pending entries are historical preparation stages. The approved field remains unchanged; this records owner-authorized delivery rather than agent-granted approval. No private authentication, RLS, cryptographic or database guarantee, and no whole-roadmap completion, is claimed.

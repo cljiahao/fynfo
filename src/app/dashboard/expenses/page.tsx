@@ -5,8 +5,7 @@ import { PageHeader } from '@/components/widgets';
 import {
   ExpenseAnomalyReview,
   ExpenseChart,
-  ExpenseQuickAdd,
-  ExpenseTable,
+  ExpenseEntry,
   OwedSummary,
   useExpenses,
 } from '@/features/expenses';
@@ -31,8 +30,7 @@ export default function ExpensesPage() {
       </div>
 
       <ExpenseAnomalyReview />
-      <ExpenseQuickAdd />
-      <ExpenseTable />
+      <ExpenseEntry />
     </div>
   );
 }

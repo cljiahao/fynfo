@@ -371,6 +371,18 @@ Apply `supabase/migrations/20261010000103_personal_planning_scenarios.sql` only 
 
 Inline expense drafts keep independent identities: saving or cancelling one preserves the others. A new draft uses today’s local date when added and freezes only its own controls while saving. Failed saves retain its inputs and identity for retry. A dispatched save may still finish after leaving the page; UI cleanup does not cancel that write or guarantee exactly-once persistence.
 
+Saved self expenses offer **Reuse** when their row has no unsaved changes or
+pending save. Reuse fills Quick Add with today's local date and the prior category,
+item, notes and amount. Review those values and click **Add Expense** explicitly;
+Enter, blur and spreadsheet-row paste never save a reused draft. Replacing an
+existing draft asks first. Shared expenses are not converted to self expenses.
+An unconfirmed save freezes its values and retains its ID for **Retry same
+expense**. **Check expenses** uses a fresh read to confirm an exact saved match;
+absence or read failure does not prove the original save cannot still finish.
+Changed saved values disable retry. Reuse drafts last only while the unlocked
+page remains mounted; they are not recurring templates or durable duplicate
+prevention.
+
 ## Recorded spending review
 
 Expenses offers a collapsed **Review spending changes** section. Choose a fully elapsed month and explicitly select **Review recorded spending** to compare each category with the median of its preceding three calendar months. A category appears for review only when its recorded personal share is at least twice that median and at least SGD 50 higher. These fixed household thresholds are a comparison to check, not statistical evidence, a spending recommendation or proof that a record is wrong.
