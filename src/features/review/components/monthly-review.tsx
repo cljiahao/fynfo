@@ -17,10 +17,13 @@ import { useSalaryRecords } from '@/features/salary';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { formatSGD } from '@/lib/utils/currency';
 import { YYYY_MM } from '@/lib/zod-utils';
+import { useIsMutating } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { useState } from 'react';
+import { qualifyBudgetSpending } from '../lib/budget-reserve';
 import { buildMonthlyReview } from '../lib/monthly-review';
+import { BudgetReserveWorksheet } from './budget-reserve-worksheet';
 import { MonthlyReviewSources } from './monthly-review-sources';
 
 export function MonthlyReview() {
@@ -29,6 +32,7 @@ export function MonthlyReview() {
   const snapshots = useSnapshots();
   const salary = useSalaryRecords();
   const expenses = useExpenses();
+  const mutationCount = useIsMutating();
   const queries = [snapshots, salary, expenses];
   const pending = queries.some((query) => query.isPending);
   const failed = queries.some((query) => query.isError);
@@ -189,6 +193,23 @@ export function MonthlyReview() {
           </Accordion>
         </>
       )}
+      <BudgetReserveWorksheet
+        month={month}
+        availability={
+          !validMonth
+            ? 'invalid-month'
+            : failed
+              ? 'error'
+              : pending || expenses.isFetching || mutationCount > 0
+                ? 'loading'
+                : 'ready'
+        }
+        spending={
+          review && !expenses.isFetching && mutationCount === 0
+            ? qualifyBudgetSpending(month, expenses.data ?? [], review)
+            : null
+        }
+      />
     </section>
   );
 }

@@ -100,6 +100,23 @@ Contributing records explain salary and bonus, aggregate shared-expense deductio
 and both snapshot totals. Expense pages show at most 20 rows while totals include
 every matching record.
 
+The monthly review's **Budget and annual reserve plan** is a session-only
+worksheet. Enter your own monthly spending limit; the comparison uses recorded
+personal shares for the selected month, excludes other people's shares regardless
+of settlement, and withholds results for missing, invalid or unresolved records.
+Cached expense refetches and pending saves also withhold the comparison. It does
+not certify a complete month or show spendable cash.
+
+The annual reserve calculation takes an explicit target, amount already reserved
+and contribution count. It divides the remaining target into cent-rounded
+contributions with an adjusted final amount; later slots may be zero when an
+earlier contribution covers the target. It assumes no future income or payment
+dates, transfers no money and does not change saved expenses, asset balances or
+salary planning. Inputs are not saved: leaving the page, reloading, vault lock or
+account change clears them. Changing the review month clears only its monthly
+limit; Hide/Show preserves the local worksheet draft. Saved budgets and reserve
+goals remain a separately scoped persistence feature.
+
 Search records in the navbar searches the five personal histories only when opened.
 It matches recorded text, shows up to four results per source, and identifies
 loading, updating or failed sources with individual retry controls. Household
@@ -365,3 +382,11 @@ absence or read failure does not prove the original save cannot still finish.
 Changed saved values disable retry. Reuse drafts last only while the unlocked
 page remains mounted; they are not recurring templates or durable duplicate
 prevention.
+
+## Recorded spending review
+
+Expenses offers a collapsed **Review spending changes** section. Choose a fully elapsed month and explicitly select **Review recorded spending** to compare each category with the median of its preceding three calendar months. A category appears for review only when its recorded personal share is at least twice that median and at least SGD 50 higher. These fixed household thresholds are a comparison to check, not statistical evidence, a spending recommendation or proof that a record is wrong.
+
+The review uses the entire successfully loaded expense history, independently of table search, filters and pages. Each expense and other-person share is rounded to cents before summing; settlement does not change personal spending. All categories, including insurance, participate. Every category needs at least one valid recorded expense in each of the four months. Missing history is unavailable rather than zero; a zero baseline is explicitly unavailable. Invalid dates/identities can prevent a review, while invalid amounts or allocations withhold the affected category. Loaded records may still be incomplete.
+
+Expand an explanation to inspect exact baseline months, totals and contributing item/brand rows. Source pagination does not change comparison totals. The review makes no saved changes. Background fetching, read failures and pending saves suppress results; changes to records, selected month or readiness require a fresh explicit review. Hide amounts conceals and invalidates the analysis, including Hide then Show. Showing amounts permits a fresh review, rather than automatically restoring old results. No file authenticity, database consistency, account authorization or recovery guarantee is implied by this comparison.

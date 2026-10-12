@@ -288,3 +288,11 @@ Owner requested PR51 merge after greenCI; the old09cf0ee head conflicts with mer
 ## Integrated129 focused verification — 2026-10-12
 
 Independent source review found no remaining actionable privacy integration issue. Four focused suites passed 62 tests, including actual-provider Hide/Show draft and stale-read regressions plus incumbent Quick Add, draft preservation and visibility boundaries. Log retained in parent work/134-integrated-targeted.log. Data/query boundaries are mocked; no private auth/RLS/database proof is claimed. Final normal hooks, full coverage, native composition and exact changed-head CI remain required.
+
+## Prospective merged130–131 composition — 2026-10-12
+
+Before resolving this normal main merge, select the existing Expenses page and components barrel plus README composition. Retain130 ExpenseAnomalyReview followed by134 ExpenseEntry, which owns Quick Add and the table. Keep all130/131 modules/tests unchanged and both README sections. Main130 PR53 merged f8dc9e8 and131 PR54 merged6b63ce5 after exact-head CI. This changes composition only; no alternate source copies or provider changes.
+
+## Synthetic native integrated reuse verification — 2026-10-12
+
+Hash-matched actual reuse components passed desktop and390px mobile checks in the isolated Next fixed-memory fixture. Keyboard Reuse created a today-dated editable self draft without a write; input Enter did not save. Cancel cleared the reuse draft. Keep draft retained ordinary unsaved text and explicit Replace populated the selected source. One explicit Add Expense caused one upsert and increased memory rows5→6, retaining the original visible date, description and amount. Hide blanked and disabled financial input properties/value attributes, removed source descriptions from the DOM, and Show restored the exact draft. Mobile document width and scroll width were both390.130 review still produced September120/median50/excess70, then invalidated when hidden. Images retained in parent work/134-reuse-desktop.png and134-reuse-mobile.png. Data/query boundaries are synthetic; committed-with-lost-acknowledgement/external conflict/auth/RLS/database branches are not native proof. Their retry semantics remain component-test evidence.
