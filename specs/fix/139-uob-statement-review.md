@@ -2,7 +2,9 @@
 id: '139'
 slug: uob-statement-review
 area: fix
-status: owner-authorized
+status: shipped
+shipped: 2026-10-14
+impl_pr: https://github.com/cljiahao/fynfo/pull/59
 author: Codex
 created: 2026-10-13
 ---
@@ -50,7 +52,8 @@ Rollback is a code revert; no data migration or stored record rewrite.
 
 Constitution: §2 auth/encryption/mutations unchanged; §3 existing stack; §4 tests
 and build; §5 no private fixture data; §7.4 bounded owner-requested remediation.
-Publication/merge of this follow-up is not covered by the earlier release merge.
+The owner explicitly authorized publication and merge on 14 October 2026.
+PR #59 was merged after CI and Vercel preview checks passed.
 
 ## Verification record
 
@@ -82,7 +85,7 @@ Independent review identified initial source-page mismatch when transactions sta
 after a cover page. Initialize from the first candidate's source page and cover it
 with a regression. Reviewer confirmed the finding closed with no other blockers.
 Source navigation remains page plus excerpt; no precise PDF bounding-box highlight
-is claimed. This follow-up has not been published or deployed.
+is claimed. This verification preceded publication; see the release closeout below.
 
 ## 14 October onboarding simplification
 
@@ -105,3 +108,13 @@ are outputs/139-minimal-desktop.png and outputs/139-minimal-mobile.png outside G
 Single-page PDF navigation is omitted, redundant introduction shortened and native
 checkboxes use the existing primary color. No private data used. Independent
 review found no blockers; Impeccable detector found no issues. Preview stopped.
+
+## Release closeout
+
+Owner request on 14 October: merge so the changes can be tested live. PR #59 merged
+as b4f6da08dc40585c9893bbf772bd47e6bbb468ae after all GitHub CI and Vercel preview
+checks passed for b164850d260fe8d8e66f6bd743c652a7dc72da97. Normal pre-push gates
+passed: 181 suites / 2,024 tests, formatting, lint, type checking and production
+build. No database migration, new dependency or private fixture data. This record
+marks the code as shipped; production deployment is verified separately by its
+matching commit and deployment status. No Docker Hub push or Pi rollout is claimed.
