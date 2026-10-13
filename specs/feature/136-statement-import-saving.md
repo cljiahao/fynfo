@@ -173,6 +173,11 @@ This spec; import-review `components/statement-review.tsx`, `types.ts`,
 Tests: new `test/features/expenses/import-expense-actions.test.ts`,
 `test/features/profile/statement-import.test.tsx`, `statement-import.test.ts`,
 and existing statement-review/parser tests for duplicate severity integration.
+Consumer sweep follow-on recorded before edit: existing
+`test/features/privacy/statement-review-visibility.test.tsx` must expose the new
+pure import helpers and mocked read/insert API in its expenses barrel fixture,
+and recognize the accurate selected-save disclosure. Keep every privacy assertion;
+no production privacy/provider edit or scope expansion.
 README records the contract. No page, privacy-provider, existing action/hook,
 SQL, package/lockfile or protected tooling edits. Amend this list before adding paths.
 
