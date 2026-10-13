@@ -303,3 +303,15 @@ timeout, global test configuration or coverage threshold is changed. The failed
 broad log is retained, and full coverage is repeated. No production source changes
 after the successful corrected build. Public origin metadata was verified, but
 automatic review still requires explicit owner permission for remote publication.
+
+Final full coverage passed on 2343537: 168 suites / 1847 tests; S92.85/B88.48/
+F92.38/L94.58 with incumbent floors intact. A final recovery-contract regression
+then reproduced an enabled-but-blocked Check action after Hide/Show while the
+original save acknowledgement was still unanswered. Before correction it made
+only the original duplicate read, not the requested authoritative check. The
+scoped hook releases the superseded operation on Hide/explicit discard and each
+finally handler releases only its own operation, so a late old request cannot
+clear a newer read's lease. Frozen unconfirmed values still prohibit retry or
+replacement without the explicit discard warning. The new regression proves an
+exact authoritative check before the old acknowledgement and ignores a later
+unconfirmed acknowledgement. No schema, action or additional product path.

@@ -96,6 +96,7 @@ export function useStatementSave(
   useEffect(() => {
     if (!privacy.hidden) return;
     operation.current++;
+    running.current = false;
     setBusy(false);
     setChecked('');
     setAcknowledged(false);
@@ -209,7 +210,7 @@ export function useStatementSave(
         );
       }
     } finally {
-      running.current = false;
+      if (operation.current === op) running.current = false;
       if (alive.current && operation.current === op) {
         setBusy(false);
         if (!valid(op, epoch)) {
@@ -267,7 +268,7 @@ export function useStatementSave(
         if (status === 'unconfirmed' || status === 'conflict') break;
       }
     } finally {
-      running.current = false;
+      if (operation.current === op) running.current = false;
       if (valid(op, epoch)) {
         setBusy(false);
         setChecked('');
@@ -327,7 +328,7 @@ export function useStatementSave(
           'Saved expenses could not be checked. Frozen submissions are retained.'
         );
     } finally {
-      running.current = false;
+      if (operation.current === op) running.current = false;
       if (alive.current && operation.current === op) setBusy(false);
     }
   }
@@ -351,6 +352,7 @@ export function useStatementSave(
   }
   function reset() {
     operation.current++;
+    running.current = false;
     ids.current.clear();
     updateAttempts({});
     setSelection([]);

@@ -516,3 +516,32 @@ it('selection across pages is included and a twenty-one row selection blocks the
   ).toBeDisabled();
   expect(mocks.insert).not.toHaveBeenCalled();
 }, 10_000);
+
+it('checks a hidden interrupted save before its old acknowledgement returns and ignores that late result', async () => {
+  await setup();
+  let finish!: (value: unknown) => void;
+  mocks.insert.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  await selectAndCheck();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Save selected expenses' })
+  );
+  const input = mocks.insert.mock.calls[0][0] as ImportedExpenseInput;
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Hide amounts', hidden: true })
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
+  mocks.read.mockResolvedValue([importedExpenseValues(input)]);
+  fireEvent.click(screen.getByRole('button', { name: 'Check saved expenses' }));
+  await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(2));
+  await screen.findByText(/Confirmed saved/);
+  await act(async () => finish({ id: input.id, status: 'unconfirmed' }));
+  expect(
+    screen.getByText(/Source page 1, line 2: Confirmed saved/)
+  ).toBeInTheDocument();
+  expect(mocks.insert).toHaveBeenCalledTimes(1);
+});
