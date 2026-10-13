@@ -27,9 +27,12 @@ credits blocked. No guessed conversion or changes to stored expense shape.
 
 The modal presents setup, long explanations, the PDF, full row classifications,
 merchant tooling and source notes at once. Preserve incumbent tokens and controls;
-collapse setup after extraction, make the editable expense list the default,
-provide the original PDF on demand, and disclose classification/source/rule tools
-per row. Keep blockers, save outcomes, duplicate confirmation, privacy guards and
+collapse setup after extraction and disclose secondary classification/rule tools
+per row. The owner's follow-up explicitly requests Impeccable refinement with
+side-by-side comparison: desktop shows the PDF beside editable rows; mobile keeps
+a view switch. Focusing a row shows its source page and excerpt. Keep source
+comparison outside secondary details, with quiet selection styling and independently
+scrollable desktop panes. Keep blockers, save outcomes, duplicate confirmation, privacy guards and
 explicit saving visible and functional. No dependency/schema/crypto changes.
 
 Affected files: import-review parser/components; corresponding parser, review,
@@ -59,3 +62,24 @@ both 390px, modal width and scroll width both 341px. Explicit selection, duplica
 review and one confirmed save were checked against memory-only actions. Setup,
 rules and per-row secondary details collapse; blockers remain visible. The
 fixture server was stopped. Full gates follow before publication is proposed.
+
+## Side-by-side refinement verification
+
+The owner requested original PDF comparison remain visible while simplifying the
+review. Desktop now uses two independently scrolling panes; the source page and
+excerpt follow the focused draft. Compare source stays beside Include expense.
+Mobile retains the Statement / Extracted view switch. Setup and saved rules share
+a compact toolbar; descriptions have more width than billed amounts.
+
+A bounded synthetic browser pass confirmed row editing, source tracking, mobile
+comparison, duplicate review and one confirmed memory-only save. At 390px, document
+and scroll widths were both 390px; modal widths were both 341px. Desktop panes had
+equal client/scroll widths of 517px. Screenshots contain synthetic data only. The
+preview server and browser tab were closed after verification. The Impeccable static
+detector reported no findings.
+
+Independent review identified initial source-page mismatch when transactions start
+after a cover page. Initialize from the first candidate's source page and cover it
+with a regression. Reviewer confirmed the finding closed with no other blockers.
+Source navigation remains page plus excerpt; no precise PDF bounding-box highlight
+is claimed. This follow-up has not been published or deployed.

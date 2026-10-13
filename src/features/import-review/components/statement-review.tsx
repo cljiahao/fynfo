@@ -197,7 +197,8 @@ function StatementReviewBody({
       }
       const candidates = parseStatementLines(lines, bank, { from, to });
       setRows(candidates);
-      setPage(1);
+      setSelected(candidates[0]?.id ?? '');
+      setPage(candidates[0]?.source[0].page ?? 1);
       setPageCount(opened.pageCount);
       setView('extracted');
       setFile(null);
@@ -317,116 +318,108 @@ function StatementReviewBody({
   return (
     <div className="space-y-4">
       <AmountsHiddenNotice />
-      <details open={rows.length === 0} className="space-y-3">
-        <summary className="cursor-pointer text-sm font-medium">
-          {rows.length ? 'Change statement' : 'Choose a statement'}
-        </summary>
-        <form
-          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (canReveal()) void extract();
-          }}
-        >
-          <div className="space-y-2">
-            <Label htmlFor={`${id}-bank`}>Statement bank</Label>
-            <select
-              disabled={hidden}
-              id={`${id}-bank`}
-              value={bank}
-              className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-              onChange={(event) => {
-                if (!canReveal()) return;
-                if (!reset()) return;
-                setBank(event.target.value as StatementBank);
-              }}
-            >
-              {STATEMENT_BANKS.map((entry) => (
-                <option key={entry.value} value={entry.value}>
-                  {entry.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${id}-from`}>Period start</Label>
-            <Input
-              disabled={hidden}
-              id={`${id}-from`}
-              type="date"
-              value={hidden ? '' : from}
-              required
-              onChange={(event) => {
-                if (!canReveal()) return;
-                if (!reset()) return;
-                setFrom(event.target.value);
-              }}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${id}-to`}>Period end</Label>
-            <Input
-              disabled={hidden}
-              id={`${id}-to`}
-              type="date"
-              value={hidden ? '' : to}
-              required
-              onChange={(event) => {
-                if (!canReveal()) return;
-                if (!reset()) return;
-                setTo(event.target.value);
-              }}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${id}-file`}>Bank statement PDF</Label>
-            <Input
-              disabled={hidden}
-              id={`${id}-file`}
-              type="file"
-              accept=".pdf,application/pdf"
-              onChange={(event) => {
-                if (!canReveal()) return;
-                if (!reset()) return;
-                setFile(event.currentTarget.files?.[0] ?? null);
-                event.currentTarget.value = '';
-              }}
-            />
-          </div>
-          <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-4">
-            <Button type="submit" disabled={hidden || busy || !file}>
-              {busy ? 'Extracting locally…' : 'Extract for review'}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={hidden}
-              onClick={() => {
-                if (!canReveal()) return;
-                if (!reset()) return;
-                setFile(null);
-              }}
-            >
-              Clear review
-            </Button>
-          </div>
-        </form>
-        <p className="text-muted-foreground text-sm">
-          Text PDFs up to 10 MiB and 100 pages. Use an unprotected PDF. Scans
-          and some bank layouts need manual entry.
-        </p>
-      </details>
-      <div role="status" aria-live="polite">
-        {error && <p className="text-destructive text-sm">{error}</p>}
-        {busy && (
+      <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
+        <details open={rows.length === 0} className="space-y-3 open:w-full">
+          <summary className="cursor-pointer text-sm font-medium">
+            {rows.length ? 'Change statement' : 'Choose a statement'}
+          </summary>
+          <form
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (canReveal()) void extract();
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-bank`}>Statement bank</Label>
+              <select
+                disabled={hidden}
+                id={`${id}-bank`}
+                value={bank}
+                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                onChange={(event) => {
+                  if (!canReveal()) return;
+                  if (!reset()) return;
+                  setBank(event.target.value as StatementBank);
+                }}
+              >
+                {STATEMENT_BANKS.map((entry) => (
+                  <option key={entry.value} value={entry.value}>
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-from`}>Period start</Label>
+              <Input
+                disabled={hidden}
+                id={`${id}-from`}
+                type="date"
+                value={hidden ? '' : from}
+                required
+                onChange={(event) => {
+                  if (!canReveal()) return;
+                  if (!reset()) return;
+                  setFrom(event.target.value);
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-to`}>Period end</Label>
+              <Input
+                disabled={hidden}
+                id={`${id}-to`}
+                type="date"
+                value={hidden ? '' : to}
+                required
+                onChange={(event) => {
+                  if (!canReveal()) return;
+                  if (!reset()) return;
+                  setTo(event.target.value);
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-file`}>Bank statement PDF</Label>
+              <Input
+                disabled={hidden}
+                id={`${id}-file`}
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={(event) => {
+                  if (!canReveal()) return;
+                  if (!reset()) return;
+                  setFile(event.currentTarget.files?.[0] ?? null);
+                  event.currentTarget.value = '';
+                }}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-4">
+              <Button type="submit" disabled={hidden || busy || !file}>
+                {busy ? 'Extracting locally…' : 'Extract for review'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={hidden}
+                onClick={() => {
+                  if (!canReveal()) return;
+                  if (!reset()) return;
+                  setFile(null);
+                }}
+              >
+                Clear review
+              </Button>
+            </div>
+          </form>
           <p className="text-muted-foreground text-sm">
-            Reading locally. You can clear this review to cancel.
+            Text PDFs up to 10 MiB and 100 pages. Use an unprotected PDF. Scans
+            and some bank layouts need manual entry.
           </p>
-        )}
-      </div>
-      {rows.length > 0 && (
-        <>
-          <details open={ruleDraft !== null} className="space-y-2">
+        </details>
+        {rows.length > 0 && (
+          <details open={ruleDraft !== null} className="space-y-2 open:w-full">
             <summary className="cursor-pointer text-sm">
               Saved merchant rules
             </summary>
@@ -439,6 +432,20 @@ function StatementReviewBody({
                 .map((row) => ({ description: row.originalDescription, bank }))}
             />
           </details>
+        )}
+      </div>
+      {(error || busy) && (
+        <div role="status" aria-live="polite">
+          {error && <p className="text-destructive text-sm">{error}</p>}
+          {busy && (
+            <p className="text-muted-foreground text-sm">
+              Reading locally. You can clear this review to cancel.
+            </p>
+          )}
+        </div>
+      )}
+      {rows.length > 0 && (
+        <>
           <p className="text-sm" role="status" aria-live="polite">
             {mask(rows.length)} source rows:{' '}
             {mask(
@@ -457,7 +464,7 @@ function StatementReviewBody({
             )}{' '}
             excluded.
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 lg:hidden">
             <Button
               type="button"
               variant={view === 'statement' ? 'default' : 'outline'}
@@ -477,31 +484,43 @@ function StatementReviewBody({
               Extracted
             </Button>
           </div>
-          <div>
+          <div className="grid gap-6 lg:grid-cols-2">
             <section
               aria-label="Original statement"
-              className={`${view === 'statement' ? 'block' : 'hidden'} min-w-0 space-y-3`}
+              className={`${view === 'statement' ? 'block' : 'hidden'} min-w-0 space-y-3 lg:block lg:max-h-[55vh] lg:overflow-y-auto lg:overscroll-contain lg:pr-2`}
             >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={hidden || page <= 1}
-                  onClick={() => canReveal() && setPage(page - 1)}
-                >
-                  Previous page
-                </Button>
-                <span className="text-sm">
-                  Page {page} of {pageCount}
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={hidden || page >= pageCount}
-                  onClick={() => canReveal() && setPage(page + 1)}
-                >
-                  Next page
-                </Button>
+              <div className="bg-background sticky top-0 z-10 space-y-3 pb-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={hidden || page <= 1}
+                    onClick={() => canReveal() && setPage(page - 1)}
+                  >
+                    Previous page
+                  </Button>
+                  <span className="text-sm">
+                    Page {page} of {pageCount}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={hidden || page >= pageCount}
+                    onClick={() => canReveal() && setPage(page + 1)}
+                  >
+                    Next page
+                  </Button>
+                </div>
+                {!hidden && chosen && chosen.source[0].page === page && (
+                  <p
+                    className="bg-muted rounded-md p-3 text-sm break-words"
+                    aria-live="polite"
+                  >
+                    Source page {chosen.source[0].page}, line{' '}
+                    {chosen.source[0].line}:{' '}
+                    {chosen.source.map((line) => line.text).join(' ')}
+                  </p>
+                )}
               </div>
               {!hidden && (
                 <canvas
@@ -510,17 +529,10 @@ function StatementReviewBody({
                   className="h-auto w-full rounded-md border"
                 />
               )}
-              {!hidden && chosen && (
-                <p className="text-sm break-words">
-                  Source page {chosen.source[0].page}, line{' '}
-                  {chosen.source[0].line}:{' '}
-                  {chosen.source.map((line) => line.text).join(' ')}
-                </p>
-              )}
             </section>
             <section
               aria-label="Extracted transaction drafts"
-              className={`${view === 'extracted' ? 'block' : 'hidden'} min-w-0 space-y-3`}
+              className={`${view === 'extracted' ? 'block' : 'hidden'} min-w-0 space-y-3 lg:block lg:max-h-[55vh] lg:overflow-y-auto lg:overscroll-contain lg:pr-2`}
             >
               {rows.length > 20 && (
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -550,76 +562,74 @@ function StatementReviewBody({
                 <fieldset
                   key={row.id}
                   disabled={hidden || save.locked(row.id) || save.busy}
-                  className="min-w-0 space-y-2 border-b py-3"
+                  className={`min-w-0 space-y-2 border-b px-3 py-3 ${selected === row.id ? 'bg-muted/50' : ''}`}
+                  onFocusCapture={() => {
+                    if (!canReveal()) return;
+                    setSelected(row.id);
+                    setPage(row.source[0].page);
+                  }}
                 >
                   <legend className="px-1 text-sm">
                     Row {rowPage * 20 + index + 1}:{' '}
                     {STATEMENT_REVIEW_STATUS_LABELS[row.review.status]}
                   </legend>
-                  {!hidden &&
-                    !save.locked(row.id) &&
-                    (() => {
-                      const input = save.inputFor(row);
-                      return (
-                        <>
-                          <label className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              aria-label={`Select expense from page ${row.source[0].page}, line ${row.source[0].line}`}
-                              disabled={!input || save.busy}
-                              checked={save.selection.includes(row.id)}
-                              onChange={() => save.toggle(row)}
-                            />
-                            Include expense
-                          </label>
-                          {!input && row.review.status === 'candidate' && (
-                            <p className="text-warning-strong text-sm">
-                              This row exceeds supported saving fields or
-                              source-note limits, or its source cannot establish
-                              positive spending. Use manual entry after checking
-                              the source. Source notes allow at most 32 lines,
-                              4096 characters per line and 16 KiB total.
-                            </p>
-                          )}
-                          {input && save.selection.includes(row.id) && (
-                            <details>
-                              <summary className="cursor-pointer text-sm">
-                                Source note to save
-                              </summary>
-                              <p className="mt-2 text-sm break-words whitespace-pre-wrap">
-                                {buildImportNote(input)}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="order-1 h-auto p-0 text-xs"
+                      aria-label={`View source page ${row.source[0].page}, line ${row.source[0].line}`}
+                      onClick={() => {
+                        if (!canReveal()) return;
+                        setSelected(row.id);
+                        setPage(row.source[0].page);
+                        setView('statement');
+                      }}
+                    >
+                      Compare source · Page {row.source[0].page}
+                    </Button>
+                    {!hidden &&
+                      !save.locked(row.id) &&
+                      (() => {
+                        const input = save.inputFor(row);
+                        return (
+                          <>
+                            <label className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                aria-label={`Select expense from page ${row.source[0].page}, line ${row.source[0].line}`}
+                                disabled={!input || save.busy}
+                                checked={save.selection.includes(row.id)}
+                                onChange={() => save.toggle(row)}
+                              />
+                              Include expense
+                            </label>
+                            {!input && row.review.status === 'candidate' && (
+                              <p className="text-warning-strong order-2 w-full text-sm">
+                                This row exceeds supported saving fields or
+                                source-note limits, or its source cannot
+                                establish positive spending. Use manual entry
+                                after checking the source. Source notes allow at
+                                most 32 lines, 4096 characters per line and 16
+                                KiB total.
                               </p>
-                            </details>
-                          )}
-                        </>
-                      );
-                    })()}
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="space-y-1">
-                      <Label htmlFor={`${id}-${row.id}-date`}>Date</Label>
-                      <Input
-                        id={`${id}-${row.id}-date`}
-                        type="date"
-                        value={hidden ? '' : row.date}
-                        onChange={(event) =>
-                          edit(row.id, 'date', event.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor={`${id}-${row.id}-amount`}>
-                        SGD billed amount
-                      </Label>
-                      <Input
-                        id={`${id}-${row.id}-amount`}
-                        inputMode="decimal"
-                        value={hidden ? '' : row.amount}
-                        onChange={(event) =>
-                          edit(row.id, 'amount', event.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1">
+                            )}
+                            {input && save.selection.includes(row.id) && (
+                              <details className="order-2 w-full">
+                                <summary className="cursor-pointer text-sm">
+                                  Source note to save
+                                </summary>
+                                <p className="mt-2 text-sm break-words whitespace-pre-wrap">
+                                  {buildImportNote(input)}
+                                </p>
+                              </details>
+                            )}
+                          </>
+                        );
+                      })()}
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-12">
+                    <div className="space-y-1 sm:col-span-8">
                       <Label htmlFor={`${id}-${row.id}-description`}>
                         Description
                       </Label>
@@ -632,7 +642,31 @@ function StatementReviewBody({
                         }
                       />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 sm:col-span-4">
+                      <Label htmlFor={`${id}-${row.id}-amount`}>
+                        SGD billed amount
+                      </Label>
+                      <Input
+                        id={`${id}-${row.id}-amount`}
+                        inputMode="decimal"
+                        value={hidden ? '' : row.amount}
+                        onChange={(event) =>
+                          edit(row.id, 'amount', event.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-6">
+                      <Label htmlFor={`${id}-${row.id}-date`}>Date</Label>
+                      <Input
+                        id={`${id}-${row.id}-date`}
+                        type="date"
+                        value={hidden ? '' : row.date}
+                        onChange={(event) =>
+                          edit(row.id, 'date', event.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-6">
                       <Label htmlFor={`${id}-${row.id}-category`}>
                         Category
                       </Label>
@@ -663,20 +697,6 @@ function StatementReviewBody({
                     <summary className="text-muted-foreground cursor-pointer text-sm">
                       Details and rules
                     </summary>
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="h-auto p-0"
-                      onClick={() => {
-                        if (!canReveal()) return;
-                        setSelected(row.id);
-                        setPage(row.source[0].page);
-                        setView('statement');
-                      }}
-                    >
-                      View source page {row.source[0].page}, line{' '}
-                      {row.source[0].line}
-                    </Button>
                     <div className="space-y-1">
                       <Label htmlFor={`${id}-${row.id}-classification`}>
                         Classification

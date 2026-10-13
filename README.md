@@ -383,7 +383,9 @@ two-date credit-card layout also has synthetic positioned-text regression covera
 based on owner-supplied layout evidence: the transaction date and main-row SGD
 amount populate the draft; foreign-currency/reference continuations stay in the
 source note. This does not qualify every real bank PDF or reconcile its balance.
-Setup collapses after extraction; the original PDF is available through Statement.
+Setup collapses after extraction. Desktop keeps the original PDF beside editable
+rows; focusing a row shows its source page and excerpt. Compare source opens the
+original on smaller screens, where Statement / Extracted switches views.
 Each transaction's Details and rules disclosure contains its editable classification:
 Expense, Refund, Transfer, Card repayment, Other credit or Unknown. The original
 suggestion, reason and source stay available after an override; **Restore suggestion**

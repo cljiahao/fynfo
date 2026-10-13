@@ -132,6 +132,61 @@ it('reviews editable drafts, keeps provenance, navigates source pages and clears
   expect(mocks.destroy).toHaveBeenCalled();
   expect(screen.queryByText(/source rows:/)).not.toBeInTheDocument();
 });
+it('follows the focused draft to its source page while keeping secondary details closed', async () => {
+  mocks.extract.mockResolvedValue([
+    { page: 1, line: 1, text: 'UOB' },
+    { page: 1, line: 2, text: '31 DEC FIRST MARKET SGD 12.30' },
+    { page: 2, line: 1, text: '01 JAN SECOND MARKET SGD 20.00' },
+  ]);
+  setup();
+  const descriptions = await screen.findAllByLabelText('Description');
+  expect(
+    screen.getAllByRole('button', { name: /View source page/ })
+  ).toHaveLength(2);
+  fireEvent.focus(descriptions[1]);
+  await waitFor(() =>
+    expect(mocks.render).toHaveBeenLastCalledWith(
+      2,
+      expect.any(HTMLCanvasElement)
+    )
+  );
+  expect(
+    screen.getByText(/Source page 2, line 1: 01 JAN SECOND MARKET/)
+  ).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Extracted' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  expect(
+    screen
+      .getAllByText('Details and rules')
+      .every((element) => !element.closest('details')!.open)
+  ).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Previous page' }));
+  expect(screen.queryByText(/Source page 2, line 1:/)).not.toBeInTheDocument();
+  fireEvent.focus(descriptions[0]);
+  expect(
+    screen.getByText(/Source page 1, line 2: 31 DEC FIRST MARKET/)
+  ).toBeInTheDocument();
+  expect(mocks.insert).not.toHaveBeenCalled();
+});
+it('opens the first transaction page when a statement begins with a cover page', async () => {
+  mocks.extract.mockResolvedValue([
+    { page: 1, line: 1, text: 'UOB' },
+    { page: 2, line: 1, text: '31 DEC FIRST MARKET SGD 12.30' },
+  ]);
+  setup();
+  await screen.findByLabelText('Description');
+  await waitFor(() =>
+    expect(mocks.render).toHaveBeenLastCalledWith(
+      2,
+      expect.any(HTMLCanvasElement)
+    )
+  );
+  expect(
+    screen.getByText(/Source page 2, line 1: 31 DEC FIRST MARKET/)
+  ).toBeInTheDocument();
+});
 it('updates classification counts, preserves the suggestion and restores it without changing other edits', async () => {
   setup();
   expect(await screen.findByText(/1 expense suggestions/)).toBeVisible();
