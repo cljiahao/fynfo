@@ -94,6 +94,93 @@ function sample() {
   };
 }
 type Fixture = ReturnType<typeof sample>;
+
+it('requires retained recurring history in version 5 and counts its nested receipts', () => {
+  const template = {
+    definition: {
+      id: '13800000-0000-4000-8000-000000000003',
+      name: 'Synthetic bill',
+      enabled: false,
+      preferredDay: 31,
+      startMonth: '2026-01',
+      endMonth: null,
+      cents: 2500,
+      category: 'bills',
+      item: 'Synthetic merchant',
+      info: '',
+    },
+    archived: true,
+    occurrences: [
+      {
+        month: '2026-02',
+        requestId: '13800000-0000-4000-8000-000000000004',
+        outcome: 'confirmed',
+        expense: {
+          id: '13800000-0000-4000-8000-000000000005',
+          date: '2026-03-01',
+          category: 'bills',
+          item: 'Frozen merchant',
+          info: 'Frozen history',
+          cents: 2450,
+        },
+      },
+    ],
+  };
+  const base = sample();
+  const file = {
+    ...base,
+    version: 5,
+    data: { ...base.data, merchantRules: [], recurringTemplates: [template] },
+  };
+  const result = reviewExportJson(JSON.stringify(file));
+  expect(result).toMatchObject({
+    ok: true,
+    summary: { version: 5, counts: { recurringTemplates: 1 }, warnings: [] },
+  });
+  expect(JSON.stringify(result)).not.toContain('Frozen');
+  expect(
+    reviewExportJson(
+      JSON.stringify({ ...file, data: { ...base.data, merchantRules: [] } })
+    ).ok
+  ).toBe(false);
+  for (const recurringTemplates of [
+    [template, template],
+    [
+      {
+        ...template,
+        occurrences: [...template.occurrences, ...template.occurrences],
+      },
+    ],
+    [
+      {
+        ...template,
+        occurrences: [{ ...template.occurrences[0], outcome: 'skipped' }],
+      },
+    ],
+    [{ ...template, userId: 'owner' }],
+    [{ ...template, definition: { ...template.definition, preferredDay: 32 } }],
+  ])
+    expect(
+      reviewExportJson(
+        JSON.stringify({ ...file, data: { ...file.data, recurringTemplates } })
+      ).ok
+    ).toBe(false);
+  file.data.snapshots[0].entries = Array.from({ length: 9988 }, () => ({
+    category: 'savings',
+    account: '',
+    amount: 0,
+  }));
+  expect(reviewExportJson(JSON.stringify(file)).ok).toBe(true);
+  file.data.snapshots[0].entries.push({
+    category: 'savings',
+    account: '',
+    amount: 0,
+  });
+  expect(reviewExportJson(JSON.stringify(file))).toMatchObject({
+    ok: false,
+    error: expect.stringContaining('10,000-row'),
+  });
+});
 function review(mutator: (file: Fixture) => void) {
   const file = sample();
   mutator(file);
@@ -119,8 +206,12 @@ describe('local export read contract', () => {
           plannerSettings: 1,
           scenarios: 1,
           merchantRules: null,
+          recurringTemplates: null,
         },
-        warnings: ['Versions 1–3 do not include merchant rules.'],
+        warnings: [
+          'Versions 1–3 do not include merchant rules.',
+          'Versions 1–4 do not include recurring templates or occurrence history.',
+        ],
       },
     });
     expect(JSON.stringify(result)).not.toContain('Synthetic');
@@ -136,7 +227,7 @@ describe('local export read contract', () => {
     if (result.ok) {
       expect(result.summary.counts.scenarios).toBeNull();
       expect(result.summary.counts.dividends).toBe(version === 1 ? null : 1);
-      expect(result.summary.warnings.length).toBe(version === 1 ? 3 : 2);
+      expect(result.summary.warnings.length).toBe(version === 1 ? 4 : 3);
     }
   });
   it('supports null singleton domains and empty arrays', () => {
@@ -156,6 +247,7 @@ describe('local export read contract', () => {
       expect(Object.values(result.summary.counts)).toEqual([
         ...Array(9).fill(0),
         null,
+        null,
       ]);
   });
   it('preserves supported whitespace, optional trade IDs, decimal and year-zero month values', () => {
@@ -174,7 +266,7 @@ describe('local export read contract', () => {
     [
       'future version',
       (f: Fixture) => {
-        f.version = 5;
+        f.version = 6;
       },
     ],
     [
@@ -442,7 +534,13 @@ it('reviews version 4 merchant rules, rejects missing/duplicate/invalid rules an
   const good = reviewExportJson(JSON.stringify(file));
   expect(good).toMatchObject({
     ok: true,
-    summary: { version: 4, counts: { merchantRules: 1 }, warnings: [] },
+    summary: {
+      version: 4,
+      counts: { merchantRules: 1 },
+      warnings: [
+        'Versions 1–4 do not include recurring templates or occurrence history.',
+      ],
+    },
   });
   expect(JSON.stringify(good)).not.toContain('MARKET');
   for (const merchantRules of [

@@ -314,8 +314,8 @@ Add shadcn primitives using `npx shadcn@latest add <component-name>`.
 ## Personal data export
 
 The profile page downloads a versioned JSON export of profile, snapshots,
-expenses, salary, tax reliefs, equity trades, dividends, planner settings, saved planning scenarios, and merchant rules.
-The server decrypts these ten personal domains while the vault is unlocked.
+expenses, salary, tax reliefs, equity trades, dividends, planner settings, saved planning scenarios, merchant rules, and recurring templates with retained occurrence history.
+The server decrypts these eleven personal domains while the vault is unlocked.
 Household goals and contributions are excluded. Treat the downloaded file as
 sensitive plaintext; there is currently no import/restore workflow. Avoid editing
 records during export: independent domain reads do not form one database snapshot.
@@ -323,13 +323,13 @@ A failed domain read prevents download; temporary download resources are release
 even if browser activation fails, and overlapping export requests are ignored.
 
 Profile also reviews an existing JSON export locally, showing only domain counts,
-export timestamp and legacy omissions. Versions 1–4 are supported within the
+export timestamp and legacy omissions. Versions 1–5 are supported within the
 1 MiB / 10,000 aggregate-row review limits (including snapshot entries and expense
-splits). Nested JSON is limited to 32 levels, general strings to 4,096 characters
+splits and recurring occurrence receipts). Nested JSON is limited to 32 levels, general strings to 4,096 characters
 and saved scenarios to ten. Files with unsupported fields/values, repeated JSON
 keys or record identities are rejected rather than rewritten. This review does
 not upload, save, restore, authenticate or prove completeness/snapshot consistency.
-Version 1 omits dividends and scenarios; version 2 omits scenarios. Versions 1–3 omit merchant rules. Clearing,
+Version 1 omits dividends and scenarios; version 2 omits scenarios. Versions 1–3 omit merchant rules; versions 1–4 omit recurring templates/history. Clearing,
 replacing the file or leaving the protected view discards review state and prevents
 late results from being shown. Existing export size/format behavior is unchanged.
 
@@ -345,7 +345,7 @@ encryption. Revision checks reject stale edits across tabs. Unknown saves retain
 their frozen submission for explicit checking, without automatic replay. Removing
 the last rule retains an empty rulebook to prevent stale creation from returning
 removed rules. The application has no supported PIN-change/rekey or restore flow;
-future implementations must include this encrypted domain. Export v4 includes
+future implementations must include this encrypted domain. Export v5 includes
 merchant rules, and a failed rule read prevents a partial download.
 
 The owner-approved migration is
@@ -353,6 +353,27 @@ The owner-approved migration is
 application and readiness confirmation precede application merge. Run the fresh
 synthetic SQL/PostgREST proof with `node supabase/tests/137-merchant-rulebooks.mjs`;
 it uses already-installed Docker images, new resources only and no production data.
+
+**Recurring expenses** on expense entry stores expected monthly self-expense
+defaults. Open monthly review, choose a due payment, compare possible duplicates,
+then explicitly Confirm or Skip. Singapore calendar dates clamp day 31 to the
+month's last day. Editing the actual payment date keeps the intended occurrence
+month. Opening, editing, enabling and changing months never record payments.
+
+Confirmed and skipped months retain encrypted receipts. Definition edits and
+archiving preserve them; editing or deleting a linked expense never makes that
+month due again. Check linked expenses to see missing or changed records. Cloning
+creates a separate series that can overlap the original. Stale edits conflict;
+unknown saves remain frozen for explicit checking without automatic resend.
+
+One encrypted revision-checked book holds up to 50 templates, 1,200 retained
+occurrences and 512 KiB plaintext. Archiving does not free capacity. Export v5
+includes retained history; future restore/rekey implementations must preserve
+this domain alongside expenses. No current restore or PIN-change flow is added.
+The owner-approved migration is
+`supabase/migrations/20261013000138_personal_recurring_rulebooks.sql`; apply and
+confirm readiness before application merge. Run its fresh disposable SQL/REST
+proof with `node supabase/tests/138-recurring-rulebooks.mjs`.
 
 Expenses includes **Review bank PDF** for local, unsaved expense drafts with an
 original-page preview and editable date, description, category and SGD amount.

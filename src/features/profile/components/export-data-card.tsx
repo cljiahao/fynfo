@@ -25,9 +25,10 @@ export function ExportDataCard() {
         <CardDescription>
           Download a JSON export of your profile, snapshots, expenses, salary,
           tax reliefs, trades, dividends, planner settings, saved planning
-          scenarios, and merchant rules. The server decrypts these records
-          during your unlocked session; the downloaded file contains plaintext.
-          Household data is not included.
+          scenarios, merchant rules, and recurring templates with occurrence
+          history. The server decrypts these records during your unlocked
+          session; the downloaded file contains plaintext. Household data is not
+          included.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

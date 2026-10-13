@@ -28,10 +28,15 @@ const state = vi.hoisted(() => ({
   plannerSettings: vi.fn(),
   scenarios: vi.fn(),
   merchantRules: vi.fn(),
+  recurringTemplates: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
 }));
 vi.mock('@/features/assets', () => ({ getScenarios: state.scenarios }));
+vi.mock('@/features/recurring-expenses/actions/recurring-actions', () => ({
+  getRecurringRulebook: state.recurringTemplates,
+  mutateRecurringRulebook: vi.fn(),
+}));
 vi.mock('@/features/merchant-rules/actions/rulebook-actions', () => ({
   getMerchantRulebook: state.merchantRules,
   saveMerchantRulebook: vi.fn(),
@@ -75,8 +80,41 @@ const EMPTY: ExportData = {
   plannerSettings: null,
   scenarios: [],
   merchantRules: [],
+  recurringTemplates: [],
 };
 const NONEMPTY: ExportData = {
+  recurringTemplates: [
+    {
+      definition: {
+        id: '13800000-0000-4000-8000-000000000003',
+        name: 'Synthetic monthly bill',
+        enabled: true,
+        preferredDay: 31,
+        startMonth: '2026-01',
+        endMonth: null,
+        cents: 2500,
+        category: 'bills',
+        item: 'Synthetic merchant',
+        info: '',
+      },
+      archived: true,
+      occurrences: [
+        {
+          month: '2026-02',
+          requestId: '13800000-0000-4000-8000-000000000004',
+          outcome: 'confirmed',
+          expense: {
+            id: '13800000-0000-4000-8000-000000000005',
+            date: '2026-03-01',
+            category: 'bills',
+            item: 'Original merchant',
+            info: 'Frozen receipt',
+            cents: 2450,
+          },
+        },
+      ],
+    },
+  ],
   merchantRules: [
     {
       id: '851af27a-e752-4aa5-8294-44b02bd911ca',
@@ -188,7 +226,17 @@ function seed(data: ExportData) {
               rules: data.merchantRules,
             },
           }
-        : data[domain]
+        : domain === 'recurringTemplates'
+          ? {
+              id: '13800000-0000-4000-8000-000000000001',
+              revision: '9007199254740993',
+              payload: {
+                schemaVersion: 1,
+                requestId: '13800000-0000-4000-8000-000000000002',
+                templates: data.recurringTemplates,
+              },
+            }
+          : data[domain]
     );
 }
 function readBlob(blob: Blob) {
@@ -220,7 +268,7 @@ afterEach(() => {
 
 it.each([
   ['empty', EMPTY],
-  ['all ten nonempty domains', NONEMPTY],
+  ['all eleven nonempty domains', NONEMPTY],
 ])(
   'downloads versioned %s export without changing values',
   async (_label, data) => {
@@ -233,7 +281,7 @@ it.each([
       await readBlob(download.mock.calls[0][0])
     );
     expect(parsed).toEqual({
-      version: 4,
+      version: 5,
       app: 'fynfo',
       exportedAt: expect.any(String),
       data,
@@ -262,7 +310,7 @@ it('omits internal snapshot identity and lossless revision from the export', asy
   });
   const parsed: unknown = JSON.parse(await readBlob(download.mock.calls[0][0]));
   expect(parsed).toEqual({
-    version: 4,
+    version: 5,
     app: 'fynfo',
     exportedAt: expect.any(String),
     data: NONEMPTY,

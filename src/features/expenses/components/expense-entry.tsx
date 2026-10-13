@@ -1,6 +1,7 @@
 'use client';
 
 import { useAmountVisibility } from '@/features/privacy';
+import { RecurringReview } from '@/features/recurring-expenses';
 import { useIsMutating, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { getExpenses } from '../actions/expense-actions';
@@ -56,6 +57,7 @@ export function ExpenseEntry() {
                 quickAdd.current?.requestReuse(expense, origin)
         }
       />
+      <RecurringReview />
     </>
   );
 }

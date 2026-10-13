@@ -18,6 +18,7 @@ const empty: ExportData = {
   plannerSettings: null,
   scenarios: [],
   merchantRules: [],
+  recurringTemplates: [],
 };
 
 describe('buildExportEnvelope', () => {
@@ -28,7 +29,7 @@ describe('buildExportEnvelope', () => {
     expect(env.exportedAt).toBe('2026-06-02T00:00:00.000Z');
   });
 
-  it('carries all ten personal domains through unchanged', () => {
+  it('carries all eleven personal domains through unchanged', () => {
     const data: ExportData = {
       ...empty,
       salary: [{ id: '2026-01', salary: 5000, bonus: 0 }],
@@ -41,6 +42,7 @@ describe('buildExportEnvelope', () => {
       'merchantRules',
       'plannerSettings',
       'profile',
+      'recurringTemplates',
       'salary',
       'scenarios',
       'snapshots',
@@ -52,7 +54,7 @@ describe('buildExportEnvelope', () => {
   });
 });
 
-it('exports version 4 dividend values without loss', () => {
+it('exports version 5 dividend values without loss', () => {
   const data: ExportData = {
     ...empty,
     dividends: [
@@ -67,7 +69,7 @@ it('exports version 4 dividend values without loss', () => {
     ],
   };
   const parsed = JSON.parse(serializeExport(buildExportEnvelope(data, 'now')));
-  expect(parsed.version).toBe(4);
+  expect(parsed.version).toBe(5);
   expect(parsed.data.dividends).toEqual(data.dividends);
 });
 
