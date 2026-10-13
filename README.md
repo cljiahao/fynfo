@@ -386,7 +386,7 @@ source note. This does not qualify every real bank PDF or reconcile its balance.
 Setup collapses after extraction. Desktop keeps the original PDF beside editable
 rows; focusing a row shows its source page and excerpt. Compare source opens the
 original on smaller screens, where Statement / Extracted switches views.
-Each transaction's Details and rules disclosure contains its editable classification:
+Each transaction's Details disclosure contains its editable classification:
 Expense, Refund, Transfer, Card repayment, Other credit or Unknown. The original
 suggestion, reason and source stay available after an override; **Restore suggestion**
 reverts only the classification. Credits, refunds, transfers and repayments are

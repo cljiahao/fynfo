@@ -83,3 +83,25 @@ after a cover page. Initialize from the first candidate's source page and cover 
 with a regression. Reviewer confirmed the finding closed with no other blockers.
 Source navigation remains page plus excerpt; no precise PDF bounding-box highlight
 is claimed. This follow-up has not been published or deployed.
+
+## 14 October onboarding simplification
+
+Owner asks why selection and Expense suggestion labels exist and requests removing
+unnecessary information. Scope: review and save-review presentation, matching UI
+regressions and README. Remove repeated visible row/status headings and counters;
+retain accessible aggregate status and selection controls with one plain instruction.
+Show exception labels only for unresolved/excluded rows. Move selected source-note
+preview into row Details. Shorten the save summary and remove repeated explanation;
+preserve explicit opt-in selection, duplicate checks and all save/recovery guards.
+No automatic selection or persistence, parser/schema/dependency changes. Verify
+source comparison, onboarding, selection, warning visibility and save regressions,
+then repository gates and bounded synthetic desktop/mobile inspection. Roll back
+with a code revert.
+
+Verification: 28 focused review/save tests pass. Synthetic desktop/mobile checks
+confirmed selection, source comparison and one explicit memory-only save. Mobile
+client/scroll widths remain equal (390px document, 341px modal). Final screenshots
+are outputs/139-minimal-desktop.png and outputs/139-minimal-mobile.png outside Git.
+Single-page PDF navigation is omitted, redundant introduction shortened and native
+checkboxes use the existing primary color. No private data used. Independent
+review found no blockers; Impeccable detector found no issues. Preview stopped.

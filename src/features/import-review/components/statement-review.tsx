@@ -446,7 +446,7 @@ function StatementReviewBody({
       )}
       {rows.length > 0 && (
         <>
-          <p className="text-sm" role="status" aria-live="polite">
+          <p className="sr-only" role="status" aria-live="polite">
             {mask(rows.length)} source rows:{' '}
             {mask(
               reviewedRows.filter((row) => row.review.status === 'candidate')
@@ -463,6 +463,9 @@ function StatementReviewBody({
                 .length
             )}{' '}
             excluded.
+          </p>
+          <p className="text-muted-foreground text-sm">
+            Select purchases, check the details, then save.
           </p>
           <div className="flex gap-2 lg:hidden">
             <Button
@@ -490,27 +493,29 @@ function StatementReviewBody({
               className={`${view === 'statement' ? 'block' : 'hidden'} min-w-0 space-y-3 lg:block lg:max-h-[55vh] lg:overflow-y-auto lg:overscroll-contain lg:pr-2`}
             >
               <div className="bg-background sticky top-0 z-10 space-y-3 pb-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={hidden || page <= 1}
-                    onClick={() => canReveal() && setPage(page - 1)}
-                  >
-                    Previous page
-                  </Button>
-                  <span className="text-sm">
-                    Page {page} of {pageCount}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={hidden || page >= pageCount}
-                    onClick={() => canReveal() && setPage(page + 1)}
-                  >
-                    Next page
-                  </Button>
-                </div>
+                {pageCount > 1 && (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={hidden || page <= 1}
+                      onClick={() => canReveal() && setPage(page - 1)}
+                    >
+                      Previous page
+                    </Button>
+                    <span className="text-sm">
+                      Page {page} of {pageCount}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={hidden || page >= pageCount}
+                      onClick={() => canReveal() && setPage(page + 1)}
+                    >
+                      Next page
+                    </Button>
+                  </div>
+                )}
                 {!hidden && chosen && chosen.source[0].page === page && (
                   <p
                     className="bg-muted rounded-md p-3 text-sm break-words"
@@ -569,7 +574,7 @@ function StatementReviewBody({
                     setPage(row.source[0].page);
                   }}
                 >
-                  <legend className="px-1 text-sm">
+                  <legend className="sr-only">
                     Row {rowPage * 20 + index + 1}:{' '}
                     {STATEMENT_REVIEW_STATUS_LABELS[row.review.status]}
                   </legend>
@@ -594,15 +599,23 @@ function StatementReviewBody({
                         const input = save.inputFor(row);
                         return (
                           <>
-                            <label className="flex items-center gap-2 text-sm">
+                            <label className="flex min-h-9 min-w-9 cursor-pointer items-center gap-2 text-sm">
                               <input
                                 type="checkbox"
+                                className="accent-primary size-4"
                                 aria-label={`Select expense from page ${row.source[0].page}, line ${row.source[0].line}`}
                                 disabled={!input || save.busy}
                                 checked={save.selection.includes(row.id)}
                                 onChange={() => save.toggle(row)}
                               />
-                              Include expense
+                              {row.review.status !== 'candidate' && (
+                                <span className="text-muted-foreground text-sm">
+                                  {row.review.status === 'excluded'
+                                    ? 'Not a purchase'
+                                    : 'Check details'}
+                                </span>
+                              )}
+                              <span className="sr-only">Select purchase</span>
                             </label>
                             {!input && row.review.status === 'candidate' && (
                               <p className="text-warning-strong order-2 w-full text-sm">
@@ -613,16 +626,6 @@ function StatementReviewBody({
                                 most 32 lines, 4096 characters per line and 16
                                 KiB total.
                               </p>
-                            )}
-                            {input && save.selection.includes(row.id) && (
-                              <details className="order-2 w-full">
-                                <summary className="cursor-pointer text-sm">
-                                  Source note to save
-                                </summary>
-                                <p className="mt-2 text-sm break-words whitespace-pre-wrap">
-                                  {buildImportNote(input)}
-                                </p>
-                              </details>
                             )}
                           </>
                         );
@@ -695,8 +698,24 @@ function StatementReviewBody({
                   ))}
                   <details className="space-y-3">
                     <summary className="text-muted-foreground cursor-pointer text-sm">
-                      Details and rules
+                      Details
                     </summary>
+                    {!hidden &&
+                      !save.locked(row.id) &&
+                      save.selection.includes(row.id) &&
+                      (() => {
+                        const input = save.inputFor(row);
+                        return input ? (
+                          <details>
+                            <summary className="cursor-pointer text-sm">
+                              Source note to save
+                            </summary>
+                            <p className="mt-2 text-sm break-words whitespace-pre-wrap">
+                              {buildImportNote(input)}
+                            </p>
+                          </details>
+                        ) : null;
+                      })()}
                     <div className="space-y-1">
                       <Label htmlFor={`${id}-${row.id}-classification`}>
                         Classification
@@ -823,10 +842,7 @@ export function StatementReview() {
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-6xl">
         <DialogHeader>
           <DialogTitle>Review a bank statement</DialogTitle>
-          <DialogDescription>
-            Check the names, categories and SGD amounts. Your PDF stays on this
-            device.
-          </DialogDescription>
+          <DialogDescription>Your PDF stays on this device.</DialogDescription>
         </DialogHeader>
         <StatementReviewBody discardGuard={discardGuard} />
       </DialogContent>

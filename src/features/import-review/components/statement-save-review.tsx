@@ -15,14 +15,14 @@ export function StatementSaveReview({ save }: { save: SaveReview }) {
       aria-label="Save selected statement expenses"
       className="space-y-3 border-t pt-4"
     >
-      <p className="text-muted-foreground text-sm">
-        Only selected purchases and their source notes will be saved. Check
-        possible duplicates first.
-      </p>
       {!hidden && (
         <p className="text-sm tabular-nums">
-          {save.selection.length} selected across all pages · SGD{' '}
-          {save.total.toFixed(2)} · Maximum 20 per batch
+          {save.selection.length} selected · SGD {save.total.toFixed(2)}
+        </p>
+      )}
+      {!hidden && save.selection.length > 20 && (
+        <p role="status" className="text-warning-strong text-sm">
+          Select up to 20 purchases at a time to continue.
         </p>
       )}
       <div className="flex flex-wrap gap-2">

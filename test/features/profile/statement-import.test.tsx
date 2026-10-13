@@ -152,9 +152,7 @@ it('requires selection, fresh duplicate check and explicit save; previews origin
     screen.getByRole('button', { name: 'Save selected expenses' })
   ).toBeDisabled();
   await selectAndCheck();
-  expect(
-    screen.getByText(/1 selected across all pages · SGD 12.30/)
-  ).toBeVisible();
+  expect(screen.getByText(/1 selected · SGD 12.30/)).toBeVisible();
   expect(
     screen.getByText(/Page 1, line 2: 01 OCT INVENTED MARKET/)
   ).toBeInTheDocument();
@@ -511,9 +509,12 @@ it('selection across pages is included and a twenty-one row selection blocks the
     for (const checkbox of visibleSelections) fireEvent.click(checkbox);
   });
   fireEvent.click(screen.getByRole('button', { name: 'Next rows' }));
-  expect(screen.getByText(/20 selected across all pages/)).toBeVisible();
+  expect(screen.getByText(/20 selected/)).toBeVisible();
   fireEvent.click(screen.getByLabelText('Select expense from page 1, line 22'));
-  expect(screen.getByText(/21 selected across all pages/)).toBeVisible();
+  expect(screen.getByText(/21 selected/)).toBeVisible();
+  expect(
+    screen.getByText('Select up to 20 purchases at a time to continue.')
+  ).toBeVisible();
   expect(
     screen.getByRole('button', { name: 'Check possible duplicates' })
   ).toBeDisabled();
@@ -586,7 +587,7 @@ it('merchant Apply invalidates duplicate review and preserves manual fields and 
   expect(
     screen.getByRole('button', { name: 'Save selected expenses' })
   ).toBeDisabled();
-  fireEvent.click(screen.getByText('Details and rules'));
+  fireEvent.click(screen.getByText('Details'));
   expect(screen.getByText('Original merchant: INVENTED MARKET')).toBeVisible();
   expect(mocks.insert).not.toHaveBeenCalled();
   fireEvent.click(

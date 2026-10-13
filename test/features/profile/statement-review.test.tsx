@@ -80,19 +80,24 @@ function setup(read = async () => new ArrayBuffer(4), size = 4) {
 }
 it('keeps secondary information closed until requested without hiding editable fields or blockers', async () => {
   setup();
-  expect(await screen.findByText(/1 expense suggestions/)).toBeVisible();
+  expect(await screen.findByText(/1 expense suggestions/)).toBeInTheDocument();
   expect(
     screen.getByText('Change statement').closest('details')
   ).not.toHaveAttribute('open');
   expect(
     screen.getByText('Saved merchant rules').closest('details')
   ).not.toHaveAttribute('open');
+  expect(
+    screen.getByText('Select purchases, check the details, then save.')
+  ).toBeVisible();
+  expect(screen.queryByText('Include expense')).not.toBeInTheDocument();
+
   expect(screen.getByLabelText('Description')).toBeVisible();
   expect(screen.getByLabelText('SGD billed amount')).toBeVisible();
   expect(screen.getByLabelText('Classification')).not.toBeVisible();
-  fireEvent.click(screen.getByText('Details and rules'));
+  fireEvent.click(screen.getByText('Details'));
   expect(screen.getByLabelText('Classification')).toBeVisible();
-  fireEvent.click(screen.getByText('Details and rules'));
+  fireEvent.click(screen.getByText('Details'));
   fireEvent.change(screen.getByLabelText('SGD billed amount'), {
     target: { value: '-1.00' },
   });
@@ -159,7 +164,7 @@ it('follows the focused draft to its source page while keeping secondary details
   );
   expect(
     screen
-      .getAllByText('Details and rules')
+      .getAllByText('Details')
       .every((element) => !element.closest('details')!.open)
   ).toBe(true);
   fireEvent.click(screen.getByRole('button', { name: 'Previous page' }));
@@ -190,14 +195,14 @@ it('opens the first transaction page when a statement begins with a cover page',
 it('updates classification counts, preserves the suggestion and restores it without changing other edits', async () => {
   setup();
   expect(await screen.findByText(/1 expense suggestions/)).toBeVisible();
-  screen.getByText('Details and rules').closest('details')!.open = true;
+  screen.getByText('Details').closest('details')!.open = true;
   fireEvent.change(screen.getByLabelText('Classification'), {
     target: { value: 'transfer' },
   });
   expect(
     screen.getByText(/0 expense suggestions, 0 unresolved, 1 excluded/)
-  ).toBeVisible();
-  expect(screen.getByText(/Suggested: Expense/)).toBeVisible();
+  ).toBeInTheDocument();
+  expect(screen.getByText(/Suggested: Expense/)).toBeInTheDocument();
   expect(
     screen.getByText('Your classification overrides the suggestion.')
   ).toBeVisible();
@@ -213,7 +218,7 @@ it('updates classification counts, preserves the suggestion and restores it with
   expect(
     screen.queryByText('Your classification overrides the suggestion.')
   ).not.toBeInTheDocument();
-  screen.getByText('Details and rules').closest('details')!.open = true;
+  screen.getByText('Details').closest('details')!.open = true;
   fireEvent.change(screen.getByLabelText('Classification'), {
     target: { value: 'unknown' },
   });
@@ -256,7 +261,7 @@ it('keeps source credit blockers after expense overrides and prevents summary cl
   expect(
     repayment.getByText(/A source credit cannot be converted/)
   ).toBeVisible();
-  repayment.getByText('Details and rules').closest('details')!.open = true;
+  repayment.getByText('Details').closest('details')!.open = true;
   expect(repayment.getByText(/Suggested: Card repayment/)).toBeVisible();
   const summary = within(
     screen.getByRole('group', { name: 'Row 2: Excluded from expenses' })
@@ -277,7 +282,9 @@ it('shows invalid edited expense fields as needing review and recovers when corr
   fireEvent.change(screen.getByLabelText('SGD billed amount'), {
     target: { value: '-12.30' },
   });
-  expect(screen.getByText(/0 expense suggestions, 1 unresolved/)).toBeVisible();
+  expect(
+    screen.getByText(/0 expense suggestions, 1 unresolved/)
+  ).toBeInTheDocument();
   expect(
     screen.getByText(
       'Enter a positive SGD amount with exactly two decimal places.'
