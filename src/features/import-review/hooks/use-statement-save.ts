@@ -33,12 +33,14 @@ export function useStatementSave(
   period: StatementPeriod
 ) {
   const privacy = useAmountVisibility();
+  const { canReveal, hidden } = privacy;
   const client = useContext(QueryClientContext);
   const ids = useRef(new Map<string, string>());
   const alive = useRef(true);
   const operation = useRef(0);
   const running = useRef(false);
   const attemptsRef = useRef<Record<string, Attempt>>({});
+  const deferredRefresh = useRef<{ query: object } | null>(null);
   const [attempts, setAttempts] = useState<Record<string, Attempt>>({});
   const [selection, setSelection] = useState<string[]>([]);
   const [checked, setChecked] = useState('');
@@ -53,12 +55,44 @@ export function useStatementSave(
   }
   useEffect(() => {
     const currentOperation = operation;
+    const refreshQueue = deferredRefresh;
     alive.current = true;
     return () => {
       alive.current = false;
       currentOperation.current++;
+      refreshQueue.current = null;
     };
   }, []);
+  useEffect(() => {
+    const queryClient = client;
+    if (!queryClient) return;
+    const flushDeferredRefresh = () => {
+      const pending = deferredRefresh.current;
+      if (
+        !pending ||
+        !alive.current ||
+        queryClient.isMutating() ||
+        !canReveal()
+      )
+        return;
+      deferredRefresh.current = null;
+      if (
+        queryClient
+          .getQueryCache()
+          .find({ queryKey: EXPENSE_KEY, exact: true }) !== pending.query
+      )
+        return;
+      void queryClient.invalidateQueries({
+        queryKey: EXPENSE_KEY,
+        refetchType: 'active',
+      });
+    };
+    const unsubscribe = queryClient
+      .getMutationCache()
+      .subscribe(flushDeferredRefresh);
+    flushDeferredRefresh();
+    return unsubscribe;
+  }, [client, canReveal, hidden]);
   useEffect(() => {
     if (!privacy.hidden) return;
     operation.current++;
@@ -120,11 +154,23 @@ export function useStatementSave(
     );
   }
   function refresh() {
-    if (privacy.canReveal() && client)
+    if (!privacy.canReveal() || !client) return;
+    if (client.isMutating()) {
+      const query = client
+        .getQueryCache()
+        .find({ queryKey: EXPENSE_KEY, exact: true });
+      if (query) deferredRefresh.current = { query };
       void client.invalidateQueries({
         queryKey: EXPENSE_KEY,
-        refetchType: client.isMutating() ? 'none' : 'active',
+        refetchType: 'none',
       });
+    } else {
+      deferredRefresh.current = null;
+      void client.invalidateQueries({
+        queryKey: EXPENSE_KEY,
+        refetchType: 'active',
+      });
+    }
   }
   async function compare() {
     if (!ready || running.current || !privacy.canReveal()) return;

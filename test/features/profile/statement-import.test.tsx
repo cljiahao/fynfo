@@ -9,6 +9,11 @@ import {
   AmountVisibilityToggle,
   useAmountVisibility,
 } from '@/features/privacy';
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import {
   act,
@@ -73,13 +78,32 @@ function ImmediateVisibilitySwitch() {
     </button>
   );
 }
-async function setup() {
-  render(
+function ExpenseProbe() {
+  const query = useQuery({
+    queryKey: ['expenses'],
+    queryFn: mocks.read,
+    staleTime: Infinity,
+    gcTime: 0,
+  });
+  return (
+    <p>{query.data?.map((row: { item: string }) => row.item).join(' / ')}</p>
+  );
+}
+async function setup(client?: QueryClient) {
+  const content = (
     <AmountVisibilityProvider>
       <AmountVisibilityToggle />
       <ImmediateVisibilitySwitch />
       <StatementReview />
+      {client && <ExpenseProbe />}
     </AmountVisibilityProvider>
+  );
+  render(
+    client ? (
+      <QueryClientProvider client={client}>{content}</QueryClientProvider>
+    ) : (
+      content
+    )
   );
   fireEvent.click(screen.getByRole('button', { name: 'Review bank PDF' }));
   fireEvent.change(screen.getByLabelText('Period start'), {
@@ -344,6 +368,67 @@ it('immediate hide/show during duplicate read rejects stale readiness and releas
   expect(
     screen.getByRole('button', { name: 'Save selected expenses' })
   ).toBeDisabled();
+});
+it('refreshes a confirmed import after another real mutation finishes without replacing its optimistic row early', async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  client.setQueryData(['expenses'], [{ item: 'Optimistic other expense' }]);
+  await setup(client);
+  let finish!: () => void;
+  const mutation = client.getMutationCache().build(client, {
+    mutationFn: () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  });
+  const completion = mutation.execute(undefined);
+  await selectAndCheck();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Save selected expenses' })
+  );
+  await screen.findByText(/Confirmed saved/);
+  expect(client.getQueryData(['expenses'])).toEqual([
+    { item: 'Optimistic other expense' },
+  ]);
+  const input = mocks.insert.mock.calls[0][0] as ImportedExpenseInput;
+  mocks.read.mockResolvedValue([importedExpenseValues(input)]);
+  await act(async () => {
+    finish();
+    await completion;
+  });
+  await waitFor(() =>
+    expect(client.getQueryData(['expenses'])).toEqual([
+      importedExpenseValues(input),
+    ])
+  );
+  client.clear();
+});
+it('does not recreate a removed private query when a deferred refresh is released', async () => {
+  const client = new QueryClient();
+  client.setQueryData(['expenses'], [{ item: 'Optimistic expense' }]);
+  await setup(client);
+  let finish!: () => void;
+  const mutation = client.getMutationCache().build(client, {
+    mutationFn: () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  });
+  const completion = mutation.execute(undefined);
+  await selectAndCheck();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Save selected expenses' })
+  );
+  await screen.findByText(/Confirmed saved/);
+  client.removeQueries({ queryKey: ['expenses'], exact: true });
+  const invalidation = vi.spyOn(client, 'invalidateQueries');
+  await act(async () => {
+    finish();
+    await completion;
+  });
+  expect(invalidation).not.toHaveBeenCalled();
+  client.clear();
 });
 it('stops a partial batch on unknown outcome, retains unsent payload and resumes only after exact check', async () => {
   mocks.extract.mockResolvedValue(

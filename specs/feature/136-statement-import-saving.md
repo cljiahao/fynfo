@@ -267,3 +267,25 @@ Impeccable detector reported no deterministic scoped UI findings.
 Normal full check/build/coverage hooks and exact-head hosted CI remain release
 requirements. Their results are recorded in the implementation PR and continuation
 handoff. Status remains approved until merge; no main merge is authorized here.
+
+## Independent continuation review correction
+
+The owner-requested continuation chat independently inspected commit 18a9cf0 and
+found one actionable issue: a confirmed insert's refresh could be deferred during
+another pending mutation and never retried, leaving the expense table missing it.
+The scoped hook now retains only the original query object's identity, subscribes
+to real mutation-cache events and initiates a fresh active refetch when pending
+mutations finish and the same presentation owner can reveal. Hide delays this
+fresh read; Show can release it. Removed/replaced private cache identity and
+unmount discard the queue; no old data or import acknowledgement is replayed.
+Two actual QueryClient/QueryObserver/MutationCache regressions prove deferred
+table recovery after a real pending mutation and no invalidation after query removal.
+Three focused action/helper/component suites passed 55 tests. The previous broad
+coverage run was stopped because this review superseded its source; its log is
+retained rather than treated as final-head evidence. No new paths or protocol.
+
+Normal commit checks passed for the initial implementation. Automatic approval
+review rejected remote push because explicit permission to publish repository
+contents to `https://github.com/cljiahao/fynfo.git` was missing. No workaround,
+push, PR publication or CI claim is made. Complete final local gates and ask owner
+for that exact publication permission before repeating normal push hooks.
