@@ -225,3 +225,15 @@ The migration still exactly matches the approved normalized-LF SQL hash.
 Fresh Docker SQL replay is pending: Docker Desktop's Linux engine was unavailable,
 so the runner failed before creating any resource. No production SQL was applied.
 Full gates, SQL evidence and publication readiness must be updated before release.
+
+## Independent review correction and publication approval — 2026-10-13
+
+The owner explicitly approved an independent reviewer and publication of137/138.
+Reviewer found that MerchantSuggestion returned null when a previously applied
+rule stopped matching, removing the original-description and Restore controls.
+Keep source restoration independent of active matches while preserving privacy.
+Affected paths: merchant-suggestion.tsx and its component regression tests.
+Verify apply, then disable/remove/change-match, Restore, and Hide/Show; run normal
+hooks and full publication gates. Exact approved SQL remains unchanged.
+Both fresh PostgreSQL17/PostgREST14.14 migration proofs have now passed, including
+owned-resource cleanup. Production application remains a separate owner action.

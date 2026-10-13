@@ -31,21 +31,26 @@ export function MerchantSuggestion({
   const { hidden, canReveal } = useAmountVisibility();
   if (hidden) return null;
   const match = matchMerchantRules(originalDescription, bank, rules);
-  if (match.status === 'none') return null;
-  const choices = match.status === 'conflict' ? match.rules : [match.rules[0]];
+  const choices =
+    match.status === 'none'
+      ? []
+      : match.status === 'conflict'
+        ? match.rules
+        : [match.rules[0]];
   return (
     <div className="space-y-2 border-t pt-2 text-sm">
       <p className="break-words">Original merchant: {originalDescription}</p>
-      {match.status === 'conflict' ? (
-        <p className="text-warning-strong">
-          Matching rules disagree. Review and choose a suggestion.
-        </p>
-      ) : (
-        <p className="text-muted-foreground break-words">
-          {match.tier === 'exact' ? 'Exact' : 'Phrase'} match ·{' '}
-          {match.rules.map((rule) => rule.label).join(', ')}
-        </p>
-      )}
+      {match.status !== 'none' &&
+        (match.status === 'conflict' ? (
+          <p className="text-warning-strong">
+            Matching rules disagree. Review and choose a suggestion.
+          </p>
+        ) : (
+          <p className="text-muted-foreground break-words">
+            {match.tier === 'exact' ? 'Exact' : 'Phrase'} match ·{' '}
+            {match.rules.map((rule) => rule.label).join(', ')}
+          </p>
+        ))}
       {choices.map((rule) => (
         <div key={rule.id} className="space-y-1">
           <p className="break-words">
@@ -112,7 +117,7 @@ export function MerchantSuggestion({
           </div>
         </div>
       ))}
-      {(manual.description || manual.category) && (
+      {choices.length > 0 && (manual.description || manual.category) && (
         <p className="text-muted-foreground">
           Apply preserves your manual changes. Use a replacement button to
           change a protected field.
