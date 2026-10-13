@@ -337,8 +337,15 @@ Expenses includes **Review bank PDF** for local, unsaved expense drafts with an
 original-page preview and editable date, description, category and SGD amount.
 Choose UOB, DBS, HSBC or Citibank and enter the actual statement period. These
 labels cover tested constructed date/description/SGD-billed variants; real bank
-layouts are not yet qualified. Credits, transfers and repayments are excluded;
-ambiguous dates/amounts and possible duplicates remain visible for review.
+layouts are not yet qualified. Each transaction shows an editable classification:
+Expense, Refund, Transfer, Card repayment, Other credit or Unknown. The original
+suggestion, reason and source stay available after an override; **Restore suggestion**
+reverts only the classification. Credits, refunds, transfers and repayments are
+excluded from expenses. Unknown rows need review; a CR or negative amount alone
+does not prove a refund. Summary lines cannot be reclassified as transactions.
+Changing a credit's label or amount cannot turn it into a positive expense
+suggestion. Ambiguous source dates/amounts and possible duplicates remain visible
+after edits. Current invalid expense draft fields also need review.
 Only unprotected text PDFs up to 10 MiB and 100 pages are supported. No statement
 is uploaded and no expense is saved. Clear, replace or close to discard drafts
 and destroy the local worker. Image-only, protected and unsupported layouts need

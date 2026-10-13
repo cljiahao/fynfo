@@ -8,6 +8,13 @@ export interface StatementLine {
   line: number;
   text: string;
 }
+export type StatementClassification =
+  | 'expense'
+  | 'refund'
+  | 'transfer'
+  | 'card_repayment'
+  | 'other_credit'
+  | 'unknown';
 export interface StatementCandidate {
   id: string;
   source: StatementLine[];
@@ -15,6 +22,10 @@ export interface StatementCandidate {
   description: string;
   amount: string;
   category: string;
+  classification: StatementClassification;
+  suggestedClassification: StatementClassification;
+  classificationReason: string;
+  isSummary: boolean;
   status: 'candidate' | 'unresolved' | 'excluded';
   issues: string[];
 }

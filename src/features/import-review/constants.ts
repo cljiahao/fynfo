@@ -4,6 +4,19 @@ export const STATEMENT_BANKS = [
   { value: 'hsbc', label: 'HSBC', identity: /\bHSBC\b/i },
   { value: 'citibank', label: 'Citibank', identity: /\bCITI(?:BANK)?\b/i },
 ] as const;
+export const STATEMENT_CLASSIFICATIONS = [
+  { value: 'expense', label: 'Expense' },
+  { value: 'refund', label: 'Refund' },
+  { value: 'transfer', label: 'Transfer' },
+  { value: 'card_repayment', label: 'Card repayment' },
+  { value: 'other_credit', label: 'Other credit' },
+  { value: 'unknown', label: 'Unknown' },
+] as const;
+export const STATEMENT_REVIEW_STATUS_LABELS = {
+  candidate: 'Expense suggestion',
+  unresolved: 'Needs review',
+  excluded: 'Excluded from expenses',
+} as const;
 export const STATEMENT_LIMITS = {
   bytes: 10 * 1024 * 1024,
   pages: 100,

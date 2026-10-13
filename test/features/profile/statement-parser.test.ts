@@ -1,4 +1,5 @@
 import {
+  getStatementReview,
   parseStatementLines,
   positionedStatementLines,
   validStatementPeriod,
@@ -13,6 +14,167 @@ function lines(...text: string[]) {
   }));
 }
 describe('conservative local statement parsing', () => {
+  it.each([
+    ['MARKET SGD 12.30', 'expense', 'candidate'],
+    ['REFUND SGD 5.00 CR', 'refund', 'excluded'],
+    ['REFUND SGD 5.00', 'refund', 'excluded'],
+    ['SHOP SGD 5.00 REFUND', 'refund', 'excluded'],
+    ['TRANSFER TO SAVINGS SGD 200.00', 'transfer', 'excluded'],
+    ['TRANSFER FROM SAVINGS SGD 200.00 CR', 'transfer', 'excluded'],
+    ['CARD PAYMENT SGD 100.00 CR', 'card_repayment', 'excluded'],
+    ['BANK SGD 100.00 CARD PAYMENT', 'card_repayment', 'excluded'],
+    ['BANK SGD 100.00 TRANSFER', 'transfer', 'excluded'],
+    ['CREDIT CARD REPAYMENT SGD 100.00', 'card_repayment', 'excluded'],
+    ['PAYMENT THANK YOU SGD 100.00 CR', 'card_repayment', 'excluded'],
+    ['MARKET SGD -3.00', 'other_credit', 'excluded'],
+    ['MARKET SGD (3.00)', 'other_credit', 'excluded'],
+    ['MARKET SGD 3.00 CR', 'other_credit', 'excluded'],
+    ['DIVIDEND SGD 3.00', 'other_credit', 'excluded'],
+    ['PAYMENT RECEIVED SGD 3.00 CR', 'other_credit', 'excluded'],
+    ['PAYMENT SGD 12.30', 'unknown', 'unresolved'],
+    ['REPAYMENT SGD 12.30', 'unknown', 'unresolved'],
+    ['REVERSAL SGD 3.00 CR', 'unknown', 'unresolved'],
+    ['SHOP SGD 3.00 REVERSAL', 'unknown', 'unresolved'],
+    ['REFUND CARD PAYMENT SGD 3.00 CR', 'unknown', 'unresolved'],
+    ['CREDIT SGD 3.00 DR', 'unknown', 'unresolved'],
+    ['FOREIGN USD 3.00', 'unknown', 'unresolved'],
+  ] as const)(
+    'classifies %s as %s without losing evidence',
+    (text, kind, status) => {
+      const source = `20 DEC ${text}`;
+      const [row] = parseStatementLines(lines('UOB', source), 'uob', period);
+      expect(row.classification).toBe(kind);
+      expect(row.suggestedClassification).toBe(kind);
+      expect(row.status).toBe(status);
+      expect(row.classificationReason).not.toBe('');
+      expect(row.source[0].text).toBe(source);
+    }
+  );
+  it.each([
+    'REFUND SGD 3.00',
+    'SHOP SGD 3.00 REFUND',
+    'SHOP SGD -3.00',
+    'SHOP SGD (3.00)',
+    'CARD PAYMENT SGD 3.00 CR',
+    'REFUND TRANSFER SGD 3.00',
+    'REVERSAL SGD 3.00',
+    'SHOP SGD 3.00 REVERSAL',
+  ])('retains a source blocker after relabeling %s as an expense', (text) => {
+    const [row] = parseStatementLines(
+      lines('UOB', `20 DEC ${text}`),
+      'uob',
+      period
+    );
+    expect(row.amount).toBe('');
+    const edited = {
+      ...row,
+      classification: 'expense' as const,
+      amount: '3.00',
+      description: 'Edited purchase',
+    };
+    expect(getStatementReview(edited, period).status).toBe('unresolved');
+    expect(getStatementReview(edited, period).issues).toEqual(
+      expect.arrayContaining(row.issues)
+    );
+    expect(edited.suggestedClassification).toBe(row.suggestedClassification);
+    expect(edited.source).toBe(row.source);
+  });
+  it('allows an explicit review choice for ambiguous payment wording with valid positive evidence', () => {
+    const [row] = parseStatementLines(
+      lines('UOB', '20 DEC PAYMENT SGD 12.30'),
+      'uob',
+      period
+    );
+    expect(getStatementReview(row, period).status).toBe('unresolved');
+    expect(
+      getStatementReview({ ...row, classification: 'expense' }, period).status
+    ).toBe('candidate');
+    expect(
+      getStatementReview({ ...row, classification: 'transfer' }, period).status
+    ).toBe('excluded');
+    expect(row.classification).toBe('unknown');
+  });
+  it('revalidates draft fields and never clears original extraction issues', () => {
+    const [row] = parseStatementLines(
+      lines('UOB', '20 DEC SHOP SGD 12.30'),
+      'uob',
+      period
+    );
+    for (const edit of [
+      { amount: '-12.30' },
+      { amount: '0.00' },
+      { amount: '12.345' },
+      { date: '2026-02-30' },
+      { date: '2026-02-01' },
+      { description: '  ' },
+    ]) {
+      expect(getStatementReview({ ...row, ...edit }, period).status).toBe(
+        'unresolved'
+      );
+    }
+    expect(getStatementReview(row, period).status).toBe('candidate');
+    const [foreign] = parseStatementLines(
+      lines('UOB', '20 DEC SHOP USD 12.30'),
+      'uob',
+      period
+    );
+    expect(
+      getStatementReview(
+        { ...foreign, classification: 'expense', amount: '12.30' },
+        period
+      ).status
+    ).toBe('unresolved');
+    const duplicates = parseStatementLines(
+      lines('UOB', '20 DEC SHOP SGD 12.30', '20 DEC SHOP SGD 12.30'),
+      'uob',
+      period
+    );
+    expect(
+      getStatementReview({ ...duplicates[0], description: 'Changed' }, period)
+        .status
+    ).toBe('unresolved');
+  });
+  it('keeps summary lines excluded even when supplied a changed classification and amount', () => {
+    const [row] = parseStatementLines(
+      lines('UOB', '20 DEC MINIMUM PAYMENT SGD 10.00'),
+      'uob',
+      period
+    );
+    expect(row.isSummary).toBe(true);
+    expect(
+      getStatementReview(
+        { ...row, classification: 'expense', amount: '10.00' },
+        period
+      ).status
+    ).toBe('excluded');
+  });
+  it.each(['PAYMENT', 'TRANSFER', 'CARD PAYMENT'])(
+    'retains duplicate source evidence when %s rows are reclassified',
+    (description) => {
+      const rows = parseStatementLines(
+        lines(
+          'UOB',
+          `20 DEC ${description} SGD 12.30`,
+          `20 DEC ${description} SGD 12.30`
+        ),
+        'uob',
+        period
+      );
+      expect(rows).toHaveLength(2);
+      for (const row of rows) {
+        expect(row.issues).toContain(
+          'Possible duplicate: compare the source rows.'
+        );
+        expect(
+          getStatementReview({ ...row, classification: 'expense' }, period)
+            .status
+        ).toBe('unresolved');
+        expect(getStatementReview(row, period).status).toBe(
+          description === 'PAYMENT' ? 'unresolved' : 'excluded'
+        );
+      }
+    }
+  );
   it('resolves year rollover solely from the supplied statement period', () => {
     const rows = parseStatementLines(
       lines(

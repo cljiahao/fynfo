@@ -8,6 +8,7 @@ import type {
   PositionedStatementText,
   StatementBank,
   StatementCandidate,
+  StatementClassification,
   StatementLine,
   StatementPeriod,
 } from '../types';
@@ -79,6 +80,120 @@ function statementDate(
   return dates.length === 1 ? dates[0] : '';
 }
 
+function positiveStatementAmount(value: string): boolean {
+  return (
+    /^(?:\d+|[1-9]\d{0,2}(?:,\d{3})+)\.\d{2}$/.test(value) &&
+    Number(value.replaceAll(',', '')) > 0 &&
+    Number.isSafeInteger(Math.round(Number(value.replaceAll(',', '')) * 100))
+  );
+}
+
+function suggestClassification(
+  sourceText: string,
+  values: RegExpMatchArray[],
+  hasPositiveAmount: boolean
+): { kind: StatementClassification; reason: string; blocker?: string } {
+  const refund = /\bREFUND\b/i.test(sourceText);
+  const transfer = /\bTRANSFER\b/i.test(sourceText);
+  const repayment =
+    /\b(?:CARD (?:PAYMENT|REPAYMENT)|PAYMENT THANK YOU)\b/i.test(sourceText);
+  const credit =
+    /\b(?:CR|CREDIT|DIVIDEND)\b/i.test(sourceText) ||
+    values.some((value) => /\bCR\b|[-()]/i.test(value[0]));
+  const debit = values.some((value) => /\bDR\b/i.test(value[0]));
+  if (
+    Number(refund) + Number(transfer) + Number(repayment) > 1 ||
+    (credit && debit)
+  ) {
+    return {
+      kind: 'unknown',
+      reason: 'The source contains conflicting transaction signals.',
+      blocker:
+        'Conflicting source signals cannot establish a positive expense.',
+    };
+  }
+  if (refund)
+    return {
+      kind: 'refund',
+      reason: 'The source description explicitly says refund.',
+      blocker:
+        'A source refund cannot be converted to positive spending by editing this draft.',
+    };
+  if (/\b(?:REVERSAL|REVERSED)\b/i.test(sourceText))
+    return {
+      kind: 'unknown',
+      reason:
+        'A reversal does not identify which transaction or direction was reversed.',
+      blocker: 'An unresolved reversal cannot establish a positive expense.',
+    };
+  const creditBlocker = credit
+    ? 'A source credit cannot be converted to positive spending by editing this draft.'
+    : undefined;
+  if (repayment)
+    return {
+      kind: 'card_repayment',
+      reason: 'The source describes a card payment or payment acknowledgement.',
+      blocker: creditBlocker,
+    };
+  if (transfer)
+    return {
+      kind: 'transfer',
+      reason: 'The source description explicitly says transfer.',
+      blocker: creditBlocker,
+    };
+  if (credit)
+    return {
+      kind: 'other_credit',
+      reason:
+        'Credit wording or an amount marked CR, negative or in parentheses does not prove a refund.',
+      blocker: creditBlocker,
+    };
+  if (/\b(?:PAYMENT|REPAYMENT)\b/i.test(sourceText))
+    return {
+      kind: 'unknown',
+      reason:
+        'Payment wording alone does not establish a purchase or a card repayment. Choose a classification after checking the source.',
+    };
+  return hasPositiveAmount
+    ? {
+        kind: 'expense',
+        reason:
+          'A positive SGD amount was found without a recognized credit, transfer or repayment signal.',
+      }
+    : {
+        kind: 'unknown',
+        reason:
+          'The source does not establish a supported positive SGD expense.',
+      };
+}
+
+/** Source issues survive edits; a classification choice is not new amount or
+ * currency evidence. This is local review status, never permission to save. */
+export function getStatementReview(
+  row: StatementCandidate,
+  period: StatementPeriod
+): Pick<StatementCandidate, 'status' | 'issues'> {
+  if (row.isSummary) return { status: 'excluded', issues: row.issues };
+  if (row.classification === 'unknown')
+    return { status: 'unresolved', issues: row.issues };
+  if (row.classification !== 'expense')
+    return { status: 'excluded', issues: row.issues };
+  const issues = [...row.issues];
+  if (
+    !calendar.safeParse(row.date).success ||
+    row.date < period.from ||
+    row.date > period.to
+  )
+    issues.push('Enter a valid date within the statement period.');
+  if (!positiveStatementAmount(row.amount))
+    issues.push('Enter a positive SGD amount with exactly two decimal places.');
+  if (!row.description.trim()) issues.push('Enter a description.');
+  return {
+    status: issues.length ? 'unresolved' : 'candidate',
+    issues: [...new Set(issues)],
+  };
+}
+
 function qualifyRow(
   source: StatementLine[],
   period: StatementPeriod,
@@ -101,22 +216,19 @@ function qualifyRow(
         : undefined;
   const amountText = chosen?.[0] ?? '';
   const normalized = amountText.replace(/^(SGD|S\$|\$)\s*/i, '').trim();
-  const positiveMoney = /^(?:\d+|[1-9]\d{0,2}(?:,\d{3})+)\.\d{2}$/.test(
-    normalized
-  );
-  const amount =
-    positiveMoney &&
-    Number(normalized.replaceAll(',', '')) > 0 &&
-    Number.isSafeInteger(
-      Math.round(Number(normalized.replaceAll(',', '')) * 100)
-    )
-      ? normalized.replaceAll(',', '')
-      : '';
+  const amount = positiveStatementAmount(normalized)
+    ? normalized.replaceAll(',', '')
+    : '';
   const descriptionEnd = values[0]?.index ?? body.length;
   const description = body
     .slice(0, descriptionEnd)
     .replace(/[|]+/g, ' ')
     .trim();
+  const isSummary =
+    /\b(?:OPENING BALANCE|CLOSING BALANCE|TOTAL BALANCE|AMOUNT DUE|MINIMUM PAYMENT)\b/i.test(
+      body
+    );
+  const suggestion = suggestClassification(body, values, Boolean(amount));
   const row: StatementCandidate = {
     id: `${source[0].page}:${source[0].line}`,
     source,
@@ -124,32 +236,23 @@ function qualifyRow(
     description,
     amount,
     category: 'other',
+    classification: isSummary ? 'unknown' : suggestion.kind,
+    suggestedClassification: isSummary ? 'unknown' : suggestion.kind,
+    classificationReason: isSummary
+      ? 'Statement summary: not a transaction.'
+      : suggestion.reason,
+    isSummary,
     status: 'candidate',
     issues: [],
   };
-  if (
-    /\b(?:OPENING BALANCE|CLOSING BALANCE|TOTAL BALANCE|AMOUNT DUE|MINIMUM PAYMENT)\b/i.test(
-      description
-    )
-  ) {
-    row.status = 'excluded';
+  if (isSummary) {
     row.amount = '';
     row.issues.push('Statement summary: not a transaction.');
-  } else if (
-    /\b(?:CR|REFUND|REVERSAL|CREDIT|DIVIDEND)\b/i.test(body) ||
-    values.some((value) => /[-()]/.test(value[0]))
-  ) {
-    row.status = 'excluded';
-    row.amount = '';
-    row.issues.push('Credit or refund: not a positive expense.');
-  } else if (
-    /\b(?:TRANSFER|REPAYMENT|PAYMENT RECEIVED|CARD PAYMENT|PAYMENT THANK YOU)\b/i.test(
-      description
-    )
-  ) {
-    row.status = 'excluded';
-    row.issues.push('Transfer or repayment: excluded from expenses.');
   } else {
+    if (suggestion.blocker) {
+      row.amount = '';
+      row.issues.push(suggestion.blocker);
+    }
     if (
       values.length > 1 &&
       values.some((value) => value !== chosen && !/USD|US\$/i.test(value[0]))
@@ -161,13 +264,13 @@ function qualifyRow(
       row.issues.push(
         'Date is invalid, ambiguous or outside the supplied period.'
       );
-    if (!amount)
+    if (!amount && !suggestion.blocker)
       row.issues.push(
         'A valid positive SGD billed amount is required; no exchange rate is assumed.'
       );
     if (!description) row.issues.push('Description is missing.');
-    if (row.issues.length) row.status = 'unresolved';
   }
+  row.status = getStatementReview(row, period).status;
   return row;
 }
 
@@ -225,7 +328,8 @@ export function parseStatementLines(
     );
   const seen = new Map<string, StatementCandidate>();
   for (const row of rows) {
-    if (row.status !== 'candidate') continue;
+    if (row.isSummary || !row.date || !positiveStatementAmount(row.amount))
+      continue;
     const key = JSON.stringify([
       row.date,
       row.amount,
@@ -234,11 +338,11 @@ export function parseStatementLines(
     const duplicate = seen.get(key);
     if (duplicate) {
       for (const entry of [duplicate, row]) {
-        entry.status = 'unresolved';
         if (
           !entry.issues.includes('Possible duplicate: compare the source rows.')
         )
           entry.issues.push('Possible duplicate: compare the source rows.');
+        entry.status = getStatementReview(entry, period).status;
       }
     } else seen.set(key, row);
   }
