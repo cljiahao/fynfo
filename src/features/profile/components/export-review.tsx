@@ -75,7 +75,7 @@ export function ExportReview() {
         Review a JSON export
       </h3>
       <p id={`${inputId}-help`} className="text-muted-foreground text-sm">
-        Processed on this device. Review versions 1–3, up to 1 MiB and 10,000
+        Processed on this device. Review versions 1–4, up to 1 MiB and 10,000
         rows including nested entries and splits. Nothing is uploaded or saved.
         This checks the file format; it cannot verify ownership, completeness, a
         consistent snapshot, or whether the data can be restored. Household data

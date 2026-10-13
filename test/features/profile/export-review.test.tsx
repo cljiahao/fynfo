@@ -112,7 +112,7 @@ it('keeps legacy absence visible rather than calling missing scenarios zero', as
   delete legacy.data.scenarios;
   render(<ExportReview />);
   choose(fileWith(async () => JSON.stringify(legacy)));
-  expect(await screen.findByText('Not included')).toBeVisible();
+  expect(await screen.findAllByText('Not included')).toHaveLength(2);
   expect(
     screen.getByText(/Versions 1 and 2 do not include saved planning scenarios/)
   ).toBeVisible();

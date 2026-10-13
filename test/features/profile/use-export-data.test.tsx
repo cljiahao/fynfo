@@ -27,10 +27,15 @@ const state = vi.hoisted(() => ({
   dividends: vi.fn(),
   plannerSettings: vi.fn(),
   scenarios: vi.fn(),
+  merchantRules: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
 }));
 vi.mock('@/features/assets', () => ({ getScenarios: state.scenarios }));
+vi.mock('@/features/merchant-rules/actions/rulebook-actions', () => ({
+  getMerchantRulebook: state.merchantRules,
+  saveMerchantRulebook: vi.fn(),
+}));
 vi.mock('@/features/assets/actions/planner-actions', () => ({
   getPlannerSettings: state.plannerSettings,
 }));
@@ -69,8 +74,21 @@ const EMPTY: ExportData = {
   dividends: [],
   plannerSettings: null,
   scenarios: [],
+  merchantRules: [],
 };
 const NONEMPTY: ExportData = {
+  merchantRules: [
+    {
+      id: '851af27a-e752-4aa5-8294-44b02bd911ca',
+      label: 'Synthetic market',
+      enabled: true,
+      matchMode: 'exact',
+      matchText: 'MARKET',
+      bank: null,
+      displayName: 'Market',
+      category: 'groceries',
+    },
+  ],
   scenarios: [
     {
       id: '11111111-1111-4111-8111-111111111111',
@@ -158,7 +176,20 @@ const DOMAINS = Object.keys(EMPTY) as Array<keyof ExportData>;
 const download = vi.fn((_blob: Blob) => 'blob:fixture-export');
 const revoke = vi.fn();
 function seed(data: ExportData) {
-  for (const domain of DOMAINS) state[domain].mockResolvedValue(data[domain]);
+  for (const domain of DOMAINS)
+    state[domain].mockResolvedValue(
+      domain === 'merchantRules'
+        ? {
+            id: '851af27a-e752-4aa5-8294-44b02bd911ca',
+            revision: '12',
+            payload: {
+              schemaVersion: 1,
+              requestId: 'ff65feb2-8ffa-427c-a057-8779580f162f',
+              rules: data.merchantRules,
+            },
+          }
+        : data[domain]
+    );
 }
 function readBlob(blob: Blob) {
   return new Promise<string>((resolve, reject) => {
@@ -189,7 +220,7 @@ afterEach(() => {
 
 it.each([
   ['empty', EMPTY],
-  ['all nine nonempty domains', NONEMPTY],
+  ['all ten nonempty domains', NONEMPTY],
 ])(
   'downloads versioned %s export without changing values',
   async (_label, data) => {
@@ -202,7 +233,7 @@ it.each([
       await readBlob(download.mock.calls[0][0])
     );
     expect(parsed).toEqual({
-      version: 3,
+      version: 4,
       app: 'fynfo',
       exportedAt: expect.any(String),
       data,
@@ -231,7 +262,7 @@ it('omits internal snapshot identity and lossless revision from the export', asy
   });
   const parsed: unknown = JSON.parse(await readBlob(download.mock.calls[0][0]));
   expect(parsed).toEqual({
-    version: 3,
+    version: 4,
     app: 'fynfo',
     exportedAt: expect.any(String),
     data: NONEMPTY,

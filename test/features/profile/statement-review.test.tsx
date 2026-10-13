@@ -27,6 +27,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/features/import-review/lib/local-pdf', () => ({
   openLocalStatementPdf: mocks.open,
 }));
+vi.mock('@/features/merchant-rules/actions/rulebook-actions', () => ({
+  getMerchantRulebook: async () => null,
+  saveMerchantRulebook: vi.fn(),
+}));
 vi.mock('@/features/expenses', async () => ({
   ...(await import('@/features/expenses/lib/import-expense')),
   EXPENSE_TYPE_LABELS: { other: 'Other', groceries: 'Groceries' },

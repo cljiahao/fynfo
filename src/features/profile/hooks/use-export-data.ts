@@ -8,6 +8,7 @@ import { getSnapshots } from '@/features/assets/actions/snapshot-actions';
 import { getDividends } from '@/features/equity/actions/dividend-actions';
 import { getTrades } from '@/features/equity/actions/equity-actions';
 import { getExpenses } from '@/features/expenses/actions/expense-actions';
+import { getMerchantRulebook } from '@/features/merchant-rules';
 import { getAllTaxReliefs } from '@/features/salary/actions/relief-actions';
 import { getSalaryRecords } from '@/features/salary/actions/salary-actions';
 import { useEffect, useRef, useState } from 'react';
@@ -68,6 +69,7 @@ export function useExportData() {
         dividends,
         plannerSettings,
         scenarios,
+        merchantRulebook,
       ] = await Promise.all([
         getProfile(),
         getSnapshots(),
@@ -78,6 +80,7 @@ export function useExportData() {
         getDividends(),
         getPlannerSettings(),
         getScenarios(),
+        getMerchantRulebook(),
       ]);
 
       if (!mounted.current || !canReveal() || getHideEpoch() !== exportEpoch)
@@ -93,6 +96,7 @@ export function useExportData() {
           dividends,
           plannerSettings,
           scenarios,
+          merchantRules: merchantRulebook?.payload.rules ?? [],
         },
         new Date().toISOString()
       );

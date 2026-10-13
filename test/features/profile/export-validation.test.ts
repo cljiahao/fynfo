@@ -118,8 +118,9 @@ describe('local export read contract', () => {
           dividends: 1,
           plannerSettings: 1,
           scenarios: 1,
+          merchantRules: null,
         },
-        warnings: [],
+        warnings: ['Versions 1–3 do not include merchant rules.'],
       },
     });
     expect(JSON.stringify(result)).not.toContain('Synthetic');
@@ -135,7 +136,7 @@ describe('local export read contract', () => {
     if (result.ok) {
       expect(result.summary.counts.scenarios).toBeNull();
       expect(result.summary.counts.dividends).toBe(version === 1 ? null : 1);
-      expect(result.summary.warnings.length).toBe(version === 1 ? 2 : 1);
+      expect(result.summary.warnings.length).toBe(version === 1 ? 3 : 2);
     }
   });
   it('supports null singleton domains and empty arrays', () => {
@@ -152,7 +153,10 @@ describe('local export read contract', () => {
     });
     expect(result.ok).toBe(true);
     if (result.ok)
-      expect(Object.values(result.summary.counts)).toEqual(Array(9).fill(0));
+      expect(Object.values(result.summary.counts)).toEqual([
+        ...Array(9).fill(0),
+        null,
+      ]);
   });
   it('preserves supported whitespace, optional trade IDs, decimal and year-zero month values', () => {
     const file = sample();
@@ -170,7 +174,7 @@ describe('local export read contract', () => {
     [
       'future version',
       (f: Fixture) => {
-        f.version = 4;
+        f.version = 5;
       },
     ],
     [
@@ -416,4 +420,46 @@ describe('JSON ambiguity and depth guard', () => {
       expect(reviewExportJson(content).ok).toBe(false);
     }
   );
+});
+
+it('reviews version 4 merchant rules, rejects missing/duplicate/invalid rules and exposes legacy absence', () => {
+  const base = JSON.parse(fixture);
+  const rule = {
+    id: '851af27a-e752-4aa5-8294-44b02bd911ca',
+    label: 'Synthetic merchant',
+    enabled: true,
+    matchMode: 'exact',
+    matchText: 'MARKET',
+    bank: null,
+    displayName: 'Market',
+    category: 'groceries',
+  };
+  const file = {
+    ...base,
+    version: 4,
+    data: { ...base.data, merchantRules: [rule] },
+  };
+  const good = reviewExportJson(JSON.stringify(file));
+  expect(good).toMatchObject({
+    ok: true,
+    summary: { version: 4, counts: { merchantRules: 1 }, warnings: [] },
+  });
+  expect(JSON.stringify(good)).not.toContain('MARKET');
+  for (const merchantRules of [
+    [rule, rule],
+    [{ ...rule, category: 'bad' }],
+    [{ ...rule, amount: 1 }],
+  ])
+    expect(
+      reviewExportJson(
+        JSON.stringify({ ...file, data: { ...file.data, merchantRules } })
+      ).ok
+    ).toBe(false);
+  expect(reviewExportJson(JSON.stringify({ ...base, version: 4 })).ok).toBe(
+    false
+  );
+  expect(reviewExportJson(fixture)).toMatchObject({
+    ok: true,
+    summary: { counts: { merchantRules: null } },
+  });
 });
