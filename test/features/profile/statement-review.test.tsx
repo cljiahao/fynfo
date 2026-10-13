@@ -78,6 +78,31 @@ function setup(read = async () => new ArrayBuffer(4), size = 4) {
   });
   fireEvent.click(screen.getByRole('button', { name: 'Extract for review' }));
 }
+it('keeps secondary information closed until requested without hiding editable fields or blockers', async () => {
+  setup();
+  expect(await screen.findByText(/1 expense suggestions/)).toBeVisible();
+  expect(
+    screen.getByText('Change statement').closest('details')
+  ).not.toHaveAttribute('open');
+  expect(
+    screen.getByText('Saved merchant rules').closest('details')
+  ).not.toHaveAttribute('open');
+  expect(screen.getByLabelText('Description')).toBeVisible();
+  expect(screen.getByLabelText('SGD billed amount')).toBeVisible();
+  expect(screen.getByLabelText('Classification')).not.toBeVisible();
+  fireEvent.click(screen.getByText('Details and rules'));
+  expect(screen.getByLabelText('Classification')).toBeVisible();
+  fireEvent.click(screen.getByText('Details and rules'));
+  fireEvent.change(screen.getByLabelText('SGD billed amount'), {
+    target: { value: '-1.00' },
+  });
+  expect(
+    screen.getByText(
+      'Enter a positive SGD amount with exactly two decimal places.'
+    )
+  ).toBeVisible();
+  expect(mocks.insert).not.toHaveBeenCalled();
+});
 it('reviews editable drafts, keeps provenance, navigates source pages and clears locally', async () => {
   setup();
   expect(await screen.findByText(/1 expense suggestions/)).toBeVisible();
@@ -110,6 +135,7 @@ it('reviews editable drafts, keeps provenance, navigates source pages and clears
 it('updates classification counts, preserves the suggestion and restores it without changing other edits', async () => {
   setup();
   expect(await screen.findByText(/1 expense suggestions/)).toBeVisible();
+  screen.getByText('Details and rules').closest('details')!.open = true;
   fireEvent.change(screen.getByLabelText('Classification'), {
     target: { value: 'transfer' },
   });
@@ -132,6 +158,7 @@ it('updates classification counts, preserves the suggestion and restores it with
   expect(
     screen.queryByText('Your classification overrides the suggestion.')
   ).not.toBeInTheDocument();
+  screen.getByText('Details and rules').closest('details')!.open = true;
   fireEvent.change(screen.getByLabelText('Classification'), {
     target: { value: 'unknown' },
   });
@@ -174,6 +201,7 @@ it('keeps source credit blockers after expense overrides and prevents summary cl
   expect(
     repayment.getByText(/A source credit cannot be converted/)
   ).toBeVisible();
+  repayment.getByText('Details and rules').closest('details')!.open = true;
   expect(repayment.getByText(/Suggested: Card repayment/)).toBeVisible();
   const summary = within(
     screen.getByRole('group', { name: 'Row 2: Excluded from expenses' })

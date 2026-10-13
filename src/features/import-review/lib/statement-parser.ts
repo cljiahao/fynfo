@@ -96,7 +96,9 @@ function suggestClassification(
   const refund = /\bREFUND\b/i.test(sourceText);
   const transfer = /\bTRANSFER\b/i.test(sourceText);
   const repayment =
-    /\b(?:CARD (?:PAYMENT|REPAYMENT)|PAYMENT THANK YOU)\b/i.test(sourceText);
+    /\b(?:CARD (?:PAYMENT|REPAYMENT)|PAYMENT THANK YOU|PAYMT THRU)\b/i.test(
+      sourceText
+    );
   const credit =
     /\b(?:CR|CREDIT|DIVIDEND)\b/i.test(sourceText) ||
     values.some((value) => /\bCR\b|[-()]/i.test(value[0]));
@@ -197,12 +199,20 @@ export function getStatementReview(
 function qualifyRow(
   source: StatementLine[],
   period: StatementPeriod,
-  billedSgd: boolean
+  billedSgd: boolean,
+  uobColumns = false
 ): StatementCandidate {
   const raw = source.map((line) => line.text).join(' ');
-  const match = raw.match(DATE_PREFIX);
+  // In this UOB layout the first date is posting, the second is transaction.
+  // Currency/reference continuations remain source evidence, not billed values.
+  const transaction = uobColumns ? source[0].text : raw;
+  const posting = transaction.match(DATE_PREFIX);
+  const afterPosting = posting ? transaction.slice(posting[0].length) : '';
+  const match = uobColumns ? afterPosting.match(DATE_PREFIX) : posting;
   const date = match ? statementDate(match, period) : '';
-  const body = match ? raw.slice(match[0].length).trim() : raw;
+  const body = match
+    ? (uobColumns ? afterPosting : transaction).slice(match[0].length).trim()
+    : transaction;
   const values = [...body.matchAll(MONEY)];
   const explicitSgd = values.filter((value) => /SGD|S\$/i.test(value[0]));
   const chosen =
@@ -228,7 +238,11 @@ function qualifyRow(
     /\b(?:OPENING BALANCE|CLOSING BALANCE|TOTAL BALANCE|AMOUNT DUE|MINIMUM PAYMENT)\b/i.test(
       body
     );
-  const suggestion = suggestClassification(body, values, Boolean(amount));
+  const suggestion = suggestClassification(
+    uobColumns ? raw : body,
+    values,
+    Boolean(amount)
+  );
   const row: StatementCandidate = {
     id: `${source[0].page}:${source[0].line}`,
     source,
@@ -301,6 +315,23 @@ export function parseStatementLines(
     /(?:SGD|S\$)\s*(?:BILLED|AMOUNT)|(?:BILLED|AMOUNT)\s*(?:SGD|S\$)|SGD\s+BILLED/i.test(
       text
     );
+  const uobPages = new Set<number>();
+  if (bank === 'uob') {
+    for (const page of new Set(lines.map((line) => line.page))) {
+      const pageText = lines
+        .filter((line) => line.page === page)
+        .map((line) => line.text)
+        .join(' ')
+        .replace(/\s+/g, ' ');
+      // PDF text can place both "Date" labels on a second header line.
+      if (
+        /Post(?: Date)? Trans(?: Date)? Description of Transaction Transaction Amount(?: Date Date)? SGD\b/i.test(
+          pageText
+        )
+      )
+        uobPages.add(page);
+    }
+  }
   const groups: StatementLine[][] = [];
   for (const line of lines) {
     if (
@@ -316,14 +347,26 @@ export function parseStatementLines(
       if (
         preceding &&
         preceding[0].page === line.page &&
-        !MONEY.test(preceding.map((item) => item.text).join(' ')) &&
+        (!MONEY.test(preceding.map((item) => item.text).join(' ')) ||
+          (uobPages.has(line.page) &&
+            /^(?:Ref\s*No\s*:|[A-Z]{3}\s+[\d,.]+(?:\s*(?:CR|DR))?$)/i.test(
+              line.text.trim()
+            ))) &&
         line.text.trim()
       )
         preceding.push(line);
       MONEY.lastIndex = 0;
     }
   }
-  const rows = groups.map((source) => qualifyRow(source, period, billedSgd));
+  const rows = groups.map((source) => {
+    const uobColumns = uobPages.has(source[0].page);
+    return qualifyRow(
+      source,
+      period,
+      (uobPages.size === 0 && billedSgd) || uobColumns,
+      uobColumns
+    );
+  });
   if (!rows.length)
     throw new Error(
       'No supported transaction rows were found. Image-only and other layouts require manual review.'
