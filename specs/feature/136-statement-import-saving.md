@@ -289,3 +289,12 @@ review rejected remote push because explicit permission to publish repository
 contents to `https://github.com/cljiahao/fynfo.git` was missing. No workaround,
 push, PR publication or CI claim is made. Complete final local gates and ask owner
 for that exact publication permission before repeating normal push hooks.
+
+Final correction commit 64981df passed normal check hooks and its production build.
+V8 instrumentation made the dense 21-row native-control fixture take 5.764s,
+exceeding Vitest's default 5s budget despite the same assertions passing focused
+checks. That single test now has a 10s harness allowance; no assertion, application
+timeout, global test configuration or coverage threshold is changed. The failed
+broad log is retained, and full coverage is repeated. No production source changes
+after the successful corrected build. Public origin metadata was verified, but
+automatic review still requires explicit owner permission for remote publication.
