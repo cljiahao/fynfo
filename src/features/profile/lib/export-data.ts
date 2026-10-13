@@ -6,12 +6,13 @@ import type {
 import type { DividendData, EquityTradeData } from '@/features/equity/types';
 import type { ExpenseData } from '@/features/expenses/types';
 import type { MerchantRule } from '@/features/merchant-rules';
+import type { RecurringTemplate } from '@/features/recurring-expenses';
 import type { SalaryData, TaxReliefData } from '@/features/salary/types';
 import type { ProfileData } from '../types';
 
 /** Envelope schema version. Bump when `ExportData` shape changes; a future
  *  import branches on this to migrate older backups. */
-export const EXPORT_VERSION = 4;
+export const EXPORT_VERSION = 5;
 
 /** A tax-relief row carrying its year (reliefs are stored per year). */
 export type TaxReliefExport = TaxReliefData & { year: number };
@@ -27,6 +28,7 @@ export interface ExportData {
   plannerSettings: PlannerSettingsData | null;
   scenarios: ScenarioRecord[];
   merchantRules: MerchantRule[];
+  recurringTemplates: RecurringTemplate[];
 }
 
 export interface ExportEnvelope {

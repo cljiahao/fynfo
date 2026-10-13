@@ -179,9 +179,10 @@ it('preserves legacy schemas and version3 export keys including scenario source 
     plannerSettings: null,
     scenarios: decryptedRecords,
     merchantRules: [],
+    recurringTemplates: [],
   };
   const envelope = buildExportEnvelope(data, '2026-10-10T00:00:00Z');
-  expect(envelope.version).toBe(4);
+  expect(envelope.version).toBe(5);
   expect(JSON.parse(serializeExport(envelope))).toMatchObject({
     data: {
       snapshots: [{ id: '0000-01' }, { id: '2026-02' }],

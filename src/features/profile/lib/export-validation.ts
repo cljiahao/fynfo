@@ -1,4 +1,5 @@
 import { merchantRulesSchema } from '@/features/merchant-rules';
+import { recurringTemplatesSchema } from '@/features/recurring-expenses';
 import { z } from 'zod';
 import {
   EXPORT_REVIEW_DOMAINS,
@@ -201,10 +202,22 @@ const envelope = z.discriminatedUnion('version', [
       merchantRules: merchantRulesSchema,
     }),
   }),
+  z.strictObject({
+    version: z.literal(5),
+    app: z.literal('fynfo'),
+    exportedAt: timestamp,
+    data: z.strictObject({
+      ...common,
+      dividends: rowList(dividend),
+      scenarios: z.array(scenario).max(10),
+      merchantRules: merchantRulesSchema,
+      recurringTemplates: recurringTemplatesSchema,
+    }),
+  }),
 ]);
 
 export interface ExportReviewSummary {
-  version: 1 | 2 | 3 | 4;
+  version: 1 | 2 | 3 | 4 | 5;
   exportedAt: string;
   counts: Record<ExportReviewDomain, number | null>;
   warnings: string[];
@@ -252,13 +265,15 @@ export function reviewExportJson(content: string): ExportReviewResult {
       ok: false,
       error: label
         ? `${label} contains unsupported or invalid fields. Check that domain in the original export; no records were changed.`
-        : 'This file does not match a supported Fynfo export (versions 1–4). Check its version and required fields; no records were changed.',
+        : 'This file does not match a supported Fynfo export (versions 1–5). Check its version and required fields; no records were changed.',
     };
   }
   const { data, version, exportedAt } = result.data;
   const dividends = 'dividends' in data ? data.dividends : [];
   const scenarios = 'scenarios' in data ? data.scenarios : [];
   const merchantRules = 'merchantRules' in data ? data.merchantRules : [];
+  const recurringTemplates =
+    'recurringTemplates' in data ? data.recurringTemplates : [];
   const counts: ExportReviewSummary['counts'] = {
     profile: data.profile === null ? 0 : 1,
     snapshots: data.snapshots.length,
@@ -270,6 +285,7 @@ export function reviewExportJson(content: string): ExportReviewResult {
     plannerSettings: data.plannerSettings === null ? 0 : 1,
     scenarios: version < 3 ? null : scenarios.length,
     merchantRules: version < 4 ? null : merchantRules.length,
+    recurringTemplates: version < 5 ? null : recurringTemplates.length,
   };
   const rows =
     Object.values(counts).reduce<number>(
@@ -277,12 +293,13 @@ export function reviewExportJson(content: string): ExportReviewResult {
       0
     ) +
     data.snapshots.reduce((sum, row) => sum + row.entries.length, 0) +
-    data.expenses.reduce((sum, row) => sum + row.splits.length, 0);
+    data.expenses.reduce((sum, row) => sum + row.splits.length, 0) +
+    recurringTemplates.reduce((sum, row) => sum + row.occurrences.length, 0);
   if (rows > EXPORT_REVIEW_MAX_ROWS)
     return {
       ok: false,
       error:
-        'This file exceeds the 10,000-row local review limit, including nested entries and splits. The original file is unchanged.',
+        'This file exceeds the 10,000-row local review limit, including nested entries, splits and occurrence history. The original file is unchanged.',
     };
   const duplicateDomains = [
     ['Snapshots', data.snapshots.map((row) => row.id)],
@@ -308,5 +325,6 @@ export function reviewExportJson(content: string): ExportReviewResult {
   if (version === 1) warnings.push(EXPORT_REVIEW_WARNINGS.dividends);
   if (version < 3) warnings.push(EXPORT_REVIEW_WARNINGS.scenarios);
   if (version < 4) warnings.push(EXPORT_REVIEW_WARNINGS.merchantRules);
+  if (version < 5) warnings.push(EXPORT_REVIEW_WARNINGS.recurringTemplates);
   return { ok: true, summary: { version, exportedAt, counts, warnings } };
 }
