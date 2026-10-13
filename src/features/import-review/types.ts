@@ -20,6 +20,8 @@ export interface StatementCandidate {
   source: StatementLine[];
   date: string;
   description: string;
+  originalDescription: string;
+  manualMerchant: { description: boolean; category: boolean };
   amount: string;
   category: string;
   classification: StatementClassification;

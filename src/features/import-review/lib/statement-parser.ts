@@ -234,6 +234,8 @@ function qualifyRow(
     source,
     date,
     description,
+    originalDescription: description,
+    manualMerchant: { description: false, category: false },
     amount,
     category: 'other',
     classification: isSummary ? 'unknown' : suggestion.kind,

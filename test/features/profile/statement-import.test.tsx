@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => ({
   extract: vi.fn(),
   read: vi.fn(),
   insert: vi.fn(),
+  rulebook: vi.fn(),
 }));
 vi.mock('@/features/import-review/lib/local-pdf', () => ({
   openLocalStatementPdf: async () => ({
@@ -37,6 +38,10 @@ vi.mock('@/features/import-review/lib/local-pdf', () => ({
     render: async () => {},
     destroy: () => {},
   }),
+}));
+vi.mock('@/features/merchant-rules/actions/rulebook-actions', () => ({
+  getMerchantRulebook: mocks.rulebook,
+  saveMerchantRulebook: vi.fn(),
 }));
 vi.mock('@/features/expenses', async () => ({
   ...(await import('@/features/expenses/lib/import-expense')),
@@ -47,6 +52,7 @@ vi.mock('@/features/expenses', async () => ({
 }));
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.rulebook.mockResolvedValue(null);
   mocks.extract.mockResolvedValue(
     ['UOB SGD billed', '01 OCT INVENTED MARKET 12.30'].map((text, index) => ({
       page: 1,
@@ -544,4 +550,47 @@ it('checks a hidden interrupted save before its old acknowledgement returns and 
     screen.getByText(/Source page 1, line 2: Confirmed saved/)
   ).toBeInTheDocument();
   expect(mocks.insert).toHaveBeenCalledTimes(1);
+});
+
+it('merchant Apply invalidates duplicate review and preserves manual fields and original matching text', async () => {
+  mocks.rulebook.mockResolvedValue({
+    id: '851af27a-e752-4aa5-8294-44b02bd911ca',
+    revision: '1',
+    payload: {
+      schemaVersion: 1,
+      requestId: 'ff65feb2-8ffa-427c-a057-8779580f162f',
+      rules: [
+        {
+          id: '28df2170-47da-4771-90cc-9aa36eff48d5',
+          label: 'Market',
+          enabled: true,
+          matchMode: 'exact',
+          matchText: 'INVENTED MARKET',
+          bank: 'uob',
+          displayName: 'Suggested market',
+          category: 'groceries',
+        },
+      ],
+    },
+  });
+  await setup();
+  fireEvent.change(screen.getByLabelText('Description'), {
+    target: { value: 'My merchant' },
+  });
+  await selectAndCheck();
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Apply suggestion' })
+  );
+  expect(screen.getByLabelText('Description')).toHaveValue('My merchant');
+  expect(screen.getByLabelText('Category')).toHaveValue('groceries');
+  expect(
+    screen.getByRole('button', { name: 'Save selected expenses' })
+  ).toBeDisabled();
+  expect(screen.getByText('Original merchant: INVENTED MARKET')).toBeVisible();
+  expect(mocks.insert).not.toHaveBeenCalled();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Replace my merchant name' })
+  );
+  expect(screen.getByLabelText('Description')).toHaveValue('Suggested market');
+  expect(screen.getByText('Original merchant: INVENTED MARKET')).toBeVisible();
 });

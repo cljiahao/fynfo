@@ -314,8 +314,8 @@ Add shadcn primitives using `npx shadcn@latest add <component-name>`.
 ## Personal data export
 
 The profile page downloads a versioned JSON export of profile, snapshots,
-expenses, salary, tax reliefs, equity trades, dividends, planner settings, and saved planning scenarios.
-The server decrypts these nine personal domains while the vault is unlocked.
+expenses, salary, tax reliefs, equity trades, dividends, planner settings, saved planning scenarios, and merchant rules.
+The server decrypts these ten personal domains while the vault is unlocked.
 Household goals and contributions are excluded. Treat the downloaded file as
 sensitive plaintext; there is currently no import/restore workflow. Avoid editing
 records during export: independent domain reads do not form one database snapshot.
@@ -323,15 +323,36 @@ A failed domain read prevents download; temporary download resources are release
 even if browser activation fails, and overlapping export requests are ignored.
 
 Profile also reviews an existing JSON export locally, showing only domain counts,
-export timestamp and legacy omissions. Versions 1–3 are supported within the
+export timestamp and legacy omissions. Versions 1–4 are supported within the
 1 MiB / 10,000 aggregate-row review limits (including snapshot entries and expense
 splits). Nested JSON is limited to 32 levels, general strings to 4,096 characters
 and saved scenarios to ten. Files with unsupported fields/values, repeated JSON
 keys or record identities are rejected rather than rewritten. This review does
 not upload, save, restore, authenticate or prove completeness/snapshot consistency.
-Version 1 omits dividends and scenarios; version 2 omits scenarios. Clearing,
+Version 1 omits dividends and scenarios; version 2 omits scenarios. Versions 1–3 omit merchant rules. Clearing,
 replacing the file or leaving the protected view discards review state and prevents
 late results from being shown. Existing export size/format behavior is unchanged.
+
+Merchant rules in statement review suggest a name and category after matching
+the retained original description. Exact matches precede phrase matches at Unicode
+word boundaries; accents and punctuation are retained. Conflicting rules require
+an explicit choice. Apply preserves manual field edits unless their specific
+replacement is confirmed, and invalidates the expense duplicate review. Rule
+changes never rewrite saved expenses or save a statement row automatically.
+
+Up to 100 personal rules are stored together under the existing personal-vault
+encryption. Revision checks reject stale edits across tabs. Unknown saves retain
+their frozen submission for explicit checking, without automatic replay. Removing
+the last rule retains an empty rulebook to prevent stale creation from returning
+removed rules. The application has no supported PIN-change/rekey or restore flow;
+future implementations must include this encrypted domain. Export v4 includes
+merchant rules, and a failed rule read prevents a partial download.
+
+The owner-approved migration is
+`supabase/migrations/20261013000137_personal_merchant_rulebooks.sql`. Production
+application and readiness confirmation precede application merge. Run the fresh
+synthetic SQL/PostgREST proof with `node supabase/tests/137-merchant-rulebooks.mjs`;
+it uses already-installed Docker images, new resources only and no production data.
 
 Expenses includes **Review bank PDF** for local, unsaved expense drafts with an
 original-page preview and editable date, description, category and SGD amount.

@@ -1,3 +1,4 @@
+import { merchantRulesSchema } from '@/features/merchant-rules';
 import { z } from 'zod';
 import {
   EXPORT_REVIEW_DOMAINS,
@@ -189,10 +190,21 @@ const envelope = z.discriminatedUnion('version', [
       scenarios: z.array(scenario).max(10),
     }),
   }),
+  z.strictObject({
+    version: z.literal(4),
+    app: z.literal('fynfo'),
+    exportedAt: timestamp,
+    data: z.strictObject({
+      ...common,
+      dividends: rowList(dividend),
+      scenarios: z.array(scenario).max(10),
+      merchantRules: merchantRulesSchema,
+    }),
+  }),
 ]);
 
 export interface ExportReviewSummary {
-  version: 1 | 2 | 3;
+  version: 1 | 2 | 3 | 4;
   exportedAt: string;
   counts: Record<ExportReviewDomain, number | null>;
   warnings: string[];
@@ -240,12 +252,13 @@ export function reviewExportJson(content: string): ExportReviewResult {
       ok: false,
       error: label
         ? `${label} contains unsupported or invalid fields. Check that domain in the original export; no records were changed.`
-        : 'This file does not match a supported Fynfo export (versions 1–3). Check its version and required fields; no records were changed.',
+        : 'This file does not match a supported Fynfo export (versions 1–4). Check its version and required fields; no records were changed.',
     };
   }
   const { data, version, exportedAt } = result.data;
   const dividends = 'dividends' in data ? data.dividends : [];
   const scenarios = 'scenarios' in data ? data.scenarios : [];
+  const merchantRules = 'merchantRules' in data ? data.merchantRules : [];
   const counts: ExportReviewSummary['counts'] = {
     profile: data.profile === null ? 0 : 1,
     snapshots: data.snapshots.length,
@@ -256,6 +269,7 @@ export function reviewExportJson(content: string): ExportReviewResult {
     dividends: version === 1 ? null : dividends.length,
     plannerSettings: data.plannerSettings === null ? 0 : 1,
     scenarios: version < 3 ? null : scenarios.length,
+    merchantRules: version < 4 ? null : merchantRules.length,
   };
   const rows =
     Object.values(counts).reduce<number>(
@@ -293,5 +307,6 @@ export function reviewExportJson(content: string): ExportReviewResult {
   const warnings: string[] = [];
   if (version === 1) warnings.push(EXPORT_REVIEW_WARNINGS.dividends);
   if (version < 3) warnings.push(EXPORT_REVIEW_WARNINGS.scenarios);
+  if (version < 4) warnings.push(EXPORT_REVIEW_WARNINGS.merchantRules);
   return { ok: true, summary: { version, exportedAt, counts, warnings } };
 }

@@ -11,7 +11,20 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { EXPENSE_TYPE_LABELS, buildImportNote } from '@/features/expenses';
+import {
+  EXPENSE_TYPE_LABELS,
+  buildImportNote,
+  type ExpenseType,
+} from '@/features/expenses';
+import {
+  MerchantRuleManager,
+  MerchantSuggestionReview,
+  applyMerchantSuggestion,
+  restoreMerchantSource,
+  useMerchantRulebook,
+  type MerchantRule,
+  type MerchantSuggestion,
+} from '@/features/merchant-rules';
 import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
 import { useEffect, useId, useRef, useState } from 'react';
 import {
@@ -53,13 +66,24 @@ function StatementReviewBody({
   const [view, setView] = useState<'statement' | 'extracted'>('extracted');
   const [selected, setSelected] = useState('');
   const [rowPage, setRowPage] = useState(0);
+  const merchant = useMerchantRulebook();
+  const [ruleDraft, setRuleDraft] = useState<MerchantRule | null>(null);
   const save = useStatementSave(rows, bank, { from, to });
+  function allowDiscard() {
+    if (!save.allowDiscard()) return false;
+    return (
+      (!ruleDraft && !['saving', 'unconfirmed'].includes(merchant.stage)) ||
+      window.confirm(
+        'Discard this merchant rule review? Unsaved edits will be lost. A dispatched rule save may still complete.'
+      )
+    );
+  }
   useEffect(() => {
-    discardGuard.current = save.allowDiscard;
+    discardGuard.current = allowDiscard;
     return () => {
       discardGuard.current = null;
     };
-  }, [discardGuard, save.allowDiscard]);
+  });
 
   useEffect(
     () => () => {
@@ -85,7 +109,8 @@ function StatementReviewBody({
   );
 
   function reset() {
-    if (!save.allowDiscard()) return false;
+    if (!allowDiscard()) return false;
+    setRuleDraft(null);
     save.reset();
     generation.current++;
     controller.current?.abort();
@@ -198,8 +223,76 @@ function StatementReviewBody({
     save.invalidateReview();
     setRows((current) =>
       current.map((row) =>
-        row.id === rowId ? { ...row, [field]: value } : row
+        row.id === rowId
+          ? {
+              ...row,
+              [field]: value,
+              manualMerchant: {
+                description:
+                  row.manualMerchant.description || field === 'description',
+                category: row.manualMerchant.category || field === 'category',
+              },
+            }
+          : row
       )
+    );
+  }
+  function applySuggestion(
+    rowId: string,
+    suggestion: MerchantSuggestion,
+    replace: { description: boolean; category: boolean }
+  ) {
+    if (!canReveal() || save.locked(rowId) || save.busy) return;
+    save.invalidateReview();
+    setRows((current) =>
+      current.map((row) => {
+        if (row.id !== rowId) return row;
+        const next = applyMerchantSuggestion(
+          {
+            description: row.description,
+            category: row.category as ExpenseType,
+            manual: row.manualMerchant,
+          },
+          suggestion,
+          replace
+        );
+        return {
+          ...row,
+          description: next.description,
+          category: next.category,
+          manualMerchant: next.manual,
+        };
+      })
+    );
+  }
+  function restoreMerchant(rowId: string) {
+    if (!canReveal() || save.locked(rowId) || save.busy) return;
+    if (
+      !window.confirm(
+        'Restore the original merchant and Other category? Your current merchant and category edits will be replaced.'
+      )
+    )
+      return;
+    save.invalidateReview();
+    setRows((current) =>
+      current.map((row) => {
+        if (row.id !== rowId) return row;
+        const next = restoreMerchantSource(
+          {
+            description: row.description,
+            category: row.category as ExpenseType,
+            manual: row.manualMerchant,
+          },
+          { description: row.originalDescription, category: 'other' },
+          { description: true, category: true }
+        );
+        return {
+          ...row,
+          description: next.description,
+          category: next.category,
+          manualMerchant: next.manual,
+        };
+      })
     );
   }
   function classify(rowId: string, value: string) {
@@ -332,6 +425,14 @@ function StatementReviewBody({
       </div>
       {rows.length > 0 && (
         <>
+          <MerchantRuleManager
+            rulebook={merchant}
+            draft={ruleDraft}
+            onDraft={setRuleDraft}
+            examples={rows
+              .filter((row) => !row.isSummary)
+              .map((row) => ({ description: row.originalDescription, bank }))}
+          />
           <p className="text-sm" role="status" aria-live="polite">
             {mask(rows.length)} source rows:{' '}
             {mask(
@@ -615,6 +716,55 @@ function StatementReviewBody({
                       </select>
                     </div>
                   </div>
+                  {!hidden && !row.isSummary && (
+                    <>
+                      <MerchantSuggestionReview
+                        originalDescription={row.originalDescription}
+                        bank={bank}
+                        rules={merchant.rules}
+                        manual={row.manualMerchant}
+                        onApply={(suggestion, replace) =>
+                          applySuggestion(row.id, suggestion, replace)
+                        }
+                        onRestore={() => restoreMerchant(row.id)}
+                      />
+                      <Button
+                        type="button"
+                        variant="link"
+                        disabled={
+                          !merchant.canEdit ||
+                          row.originalDescription.length > 256 ||
+                          row.description.length > 256
+                        }
+                        onClick={() => {
+                          if (
+                            !canReveal() ||
+                            save.locked(row.id) ||
+                            save.busy ||
+                            !merchant.canEdit
+                          )
+                            return;
+                          if (
+                            ruleDraft &&
+                            !window.confirm('Discard the unsaved rule draft?')
+                          )
+                            return;
+                          setRuleDraft({
+                            id: crypto.randomUUID(),
+                            label: row.description,
+                            enabled: true,
+                            matchMode: 'exact',
+                            matchText: row.originalDescription,
+                            bank,
+                            displayName: row.description || null,
+                            category: row.category as ExpenseType,
+                          });
+                        }}
+                      >
+                        Create rule from this row
+                      </Button>
+                    </>
+                  )}
                 </fieldset>
               ))}
             </section>
