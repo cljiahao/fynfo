@@ -204,3 +204,8 @@ The SQL file still matches the exact approved normalized-LF SHA-256
 Docker's Linux engine remains unavailable; SQL concurrency/RLS replay is pending.
 Full application gates, final source review and publication readiness follow.
 No production data, credentials, real environment files or production SQL used.
+
+Final review requires direct cache-lifecycle evidence for recurring confirmations:
+refresh after another mutation settles, avoid replacing its optimistic record,
+and discard queued work after query removal or owner teardown. Add focused hook
+tests for these existing guards before the full gate; no implementation expansion.

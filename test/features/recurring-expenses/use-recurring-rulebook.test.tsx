@@ -13,6 +13,11 @@ import type {
   RecurringMutation,
   RecurringOutcome,
 } from '@/features/recurring-expenses/types';
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from '@tanstack/react-query';
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
@@ -99,6 +104,100 @@ beforeEach(() => {
   mocks.expenses.mockResolvedValue([]);
 });
 afterEach(cleanup);
+it('defers expense refresh during another mutation and Hide, then refreshes when visible', async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const optimistic = [{ item: 'Synthetic optimistic expense' }];
+  const authoritative = [{ item: 'Synthetic confirmed expense' }];
+  client.setQueryData(['expenses'], optimistic);
+  mocks.expenses.mockResolvedValue(authoritative);
+  const v = renderHook(
+    () => {
+      const privacy = useAmountVisibility();
+      const recurring = useRecurringRulebook();
+      useQuery({
+        queryKey: ['expenses'],
+        queryFn: mocks.expenses,
+        staleTime: Infinity,
+        enabled: !privacy.hidden,
+      });
+      return { privacy, recurring };
+    },
+    {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={client}>
+          <AmountVisibilityProvider>{children}</AmountVisibilityProvider>
+        </QueryClientProvider>
+      ),
+    }
+  );
+  await waitFor(() => expect(v.result.current.recurring.canEdit).toBe(true));
+  const pending = deferred<void>();
+  const mutation = client
+    .getMutationCache()
+    .build(client, { mutationFn: () => pending.promise });
+  let completion!: Promise<void>;
+  act(() => {
+    completion = mutation.execute(undefined);
+  });
+  await act(async () => {
+    await v.result.current.recurring.execute(command);
+  });
+  expect(client.getQueryData(['expenses'])).toEqual(optimistic);
+  expect(mocks.expenses).not.toHaveBeenCalled();
+  act(() => v.result.current.privacy.hideAmounts());
+  await act(async () => {
+    pending.resolve();
+    await completion;
+  });
+  expect(mocks.expenses).not.toHaveBeenCalled();
+  act(() => v.result.current.privacy.showAmounts());
+  await waitFor(() =>
+    expect(client.getQueryData(['expenses'])).toEqual(authoritative)
+  );
+  v.unmount();
+  client.clear();
+});
+
+it.each(['removed', 'owner-unmounted'] as const)(
+  'discards queued expense refresh when %s',
+  async (mode) => {
+    const client = new QueryClient();
+    client.setQueryData(['expenses'], []);
+    const v = renderHook(() => useRecurringRulebook(), {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={client}>
+          <AmountVisibilityProvider>{children}</AmountVisibilityProvider>
+        </QueryClientProvider>
+      ),
+    });
+    await waitFor(() => expect(v.result.current.canEdit).toBe(true));
+    const pending = deferred<void>();
+    const mutation = client
+      .getMutationCache()
+      .build(client, { mutationFn: () => pending.promise });
+    let completion!: Promise<void>;
+    act(() => {
+      completion = mutation.execute(undefined);
+    });
+    await act(async () => {
+      await v.result.current.execute(command);
+    });
+    if (mode === 'removed') {
+      client.removeQueries({ queryKey: ['expenses'], exact: true });
+      client.setQueryData(['expenses'], [{ item: 'Different private query' }]);
+    } else v.unmount();
+    const invalidation = vi.spyOn(client, 'invalidateQueries');
+    await act(async () => {
+      pending.resolve();
+      await completion;
+    });
+    expect(invalidation).not.toHaveBeenCalled();
+    v.unmount();
+    client.clear();
+  }
+);
 it.each([false, true])(
   'keeps a confirmed submission checkable when Hide/Show interrupts its reload (batched: %s)',
   async (batched) => {
