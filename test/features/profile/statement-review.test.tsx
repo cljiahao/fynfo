@@ -21,12 +21,18 @@ const mocks = vi.hoisted(() => ({
   extract: vi.fn(),
   render: vi.fn(),
   destroy: vi.fn(),
+  read: vi.fn(),
+  insert: vi.fn(),
 }));
 vi.mock('@/features/import-review/lib/local-pdf', () => ({
   openLocalStatementPdf: mocks.open,
 }));
-vi.mock('@/features/expenses', () => ({
+vi.mock('@/features/expenses', async () => ({
+  ...(await import('@/features/expenses/lib/import-expense')),
   EXPENSE_TYPE_LABELS: { other: 'Other', groceries: 'Groceries' },
+  EXPENSE_KEY: ['expenses'],
+  getExpenses: mocks.read,
+  insertImportedExpense: mocks.insert,
 }));
 beforeEach(() => {
   vi.clearAllMocks();
@@ -90,8 +96,9 @@ it('reviews editable drafts, keeps provenance, navigates source pages and clears
   expect(screen.getByLabelText('Description')).toHaveValue('Edited draft');
   expect(screen.getByLabelText('Category')).toHaveValue('groceries');
   expect(
-    screen.queryByRole('button', { name: /save|upload/i })
-  ).not.toBeInTheDocument();
+    screen.getByRole('button', { name: 'Save selected expenses' })
+  ).toBeDisabled();
+  expect(mocks.insert).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Clear review' }));
   expect(mocks.destroy).toHaveBeenCalled();
   expect(screen.queryByText(/source rows:/)).not.toBeInTheDocument();
@@ -173,8 +180,9 @@ it('keeps source credit blockers after expense overrides and prevents summary cl
   });
   expect(summary.getByLabelText('Classification')).toHaveValue('unknown');
   expect(
-    screen.queryByRole('button', { name: /save|upload/i })
-  ).not.toBeInTheDocument();
+    screen.getByRole('button', { name: 'Save selected expenses' })
+  ).toBeDisabled();
+  expect(mocks.insert).not.toHaveBeenCalled();
 });
 it('shows invalid edited expense fields as needing review and recovers when corrected', async () => {
   setup();

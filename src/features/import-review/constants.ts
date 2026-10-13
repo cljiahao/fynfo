@@ -4,6 +4,14 @@ export const STATEMENT_BANKS = [
   { value: 'hsbc', label: 'HSBC', identity: /\bHSBC\b/i },
   { value: 'citibank', label: 'Citibank', identity: /\bCITI(?:BANK)?\b/i },
 ] as const;
+export const IMPORT_OUTCOME_LABELS = {
+  not_started: 'Not started',
+  pending: 'Saving',
+  confirmed: 'Confirmed saved',
+  not_saved: 'Not saved',
+  unconfirmed: 'Save unconfirmed',
+  conflict: 'Saved record changed — review conflict',
+} as const;
 export const STATEMENT_CLASSIFICATIONS = [
   { value: 'expense', label: 'Expense' },
   { value: 'refund', label: 'Refund' },
