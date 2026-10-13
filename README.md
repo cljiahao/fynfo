@@ -346,9 +346,23 @@ does not prove a refund. Summary lines cannot be reclassified as transactions.
 Changing a credit's label or amount cannot turn it into a positive expense
 suggestion. Ambiguous source dates/amounts and possible duplicates remain visible
 after edits. Current invalid expense draft fields also need review.
-Only unprotected text PDFs up to 10 MiB and 100 pages are supported. No statement
-is uploaded and no expense is saved. Clear, replace or close to discard drafts
-and destroy the local worker. Image-only, protected and unsupported layouts need
+Only unprotected text PDFs up to 10 MiB and 100 pages are supported. The PDF is
+not uploaded. Select eligible positive SGD self expenses, preview their source
+notes, run **Check possible duplicates**, and explicitly **Save selected expenses**
+(maximum 20 per batch). Possible matches require source comparison and acknowledgement;
+they are warnings, not durable cross-file prevention. Selected fields and original
+transaction source notes are sent only on save and encrypted before storage.
+Each insert is separate: partial outcomes stay visible. A confirmed record cannot
+be submitted again in that review. Definite rejection permits an identical-ID/payload
+retry; lost acknowledgements retain a frozen submission for **Check saved expenses**.
+An exact read confirms it, changed values freeze a conflict, and absence remains
+unconfirmed with no blind retry that could recreate a deleted expense. Import
+saves never upsert or overwrite existing IDs. Hiding pauses unsent rows and ignores
+late acknowledgements; showing permits explicit checks. Clear, replace or close
+asks before discarding selected/frozen work and destroys the local worker. A sent
+save may still finish after closing; retry identity lasts only in that review's
+memory. Source notes are ordinary editable encrypted expense notes, not immutable
+bank proof. Image-only, protected and unsupported layouts need
 manual entry. Dev/build copies pinned PDF.js worker/font/decoder resources to
 `public/pdfjs/6.4.299`; the optional native canvas dependency is excluded.
 

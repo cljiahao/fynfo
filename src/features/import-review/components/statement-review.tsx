@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { EXPENSE_TYPE_LABELS } from '@/features/expenses';
+import { EXPENSE_TYPE_LABELS, buildImportNote } from '@/features/expenses';
 import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
 import { useEffect, useId, useRef, useState } from 'react';
 import {
@@ -20,6 +20,7 @@ import {
   STATEMENT_LIMITS,
   STATEMENT_REVIEW_STATUS_LABELS,
 } from '../constants';
+import { useStatementSave } from '../hooks/use-statement-save';
 import type { LocalStatementPdf } from '../lib/local-pdf';
 import {
   getStatementReview,
@@ -27,8 +28,13 @@ import {
   validStatementPeriod,
 } from '../lib/statement-parser';
 import type { StatementBank, StatementCandidate } from '../types';
+import { StatementSaveReview } from './statement-save-review';
 
-function StatementReviewBody() {
+function StatementReviewBody({
+  discardGuard,
+}: {
+  discardGuard: React.RefObject<(() => boolean) | null>;
+}) {
   const { hidden, mask, canReveal, getHideEpoch } = useAmountVisibility();
   const id = useId();
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -47,6 +53,13 @@ function StatementReviewBody() {
   const [view, setView] = useState<'statement' | 'extracted'>('extracted');
   const [selected, setSelected] = useState('');
   const [rowPage, setRowPage] = useState(0);
+  const save = useStatementSave(rows, bank, { from, to });
+  useEffect(() => {
+    discardGuard.current = save.allowDiscard;
+    return () => {
+      discardGuard.current = null;
+    };
+  }, [discardGuard, save.allowDiscard]);
 
   useEffect(
     () => () => {
@@ -72,6 +85,8 @@ function StatementReviewBody() {
   );
 
   function reset() {
+    if (!save.allowDiscard()) return false;
+    save.reset();
     generation.current++;
     controller.current?.abort();
     session.current?.destroy();
@@ -86,6 +101,7 @@ function StatementReviewBody() {
       canvas.current.width = 0;
       canvas.current.height = 0;
     }
+    return true;
   }
 
   useEffect(() => {
@@ -108,7 +124,7 @@ function StatementReviewBody() {
   async function extract() {
     if (!canReveal()) return;
     const hideEpoch = getHideEpoch();
-    reset();
+    if (!reset()) return;
     if (
       !file ||
       file.size > STATEMENT_LIMITS.bytes ||
@@ -178,7 +194,8 @@ function StatementReviewBody() {
     field: 'date' | 'description' | 'amount' | 'category',
     value: string
   ) {
-    if (!canReveal()) return;
+    if (!canReveal() || save.locked(rowId) || save.busy) return;
+    save.invalidateReview();
     setRows((current) =>
       current.map((row) =>
         row.id === rowId ? { ...row, [field]: value } : row
@@ -186,11 +203,12 @@ function StatementReviewBody() {
     );
   }
   function classify(rowId: string, value: string) {
-    if (!canReveal()) return;
+    if (!canReveal() || save.locked(rowId) || save.busy) return;
     const classification = STATEMENT_CLASSIFICATIONS.find(
       (entry) => entry.value === value
     )?.value;
     if (!classification) return;
+    save.invalidateReview();
     setRows((current) =>
       current.map((row) =>
         row.id === rowId && !row.isSummary ? { ...row, classification } : row
@@ -207,9 +225,10 @@ function StatementReviewBody() {
     <div className="space-y-4">
       <AmountsHiddenNotice />
       <p className="text-muted-foreground text-sm">
-        Processed on this device. No file upload or record saving. Text PDFs
-        only, up to 10 MiB and 100 pages. Password-protected and image-only
-        documents are unsupported. Bank layouts vary; only constructed
+        PDF processed on this device. Only explicitly selected expenses and
+        their previewed source notes are sent for saving. Text PDFs only, up to
+        10 MiB and 100 pages. Password-protected and image-only documents are
+        unsupported. Bank layouts vary; only constructed
         date/description/SGD-billed variants have been tested. Review every
         suggestion against its source.
       </p>
@@ -229,7 +248,7 @@ function StatementReviewBody() {
             className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
             onChange={(event) => {
               if (!canReveal()) return;
-              reset();
+              if (!reset()) return;
               setBank(event.target.value as StatementBank);
             }}
           >
@@ -250,7 +269,7 @@ function StatementReviewBody() {
             required
             onChange={(event) => {
               if (!canReveal()) return;
-              reset();
+              if (!reset()) return;
               setFrom(event.target.value);
             }}
           />
@@ -265,7 +284,7 @@ function StatementReviewBody() {
             required
             onChange={(event) => {
               if (!canReveal()) return;
-              reset();
+              if (!reset()) return;
               setTo(event.target.value);
             }}
           />
@@ -279,7 +298,7 @@ function StatementReviewBody() {
             accept=".pdf,application/pdf"
             onChange={(event) => {
               if (!canReveal()) return;
-              reset();
+              if (!reset()) return;
               setFile(event.currentTarget.files?.[0] ?? null);
               event.currentTarget.value = '';
             }}
@@ -295,7 +314,7 @@ function StatementReviewBody() {
             disabled={hidden}
             onClick={() => {
               if (!canReveal()) return;
-              reset();
+              if (!reset()) return;
               setFile(null);
             }}
           >
@@ -427,13 +446,51 @@ function StatementReviewBody() {
               {visibleRows.map((row, index) => (
                 <fieldset
                   key={row.id}
-                  disabled={hidden}
+                  disabled={hidden || save.locked(row.id) || save.busy}
                   className="space-y-2 rounded-md border p-3"
                 >
                   <legend className="px-1 text-sm">
                     Row {rowPage * 20 + index + 1}:{' '}
                     {STATEMENT_REVIEW_STATUS_LABELS[row.review.status]}
                   </legend>
+                  {!hidden &&
+                    !save.locked(row.id) &&
+                    (() => {
+                      const input = save.inputFor(row);
+                      return (
+                        <>
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              disabled={!input || save.busy}
+                              checked={save.selection.includes(row.id)}
+                              onChange={() => save.toggle(row)}
+                            />
+                            Select expense from page {row.source[0].page}, line{' '}
+                            {row.source[0].line}
+                          </label>
+                          {!input && row.review.status === 'candidate' && (
+                            <p className="text-warning-strong text-sm">
+                              This row exceeds supported saving fields or
+                              source-note limits, or its source cannot establish
+                              positive spending. Use manual entry after checking
+                              the source. Source notes allow at most 32 lines,
+                              4096 characters per line and 16 KiB total.
+                            </p>
+                          )}
+                          {input && save.selection.includes(row.id) && (
+                            <details>
+                              <summary className="cursor-pointer text-sm">
+                                Source note to save
+                              </summary>
+                              <p className="mt-2 text-sm break-words whitespace-pre-wrap">
+                                {buildImportNote(input)}
+                              </p>
+                            </details>
+                          )}
+                        </>
+                      );
+                    })()}
                   <Button
                     type="button"
                     variant="link"
@@ -562,6 +619,7 @@ function StatementReviewBody() {
               ))}
             </section>
           </div>
+          <StatementSaveReview save={save} />
         </>
       )}
     </div>
@@ -571,7 +629,9 @@ function StatementReviewBody() {
 export function StatementReview() {
   const { hidden, canReveal } = useAmountVisibility();
   const [open, setOpen] = useState(false);
+  const discardGuard = useRef<(() => boolean) | null>(null);
   function changeOpen(next: boolean) {
+    if (!next && discardGuard.current && !discardGuard.current()) return;
     if (!next || canReveal()) setOpen(next);
   }
   return (
@@ -585,11 +645,11 @@ export function StatementReview() {
         <DialogHeader>
           <DialogTitle>Review a bank statement</DialogTitle>
           <DialogDescription>
-            Classify local transaction drafts against the original PDF. Nothing
-            is saved.
+            Classify drafts against the original PDF, check possible duplicates
+            and explicitly save selected self expenses.
           </DialogDescription>
         </DialogHeader>
-        <StatementReviewBody />
+        <StatementReviewBody discardGuard={discardGuard} />
       </DialogContent>
     </Dialog>
   );

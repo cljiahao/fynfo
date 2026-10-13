@@ -25,8 +25,12 @@ const pdf = vi.hoisted(() => ({
 vi.mock('@/features/import-review/lib/local-pdf', () => ({
   openLocalStatementPdf: pdf.open,
 }));
-vi.mock('@/features/expenses', () => ({
+vi.mock('@/features/expenses', async () => ({
+  ...(await import('@/features/expenses/lib/import-expense')),
   EXPENSE_TYPE_LABELS: { other: 'Other', groceries: 'Groceries' },
+  EXPENSE_KEY: ['expenses'],
+  getExpenses: vi.fn().mockResolvedValue([]),
+  insertImportedExpense: vi.fn(),
 }));
 const lines: StatementLine[] = [
   { page: 1, line: 1, text: 'UOB' },
@@ -124,7 +128,7 @@ it('keeps actual editable drafts and labels while removing hidden canvas and sel
   if (!form) throw new Error('Expected PDF form');
   fireEvent.submit(form);
   expect(pdf.open).toHaveBeenCalledTimes(1);
-  expect(screen.getByText(/Processed on this device/)).toBeInTheDocument();
+  expect(screen.getByText(/PDF processed on this device/)).toBeInTheDocument();
   showInsideReview();
   expect(amount).toHaveValue('98.76');
   expect(description).toHaveValue('Synthetic draft 98.76');
