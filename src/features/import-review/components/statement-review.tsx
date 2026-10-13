@@ -197,7 +197,8 @@ function StatementReviewBody({
       }
       const candidates = parseStatementLines(lines, bank, { from, to });
       setRows(candidates);
-      setPage(1);
+      setSelected(candidates[0]?.id ?? '');
+      setPage(candidates[0]?.source[0].page ?? 1);
       setPageCount(opened.pageCount);
       setView('extracted');
       setFile(null);
@@ -317,123 +318,135 @@ function StatementReviewBody({
   return (
     <div className="space-y-4">
       <AmountsHiddenNotice />
-      <p className="text-muted-foreground text-sm">
-        PDF processed on this device. Only explicitly selected expenses and
-        their previewed source notes are sent for saving. Text PDFs only, up to
-        10 MiB and 100 pages. Password-protected and image-only documents are
-        unsupported. Bank layouts vary; only constructed
-        date/description/SGD-billed variants have been tested. Review every
-        suggestion against its source.
-      </p>
-      <form
-        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (canReveal()) void extract();
-        }}
-      >
-        <div className="space-y-2">
-          <Label htmlFor={`${id}-bank`}>Statement bank</Label>
-          <select
-            disabled={hidden}
-            id={`${id}-bank`}
-            value={bank}
-            className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-            onChange={(event) => {
-              if (!canReveal()) return;
-              if (!reset()) return;
-              setBank(event.target.value as StatementBank);
+      <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
+        <details open={rows.length === 0} className="space-y-3 open:w-full">
+          <summary className="cursor-pointer text-sm font-medium">
+            {rows.length ? 'Change statement' : 'Choose a statement'}
+          </summary>
+          <form
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (canReveal()) void extract();
             }}
           >
-            {STATEMENT_BANKS.map((entry) => (
-              <option key={entry.value} value={entry.value}>
-                {entry.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor={`${id}-from`}>Period start</Label>
-          <Input
-            disabled={hidden}
-            id={`${id}-from`}
-            type="date"
-            value={hidden ? '' : from}
-            required
-            onChange={(event) => {
-              if (!canReveal()) return;
-              if (!reset()) return;
-              setFrom(event.target.value);
-            }}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor={`${id}-to`}>Period end</Label>
-          <Input
-            disabled={hidden}
-            id={`${id}-to`}
-            type="date"
-            value={hidden ? '' : to}
-            required
-            onChange={(event) => {
-              if (!canReveal()) return;
-              if (!reset()) return;
-              setTo(event.target.value);
-            }}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor={`${id}-file`}>Bank statement PDF</Label>
-          <Input
-            disabled={hidden}
-            id={`${id}-file`}
-            type="file"
-            accept=".pdf,application/pdf"
-            onChange={(event) => {
-              if (!canReveal()) return;
-              if (!reset()) return;
-              setFile(event.currentTarget.files?.[0] ?? null);
-              event.currentTarget.value = '';
-            }}
-          />
-        </div>
-        <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-4">
-          <Button type="submit" disabled={hidden || busy || !file}>
-            {busy ? 'Extracting locally…' : 'Extract for review'}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={hidden}
-            onClick={() => {
-              if (!canReveal()) return;
-              if (!reset()) return;
-              setFile(null);
-            }}
-          >
-            Clear review
-          </Button>
-        </div>
-      </form>
-      <div role="status" aria-live="polite">
-        {error && <p className="text-destructive text-sm">{error}</p>}
-        {busy && (
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-bank`}>Statement bank</Label>
+              <select
+                disabled={hidden}
+                id={`${id}-bank`}
+                value={bank}
+                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                onChange={(event) => {
+                  if (!canReveal()) return;
+                  if (!reset()) return;
+                  setBank(event.target.value as StatementBank);
+                }}
+              >
+                {STATEMENT_BANKS.map((entry) => (
+                  <option key={entry.value} value={entry.value}>
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-from`}>Period start</Label>
+              <Input
+                disabled={hidden}
+                id={`${id}-from`}
+                type="date"
+                value={hidden ? '' : from}
+                required
+                onChange={(event) => {
+                  if (!canReveal()) return;
+                  if (!reset()) return;
+                  setFrom(event.target.value);
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-to`}>Period end</Label>
+              <Input
+                disabled={hidden}
+                id={`${id}-to`}
+                type="date"
+                value={hidden ? '' : to}
+                required
+                onChange={(event) => {
+                  if (!canReveal()) return;
+                  if (!reset()) return;
+                  setTo(event.target.value);
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${id}-file`}>Bank statement PDF</Label>
+              <Input
+                disabled={hidden}
+                id={`${id}-file`}
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={(event) => {
+                  if (!canReveal()) return;
+                  if (!reset()) return;
+                  setFile(event.currentTarget.files?.[0] ?? null);
+                  event.currentTarget.value = '';
+                }}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-4">
+              <Button type="submit" disabled={hidden || busy || !file}>
+                {busy ? 'Extracting locally…' : 'Extract for review'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={hidden}
+                onClick={() => {
+                  if (!canReveal()) return;
+                  if (!reset()) return;
+                  setFile(null);
+                }}
+              >
+                Clear review
+              </Button>
+            </div>
+          </form>
           <p className="text-muted-foreground text-sm">
-            Reading locally. You can clear this review to cancel.
+            Text PDFs up to 10 MiB and 100 pages. Use an unprotected PDF. Scans
+            and some bank layouts need manual entry.
           </p>
+        </details>
+        {rows.length > 0 && (
+          <details open={ruleDraft !== null} className="space-y-2 open:w-full">
+            <summary className="cursor-pointer text-sm">
+              Saved merchant rules
+            </summary>
+            <MerchantRuleManager
+              rulebook={merchant}
+              draft={ruleDraft}
+              onDraft={setRuleDraft}
+              examples={rows
+                .filter((row) => !row.isSummary)
+                .map((row) => ({ description: row.originalDescription, bank }))}
+            />
+          </details>
         )}
       </div>
+      {(error || busy) && (
+        <div role="status" aria-live="polite">
+          {error && <p className="text-destructive text-sm">{error}</p>}
+          {busy && (
+            <p className="text-muted-foreground text-sm">
+              Reading locally. You can clear this review to cancel.
+            </p>
+          )}
+        </div>
+      )}
       {rows.length > 0 && (
         <>
-          <MerchantRuleManager
-            rulebook={merchant}
-            draft={ruleDraft}
-            onDraft={setRuleDraft}
-            examples={rows
-              .filter((row) => !row.isSummary)
-              .map((row) => ({ description: row.originalDescription, bank }))}
-          />
-          <p className="text-sm" role="status" aria-live="polite">
+          <p className="sr-only" role="status" aria-live="polite">
             {mask(rows.length)} source rows:{' '}
             {mask(
               reviewedRows.filter((row) => row.review.status === 'candidate')
@@ -449,13 +462,10 @@ function StatementReviewBody({
               reviewedRows.filter((row) => row.review.status === 'excluded')
                 .length
             )}{' '}
-            excluded. Edits below are unsaved drafts; source issues remain
-            visible.
+            excluded.
           </p>
           <p className="text-muted-foreground text-sm">
-            Classification is a suggestion. Refunds, transfers, card repayments
-            and other credits are excluded from expenses. Unknown rows need
-            review. Changing a label does not change the source amount or sign.
+            Select purchases, check the details, then save.
           </p>
           <div className="flex gap-2 lg:hidden">
             <Button
@@ -477,31 +487,45 @@ function StatementReviewBody({
               Extracted
             </Button>
           </div>
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-2">
             <section
               aria-label="Original statement"
-              className={`${view === 'statement' ? 'block' : 'hidden'} min-w-0 space-y-3 lg:block`}
+              className={`${view === 'statement' ? 'block' : 'hidden'} min-w-0 space-y-3 lg:block lg:max-h-[55vh] lg:overflow-y-auto lg:overscroll-contain lg:pr-2`}
             >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={hidden || page <= 1}
-                  onClick={() => canReveal() && setPage(page - 1)}
-                >
-                  Previous page
-                </Button>
-                <span className="text-sm">
-                  Page {page} of {pageCount}
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={hidden || page >= pageCount}
-                  onClick={() => canReveal() && setPage(page + 1)}
-                >
-                  Next page
-                </Button>
+              <div className="bg-background sticky top-0 z-10 space-y-3 pb-2">
+                {pageCount > 1 && (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={hidden || page <= 1}
+                      onClick={() => canReveal() && setPage(page - 1)}
+                    >
+                      Previous page
+                    </Button>
+                    <span className="text-sm">
+                      Page {page} of {pageCount}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={hidden || page >= pageCount}
+                      onClick={() => canReveal() && setPage(page + 1)}
+                    >
+                      Next page
+                    </Button>
+                  </div>
+                )}
+                {!hidden && chosen && chosen.source[0].page === page && (
+                  <p
+                    className="bg-muted rounded-md p-3 text-sm break-words"
+                    aria-live="polite"
+                  >
+                    Source page {chosen.source[0].page}, line{' '}
+                    {chosen.source[0].line}:{' '}
+                    {chosen.source.map((line) => line.text).join(' ')}
+                  </p>
+                )}
               </div>
               {!hidden && (
                 <canvas
@@ -510,178 +534,105 @@ function StatementReviewBody({
                   className="h-auto w-full rounded-md border"
                 />
               )}
-              {!hidden && chosen && (
-                <p className="text-sm break-words">
-                  Source page {chosen.source[0].page}, line{' '}
-                  {chosen.source[0].line}:{' '}
-                  {chosen.source.map((line) => line.text).join(' ')}
-                </p>
-              )}
             </section>
             <section
               aria-label="Extracted transaction drafts"
-              className={`${view === 'extracted' ? 'block' : 'hidden'} min-w-0 space-y-3 lg:block`}
+              className={`${view === 'extracted' ? 'block' : 'hidden'} min-w-0 space-y-3 lg:block lg:max-h-[55vh] lg:overflow-y-auto lg:overscroll-contain lg:pr-2`}
             >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={hidden || rowPage === 0}
-                  onClick={() => canReveal() && setRowPage(rowPage - 1)}
-                >
-                  Previous rows
-                </Button>
-                <span className="text-sm">
-                  Rows {rowPage * 20 + 1}–
-                  {Math.min(rows.length, (rowPage + 1) * 20)} of {rows.length}
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={hidden || (rowPage + 1) * 20 >= rows.length}
-                  onClick={() => canReveal() && setRowPage(rowPage + 1)}
-                >
-                  Next rows
-                </Button>
-              </div>
+              {rows.length > 20 && (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={hidden || rowPage === 0}
+                    onClick={() => canReveal() && setRowPage(rowPage - 1)}
+                  >
+                    Previous rows
+                  </Button>
+                  <span className="text-sm">
+                    Rows {rowPage * 20 + 1}–
+                    {Math.min(rows.length, (rowPage + 1) * 20)} of {rows.length}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={hidden || (rowPage + 1) * 20 >= rows.length}
+                    onClick={() => canReveal() && setRowPage(rowPage + 1)}
+                  >
+                    Next rows
+                  </Button>
+                </div>
+              )}
               {visibleRows.map((row, index) => (
                 <fieldset
                   key={row.id}
                   disabled={hidden || save.locked(row.id) || save.busy}
-                  className="space-y-2 rounded-md border p-3"
+                  className={`min-w-0 space-y-2 border-b px-3 py-3 ${selected === row.id ? 'bg-muted/50' : ''}`}
+                  onFocusCapture={() => {
+                    if (!canReveal()) return;
+                    setSelected(row.id);
+                    setPage(row.source[0].page);
+                  }}
                 >
-                  <legend className="px-1 text-sm">
+                  <legend className="sr-only">
                     Row {rowPage * 20 + index + 1}:{' '}
                     {STATEMENT_REVIEW_STATUS_LABELS[row.review.status]}
                   </legend>
-                  {!hidden &&
-                    !save.locked(row.id) &&
-                    (() => {
-                      const input = save.inputFor(row);
-                      return (
-                        <>
-                          <label className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              disabled={!input || save.busy}
-                              checked={save.selection.includes(row.id)}
-                              onChange={() => save.toggle(row)}
-                            />
-                            Select expense from page {row.source[0].page}, line{' '}
-                            {row.source[0].line}
-                          </label>
-                          {!input && row.review.status === 'candidate' && (
-                            <p className="text-warning-strong text-sm">
-                              This row exceeds supported saving fields or
-                              source-note limits, or its source cannot establish
-                              positive spending. Use manual entry after checking
-                              the source. Source notes allow at most 32 lines,
-                              4096 characters per line and 16 KiB total.
-                            </p>
-                          )}
-                          {input && save.selection.includes(row.id) && (
-                            <details>
-                              <summary className="cursor-pointer text-sm">
-                                Source note to save
-                              </summary>
-                              <p className="mt-2 text-sm break-words whitespace-pre-wrap">
-                                {buildImportNote(input)}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="order-1 h-auto p-0 text-xs"
+                      aria-label={`View source page ${row.source[0].page}, line ${row.source[0].line}`}
+                      onClick={() => {
+                        if (!canReveal()) return;
+                        setSelected(row.id);
+                        setPage(row.source[0].page);
+                        setView('statement');
+                      }}
+                    >
+                      Compare source · Page {row.source[0].page}
+                    </Button>
+                    {!hidden &&
+                      !save.locked(row.id) &&
+                      (() => {
+                        const input = save.inputFor(row);
+                        return (
+                          <>
+                            <label className="flex min-h-9 min-w-9 cursor-pointer items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                className="accent-primary size-4"
+                                aria-label={`Select expense from page ${row.source[0].page}, line ${row.source[0].line}`}
+                                disabled={!input || save.busy}
+                                checked={save.selection.includes(row.id)}
+                                onChange={() => save.toggle(row)}
+                              />
+                              {row.review.status !== 'candidate' && (
+                                <span className="text-muted-foreground text-sm">
+                                  {row.review.status === 'excluded'
+                                    ? 'Not a purchase'
+                                    : 'Check details'}
+                                </span>
+                              )}
+                              <span className="sr-only">Select purchase</span>
+                            </label>
+                            {!input && row.review.status === 'candidate' && (
+                              <p className="text-warning-strong order-2 w-full text-sm">
+                                This row exceeds supported saving fields or
+                                source-note limits, or its source cannot
+                                establish positive spending. Use manual entry
+                                after checking the source. Source notes allow at
+                                most 32 lines, 4096 characters per line and 16
+                                KiB total.
                               </p>
-                            </details>
-                          )}
-                        </>
-                      );
-                    })()}
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="h-auto p-0"
-                    onClick={() => {
-                      if (!canReveal()) return;
-                      setSelected(row.id);
-                      setPage(row.source[0].page);
-                      setView('statement');
-                    }}
-                  >
-                    View source page {row.source[0].page}, line{' '}
-                    {row.source[0].line}
-                  </Button>
-                  <div className="space-y-1">
-                    <Label htmlFor={`${id}-${row.id}-classification`}>
-                      Classification
-                    </Label>
-                    <select
-                      id={`${id}-${row.id}-classification`}
-                      className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm disabled:opacity-50"
-                      value={row.classification}
-                      disabled={row.isSummary}
-                      aria-describedby={`${id}-${row.id}-classification-reason`}
-                      onChange={(event) => classify(row.id, event.target.value)}
-                    >
-                      {STATEMENT_CLASSIFICATIONS.map((entry) => (
-                        <option key={entry.value} value={entry.value}>
-                          {entry.label}
-                        </option>
-                      ))}
-                    </select>
-                    <p
-                      id={`${id}-${row.id}-classification-reason`}
-                      className="text-muted-foreground text-sm"
-                    >
-                      {row.isSummary
-                        ? 'Not a transaction'
-                        : `Suggested: ${STATEMENT_CLASSIFICATIONS.find((entry) => entry.value === row.suggestedClassification)?.label}`}
-                      . {row.classificationReason}
-                    </p>
-                    {row.classification !== row.suggestedClassification && (
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                        <span>
-                          Your classification overrides the suggestion.
-                        </span>
-                        <Button
-                          type="button"
-                          variant="link"
-                          className="h-auto p-0"
-                          onClick={() =>
-                            classify(row.id, row.suggestedClassification)
-                          }
-                        >
-                          Restore suggestion
-                        </Button>
-                      </div>
-                    )}
+                            )}
+                          </>
+                        );
+                      })()}
                   </div>
-                  {row.review.issues.map((issue) => (
-                    <p key={issue} className="text-sm">
-                      {issue}
-                    </p>
-                  ))}
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <Label htmlFor={`${id}-${row.id}-date`}>Date</Label>
-                      <Input
-                        id={`${id}-${row.id}-date`}
-                        type="date"
-                        value={hidden ? '' : row.date}
-                        onChange={(event) =>
-                          edit(row.id, 'date', event.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor={`${id}-${row.id}-amount`}>
-                        SGD billed amount
-                      </Label>
-                      <Input
-                        id={`${id}-${row.id}-amount`}
-                        inputMode="decimal"
-                        value={hidden ? '' : row.amount}
-                        onChange={(event) =>
-                          edit(row.id, 'amount', event.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1">
+                  <div className="grid gap-3 sm:grid-cols-12">
+                    <div className="space-y-1 sm:col-span-8">
                       <Label htmlFor={`${id}-${row.id}-description`}>
                         Description
                       </Label>
@@ -694,7 +645,31 @@ function StatementReviewBody({
                         }
                       />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 sm:col-span-4">
+                      <Label htmlFor={`${id}-${row.id}-amount`}>
+                        SGD billed amount
+                      </Label>
+                      <Input
+                        id={`${id}-${row.id}-amount`}
+                        inputMode="decimal"
+                        value={hidden ? '' : row.amount}
+                        onChange={(event) =>
+                          edit(row.id, 'amount', event.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-6">
+                      <Label htmlFor={`${id}-${row.id}-date`}>Date</Label>
+                      <Input
+                        id={`${id}-${row.id}-date`}
+                        type="date"
+                        value={hidden ? '' : row.date}
+                        onChange={(event) =>
+                          edit(row.id, 'date', event.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-6">
                       <Label htmlFor={`${id}-${row.id}-category`}>
                         Category
                       </Label>
@@ -716,55 +691,128 @@ function StatementReviewBody({
                       </select>
                     </div>
                   </div>
-                  {!hidden && !row.isSummary && (
-                    <>
-                      <MerchantSuggestionReview
-                        originalDescription={row.originalDescription}
-                        bank={bank}
-                        rules={merchant.rules}
-                        manual={row.manualMerchant}
-                        onApply={(suggestion, replace) =>
-                          applySuggestion(row.id, suggestion, replace)
+                  {row.review.issues.map((issue) => (
+                    <p key={issue} className="text-sm">
+                      {issue}
+                    </p>
+                  ))}
+                  <details className="space-y-3">
+                    <summary className="text-muted-foreground cursor-pointer text-sm">
+                      Details
+                    </summary>
+                    {!hidden &&
+                      !save.locked(row.id) &&
+                      save.selection.includes(row.id) &&
+                      (() => {
+                        const input = save.inputFor(row);
+                        return input ? (
+                          <details>
+                            <summary className="cursor-pointer text-sm">
+                              Source note to save
+                            </summary>
+                            <p className="mt-2 text-sm break-words whitespace-pre-wrap">
+                              {buildImportNote(input)}
+                            </p>
+                          </details>
+                        ) : null;
+                      })()}
+                    <div className="space-y-1">
+                      <Label htmlFor={`${id}-${row.id}-classification`}>
+                        Classification
+                      </Label>
+                      <select
+                        id={`${id}-${row.id}-classification`}
+                        className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm disabled:opacity-50"
+                        value={row.classification}
+                        disabled={row.isSummary}
+                        aria-describedby={`${id}-${row.id}-classification-reason`}
+                        onChange={(event) =>
+                          classify(row.id, event.target.value)
                         }
-                        onRestore={() => restoreMerchant(row.id)}
-                      />
-                      <Button
-                        type="button"
-                        variant="link"
-                        disabled={
-                          !merchant.canEdit ||
-                          row.originalDescription.length > 256 ||
-                          row.description.length > 256
-                        }
-                        onClick={() => {
-                          if (
-                            !canReveal() ||
-                            save.locked(row.id) ||
-                            save.busy ||
-                            !merchant.canEdit
-                          )
-                            return;
-                          if (
-                            ruleDraft &&
-                            !window.confirm('Discard the unsaved rule draft?')
-                          )
-                            return;
-                          setRuleDraft({
-                            id: crypto.randomUUID(),
-                            label: row.description,
-                            enabled: true,
-                            matchMode: 'exact',
-                            matchText: row.originalDescription,
-                            bank,
-                            displayName: row.description || null,
-                            category: row.category as ExpenseType,
-                          });
-                        }}
                       >
-                        Create rule from this row
-                      </Button>
-                    </>
-                  )}
+                        {STATEMENT_CLASSIFICATIONS.map((entry) => (
+                          <option key={entry.value} value={entry.value}>
+                            {entry.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p
+                        id={`${id}-${row.id}-classification-reason`}
+                        className="text-muted-foreground text-sm"
+                      >
+                        {row.isSummary
+                          ? 'Not a transaction'
+                          : `Suggested: ${STATEMENT_CLASSIFICATIONS.find((entry) => entry.value === row.suggestedClassification)?.label}`}
+                        . {row.classificationReason}
+                      </p>
+                      {row.classification !== row.suggestedClassification && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                          <span>
+                            Your classification overrides the suggestion.
+                          </span>
+                          <Button
+                            type="button"
+                            variant="link"
+                            className="h-auto p-0"
+                            onClick={() =>
+                              classify(row.id, row.suggestedClassification)
+                            }
+                          >
+                            Restore suggestion
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    {!hidden && !row.isSummary && (
+                      <>
+                        <MerchantSuggestionReview
+                          originalDescription={row.originalDescription}
+                          bank={bank}
+                          rules={merchant.rules}
+                          manual={row.manualMerchant}
+                          onApply={(suggestion, replace) =>
+                            applySuggestion(row.id, suggestion, replace)
+                          }
+                          onRestore={() => restoreMerchant(row.id)}
+                        />
+                        <Button
+                          type="button"
+                          variant="link"
+                          disabled={
+                            !merchant.canEdit ||
+                            row.originalDescription.length > 256 ||
+                            row.description.length > 256
+                          }
+                          onClick={() => {
+                            if (
+                              !canReveal() ||
+                              save.locked(row.id) ||
+                              save.busy ||
+                              !merchant.canEdit
+                            )
+                              return;
+                            if (
+                              ruleDraft &&
+                              !window.confirm('Discard the unsaved rule draft?')
+                            )
+                              return;
+                            setRuleDraft({
+                              id: crypto.randomUUID(),
+                              label: row.description,
+                              enabled: true,
+                              matchMode: 'exact',
+                              matchText: row.originalDescription,
+                              bank,
+                              displayName: row.description || null,
+                              category: row.category as ExpenseType,
+                            });
+                          }}
+                        >
+                          Create rule from this row
+                        </Button>
+                      </>
+                    )}
+                  </details>
                 </fieldset>
               ))}
             </section>
@@ -794,10 +842,7 @@ export function StatementReview() {
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-6xl">
         <DialogHeader>
           <DialogTitle>Review a bank statement</DialogTitle>
-          <DialogDescription>
-            Classify drafts against the original PDF, check possible duplicates
-            and explicitly save selected self expenses.
-          </DialogDescription>
+          <DialogDescription>Your PDF stays on this device.</DialogDescription>
         </DialogHeader>
         <StatementReviewBody discardGuard={discardGuard} />
       </DialogContent>

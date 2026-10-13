@@ -378,8 +378,15 @@ proof with `node supabase/tests/138-recurring-rulebooks.mjs`.
 Expenses includes **Review bank PDF** for local, unsaved expense drafts with an
 original-page preview and editable date, description, category and SGD amount.
 Choose UOB, DBS, HSBC or Citibank and enter the actual statement period. These
-labels cover tested constructed date/description/SGD-billed variants; real bank
-layouts are not yet qualified. Each transaction shows an editable classification:
+labels cover tested constructed date/description/SGD-billed variants. The UOB
+two-date credit-card layout also has synthetic positioned-text regression coverage
+based on owner-supplied layout evidence: the transaction date and main-row SGD
+amount populate the draft; foreign-currency/reference continuations stay in the
+source note. This does not qualify every real bank PDF or reconcile its balance.
+Setup collapses after extraction. Desktop keeps the original PDF beside editable
+rows; focusing a row shows its source page and excerpt. Compare source opens the
+original on smaller screens, where Statement / Extracted switches views.
+Each transaction's Details disclosure contains its editable classification:
 Expense, Refund, Transfer, Card repayment, Other credit or Unknown. The original
 suggestion, reason and source stay available after an override; **Restore suggestion**
 reverts only the classification. Credits, refunds, transfers and repayments are

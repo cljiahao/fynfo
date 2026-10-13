@@ -14,6 +14,100 @@ function lines(...text: string[]) {
   }));
 }
 describe('conservative local statement parsing', () => {
+  it('reconstructs split UOB headings and two-date rows from positioned PDF text', () => {
+    const positioned = positionedStatementLines(
+      [
+        { text: 'UOB', x: 40, y: 700 },
+        { text: 'Post', x: 40, y: 650 },
+        { text: 'Trans', x: 90, y: 650 },
+        { text: 'Description of Transaction', x: 150, y: 650 },
+        { text: 'Transaction Amount', x: 450, y: 650 },
+        { text: 'Date', x: 40, y: 640 },
+        { text: 'Date', x: 90, y: 640 },
+        { text: 'SGD', x: 520, y: 640 },
+        { text: '22 DEC', x: 40, y: 600 },
+        { text: '20 DEC', x: 90, y: 600 },
+        { text: 'SAMPLE SHOP', x: 150, y: 600 },
+        { text: '14.70', x: 520, y: 600 },
+        { text: 'Ref No : SYNTHETIC', x: 150, y: 590 },
+        { text: 'USD 10.00', x: 150, y: 580 },
+      ].reverse(),
+      1
+    );
+    const [row] = parseStatementLines(positioned, 'uob', period);
+    expect(row).toMatchObject({
+      date: '2025-12-20',
+      description: 'SAMPLE SHOP',
+      amount: '14.70',
+      status: 'candidate',
+    });
+    expect(row.source).toHaveLength(3);
+  });
+  it.each([
+    [
+      'Post Trans Description of Transaction Transaction Amount',
+      'Date Date SGD',
+    ],
+    ['Post Date Trans Date Description of Transaction Transaction Amount SGD'],
+  ])('reads the UOB two-date SGD layout: %s', (...header) => {
+    const rows = parseStatementLines(
+      lines(
+        'UOB',
+        ...header,
+        '22 DEC 20 DEC SAMPLE SHOP 14.70',
+        'Ref No : SYNTHETIC-REFERENCE',
+        'USD 10.00',
+        '03 JAN 02 JAN SAMPLE CAFE 9.40',
+        'SUB TOTAL 24.10',
+        'TOTAL BALANCE FOR SAMPLE CARD 24.10',
+        '04 JAN 03 JAN PAYMT THRU SAMPLE 24.10 CR'
+      ),
+      'uob',
+      period
+    );
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toMatchObject({
+      date: '2025-12-20',
+      description: 'SAMPLE SHOP',
+      originalDescription: 'SAMPLE SHOP',
+      amount: '14.70',
+      status: 'candidate',
+    });
+    expect(rows[0].source.map((line) => line.text)).toEqual([
+      '22 DEC 20 DEC SAMPLE SHOP 14.70',
+      'Ref No : SYNTHETIC-REFERENCE',
+      'USD 10.00',
+    ]);
+    expect(rows[1]).toMatchObject({
+      date: '2026-01-02',
+      description: 'SAMPLE CAFE',
+      amount: '9.40',
+      status: 'candidate',
+    });
+    expect(rows[2]).toMatchObject({
+      classification: 'card_repayment',
+      amount: '',
+      status: 'excluded',
+    });
+  });
+  it('does not guess UOB billed amounts for missing dates, multiple amounts or another page without a header', () => {
+    const rows = parseStatementLines(
+      [
+        ...lines(
+          'UOB',
+          'Post Date Trans Date Description of Transaction Transaction Amount SGD',
+          '22 DEC SAMPLE SHOP 14.70',
+          '23 DEC 22 DEC SAMPLE SHOP 10.00 14.70'
+        ),
+        { page: 2, line: 1, text: '24 DEC 23 DEC SAMPLE SHOP 18.00' },
+      ],
+      'uob',
+      period
+    );
+    expect(rows.every((row) => row.status === 'unresolved')).toBe(true);
+    expect(rows[1].amount).toBe('');
+    expect(rows[2].amount).toBe('');
+  });
   it.each([
     ['MARKET SGD 12.30', 'expense', 'candidate'],
     ['REFUND SGD 5.00 CR', 'refund', 'excluded'],

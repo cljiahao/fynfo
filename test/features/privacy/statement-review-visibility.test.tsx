@@ -128,7 +128,7 @@ it('keeps actual editable drafts and labels while removing hidden canvas and sel
   if (!form) throw new Error('Expected PDF form');
   fireEvent.submit(form);
   expect(pdf.open).toHaveBeenCalledTimes(1);
-  expect(screen.getByText(/PDF processed on this device/)).toBeInTheDocument();
+  expect(screen.getByText(/Your PDF stays on this device/)).toBeInTheDocument();
   showInsideReview();
   expect(amount).toHaveValue('98.76');
   expect(description).toHaveValue('Synthetic draft 98.76');

@@ -15,22 +15,20 @@ export function StatementSaveReview({ save }: { save: SaveReview }) {
       aria-label="Save selected statement expenses"
       className="space-y-3 border-t pt-4"
     >
-      <h3 className="font-semibold">Save reviewed expenses</h3>
-      <p className="text-muted-foreground text-sm">
-        Self expenses in SGD only. Duplicate checks are provisional warnings,
-        not durable prevention. Selected fields and the previewed source notes
-        are sent on explicit save; the PDF stays on this device.
-      </p>
       {!hidden && (
         <p className="text-sm tabular-nums">
-          {save.selection.length} selected across all pages · SGD{' '}
-          {save.total.toFixed(2)} · Maximum 20 per batch
+          {save.selection.length} selected · SGD {save.total.toFixed(2)}
+        </p>
+      )}
+      {!hidden && save.selection.length > 20 && (
+        <p role="status" className="text-warning-strong text-sm">
+          Select up to 20 purchases at a time to continue.
         </p>
       )}
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
-          variant="outline"
+          variant={save.reviewed ? 'outline' : 'default'}
           disabled={hidden || save.busy || !save.ready}
           onClick={() => void save.compare()}
         >
@@ -38,12 +36,21 @@ export function StatementSaveReview({ save }: { save: SaveReview }) {
         </Button>
         <Button
           type="button"
+          variant={save.reviewed ? 'default' : 'outline'}
           disabled={hidden || save.busy || !save.reviewed || save.unresolved}
           onClick={() => void save.save()}
         >
           Save selected expenses
         </Button>
       </div>
+      <details className="text-muted-foreground text-sm">
+        <summary className="cursor-pointer">What gets saved</summary>
+        <p className="mt-2">
+          Self expenses in SGD only, up to 20 per batch. Each expense includes
+          its original transaction text in an encrypted source note. Duplicate
+          warnings do not guarantee prevention across imports.
+        </p>
+      </details>
       {!hidden && save.duplicateIds.length > 0 && (
         <label className="flex items-start gap-2 text-sm">
           <input

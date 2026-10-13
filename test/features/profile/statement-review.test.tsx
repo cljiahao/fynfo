@@ -78,6 +78,36 @@ function setup(read = async () => new ArrayBuffer(4), size = 4) {
   });
   fireEvent.click(screen.getByRole('button', { name: 'Extract for review' }));
 }
+it('keeps secondary information closed until requested without hiding editable fields or blockers', async () => {
+  setup();
+  expect(await screen.findByText(/1 expense suggestions/)).toBeInTheDocument();
+  expect(
+    screen.getByText('Change statement').closest('details')
+  ).not.toHaveAttribute('open');
+  expect(
+    screen.getByText('Saved merchant rules').closest('details')
+  ).not.toHaveAttribute('open');
+  expect(
+    screen.getByText('Select purchases, check the details, then save.')
+  ).toBeVisible();
+  expect(screen.queryByText('Include expense')).not.toBeInTheDocument();
+
+  expect(screen.getByLabelText('Description')).toBeVisible();
+  expect(screen.getByLabelText('SGD billed amount')).toBeVisible();
+  expect(screen.getByLabelText('Classification')).not.toBeVisible();
+  fireEvent.click(screen.getByText('Details'));
+  expect(screen.getByLabelText('Classification')).toBeVisible();
+  fireEvent.click(screen.getByText('Details'));
+  fireEvent.change(screen.getByLabelText('SGD billed amount'), {
+    target: { value: '-1.00' },
+  });
+  expect(
+    screen.getByText(
+      'Enter a positive SGD amount with exactly two decimal places.'
+    )
+  ).toBeVisible();
+  expect(mocks.insert).not.toHaveBeenCalled();
+});
 it('reviews editable drafts, keeps provenance, navigates source pages and clears locally', async () => {
   setup();
   expect(await screen.findByText(/1 expense suggestions/)).toBeVisible();
@@ -107,16 +137,72 @@ it('reviews editable drafts, keeps provenance, navigates source pages and clears
   expect(mocks.destroy).toHaveBeenCalled();
   expect(screen.queryByText(/source rows:/)).not.toBeInTheDocument();
 });
+it('follows the focused draft to its source page while keeping secondary details closed', async () => {
+  mocks.extract.mockResolvedValue([
+    { page: 1, line: 1, text: 'UOB' },
+    { page: 1, line: 2, text: '31 DEC FIRST MARKET SGD 12.30' },
+    { page: 2, line: 1, text: '01 JAN SECOND MARKET SGD 20.00' },
+  ]);
+  setup();
+  const descriptions = await screen.findAllByLabelText('Description');
+  expect(
+    screen.getAllByRole('button', { name: /View source page/ })
+  ).toHaveLength(2);
+  fireEvent.focus(descriptions[1]);
+  await waitFor(() =>
+    expect(mocks.render).toHaveBeenLastCalledWith(
+      2,
+      expect.any(HTMLCanvasElement)
+    )
+  );
+  expect(
+    screen.getByText(/Source page 2, line 1: 01 JAN SECOND MARKET/)
+  ).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Extracted' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  expect(
+    screen
+      .getAllByText('Details')
+      .every((element) => !element.closest('details')!.open)
+  ).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Previous page' }));
+  expect(screen.queryByText(/Source page 2, line 1:/)).not.toBeInTheDocument();
+  fireEvent.focus(descriptions[0]);
+  expect(
+    screen.getByText(/Source page 1, line 2: 31 DEC FIRST MARKET/)
+  ).toBeInTheDocument();
+  expect(mocks.insert).not.toHaveBeenCalled();
+});
+it('opens the first transaction page when a statement begins with a cover page', async () => {
+  mocks.extract.mockResolvedValue([
+    { page: 1, line: 1, text: 'UOB' },
+    { page: 2, line: 1, text: '31 DEC FIRST MARKET SGD 12.30' },
+  ]);
+  setup();
+  await screen.findByLabelText('Description');
+  await waitFor(() =>
+    expect(mocks.render).toHaveBeenLastCalledWith(
+      2,
+      expect.any(HTMLCanvasElement)
+    )
+  );
+  expect(
+    screen.getByText(/Source page 2, line 1: 31 DEC FIRST MARKET/)
+  ).toBeInTheDocument();
+});
 it('updates classification counts, preserves the suggestion and restores it without changing other edits', async () => {
   setup();
   expect(await screen.findByText(/1 expense suggestions/)).toBeVisible();
+  screen.getByText('Details').closest('details')!.open = true;
   fireEvent.change(screen.getByLabelText('Classification'), {
     target: { value: 'transfer' },
   });
   expect(
     screen.getByText(/0 expense suggestions, 0 unresolved, 1 excluded/)
-  ).toBeVisible();
-  expect(screen.getByText(/Suggested: Expense/)).toBeVisible();
+  ).toBeInTheDocument();
+  expect(screen.getByText(/Suggested: Expense/)).toBeInTheDocument();
   expect(
     screen.getByText('Your classification overrides the suggestion.')
   ).toBeVisible();
@@ -132,6 +218,7 @@ it('updates classification counts, preserves the suggestion and restores it with
   expect(
     screen.queryByText('Your classification overrides the suggestion.')
   ).not.toBeInTheDocument();
+  screen.getByText('Details').closest('details')!.open = true;
   fireEvent.change(screen.getByLabelText('Classification'), {
     target: { value: 'unknown' },
   });
@@ -174,6 +261,7 @@ it('keeps source credit blockers after expense overrides and prevents summary cl
   expect(
     repayment.getByText(/A source credit cannot be converted/)
   ).toBeVisible();
+  repayment.getByText('Details').closest('details')!.open = true;
   expect(repayment.getByText(/Suggested: Card repayment/)).toBeVisible();
   const summary = within(
     screen.getByRole('group', { name: 'Row 2: Excluded from expenses' })
@@ -194,7 +282,9 @@ it('shows invalid edited expense fields as needing review and recovers when corr
   fireEvent.change(screen.getByLabelText('SGD billed amount'), {
     target: { value: '-12.30' },
   });
-  expect(screen.getByText(/0 expense suggestions, 1 unresolved/)).toBeVisible();
+  expect(
+    screen.getByText(/0 expense suggestions, 1 unresolved/)
+  ).toBeInTheDocument();
   expect(
     screen.getByText(
       'Enter a positive SGD amount with exactly two decimal places.'
