@@ -2,12 +2,12 @@
 id: '137'
 slug: merchant-rule-proposal
 area: feature
-status: approved
+status: shipped
 author: Codex
 created: 2026-10-13
 approved: 2026-10-13
-shipped:
-impl_pr:
+shipped: 2026-10-13
+impl_pr: https://github.com/cljiahao/fynfo/pull/57
 constitution_satisfies: ['§1', '§2', '§3', '§4', '§5', '§7', '§8']
 constitution_overrides: []
 ---
