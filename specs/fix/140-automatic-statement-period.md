@@ -45,3 +45,10 @@ Independent review found that correcting dates after extraction discarded the
 file needed for retry. Retain the selected PDF only in component memory until
 clear/close or replacement; date correction can re-extract without another file
 selection. Regression covers automatic extraction, correction, retry and clear.
+
+Verification: 61 targeted parser, review, save and privacy tests passed. Independent
+review confirmed its correction finding resolved with no outstanding blockers.
+Synthetic desktop (1440px) and mobile (390px) browser checks verified collapsed
+optional dates, automatic extraction, preserved comparison, direct correction
+retry and clean reopen. Impeccable static detector reported no findings. No real
+statement data was used in fixtures. Full build/coverage gates run before PR.
