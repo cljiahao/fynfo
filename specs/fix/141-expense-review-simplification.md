@@ -2,7 +2,9 @@
 id: '141'
 slug: expense-review-simplification
 area: fix
-status: owner-authorized
+status: shipped
+shipped: 2026-10-14
+impl_pr: https://github.com/cljiahao/fynfo/pull/61
 author: Codex
 created: 2026-10-14
 ---
@@ -68,3 +70,10 @@ child, and the dense 21-selection test exceeded its 10-second allowance. Added
 a disabled-query provider to that isolated chart test and raised only the dense
 test's allowance to 20 seconds, retaining every assertion. Both files passed
 all 29 tests with V8 instrumentation; aggregate coverage requires the full suite.
+
+Final verification: all 2057 tests across 182 suites and every local gate passed.
+CI and Vercel preview passed for commit 0d7eb58. A fresh synthetic browser cleared
+the stale prompt; mobile checks at 390x844 passed for entry, extraction, default
+repayment exclusion, bulk selection, full source-page fit, rule dialog open/close
+and restore preview/confirmation. Owner authorized merge on 2026-10-14; PR61
+merged as 84b82a7. No schema application was required.
