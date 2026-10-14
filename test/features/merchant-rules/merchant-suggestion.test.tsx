@@ -26,68 +26,8 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
-it.each(['removed', 'disabled', 'changed'] as const)(
-  'retains explicit source restoration after an applied rule is %s',
-  (change) => {
-    const apply = vi.fn();
-    const restore = vi.fn();
-    const content = (rules: MerchantRule[]) => (
-      <AmountVisibilityProvider>
-        <AmountVisibilityToggle />
-        <MerchantSuggestion
-          originalDescription="MARKET"
-          bank="uob"
-          rules={rules}
-          manual={{ description: false, category: false }}
-          onApply={apply}
-          onRestore={restore}
-        />
-      </AmountVisibilityProvider>
-    );
-    const view = render(content([rule]));
-    fireEvent.click(screen.getByRole('button', { name: 'Apply suggestion' }));
-    expect(apply).toHaveBeenCalledOnce();
-    view.rerender(
-      content(
-        change === 'removed'
-          ? []
-          : [
-              {
-                ...rule,
-                ...(change === 'disabled'
-                  ? { enabled: false }
-                  : { matchText: 'DIFFERENT MERCHANT' }),
-              },
-            ]
-      )
-    );
-    expect(
-      screen.queryByRole('button', { name: 'Apply suggestion' })
-    ).not.toBeInTheDocument();
-    expect(screen.getByText('Original description: MARKET')).toBeVisible();
-    expect(restore).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
-    expect(
-      screen.queryByText('Original description: MARKET')
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', {
-        name: 'Review changes / restore',
-      })
-    ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'Review changes / restore',
-      })
-    );
-    expect(restore).toHaveBeenCalledOnce();
-    expect(apply).toHaveBeenCalledOnce();
-  }
-);
-it('shows the original source, reason and output without applying automatically', () => {
+it('shows no per-row Apply button for unambiguous automatic rules', () => {
   const apply = vi.fn();
-  const restore = vi.fn();
   render(
     <MerchantSuggestion
       originalDescription="MARKET"
@@ -95,16 +35,10 @@ it('shows the original source, reason and output without applying automatically'
       rules={[rule]}
       manual={{ description: false, category: false }}
       onApply={apply}
-      onRestore={restore}
     />
   );
-  expect(screen.getByText('Original description: MARKET')).toBeVisible();
+  expect(screen.queryByRole('button')).not.toBeInTheDocument();
   expect(apply).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('button', { name: 'Apply suggestion' }));
-  expect(apply).toHaveBeenCalledWith(rule, {
-    description: false,
-    category: false,
-  });
 });
 it('requires a choice for conflict and specific consent to replace a manual field', () => {
   const apply = vi.fn();
@@ -124,7 +58,6 @@ it('requires a choice for conflict and specific consent to replace a manual fiel
       ]}
       manual={{ description: true, category: true }}
       onApply={apply}
-      onRestore={vi.fn()}
     />
   );
   expect(screen.getByText(/Matching rules disagree/)).toBeVisible();
@@ -132,7 +65,7 @@ it('requires a choice for conflict and specific consent to replace a manual fiel
     screen.queryByRole('button', { name: 'Apply suggestion' })
   ).not.toBeInTheDocument();
   fireEvent.click(
-    screen.getAllByRole('button', { name: 'Replace my merchant name' })[0]
+    screen.getAllByRole('button', { name: 'Replace my item / brand' })[0]
   );
   expect(apply).not.toHaveBeenCalled();
   confirm.mockReturnValue(true);
@@ -152,10 +85,17 @@ it('removes rule and merchant text while hidden and restores after Show', () => 
       <MerchantSuggestion
         originalDescription="MARKET"
         bank="uob"
-        rules={[rule]}
+        rules={[
+          rule,
+          {
+            ...rule,
+            id: 'ff65feb2-8ffa-427c-a057-8779580f162f',
+            label: 'Other rule',
+            category: 'other',
+          },
+        ]}
         manual={{ description: false, category: false }}
         onApply={apply}
-        onRestore={vi.fn()}
       />
     </AmountVisibilityProvider>
   );
@@ -168,7 +108,7 @@ it('removes rule and merchant text while hidden and restores after Show', () => 
   ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
   expect(
-    screen.getByRole('button', { name: 'Apply suggestion' })
+    screen.getByRole('button', { name: 'Choose Market rule' })
   ).toBeEnabled();
   expect(apply).not.toHaveBeenCalled();
 });

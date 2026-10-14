@@ -16,7 +16,6 @@ export function MerchantSuggestion({
   rules,
   manual,
   onApply,
-  onRestore,
 }: {
   originalDescription: string;
   bank: MerchantBank;
@@ -26,36 +25,21 @@ export function MerchantSuggestion({
     suggestion: Suggestion,
     replace: { description: boolean; category: boolean }
   ) => void;
-  onRestore: () => void;
 }) {
   const { hidden, canReveal } = useAmountVisibility();
   if (hidden) return null;
   const match = matchMerchantRules(originalDescription, bank, rules);
-  const choices =
-    match.status === 'none'
-      ? []
-      : match.status === 'conflict'
-        ? match.rules
-        : [match.rules[0]];
+  if (match.status !== 'conflict') return null;
+  const choices = match.rules;
   return (
-    <div className="space-y-2 border-t pt-2 text-sm">
-      <p className="break-words">Original description: {originalDescription}</p>
-      {match.status !== 'none' &&
-        (match.status === 'conflict' ? (
-          <p className="text-warning-strong">
-            Matching rules disagree. Review and choose a suggestion.
-          </p>
-        ) : (
-          <p className="text-muted-foreground break-words">
-            {match.tier === 'exact' ? 'Exact' : 'Phrase'} match ·{' '}
-            {match.rules.map((rule) => rule.label).join(', ')}
-          </p>
-        ))}
+    <div className="space-y-2 text-sm">
+      <p className="text-warning-strong">
+        Matching rules disagree. Choose a rule for this row.
+      </p>
       {choices.map((rule) => (
         <div key={rule.id} className="space-y-1">
           <p className="break-words">
-            {match.status === 'conflict' && `${rule.label}: `}
-            {rule.displayName ?? 'Keep merchant name'} ·{' '}
+            {rule.label}:{rule.displayName ?? 'Keep item / brand'} ·{' '}
             {rule.category
               ? EXPENSE_TYPE_LABELS[rule.category]
               : 'Keep category'}
@@ -70,7 +54,7 @@ export function MerchantSuggestion({
                   onApply(rule, { description: false, category: false });
               }}
             >
-              Apply {match.status === 'conflict' ? rule.label : 'suggestion'}
+              Choose {rule.label}
             </Button>
             {manual.description && rule.displayName !== null && (
               <Button
@@ -81,7 +65,7 @@ export function MerchantSuggestion({
                   if (
                     canReveal() &&
                     window.confirm(
-                      'Replace your manually edited merchant name with this suggestion?'
+                      'Replace your manually edited item / brand with this suggestion?'
                     )
                   )
                     onApply(
@@ -90,7 +74,7 @@ export function MerchantSuggestion({
                     );
                 }}
               >
-                Replace my merchant name
+                Replace my item / brand
               </Button>
             )}
             {manual.category && rule.category !== null && (
@@ -119,20 +103,10 @@ export function MerchantSuggestion({
       ))}
       {choices.length > 0 && (manual.description || manual.category) && (
         <p className="text-muted-foreground">
-          Apply preserves your manual changes. Use a replacement button to
-          change a protected field.
+          Choosing a rule preserves your manual changes. Use a replacement
+          button to change a protected field.
         </p>
       )}
-      <Button
-        type="button"
-        size="sm"
-        variant="link"
-        onClick={() => {
-          if (canReveal()) onRestore();
-        }}
-      >
-        Review changes / restore
-      </Button>
     </div>
   );
 }

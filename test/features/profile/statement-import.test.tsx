@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   read: vi.fn(),
   insert: vi.fn(),
   rulebook: vi.fn(),
+  saveRules: vi.fn(),
 }));
 vi.mock('@/features/import-review/lib/local-pdf', () => ({
   openLocalStatementPdf: async () => ({
@@ -41,7 +42,7 @@ vi.mock('@/features/import-review/lib/local-pdf', () => ({
 }));
 vi.mock('@/features/merchant-rules/actions/rulebook-actions', () => ({
   getMerchantRulebook: mocks.rulebook,
-  saveMerchantRulebook: vi.fn(),
+  saveMerchantRulebook: mocks.saveRules,
 }));
 vi.mock('@/features/expenses', async () => ({
   ...(await import('@/features/expenses/lib/import-expense')),
@@ -143,19 +144,17 @@ async function selectAndCheck() {
 }
 it('requires selection, fresh duplicate check and explicit save; previews original notes and freezes confirmed row', async () => {
   await setup();
-  fireEvent.change(screen.getByLabelText('Description'), {
+  fireEvent.change(screen.getByLabelText('Item / Brand'), {
     target: { value: 'Corrected market' },
   });
-  fireEvent.keyDown(screen.getByLabelText('Description'), { key: 'Enter' });
+  fireEvent.keyDown(screen.getByLabelText('Item / Brand'), { key: 'Enter' });
   expect(mocks.insert).not.toHaveBeenCalled();
   expect(
     screen.getByRole('button', { name: 'Save selected expenses' })
   ).toBeDisabled();
   await selectAndCheck();
   expect(screen.getByText(/1 selected · SGD 12.30/)).toBeVisible();
-  expect(
-    screen.getByText(/Page 1, line 2: 01 OCT INVENTED MARKET/)
-  ).toBeInTheDocument();
+  expect(screen.queryByText('Source note to save')).not.toBeInTheDocument();
   fireEvent.click(
     screen.getByRole('button', { name: 'Save selected expenses' })
   );
@@ -164,7 +163,7 @@ it('requires selection, fresh duplicate check and explicit save; previews origin
   const input = mocks.insert.mock.calls[0][0] as ImportedExpenseInput;
   expect(input.description).toBe('Corrected market');
   expect(input.source[0].text).toContain('INVENTED MARKET');
-  expect(screen.getByLabelText('Description')).toBeDisabled();
+  expect(screen.getByLabelText('Item / Brand')).toBeDisabled();
 });
 it('requires explicit possible-duplicate acknowledgement and rechecks after editing', async () => {
   await setup();
@@ -212,7 +211,7 @@ it('failed duplicate read blocks saving and retains editable selected draft', as
   expect(
     screen.getByRole('button', { name: 'Save selected expenses' })
   ).toBeDisabled();
-  expect(screen.getByLabelText('Description')).toBeEnabled();
+  expect(screen.getByLabelText('Item / Brand')).toBeEnabled();
   expect(screen.queryByText('private details')).not.toBeInTheDocument();
 });
 it('definite rejection permits identical retry without a new ID or changed source', async () => {
@@ -286,7 +285,7 @@ it('hide during pending save rejects its late acknowledgement, masks notes and p
     screen.getByRole('button', { name: 'Hide amounts', hidden: true })
   );
   expect(screen.queryByText(/Statement source:/)).not.toBeInTheDocument();
-  expect(screen.getByLabelText('Description')).toHaveValue('');
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('');
   const input = mocks.insert.mock.calls[0][0] as ImportedExpenseInput;
   await act(async () => finish({ id: input.id, status: 'confirmed' }));
   fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
@@ -299,7 +298,7 @@ it('keeps review on canceled discard and ignores completion after explicit close
   await selectAndCheck();
   vi.mocked(window.confirm).mockReturnValue(false);
   fireEvent.click(screen.getByRole('button', { name: 'Clear review' }));
-  expect(screen.getByLabelText('Description')).toBeInTheDocument();
+  expect(screen.getByLabelText('Item / Brand')).toBeInTheDocument();
   let finish!: (value: unknown) => void;
   mocks.insert.mockImplementation(
     () =>
@@ -553,7 +552,7 @@ it('checks a hidden interrupted save before its old acknowledgement returns and 
   expect(mocks.insert).toHaveBeenCalledTimes(1);
 });
 
-it('merchant Apply invalidates duplicate review and preserves manual fields and original matching text', async () => {
+it('merchant rules fill drafts automatically and preserve manual edits and explicit restoration', async () => {
   mocks.rulebook.mockResolvedValue({
     id: '851af27a-e752-4aa5-8294-44b02bd911ca',
     revision: '1',
@@ -575,28 +574,142 @@ it('merchant Apply invalidates duplicate review and preserves manual fields and 
     },
   });
   await setup();
-  fireEvent.change(screen.getByLabelText('Description'), {
+  fireEvent.change(screen.getByLabelText('Item / Brand'), {
     target: { value: 'My merchant' },
   });
   await selectAndCheck();
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Apply suggestion' })
-  );
-  expect(screen.getByLabelText('Description')).toHaveValue('My merchant');
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('My merchant');
   expect(screen.getByLabelText('Category')).toHaveValue('groceries');
   expect(
     screen.getByRole('button', { name: 'Save selected expenses' })
-  ).toBeDisabled();
+  ).toBeEnabled();
   fireEvent.click(screen.getByText('Details'));
-  expect(
-    screen.getByText('Original description: INVENTED MARKET')
-  ).toBeVisible();
-  expect(mocks.insert).not.toHaveBeenCalled();
   fireEvent.click(
-    screen.getByRole('button', { name: 'Replace my merchant name' })
+    screen.getByRole('button', { name: 'Review changes / restore' })
   );
-  expect(screen.getByLabelText('Description')).toHaveValue('Suggested market');
+  fireEvent.click(screen.getByRole('button', { name: 'Restore values' }));
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('INVENTED MARKET');
+  expect(screen.getByLabelText('Category')).toHaveValue('other');
   expect(
-    screen.getByText('Original description: INVENTED MARKET')
-  ).toBeVisible();
+    screen.getByRole('button', { name: 'Save selected expenses' })
+  ).toBeDisabled();
+  expect(mocks.insert).not.toHaveBeenCalled();
+});
+
+it('saving a rule fills every matching row and invalidates checked duplicates without saving expenses', async () => {
+  mocks.extract.mockResolvedValue(
+    [
+      'UOB SGD billed',
+      '01 OCT INVENTED MARKET 12.30',
+      '02 OCT INVENTED MARKET 20.00',
+    ].map((text, index) => ({ page: 1, line: index + 1, text }))
+  );
+  mocks.saveRules.mockResolvedValue({ status: 'saved', revision: '1' });
+  await setup();
+  fireEvent.click(screen.getByRole('button', { name: 'Select all expenses' }));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Check possible duplicates' })
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Save selected expenses' })
+    ).toBeEnabled()
+  );
+  fireEvent.click(screen.getAllByText('Details', { exact: true })[0]);
+  fireEvent.click(
+    screen.getAllByRole('button', { name: 'Create rule', exact: true })[0]
+  );
+  fireEvent.change(
+    screen.getByRole('textbox', { name: 'Item / Brand', exact: true }),
+    {
+      target: { value: 'Weekly market' },
+    }
+  );
+  fireEvent.change(screen.getByLabelText('Suggested category'), {
+    target: { value: 'groceries' },
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Save rule', exact: true })
+  );
+  await screen.findByText(
+    'Merchant rules saved. Existing expenses are unchanged.'
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Close', exact: true }));
+  await waitFor(() =>
+    expect(
+      screen
+        .getAllByLabelText('Item / Brand')
+        .map((input) => (input as HTMLInputElement).value)
+    ).toEqual(['Weekly market', 'Weekly market'])
+  );
+  expect(
+    screen
+      .getAllByLabelText('Category')
+      .map((input) => (input as HTMLSelectElement).value)
+  ).toEqual(['groceries', 'groceries']);
+  expect(
+    screen.getByRole('button', { name: 'Save selected expenses' })
+  ).toBeDisabled();
+  expect(screen.queryByText('Source note to save')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Apply suggestion' })
+  ).not.toBeInTheDocument();
+  expect(mocks.insert).not.toHaveBeenCalled();
+});
+
+it('keeps an explicit conflict choice after the chosen rule is paused', async () => {
+  const rule = {
+    id: '28df2170-47da-4771-90cc-9aa36eff48d5',
+    label: 'Rule A',
+    enabled: true,
+    matchMode: 'exact',
+    matchText: 'INVENTED MARKET',
+    bank: 'uob',
+    displayName: 'Merchant A',
+    category: 'groceries',
+  };
+  mocks.rulebook.mockResolvedValue({
+    id: '851af27a-e752-4aa5-8294-44b02bd911ca',
+    revision: '1',
+    payload: {
+      schemaVersion: 1,
+      requestId: 'ff65feb2-8ffa-427c-a057-8779580f162f',
+      rules: [
+        rule,
+        {
+          ...rule,
+          id: 'afc9ad1a-2b12-433a-ad54-e4d1ad683374',
+          label: 'Rule B',
+          displayName: 'Merchant B',
+          category: 'other',
+        },
+      ],
+    },
+  });
+  mocks.saveRules.mockResolvedValue({ status: 'saved', revision: '2' });
+  await setup();
+  fireEvent.click(screen.getByText('Details', { exact: true }));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Choose Rule B', exact: true })
+  );
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('Merchant B');
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Saved merchant rules', exact: true })
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Edit rule Rule B', exact: true })
+  );
+  fireEvent.click(screen.getByLabelText('Apply this rule automatically'));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Save rule', exact: true })
+  );
+  await screen.findByText(
+    'Merchant rules saved. Existing expenses are unchanged.'
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Close', exact: true }));
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('Merchant B');
+  expect(screen.getByLabelText('Category')).toHaveValue('other');
+  expect(
+    screen.queryByRole('button', { name: 'Choose Rule A', exact: true })
+  ).not.toBeInTheDocument();
 });

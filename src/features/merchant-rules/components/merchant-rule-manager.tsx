@@ -80,8 +80,8 @@ export function MerchantRuleManager({
       )}
       {!embedded && (
         <p className="text-muted-foreground text-sm">
-          Personal suggestions saved for future statements. Apply a suggestion
-          to a reviewed draft; existing expenses stay unchanged.
+          Saved rules fill matching statement drafts automatically, preserving
+          your manual edits.
         </p>
       )}
       {!hidden && (
@@ -182,7 +182,7 @@ export function MerchantRuleManager({
                         {rule.matchMode === 'exact' ? 'Exact' : 'Phrase'}:{' '}
                         {rule.matchText} ·{' '}
                         {rule.bank?.toUpperCase() ?? 'All banks'} ·{' '}
-                        {rule.enabled ? 'Enabled' : 'Disabled'}
+                        {rule.enabled ? 'Active' : 'Paused'}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -248,34 +248,6 @@ export function MerchantRuleManager({
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor={`${id}-match`}>
-                    Match original description
-                  </Label>
-                  <Input
-                    id={`${id}-match`}
-                    maxLength={256}
-                    value={draft.matchText}
-                    onChange={(e) => change({ matchText: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor={`${id}-mode`}>Match type</Label>
-                  <select
-                    id={`${id}-mode`}
-                    className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-                    value={draft.matchMode}
-                    onChange={(e) =>
-                      change({
-                        matchMode:
-                          e.target.value === 'exact' ? 'exact' : 'phrase',
-                      })
-                    }
-                  >
-                    <option value="exact">Exact description</option>
-                    <option value="phrase">Phrase at word boundaries</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
                   <Label htmlFor={`${id}-bank`}>Bank scope</Label>
                   <select
                     id={`${id}-bank`}
@@ -299,9 +271,33 @@ export function MerchantRuleManager({
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor={`${id}-display`}>
-                    Suggested merchant name (optional)
-                  </Label>
+                  <Label htmlFor={`${id}-match`}>Matching words</Label>
+                  <Input
+                    id={`${id}-match`}
+                    maxLength={256}
+                    value={draft.matchText}
+                    onChange={(e) => change({ matchText: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor={`${id}-mode`}>Match type</Label>
+                  <select
+                    id={`${id}-mode`}
+                    className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                    value={draft.matchMode}
+                    onChange={(e) =>
+                      change({
+                        matchMode:
+                          e.target.value === 'exact' ? 'exact' : 'phrase',
+                      })
+                    }
+                  >
+                    <option value="exact">Exact text</option>
+                    <option value="phrase">Contains these words</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor={`${id}-display`}>Item / Brand</Label>
                   <Input
                     id={`${id}-display`}
                     maxLength={256}
@@ -333,18 +329,20 @@ export function MerchantRuleManager({
                   </select>
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={draft.enabled}
-                  onChange={(e) => change({ enabled: e.target.checked })}
-                />
-                Enabled for suggestions
-              </label>
+              {rules.some((rule) => rule.id === draft.id) && (
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={draft.enabled}
+                    onChange={(e) => change({ enabled: e.target.checked })}
+                  />
+                  Apply this rule automatically
+                </label>
+              )}
               <p className="text-muted-foreground text-sm">
-                Comparison ignores case and repeated spaces. Accents and
-                punctuation are retained. Choose a merchant name, a category, or
-                both.
+                Rule name identifies this rule. Item / Brand is shown on the
+                expense; leave it blank to keep the extracted name. Matching
+                ignores case and repeated spaces.
               </p>
               <div className="space-y-1 text-sm">
                 <p>{matches.length} matching source rows in this statement:</p>

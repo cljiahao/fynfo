@@ -398,7 +398,15 @@ under All statement rows. Filters include expenses, refunds and both; only valid
 expenses can be selected for saving. Select all expenses (or Select next 20
 expenses) replaces the selection with up to 20 eligible filtered expenses.
 Restore previews current and extracted description/category before confirming;
-Other is the initial category. Rule editing opens in a focused dialog. Compare source opens the
+Other is the initial category. Rule editing opens in a focused dialog.
+Confirmed, unambiguous merchant rules automatically fill matching draft descriptions
+and categories across the statement. Manual edits, restored values and frozen save
+attempts are preserved. Conflicting rules require an explicit choice; rules never
+save expenses automatically. Rule name labels the rule; Item / Brand becomes the expense item.
+The PDF review uses the same Item / Brand label. Per-expense notes stay separate. Matching uses exact text or words within the original description,
+not regex. New rules are active; existing rules can be paused in their editor.
+The saved source audit note remains attached to imported expenses; its redundant
+preview control has been removed from row details. Compare source opens the
 original on smaller screens, where Statement / Extracted switches views.
 Each transaction's Details disclosure contains its editable classification:
 Expense, Refund, Transfer, Card repayment, Other credit or Unknown. The original
@@ -410,8 +418,8 @@ Changing a credit's label or amount cannot turn it into a positive expense
 suggestion. Ambiguous source dates/amounts and possible duplicates remain visible
 after edits. Current invalid expense draft fields also need review.
 Only unprotected text PDFs up to 10 MiB and 100 pages are supported. The PDF is
-not uploaded. Select eligible positive SGD self expenses, preview their source
-notes, run **Check possible duplicates**, and explicitly **Save selected expenses**
+not uploaded. Select eligible positive SGD self expenses, compare the source
+page, run **Check possible duplicates**, and explicitly **Save selected expenses**
 (maximum 20 per batch). Possible matches require source comparison and acknowledgement;
 they are warnings, not durable cross-file prevention. Selected fields and original
 transaction source notes are sent only on save and encrypted before storage.

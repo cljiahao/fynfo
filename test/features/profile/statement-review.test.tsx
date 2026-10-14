@@ -95,7 +95,7 @@ it('keeps secondary information closed until requested without hiding editable f
   ).toBeVisible();
   expect(screen.queryByText('Include expense')).not.toBeInTheDocument();
 
-  expect(screen.getByLabelText('Description')).toBeVisible();
+  expect(screen.getByLabelText('Item / Brand')).toBeVisible();
   expect(screen.getByLabelText('SGD billed amount')).toBeVisible();
   expect(screen.getByLabelText('Classification')).not.toBeVisible();
   fireEvent.click(screen.getByText('Details'));
@@ -115,7 +115,7 @@ it('reviews editable drafts, keeps provenance, navigates source pages and clears
   setup();
   expect(await screen.findByText(/1 expense suggestions/)).toBeVisible();
   expect(screen.getByLabelText('SGD billed amount')).toHaveValue('12.30');
-  fireEvent.change(screen.getByLabelText('Description'), {
+  fireEvent.change(screen.getByLabelText('Item / Brand'), {
     target: { value: 'Edited draft' },
   });
   fireEvent.change(screen.getByLabelText('Category'), {
@@ -131,7 +131,7 @@ it('reviews editable drafts, keeps provenance, navigates source pages and clears
     expect(mocks.render).toHaveBeenCalledWith(2, expect.any(HTMLCanvasElement))
   );
   fireEvent.click(screen.getByRole('button', { name: 'Extracted' }));
-  expect(screen.getByLabelText('Description')).toHaveValue('Edited draft');
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('Edited draft');
   expect(screen.getByLabelText('Category')).toHaveValue('groceries');
   expect(
     screen.getByRole('button', { name: 'Save selected expenses' })
@@ -148,7 +148,7 @@ it('follows the focused draft to its source page while keeping secondary details
     { page: 2, line: 1, text: '01 JAN SECOND MARKET SGD 20.00' },
   ]);
   setup();
-  const descriptions = await screen.findAllByLabelText('Description');
+  const descriptions = await screen.findAllByLabelText('Item / Brand');
   expect(
     screen.getAllByRole('button', { name: /View source page/ })
   ).toHaveLength(2);
@@ -185,7 +185,7 @@ it('opens the first transaction page when a statement begins with a cover page',
     { page: 2, line: 1, text: '31 DEC FIRST MARKET SGD 12.30' },
   ]);
   setup();
-  await screen.findByLabelText('Description');
+  await screen.findByLabelText('Item / Brand');
   await waitFor(() =>
     expect(mocks.render).toHaveBeenLastCalledWith(
       2,
@@ -213,12 +213,12 @@ it('updates classification counts, preserves the suggestion and restores it with
   expect(
     screen.getByText('Your classification overrides the suggestion.')
   ).toBeVisible();
-  fireEvent.change(screen.getByLabelText('Description'), {
+  fireEvent.change(screen.getByLabelText('Item / Brand'), {
     target: { value: 'My correction' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Restore suggestion' }));
   expect(screen.getByLabelText('Classification')).toHaveValue('expense');
-  expect(screen.getByLabelText('Description')).toHaveValue('My correction');
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('My correction');
   expect(
     screen.getByText(/1 expense suggestions, 0 unresolved, 0 excluded/)
   ).toBeVisible();
@@ -401,7 +401,7 @@ it('extracts without manual dates using the printed statement date', async () =>
   ]);
   setup(undefined, 4, false);
   expect(screen.getByLabelText('Period start')).not.toBeVisible();
-  expect(await screen.findByLabelText('Description')).toHaveValue('MARKET');
+  expect(await screen.findByLabelText('Item / Brand')).toHaveValue('MARKET');
   expect(screen.getByLabelText('Date')).toHaveValue('2025-12-31');
   expect(screen.getByLabelText('Period start')).toHaveValue('2025-12-01');
   expect(screen.getByLabelText('Period end')).toHaveValue('2026-01-14');
@@ -413,7 +413,7 @@ it('retains the PDF and reveals manual dates when no reliable header is availabl
     await screen.findByText(/We could not read a clear statement date/)
   ).toBeVisible();
   expect(screen.getByLabelText('Period start')).toBeVisible();
-  expect(screen.queryByLabelText('Description')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Item / Brand')).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Period start'), {
     target: { value: '2025-12-15' },
   });
@@ -485,7 +485,7 @@ it('hides repayments, filters refunds and bulk-selects only eligible expenses up
     ].map((text, index) => ({ page: 1, line: index + 1, text }))
   );
   setup();
-  await screen.findAllByLabelText('Description');
+  await screen.findAllByLabelText('Item / Brand');
   expect(screen.queryByDisplayValue('CARD PAYMENT')).not.toBeInTheDocument();
   fireEvent.click(
     screen.getByRole('button', { name: 'Select next 20 expenses' })
@@ -495,7 +495,7 @@ it('hides repayments, filters refunds and bulk-selects only eligible expenses up
   fireEvent.change(screen.getByLabelText('Show transactions'), {
     target: { value: 'refunds' },
   });
-  expect(screen.getByLabelText('Description')).toHaveValue('REFUND SHOP');
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('REFUND SHOP');
   expect(
     screen.getByRole('button', { name: 'Select all expenses' })
   ).toBeDisabled();
@@ -504,8 +504,8 @@ it('hides repayments, filters refunds and bulk-selects only eligible expenses up
 }, 15000);
 it('previews both original values before restoring and opens row rules in a dialog', async () => {
   setup();
-  await screen.findByLabelText('Description');
-  fireEvent.change(screen.getByLabelText('Description'), {
+  await screen.findByLabelText('Item / Brand');
+  fireEvent.change(screen.getByLabelText('Item / Brand'), {
     target: { value: 'My shop' },
   });
   fireEvent.change(screen.getByLabelText('Category'), {
@@ -516,25 +516,23 @@ it('previews both original values before restoring and opens row rules in a dial
     screen.getByRole('button', { name: 'Review changes / restore' })
   );
   const dialog = within(
-    screen.getByRole('dialog', { name: 'Restore description and category' })
+    screen.getByRole('dialog', { name: 'Restore item and category' })
   );
-  expect(dialog.getByText('Description: My shop')).toBeVisible();
-  expect(dialog.getByText('Description: SYNTHETIC MARKET')).toBeVisible();
+  expect(dialog.getByText('Item / Brand: My shop')).toBeVisible();
+  expect(dialog.getByText('Item / Brand: SYNTHETIC MARKET')).toBeVisible();
   expect(dialog.getByText('Category: Groceries')).toBeVisible();
   expect(dialog.getByText('Category: Other')).toBeVisible();
   fireEvent.click(dialog.getByRole('button', { name: 'Keep edits' }));
-  expect(screen.getByLabelText('Description')).toHaveValue('My shop');
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('My shop');
   fireEvent.click(
     screen.getByRole('button', { name: 'Review changes / restore' })
   );
   fireEvent.click(screen.getByRole('button', { name: 'Restore values' }));
-  expect(screen.getByLabelText('Description')).toHaveValue('SYNTHETIC MARKET');
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('SYNTHETIC MARKET');
   expect(screen.getByLabelText('Category')).toHaveValue('other');
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Create rule from this row' })
-  );
+  fireEvent.click(screen.getByRole('button', { name: 'Create rule' }));
   expect(screen.getByRole('dialog', { name: 'Review rule' })).toBeVisible();
-  expect(screen.getByLabelText('Match original description')).toHaveValue(
+  expect(screen.getByLabelText('Matching words')).toHaveValue(
     'SYNTHETIC MARKET'
   );
   expect(mocks.insert).not.toHaveBeenCalled();
