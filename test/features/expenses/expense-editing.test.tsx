@@ -4,6 +4,7 @@ import { ExpenseChart } from '@/features/expenses/components/expense-chart';
 import { ExpenseTypeSelect } from '@/features/expenses/components/expense-type-select';
 import { SplitDialog } from '@/features/expenses/components/split-dialog';
 import type { ExpenseData } from '@/features/expenses/types';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import {
   act,
@@ -364,7 +365,14 @@ it('chart totals exclude old months and use personal shares while all-time avera
       disconnect() {}
     }
   );
-  const view = render(<ExpenseChart expenses={[]} />);
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { enabled: false, retry: false } },
+  });
+  const view = render(<ExpenseChart expenses={[]} />, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  });
   expect(view.container).toBeEmptyDOMElement();
   view.rerender(
     <ExpenseChart

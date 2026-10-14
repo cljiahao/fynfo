@@ -61,3 +61,10 @@ Mobile interaction verification is pending: a native confirm from an earlier
 synthetic rendering blocked browser input. The redundant rule-close confirmation
 has since been removed; closing retains the draft. No personal statement data
 was used. Full repository gates run before PR.
+
+The first full coverage run passed 2055 tests and exposed two harness issues:
+the chart totals test lacked the query provider required by its new comparison
+child, and the dense 21-selection test exceeded its 10-second allowance. Added
+a disabled-query provider to that isolated chart test and raised only the dense
+test's allowance to 20 seconds, retaining every assertion. Both files passed
+all 29 tests with V8 instrumentation; aggregate coverage requires the full suite.
