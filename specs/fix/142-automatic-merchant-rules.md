@@ -2,7 +2,9 @@
 id: '142'
 slug: automatic-merchant-rules
 area: fix
-status: owner-authorized
+status: shipped
+shipped: 2026-10-14
+impl_pr: https://github.com/cljiahao/fynfo/pull/62
 author: Codex
 created: 2026-10-14
 ---
@@ -57,3 +59,8 @@ to Item / Brand in PDF review/restoration; align conflict replacement copy and
 README. Rule name remains a management label. No data mapping changes or extra
 inputs. Update existing label-based regressions and run normal gates. Rollback:
 revert this copy-only batch.
+
+Release: owner authorized merge once green. All 2059 tests across 183 suites,
+build, formatting, lint and type checks passed locally; CI and preview passed
+for 445a962. PR62 merged as 37f8b7b on 2026-10-14. Six inputs retained with
+Item / Brand labels; no schema application needed.
