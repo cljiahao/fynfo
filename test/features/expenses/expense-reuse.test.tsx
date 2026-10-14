@@ -581,3 +581,30 @@ describe('reuse integration with actual amount visibility', () => {
     expect(boundary.save).toHaveBeenCalledTimes(1);
   });
 });
+
+it('keeps a typed quick-add draft while switching to PDF import and back', () => {
+  render(<ExpenseEntry />);
+  const item = screen.getByRole('textbox', { name: 'Item / Brand' });
+  fireEvent.change(item, { target: { value: 'My unsaved groceries' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Import statement' }));
+  expect(screen.getByRole('button', { name: 'Choose bank PDF' })).toBeVisible();
+  expect(item).not.toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Quick add' }));
+  expect(item).toBeVisible();
+  expect(item).toHaveValue('My unsaved groceries');
+  expect(boundary.save).not.toHaveBeenCalled();
+});
+
+it('reveals Quick add before focusing a reused expense from PDF mode', () => {
+  render(<ExpenseEntry />);
+  fireEvent.click(screen.getByRole('button', { name: 'Import statement' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Reuse' }));
+  expect(screen.getByRole('button', { name: 'Quick add' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  expect(screen.getByRole('textbox', { name: 'Item / Brand' })).toHaveValue(
+    source.item
+  );
+  expect(screen.getByRole('textbox', { name: 'Item / Brand' })).toHaveFocus();
+});

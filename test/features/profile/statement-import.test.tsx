@@ -588,11 +588,15 @@ it('merchant Apply invalidates duplicate review and preserves manual fields and 
     screen.getByRole('button', { name: 'Save selected expenses' })
   ).toBeDisabled();
   fireEvent.click(screen.getByText('Details'));
-  expect(screen.getByText('Original merchant: INVENTED MARKET')).toBeVisible();
+  expect(
+    screen.getByText('Original description: INVENTED MARKET')
+  ).toBeVisible();
   expect(mocks.insert).not.toHaveBeenCalled();
   fireEvent.click(
     screen.getByRole('button', { name: 'Replace my merchant name' })
   );
   expect(screen.getByLabelText('Description')).toHaveValue('Suggested market');
-  expect(screen.getByText('Original merchant: INVENTED MARKET')).toBeVisible();
+  expect(
+    screen.getByText('Original description: INVENTED MARKET')
+  ).toBeVisible();
 });

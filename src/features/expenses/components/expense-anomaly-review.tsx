@@ -1,12 +1,14 @@
 'use client';
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaginationControls } from '@/components/widgets';
@@ -195,6 +197,7 @@ function ReviewResults({ result }: { result: ExpenseAnomalyResult }) {
 /** Explicit read-only review of the complete loaded history, never table pages. */
 export function ExpenseAnomalyReview() {
   const fieldId = useId();
+  const [open, setOpen] = useState(false);
   const revision = useRef(0);
   const query = useExpenses();
   const mutationCount = useIsMutating();
@@ -245,18 +248,35 @@ export function ExpenseAnomalyReview() {
     });
   }
   return (
-    <Accordion type="single" collapsible className="rounded-lg border px-4">
-      <AccordionItem value="spending-review" className="border-0">
-        <AccordionTrigger>Review spending changes</AccordionTrigger>
-        <AccordionContent className="space-y-4">
-          <p className="text-muted-foreground text-sm">
-            Recorded data may be incomplete. This is a comparison to check, not
-            a spending recommendation.
-          </p>
-          <p className="text-muted-foreground text-sm">
-            Review rule: at least twice the preceding three-month median and at
-            least SGD 50 higher. Singapore month: {clock}.
-          </p>
+    <Dialog
+      open={open && !hidden}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) review();
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button type="button" variant="outline" size="sm" disabled={hidden}>
+          Compare months
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>What changed this month?</DialogTitle>
+          <DialogDescription>
+            Find categories with larger recorded spending than the previous
+            three months.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <details className="text-muted-foreground text-sm">
+            <summary className="cursor-pointer">How comparison works</summary>
+            <p className="mt-2">
+              Recorded data may be incomplete. Review rule: at least twice the
+              preceding three-month median and at least SGD 50 higher. Singapore
+              month: {clock}. Compare completed months only.
+            </p>
+          </details>
           <AmountsHiddenNotice />
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
@@ -273,7 +293,7 @@ export function ExpenseAnomalyReview() {
               />
             </div>
             <Button disabled={hidden || !ready} onClick={review}>
-              Review recorded spending
+              Refresh comparison
             </Button>
           </div>
           {query.isError ? (
@@ -296,11 +316,12 @@ export function ExpenseAnomalyReview() {
             <ReviewResults key={snapshot.id} result={snapshot.result} />
           ) : ready && !hidden ? (
             <p className="text-muted-foreground text-sm">
-              Choose Review recorded spending to make a fresh comparison.
+              Choose Refresh comparison after changing the month or expense
+              history.
             </p>
           ) : null}
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

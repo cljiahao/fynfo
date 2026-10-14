@@ -142,6 +142,21 @@ export function useStatementSave(
     setChecked('');
     setAcknowledged(false);
   }
+  function selectExpenses(candidates: StatementCandidate[]) {
+    if (!privacy.canReveal() || running.current) return;
+    const eligible = candidates.filter(
+      (row) => !attemptsRef.current[row.id] && inputFor(row) !== null
+    );
+    setSelection(eligible.slice(0, 20).map((row) => row.id));
+    setChecked('');
+    setAcknowledged(false);
+  }
+  function clearSelection() {
+    if (!privacy.canReveal() || running.current) return;
+    setSelection([]);
+    setChecked('');
+    setAcknowledged(false);
+  }
   function invalidateReview() {
     setChecked('');
     setAcknowledged(false);
@@ -382,6 +397,8 @@ export function useStatementSave(
     acknowledged,
     setAcknowledged,
     toggle,
+    selectExpenses,
+    clearSelection,
     inputFor,
     compare,
     save,

@@ -13,6 +13,7 @@ import { merchantRuleSchema } from '../schemas';
 import type { MerchantBank, MerchantRule } from '../types';
 
 type Props = {
+  embedded?: boolean;
   rulebook: ReturnType<typeof useMerchantRulebook>;
   draft: MerchantRule | null;
   onDraft: (rule: MerchantRule | null) => void;
@@ -24,10 +25,11 @@ export function MerchantRuleManager({
   draft,
   onDraft,
   examples,
+  embedded = false,
 }: Props) {
   const { hidden, canReveal } = useAmountVisibility();
   const id = useId();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(embedded);
   const [error, setError] = useState('');
   const rules = rulebook.book?.payload.rules ?? [];
   function change(value: Partial<MerchantRule>) {
@@ -61,23 +63,27 @@ export function MerchantRuleManager({
     : [];
   return (
     <section className="space-y-3 border-t pt-4" aria-label="Merchant rules">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold">Merchant rules</h3>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={hidden}
-          aria-expanded={expanded || !!draft}
-          aria-controls={`${id}-manager`}
-          onClick={() => canReveal() && setExpanded(!expanded)}
-        >
-          {expanded ? 'Collapse rules' : 'Manage rules'}
-        </Button>
-      </div>
-      <p className="text-muted-foreground text-sm">
-        Personal suggestions saved for future statements. Apply a suggestion to
-        a reviewed draft; existing expenses stay unchanged.
-      </p>
+      {!embedded && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-semibold">Merchant rules</h3>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={hidden}
+            aria-expanded={expanded || !!draft}
+            aria-controls={`${id}-manager`}
+            onClick={() => canReveal() && setExpanded(!expanded)}
+          >
+            {expanded ? 'Collapse rules' : 'Manage rules'}
+          </Button>
+        </div>
+      )}
+      {!embedded && (
+        <p className="text-muted-foreground text-sm">
+          Personal suggestions saved for future statements. Apply a suggestion
+          to a reviewed draft; existing expenses stay unchanged.
+        </p>
+      )}
       {!hidden && (
         <p role="status" className="text-sm">
           {rulebook.stage === 'loading'
@@ -122,98 +128,111 @@ export function MerchantRuleManager({
       )}
       {!hidden && (expanded || draft !== null) && (
         <div id={`${id}-manager`} className="space-y-4">
-          <p className="text-muted-foreground text-sm">
-            Up to {MERCHANT_RULE_LIMITS.rules} rules; each text field allows 256
-            characters and the complete rulebook allows 128 KiB. Exact matches
-            take precedence. Conflicting suggestions require your choice.
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={
-              !rulebook.canEdit || rules.length >= MERCHANT_RULE_LIMITS.rules
-            }
-            onClick={() => {
-              if (!canReveal() || !discardDraft()) return;
-              setError('');
-              onDraft({
-                id: crypto.randomUUID(),
-                label: '',
-                enabled: true,
-                matchMode: 'exact',
-                matchText: '',
-                bank: null,
-                displayName: null,
-                category: 'other',
-              });
-            }}
-          >
-            New rule
-          </Button>
-          {rules.length === 0 && rulebook.stage === 'ready' && (
-            <p className="text-sm">
-              No saved rules yet. Create one from a reviewed row or enter a
-              merchant below.
+          <details className="text-muted-foreground text-sm">
+            <summary className="cursor-pointer">
+              Rule matching and limits
+            </summary>
+            <p className="mt-2">
+              Up to {MERCHANT_RULE_LIMITS.rules} rules; text fields allow 256
+              characters and the rulebook allows 128 KiB. Exact matches take
+              precedence. Conflicting suggestions require your choice.
             </p>
-          )}
-          <ul className="divide-y">
-            {rules.map((rule) => (
-              <li
-                key={rule.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-3"
+          </details>
+          {(!embedded || !draft) && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={
+                  !rulebook.canEdit ||
+                  rules.length >= MERCHANT_RULE_LIMITS.rules
+                }
+                onClick={() => {
+                  if (!canReveal() || !discardDraft()) return;
+                  setError('');
+                  onDraft({
+                    id: crypto.randomUUID(),
+                    label: '',
+                    enabled: true,
+                    matchMode: 'exact',
+                    matchText: '',
+                    bank: null,
+                    displayName: null,
+                    category: 'other',
+                  });
+                }}
               >
-                <div className="min-w-0">
-                  <p className="font-medium break-words">{rule.label}</p>
-                  <p className="text-muted-foreground text-sm break-words">
-                    {rule.matchMode === 'exact' ? 'Exact' : 'Phrase'}:{' '}
-                    {rule.matchText} · {rule.bank?.toUpperCase() ?? 'All banks'}{' '}
-                    · {rule.enabled ? 'Enabled' : 'Disabled'}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!rulebook.canEdit}
-                    aria-label={`Edit rule ${rule.label}`}
-                    onClick={() => {
-                      if (canReveal() && discardDraft()) {
-                        onDraft({ ...rule });
-                        setError('');
-                      }
-                    }}
+                New rule
+              </Button>
+              {rules.length === 0 && rulebook.stage === 'ready' && (
+                <p className="text-sm">
+                  No saved rules yet. Create one from a reviewed row or enter a
+                  merchant below.
+                </p>
+              )}
+              <ul className="divide-y">
+                {rules.map((rule) => (
+                  <li
+                    key={rule.id}
+                    className="flex flex-wrap items-center justify-between gap-2 py-3"
                   >
-                    Edit
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!rulebook.canEdit || draft !== null}
-                    aria-label={`Delete rule ${rule.label}`}
-                    onClick={() => {
-                      if (
-                        canReveal() &&
-                        window.confirm(
-                          'Delete this merchant rule? Existing expenses will stay unchanged.'
-                        )
-                      )
-                        void rulebook.save(
-                          rules.filter((entry) => entry.id !== rule.id)
-                        );
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
+                    <div className="min-w-0">
+                      <p className="font-medium break-words">{rule.label}</p>
+                      <p className="text-muted-foreground text-sm break-words">
+                        {rule.matchMode === 'exact' ? 'Exact' : 'Phrase'}:{' '}
+                        {rule.matchText} ·{' '}
+                        {rule.bank?.toUpperCase() ?? 'All banks'} ·{' '}
+                        {rule.enabled ? 'Enabled' : 'Disabled'}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={!rulebook.canEdit}
+                        aria-label={`Edit rule ${rule.label}`}
+                        onClick={() => {
+                          if (canReveal() && discardDraft()) {
+                            onDraft({ ...rule });
+                            setError('');
+                          }
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={!rulebook.canEdit || draft !== null}
+                        aria-label={`Delete rule ${rule.label}`}
+                        onClick={() => {
+                          if (
+                            canReveal() &&
+                            window.confirm(
+                              'Delete this merchant rule? Existing expenses will stay unchanged.'
+                            )
+                          )
+                            void rulebook.save(
+                              rules.filter((entry) => entry.id !== rule.id)
+                            );
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           {draft && (
             <fieldset
               disabled={!rulebook.canEdit}
-              className="space-y-3 rounded-md border p-3"
+              className={
+                embedded ? 'space-y-3' : 'space-y-3 rounded-md border p-3'
+              }
             >
-              <legend className="px-1 text-sm">
+              <legend className={embedded ? 'sr-only' : 'px-1 text-sm'}>
                 {rules.some((rule) => rule.id === draft.id)
                   ? 'Edit rule'
                   : 'New rule'}

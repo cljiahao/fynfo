@@ -47,14 +47,10 @@ function history(): ExpenseData[] {
   ];
 }
 function openReview() {
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Review spending changes' })
-  );
+  fireEvent.click(screen.getByRole('button', { name: 'Compare months' }));
 }
 function analyze() {
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Review recorded spending' })
-  );
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh comparison' }));
 }
 function shell() {
   return (
@@ -101,7 +97,7 @@ describe('explicit read-only spending review', () => {
     const view = render(shell());
     openReview();
     const review = screen.getByRole('button', {
-      name: 'Review recorded spending',
+      name: 'Refresh comparison',
     }) as HTMLButtonElement;
     expect(review.disabled).toBe(true);
     expect(screen.getByRole('status').textContent).toContain(
@@ -124,12 +120,12 @@ describe('explicit read-only spending review', () => {
       screen.getByText('Groceries recorded higher than recent months')
     ).toBeTruthy();
   });
-  it('requires explicit review and pages only source rows, leaving full-history totals intact', () => {
+  it('compares on explicit opening and pages only source rows, leaving full-history totals intact', () => {
     render(shell());
     openReview();
     expect(
       screen.queryByText('Groceries recorded higher than recent months')
-    ).toBeNull();
+    ).not.toBeNull();
     analyze();
     expect(
       screen.getByText('Groceries recorded higher than recent months')
@@ -202,7 +198,7 @@ describe('explicit read-only spending review', () => {
       expect(
         (
           screen.getByRole('button', {
-            name: 'Review recorded spending',
+            name: 'Refresh comparison',
           }) as HTMLButtonElement
         ).disabled
       ).toBe(true);
@@ -230,19 +226,14 @@ describe('explicit read-only spending review', () => {
     openReview();
     analyze();
     fireEvent.click(screen.getByText('Review contributing records'));
-    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Hide amounts', hidden: true })
+    );
     expect(screen.queryByText('Synthetic source 1')).toBeNull();
     expect(
       screen.queryByText('Groceries recorded higher than recent months')
     ).toBeNull();
-    expect(
-      (
-        screen.getByRole('button', {
-          name: 'Review recorded spending',
-        }) as HTMLButtonElement
-      ).disabled
-    ).toBe(true);
-    expect(screen.getByText(/Recorded data may be incomplete/)).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
     fireEvent.click(screen.getAllByRole('button', { name: 'Show amounts' })[0]);
     expect(screen.queryByText('Synthetic source 1')).toBeNull();
     analyze();

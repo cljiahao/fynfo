@@ -39,7 +39,7 @@ export function MerchantSuggestion({
         : [match.rules[0]];
   return (
     <div className="space-y-2 border-t pt-2 text-sm">
-      <p className="break-words">Original merchant: {originalDescription}</p>
+      <p className="break-words">Original description: {originalDescription}</p>
       {match.status !== 'none' &&
         (match.status === 'conflict' ? (
           <p className="text-warning-strong">
@@ -131,7 +131,7 @@ export function MerchantSuggestion({
           if (canReveal()) onRestore();
         }}
       >
-        Restore original merchant and category
+        Review changes / restore
       </Button>
     </div>
   );

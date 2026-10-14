@@ -64,21 +64,21 @@ it.each(['removed', 'disabled', 'changed'] as const)(
     expect(
       screen.queryByRole('button', { name: 'Apply suggestion' })
     ).not.toBeInTheDocument();
-    expect(screen.getByText('Original merchant: MARKET')).toBeVisible();
+    expect(screen.getByText('Original description: MARKET')).toBeVisible();
     expect(restore).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
     expect(
-      screen.queryByText('Original merchant: MARKET')
+      screen.queryByText('Original description: MARKET')
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', {
-        name: 'Restore original merchant and category',
+        name: 'Review changes / restore',
       })
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
     fireEvent.click(
       screen.getByRole('button', {
-        name: 'Restore original merchant and category',
+        name: 'Review changes / restore',
       })
     );
     expect(restore).toHaveBeenCalledOnce();
@@ -98,7 +98,7 @@ it('shows the original source, reason and output without applying automatically'
       onRestore={restore}
     />
   );
-  expect(screen.getByText('Original merchant: MARKET')).toBeVisible();
+  expect(screen.getByText('Original description: MARKET')).toBeVisible();
   expect(apply).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Apply suggestion' }));
   expect(apply).toHaveBeenCalledWith(rule, {
@@ -161,7 +161,7 @@ it('removes rule and merchant text while hidden and restores after Show', () => 
   );
   fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
   expect(
-    screen.queryByText('Original merchant: MARKET')
+    screen.queryByText('Original description: MARKET')
   ).not.toBeInTheDocument();
   expect(
     screen.queryByRole('button', { name: 'Apply suggestion' })
