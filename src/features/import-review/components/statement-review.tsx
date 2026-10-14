@@ -809,7 +809,7 @@ function StatementReviewBody({
                   <div className="grid gap-3 sm:grid-cols-12">
                     <div className="space-y-1 sm:col-span-8">
                       <Label htmlFor={`${id}-${row.id}-description`}>
-                        Description
+                        Item / Brand
                       </Label>
                       <Input
                         id={`${id}-${row.id}-description`}
@@ -1074,7 +1074,7 @@ function StatementReviewBody({
           }}
         >
           <DialogHeader>
-            <DialogTitle>Restore description and category</DialogTitle>
+            <DialogTitle>Restore item and category</DialogTitle>
             <DialogDescription>
               Compare your edits with the extracted values before restoring.
             </DialogDescription>
@@ -1085,7 +1085,7 @@ function StatementReviewBody({
                 <div className="min-w-0 space-y-2">
                   <h3 className="font-medium">Current</h3>
                   <p className="break-words">
-                    Description: {restoreRow.description}
+                    Item / Brand: {restoreRow.description}
                   </p>
                   <p>
                     Category:{' '}
@@ -1095,7 +1095,7 @@ function StatementReviewBody({
                 <div className="min-w-0 space-y-2">
                   <h3 className="font-medium">Restore to</h3>
                   <p className="break-words">
-                    Description: {restoreRow.originalDescription}
+                    Item / Brand: {restoreRow.originalDescription}
                   </p>
                   <p>Category: Other</p>
                 </div>

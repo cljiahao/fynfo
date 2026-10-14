@@ -48,3 +48,12 @@ and 390x844 confirmed compact row controls, field order, retained match preview,
 active-rule editing and automatic updates to both matching expense drafts.
 Source comparison remains page-only. No private statement data used. Full normal
 commit/push gates run before PR; this change is not yet merged.
+
+## Owner-requested label clarification
+
+Owner confirmed keeping six rule inputs and separating per-expense notes from
+rule output. Rename Merchant name to Item / Brand in the editor and Description
+to Item / Brand in PDF review/restoration; align conflict replacement copy and
+README. Rule name remains a management label. No data mapping changes or extra
+inputs. Update existing label-based regressions and run normal gates. Rollback:
+revert this copy-only batch.

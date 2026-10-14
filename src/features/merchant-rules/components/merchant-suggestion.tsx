@@ -39,7 +39,7 @@ export function MerchantSuggestion({
       {choices.map((rule) => (
         <div key={rule.id} className="space-y-1">
           <p className="break-words">
-            {rule.label}:{rule.displayName ?? 'Keep merchant name'} ·{' '}
+            {rule.label}:{rule.displayName ?? 'Keep item / brand'} ·{' '}
             {rule.category
               ? EXPENSE_TYPE_LABELS[rule.category]
               : 'Keep category'}
@@ -65,7 +65,7 @@ export function MerchantSuggestion({
                   if (
                     canReveal() &&
                     window.confirm(
-                      'Replace your manually edited merchant name with this suggestion?'
+                      'Replace your manually edited item / brand with this suggestion?'
                     )
                   )
                     onApply(
@@ -74,7 +74,7 @@ export function MerchantSuggestion({
                     );
                 }}
               >
-                Replace my merchant name
+                Replace my item / brand
               </Button>
             )}
             {manual.category && rule.category !== null && (

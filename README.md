@@ -402,8 +402,8 @@ Other is the initial category. Rule editing opens in a focused dialog.
 Confirmed, unambiguous merchant rules automatically fill matching draft descriptions
 and categories across the statement. Manual edits, restored values and frozen save
 attempts are preserved. Conflicting rules require an explicit choice; rules never
-save expenses automatically. Rule name labels the rule; Merchant name becomes the
-expense item. Matching uses exact text or words within the original description,
+save expenses automatically. Rule name labels the rule; Item / Brand becomes the expense item.
+The PDF review uses the same Item / Brand label. Per-expense notes stay separate. Matching uses exact text or words within the original description,
 not regex. New rules are active; existing rules can be paused in their editor.
 The saved source audit note remains attached to imported expenses; its redundant
 preview control has been removed from row details. Compare source opens the

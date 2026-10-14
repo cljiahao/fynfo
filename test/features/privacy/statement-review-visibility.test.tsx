@@ -104,7 +104,7 @@ it('keeps actual editable drafts and labels while removing hidden canvas and sel
   selectPdf();
   fireEvent.click(screen.getByRole('button', { name: 'Extract for review' }));
   const amount = await screen.findByLabelText('SGD billed amount');
-  const description = screen.getByLabelText('Description');
+  const description = screen.getByLabelText('Item / Brand');
   fireEvent.change(amount, { target: { value: '98.76' } });
   fireEvent.change(description, { target: { value: 'Synthetic draft 98.76' } });
   fireEvent.click(screen.getByRole('button', { name: /View source page/ }));

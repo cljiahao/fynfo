@@ -297,7 +297,7 @@ export function MerchantRuleManager({
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor={`${id}-display`}>Merchant name</Label>
+                  <Label htmlFor={`${id}-display`}>Item / Brand</Label>
                   <Input
                     id={`${id}-display`}
                     maxLength={256}
@@ -340,8 +340,8 @@ export function MerchantRuleManager({
                 </label>
               )}
               <p className="text-muted-foreground text-sm">
-                Rule name identifies this rule. Merchant name becomes the
-                expense item; leave it blank to keep the description. Matching
+                Rule name identifies this rule. Item / Brand is shown on the
+                expense; leave it blank to keep the extracted name. Matching
                 ignores case and repeated spaces.
               </p>
               <div className="space-y-1 text-sm">

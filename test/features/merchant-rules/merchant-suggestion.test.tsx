@@ -65,7 +65,7 @@ it('requires a choice for conflict and specific consent to replace a manual fiel
     screen.queryByRole('button', { name: 'Apply suggestion' })
   ).not.toBeInTheDocument();
   fireEvent.click(
-    screen.getAllByRole('button', { name: 'Replace my merchant name' })[0]
+    screen.getAllByRole('button', { name: 'Replace my item / brand' })[0]
   );
   expect(apply).not.toHaveBeenCalled();
   confirm.mockReturnValue(true);

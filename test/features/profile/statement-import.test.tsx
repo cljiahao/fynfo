@@ -144,10 +144,10 @@ async function selectAndCheck() {
 }
 it('requires selection, fresh duplicate check and explicit save; previews original notes and freezes confirmed row', async () => {
   await setup();
-  fireEvent.change(screen.getByLabelText('Description'), {
+  fireEvent.change(screen.getByLabelText('Item / Brand'), {
     target: { value: 'Corrected market' },
   });
-  fireEvent.keyDown(screen.getByLabelText('Description'), { key: 'Enter' });
+  fireEvent.keyDown(screen.getByLabelText('Item / Brand'), { key: 'Enter' });
   expect(mocks.insert).not.toHaveBeenCalled();
   expect(
     screen.getByRole('button', { name: 'Save selected expenses' })
@@ -163,7 +163,7 @@ it('requires selection, fresh duplicate check and explicit save; previews origin
   const input = mocks.insert.mock.calls[0][0] as ImportedExpenseInput;
   expect(input.description).toBe('Corrected market');
   expect(input.source[0].text).toContain('INVENTED MARKET');
-  expect(screen.getByLabelText('Description')).toBeDisabled();
+  expect(screen.getByLabelText('Item / Brand')).toBeDisabled();
 });
 it('requires explicit possible-duplicate acknowledgement and rechecks after editing', async () => {
   await setup();
@@ -211,7 +211,7 @@ it('failed duplicate read blocks saving and retains editable selected draft', as
   expect(
     screen.getByRole('button', { name: 'Save selected expenses' })
   ).toBeDisabled();
-  expect(screen.getByLabelText('Description')).toBeEnabled();
+  expect(screen.getByLabelText('Item / Brand')).toBeEnabled();
   expect(screen.queryByText('private details')).not.toBeInTheDocument();
 });
 it('definite rejection permits identical retry without a new ID or changed source', async () => {
@@ -285,7 +285,7 @@ it('hide during pending save rejects its late acknowledgement, masks notes and p
     screen.getByRole('button', { name: 'Hide amounts', hidden: true })
   );
   expect(screen.queryByText(/Statement source:/)).not.toBeInTheDocument();
-  expect(screen.getByLabelText('Description')).toHaveValue('');
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('');
   const input = mocks.insert.mock.calls[0][0] as ImportedExpenseInput;
   await act(async () => finish({ id: input.id, status: 'confirmed' }));
   fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
@@ -298,7 +298,7 @@ it('keeps review on canceled discard and ignores completion after explicit close
   await selectAndCheck();
   vi.mocked(window.confirm).mockReturnValue(false);
   fireEvent.click(screen.getByRole('button', { name: 'Clear review' }));
-  expect(screen.getByLabelText('Description')).toBeInTheDocument();
+  expect(screen.getByLabelText('Item / Brand')).toBeInTheDocument();
   let finish!: (value: unknown) => void;
   mocks.insert.mockImplementation(
     () =>
@@ -574,11 +574,11 @@ it('merchant rules fill drafts automatically and preserve manual edits and expli
     },
   });
   await setup();
-  fireEvent.change(screen.getByLabelText('Description'), {
+  fireEvent.change(screen.getByLabelText('Item / Brand'), {
     target: { value: 'My merchant' },
   });
   await selectAndCheck();
-  expect(screen.getByLabelText('Description')).toHaveValue('My merchant');
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('My merchant');
   expect(screen.getByLabelText('Category')).toHaveValue('groceries');
   expect(
     screen.getByRole('button', { name: 'Save selected expenses' })
@@ -588,7 +588,7 @@ it('merchant rules fill drafts automatically and preserve manual edits and expli
     screen.getByRole('button', { name: 'Review changes / restore' })
   );
   fireEvent.click(screen.getByRole('button', { name: 'Restore values' }));
-  expect(screen.getByLabelText('Description')).toHaveValue('INVENTED MARKET');
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('INVENTED MARKET');
   expect(screen.getByLabelText('Category')).toHaveValue('other');
   expect(
     screen.getByRole('button', { name: 'Save selected expenses' })
@@ -619,9 +619,12 @@ it('saving a rule fills every matching row and invalidates checked duplicates wi
   fireEvent.click(
     screen.getAllByRole('button', { name: 'Create rule', exact: true })[0]
   );
-  fireEvent.change(screen.getByLabelText('Merchant name'), {
-    target: { value: 'Weekly market' },
-  });
+  fireEvent.change(
+    screen.getByRole('textbox', { name: 'Item / Brand', exact: true }),
+    {
+      target: { value: 'Weekly market' },
+    }
+  );
   fireEvent.change(screen.getByLabelText('Suggested category'), {
     target: { value: 'groceries' },
   });
@@ -635,7 +638,7 @@ it('saving a rule fills every matching row and invalidates checked duplicates wi
   await waitFor(() =>
     expect(
       screen
-        .getAllByLabelText('Description')
+        .getAllByLabelText('Item / Brand')
         .map((input) => (input as HTMLInputElement).value)
     ).toEqual(['Weekly market', 'Weekly market'])
   );
@@ -689,7 +692,7 @@ it('keeps an explicit conflict choice after the chosen rule is paused', async ()
   fireEvent.click(
     screen.getByRole('button', { name: 'Choose Rule B', exact: true })
   );
-  expect(screen.getByLabelText('Description')).toHaveValue('Merchant B');
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('Merchant B');
   fireEvent.click(
     screen.getByRole('button', { name: 'Saved merchant rules', exact: true })
   );
@@ -704,7 +707,7 @@ it('keeps an explicit conflict choice after the chosen rule is paused', async ()
     'Merchant rules saved. Existing expenses are unchanged.'
   );
   fireEvent.click(screen.getByRole('button', { name: 'Close', exact: true }));
-  expect(screen.getByLabelText('Description')).toHaveValue('Merchant B');
+  expect(screen.getByLabelText('Item / Brand')).toHaveValue('Merchant B');
   expect(screen.getByLabelText('Category')).toHaveValue('other');
   expect(
     screen.queryByRole('button', { name: 'Choose Rule A', exact: true })
