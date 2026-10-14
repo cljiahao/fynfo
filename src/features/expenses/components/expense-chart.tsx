@@ -1,6 +1,7 @@
 'use client';
 
 import { useAmountVisibility } from '@/features/privacy';
+import { ExpenseAnomalyReview } from './expense-anomaly-review';
 
 import {
   Card,
@@ -128,6 +129,9 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
           <div>
             <CardTitle className="text-xl">Monthly Expenses</CardTitle>
             <CardDescription>Breakdown by category</CardDescription>
+            <div className="mt-3">
+              <ExpenseAnomalyReview />
+            </div>
           </div>
           <div className="text-right">
             <p className="text-muted-foreground mb-0.5 text-xs tracking-wide uppercase">

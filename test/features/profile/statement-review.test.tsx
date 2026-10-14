@@ -87,10 +87,11 @@ it('keeps secondary information closed until requested without hiding editable f
     screen.getByText('Change statement').closest('details')
   ).not.toHaveAttribute('open');
   expect(
-    screen.getByText('Saved merchant rules').closest('details')
-  ).not.toHaveAttribute('open');
+    screen.getByRole('button', { name: 'Saved merchant rules' })
+  ).toBeVisible();
+  expect(screen.getAllByRole('dialog')).toHaveLength(1);
   expect(
-    screen.getByText('Select purchases, check the details, then save.')
+    screen.getByRole('button', { name: 'About transaction selection' })
   ).toBeVisible();
   expect(screen.queryByText('Include expense')).not.toBeInTheDocument();
 
@@ -121,6 +122,7 @@ it('reviews editable drafts, keeps provenance, navigates source pages and clears
     target: { value: 'groceries' },
   });
   fireEvent.click(screen.getByRole('button', { name: /View source page/ }));
+  fireEvent.click(screen.getByText('Source text'));
   expect(
     screen.getByText(/Source page 1, line 3: 31 DEC SYNTHETIC MARKET/)
   ).toBeVisible();
@@ -197,6 +199,9 @@ it('opens the first transaction page when a statement begins with a cover page',
 it('updates classification counts, preserves the suggestion and restores it without changing other edits', async () => {
   setup();
   expect(await screen.findByText(/1 expense suggestions/)).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Show transactions'), {
+    target: { value: 'all' },
+  });
   screen.getByText('Details').closest('details')!.open = true;
   fireEvent.change(screen.getByLabelText('Classification'), {
     target: { value: 'transfer' },
@@ -228,6 +233,7 @@ it('updates classification counts, preserves the suggestion and restores it with
     screen.getByText(/0 expense suggestions, 1 unresolved, 0 excluded/)
   ).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: /View source page/ }));
+  fireEvent.click(screen.getByText('Source text'));
   expect(screen.getByText(/31 DEC SYNTHETIC MARKET 12.30/)).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Extracted' }));
   expect(screen.getByLabelText('Classification')).toHaveValue('unknown');
@@ -245,6 +251,9 @@ it('keeps source credit blockers after expense overrides and prevents summary cl
   expect(
     await screen.findByText(/0 expense suggestions, 0 unresolved, 2 excluded/)
   ).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Show transactions'), {
+    target: { value: 'all' },
+  });
   const repayment = within(
     screen.getByRole('group', { name: 'Row 1: Excluded from expenses' })
   );
@@ -260,9 +269,13 @@ it('keeps source credit blockers after expense overrides and prevents summary cl
   expect(
     screen.getByText(/0 expense suggestions, 1 unresolved, 1 excluded/)
   ).toBeVisible();
-  expect(
-    repayment.getByText(/A source credit cannot be converted/)
-  ).toBeVisible();
+  fireEvent.click(
+    repayment.getByRole('button', { name: 'Why this credit is excluded' })
+  );
+  expect(screen.getByText(/A source credit cannot be converted/)).toBeVisible();
+  fireEvent.keyDown(screen.getByText(/A source credit cannot be converted/), {
+    key: 'Escape',
+  });
   repayment.getByText('Details').closest('details')!.open = true;
   expect(repayment.getByText(/Suggested: Card repayment/)).toBeVisible();
   const summary = within(
@@ -306,6 +319,9 @@ it('shows invalid edited expense fields as needing review and recovers when corr
 it('preserves classification through Hide/Show, rejects hidden changes and clears on owner teardown', async () => {
   setup();
   expect(await screen.findByText(/1 expense suggestions/)).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Show transactions'), {
+    target: { value: 'all' },
+  });
   const classification = screen.getByLabelText('Classification');
   fireEvent.change(classification, { target: { value: 'transfer' } });
   fireEvent.click(
@@ -457,4 +473,69 @@ it('re-extracts a corrected automatic period without reselecting the PDF and rel
   expect(
     screen.getByRole('button', { name: 'Extract for review' })
   ).toBeDisabled();
+});
+
+it('hides repayments, filters refunds and bulk-selects only eligible expenses up to 20', async () => {
+  mocks.extract.mockResolvedValue(
+    [
+      'UOB SGD billed',
+      ...Array.from({ length: 22 }, (_, i) => `31 DEC MARKET ${i} SGD 12.30`),
+      '31 DEC CARD PAYMENT SGD 50.00 CR',
+      '31 DEC REFUND SHOP SGD 10.00 CR',
+    ].map((text, index) => ({ page: 1, line: index + 1, text }))
+  );
+  setup();
+  await screen.findAllByLabelText('Description');
+  expect(screen.queryByDisplayValue('CARD PAYMENT')).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Select next 20 expenses' })
+  );
+  expect(screen.getByText('20 selected · SGD 246.00')).toBeVisible();
+  expect(mocks.insert).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText('Show transactions'), {
+    target: { value: 'refunds' },
+  });
+  expect(screen.getByLabelText('Description')).toHaveValue('REFUND SHOP');
+  expect(
+    screen.getByRole('button', { name: 'Select all expenses' })
+  ).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Clear selection' }));
+  expect(screen.getByText('0 selected · SGD 0.00')).toBeVisible();
+}, 15000);
+it('previews both original values before restoring and opens row rules in a dialog', async () => {
+  setup();
+  await screen.findByLabelText('Description');
+  fireEvent.change(screen.getByLabelText('Description'), {
+    target: { value: 'My shop' },
+  });
+  fireEvent.change(screen.getByLabelText('Category'), {
+    target: { value: 'groceries' },
+  });
+  fireEvent.click(screen.getByText('Details'));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Review changes / restore' })
+  );
+  const dialog = within(
+    screen.getByRole('dialog', { name: 'Restore description and category' })
+  );
+  expect(dialog.getByText('Description: My shop')).toBeVisible();
+  expect(dialog.getByText('Description: SYNTHETIC MARKET')).toBeVisible();
+  expect(dialog.getByText('Category: Groceries')).toBeVisible();
+  expect(dialog.getByText('Category: Other')).toBeVisible();
+  fireEvent.click(dialog.getByRole('button', { name: 'Keep edits' }));
+  expect(screen.getByLabelText('Description')).toHaveValue('My shop');
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Review changes / restore' })
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Restore values' }));
+  expect(screen.getByLabelText('Description')).toHaveValue('SYNTHETIC MARKET');
+  expect(screen.getByLabelText('Category')).toHaveValue('other');
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Create rule from this row' })
+  );
+  expect(screen.getByRole('dialog', { name: 'Review rule' })).toBeVisible();
+  expect(screen.getByLabelText('Match original description')).toHaveValue(
+    'SYNTHETIC MARKET'
+  );
+  expect(mocks.insert).not.toHaveBeenCalled();
 });

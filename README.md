@@ -375,7 +375,7 @@ The owner-approved migration is
 confirm readiness before application merge. Run its fresh disposable SQL/REST
 proof with `node supabase/tests/138-recurring-rulebooks.mjs`.
 
-Expenses includes **Review bank PDF** for local, unsaved expense drafts with an
+Expenses offers **Quick add / Import statement** for manual entry or local, unsaved PDF expense drafts with an
 original-page preview and editable date, description, category and SGD amount.
 Choose UOB, DBS, HSBC or Citibank and select the PDF. Labelled statement dates,
 months or periods with full years supply the transaction-date window automatically.
@@ -390,8 +390,15 @@ two-date credit-card layout also has synthetic positioned-text regression covera
 based on owner-supplied layout evidence: the transaction date and main-row SGD
 amount populate the draft; foreign-currency/reference continuations stay in the
 source note. This does not qualify every real bank PDF or reconcile its balance.
-Setup collapses after extraction. Desktop keeps the original PDF beside editable
-rows; focusing a row shows its source page and excerpt. Compare source opens the
+Setup collapses after extraction. The dialog stays within the viewport; desktop
+fits the complete PDF page beside a scrolling transaction list. Focusing a row
+shows its source page; Source text reveals the excerpt. Page navigation does not
+highlight individual rows. Repayments and other excluded items stay available
+under All statement rows. Filters include expenses, refunds and both; only valid
+expenses can be selected for saving. Select all expenses (or Select next 20
+expenses) replaces the selection with up to 20 eligible filtered expenses.
+Restore previews current and extracted description/category before confirming;
+Other is the initial category. Rule editing opens in a focused dialog. Compare source opens the
 original on smaller screens, where Statement / Extracted switches views.
 Each transaction's Details disclosure contains its editable classification:
 Expense, Refund, Transfer, Card repayment, Other credit or Unknown. The original
@@ -467,3 +474,10 @@ Expenses offers a collapsed **Review spending changes** section. Choose a fully 
 The review uses the entire successfully loaded expense history, independently of table search, filters and pages. Each expense and other-person share is rounded to cents before summing; settlement does not change personal spending. All categories, including insurance, participate. Every category needs at least one valid recorded expense in each of the four months. Missing history is unavailable rather than zero; a zero baseline is explicitly unavailable. Invalid dates/identities can prevent a review, while invalid amounts or allocations withhold the affected category. Loaded records may still be incomplete.
 
 Expand an explanation to inspect exact baseline months, totals and contributing item/brand rows. Source pagination does not change comparison totals. The review makes no saved changes. Background fetching, read failures and pending saves suppress results; changes to records, selected month or readiness require a fresh explicit review. Hide amounts conceals and invalidates the analysis, including Hide then Show. Showing amounts permits a fresh review, rather than automatically restoring old results. No file authenticity, database consistency, account authorization or recovery guarantee is implied by this comparison.
+
+The Monthly Expenses chart includes **Compare months**. Opening it compares the
+last completed Singapore month with the preceding three months; changing the
+month or underlying history requires Refresh comparison. Calculation and source
+record details are available on demand. This replaces the separate spending
+review panel without changing its calculation, missing-history treatment or
+privacy/readiness guards. Manual quick-add drafts survive switching to PDF import.

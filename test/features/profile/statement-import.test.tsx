@@ -488,8 +488,8 @@ it('stops a partial batch on unknown outcome, retains unsent payload and resumes
   expect(mocks.insert).toHaveBeenCalledTimes(3);
   expect(mocks.insert.mock.calls[2][0].description).toBe('MARKET THREE');
 });
-// Dense native-control fixture took 5.764s under V8 instrumentation on this host.
-// Keep all 21 selections/assertions; only this test gets a 10s harness allowance.
+// Dense native-control fixture exceeded 10s in the parallel V8 coverage run.
+// Keep all 21 selections/assertions; only this test gets a 20s harness allowance.
 it('selection across pages is included and a twenty-one row selection blocks the bounded batch', async () => {
   mocks.extract.mockResolvedValue(
     [
@@ -522,7 +522,7 @@ it('selection across pages is included and a twenty-one row selection blocks the
     screen.getByRole('button', { name: 'Save selected expenses' })
   ).toBeDisabled();
   expect(mocks.insert).not.toHaveBeenCalled();
-}, 10_000);
+}, 20_000);
 
 it('checks a hidden interrupted save before its old acknowledgement returns and ignores that late result', async () => {
   await setup();
@@ -588,11 +588,15 @@ it('merchant Apply invalidates duplicate review and preserves manual fields and 
     screen.getByRole('button', { name: 'Save selected expenses' })
   ).toBeDisabled();
   fireEvent.click(screen.getByText('Details'));
-  expect(screen.getByText('Original merchant: INVENTED MARKET')).toBeVisible();
+  expect(
+    screen.getByText('Original description: INVENTED MARKET')
+  ).toBeVisible();
   expect(mocks.insert).not.toHaveBeenCalled();
   fireEvent.click(
     screen.getByRole('button', { name: 'Replace my merchant name' })
   );
   expect(screen.getByLabelText('Description')).toHaveValue('Suggested market');
-  expect(screen.getByText('Original merchant: INVENTED MARKET')).toBeVisible();
+  expect(
+    screen.getByText('Original description: INVENTED MARKET')
+  ).toBeVisible();
 });

@@ -3,7 +3,6 @@
 import { DashboardError } from '@/components/layout/dashboard-error';
 import { PageHeader } from '@/components/widgets';
 import {
-  ExpenseAnomalyReview,
   ExpenseChart,
   ExpenseEntry,
   OwedSummary,
@@ -29,7 +28,6 @@ export default function ExpensesPage() {
         <OwedSummary expenses={expenses ?? []} />
       </div>
 
-      <ExpenseAnomalyReview />
       <ExpenseEntry />
     </div>
   );
