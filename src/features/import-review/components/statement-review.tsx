@@ -40,6 +40,10 @@ import {
   parseStatementLines,
   validStatementPeriod,
 } from '../lib/statement-parser';
+import {
+  detectStatementPeriod,
+  type DetectedStatementPeriod,
+} from '../lib/statement-period';
 import type { StatementBank, StatementCandidate } from '../types';
 import { StatementSaveReview } from './statement-save-review';
 
@@ -57,6 +61,10 @@ function StatementReviewBody({
   const [bank, setBank] = useState<StatementBank>('uob');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [manualPeriod, setManualPeriod] = useState(false);
+  const [detectedBasis, setDetectedBasis] = useState<
+    DetectedStatementPeriod['basis'] | null
+  >(null);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -119,6 +127,7 @@ function StatementReviewBody({
     setBusy(false);
     setRows([]);
     setError('');
+    setDetectedBasis(null);
     setPageCount(0);
     setSelected('');
     setRowPage(0);
@@ -153,10 +162,10 @@ function StatementReviewBody({
     if (
       !file ||
       file.size > STATEMENT_LIMITS.bytes ||
-      !validStatementPeriod({ from, to })
+      (manualPeriod && !validStatementPeriod({ from, to }))
     ) {
       setError(
-        'Choose a PDF up to 10 MiB and enter its actual statement period (at most 400 days).'
+        'Choose a PDF up to 10 MiB. If entering dates manually, use a valid range of at most 400 days.'
       );
       return;
     }
@@ -195,13 +204,27 @@ function StatementReviewBody({
         discardOpenedPdf();
         return;
       }
-      const candidates = parseStatementLines(lines, bank, { from, to });
+      const detected = manualPeriod ? null : detectStatementPeriod(lines);
+      const period = manualPeriod ? { from, to } : detected?.period;
+      if (!period) {
+        discardOpenedPdf();
+        setManualPeriod(true);
+        setFrom('');
+        setTo('');
+        setError(
+          'We could not read a clear statement date or period. Enter the dates, then extract again.'
+        );
+        return;
+      }
+      const candidates = parseStatementLines(lines, bank, period);
+      setFrom(period.from);
+      setTo(period.to);
+      setDetectedBasis(detected?.basis ?? null);
       setRows(candidates);
       setSelected(candidates[0]?.id ?? '');
       setPage(candidates[0]?.source[0].page ?? 1);
       setPageCount(opened.pageCount);
       setView('extracted');
-      setFile(null);
     } catch {
       discardOpenedPdf();
       if (isCurrentExtraction()) {
@@ -324,7 +347,7 @@ function StatementReviewBody({
             {rows.length ? 'Change statement' : 'Choose a statement'}
           </summary>
           <form
-            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+            className="grid gap-3 sm:grid-cols-2"
             onSubmit={(event) => {
               event.preventDefault();
               if (canReveal()) void extract();
@@ -351,36 +374,6 @@ function StatementReviewBody({
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor={`${id}-from`}>Period start</Label>
-              <Input
-                disabled={hidden}
-                id={`${id}-from`}
-                type="date"
-                value={hidden ? '' : from}
-                required
-                onChange={(event) => {
-                  if (!canReveal()) return;
-                  if (!reset()) return;
-                  setFrom(event.target.value);
-                }}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${id}-to`}>Period end</Label>
-              <Input
-                disabled={hidden}
-                id={`${id}-to`}
-                type="date"
-                value={hidden ? '' : to}
-                required
-                onChange={(event) => {
-                  if (!canReveal()) return;
-                  if (!reset()) return;
-                  setTo(event.target.value);
-                }}
-              />
-            </div>
-            <div className="space-y-2">
               <Label htmlFor={`${id}-file`}>Bank statement PDF</Label>
               <Input
                 disabled={hidden}
@@ -390,12 +383,78 @@ function StatementReviewBody({
                 onChange={(event) => {
                   if (!canReveal()) return;
                   if (!reset()) return;
+                  if (!manualPeriod) {
+                    setFrom('');
+                    setTo('');
+                  }
                   setFile(event.currentTarget.files?.[0] ?? null);
                   event.currentTarget.value = '';
                 }}
               />
             </div>
-            <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-4">
+            <details open={manualPeriod} className="space-y-3 sm:col-span-2">
+              <summary className="text-muted-foreground cursor-pointer text-sm">
+                Dates (optional)
+              </summary>
+              <p className="text-muted-foreground text-sm">
+                {detectedBasis === 'printed-period'
+                  ? 'Period read from your PDF.'
+                  : detectedBasis
+                    ? 'Date range inferred from the statement date or month. Correct it here if needed.'
+                    : 'Dates are read from your PDF. Enter them only if needed.'}
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor={`${id}-from`}>Period start</Label>
+                  <Input
+                    disabled={hidden}
+                    id={`${id}-from`}
+                    type="date"
+                    value={hidden ? '' : from}
+                    required={manualPeriod}
+                    onChange={(event) => {
+                      if (!canReveal()) return;
+                      if (!reset()) return;
+                      setManualPeriod(true);
+                      setFrom(event.target.value);
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`${id}-to`}>Period end</Label>
+                  <Input
+                    disabled={hidden}
+                    id={`${id}-to`}
+                    type="date"
+                    value={hidden ? '' : to}
+                    required={manualPeriod}
+                    onChange={(event) => {
+                      if (!canReveal()) return;
+                      if (!reset()) return;
+                      setManualPeriod(true);
+                      setTo(event.target.value);
+                    }}
+                  />
+                </div>
+              </div>
+              {manualPeriod && (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0"
+                  disabled={hidden}
+                  onClick={() => {
+                    if (!canReveal() || !reset()) return;
+                    setManualPeriod(false);
+                    setFrom('');
+                    setTo('');
+                  }}
+                >
+                  Use dates from PDF
+                </Button>
+              )}
+            </details>
+            <div className="flex flex-wrap gap-2 sm:col-span-2">
               <Button type="submit" disabled={hidden || busy || !file}>
                 {busy ? 'Extracting locally…' : 'Extract for review'}
               </Button>
