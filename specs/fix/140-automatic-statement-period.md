@@ -2,7 +2,9 @@
 id: '140'
 slug: automatic-statement-period
 area: fix
-status: owner-authorized
+status: shipped
+shipped: 2026-10-14
+impl_pr: https://github.com/cljiahao/fynfo/pull/60
 author: Codex
 created: 2026-10-14
 ---
