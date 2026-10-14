@@ -16,11 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  EXPENSE_TYPE_LABELS,
-  buildImportNote,
-  type ExpenseType,
-} from '@/features/expenses';
+import { EXPENSE_TYPE_LABELS, type ExpenseType } from '@/features/expenses';
 import {
   MerchantRuleManager,
   MerchantSuggestionReview,
@@ -41,6 +37,7 @@ import {
 } from '../constants';
 import { useStatementSave } from '../hooks/use-statement-save';
 import type { LocalStatementPdf } from '../lib/local-pdf';
+import { applyRulesToStatement } from '../lib/merchant-rules';
 import {
   getStatementReview,
   parseStatementLines,
@@ -89,6 +86,16 @@ function StatementReviewBody({
   const merchant = useMerchantRulebook();
   const [ruleDraft, setRuleDraft] = useState<MerchantRule | null>(null);
   const save = useStatementSave(rows, bank, { from, to });
+  useEffect(() => {
+    if (hidden || !canReveal() || save.busy || merchant.stage !== 'ready')
+      return;
+    const next = applyRulesToStatement(rows, bank, merchant.rules, save.locked);
+    if (next !== rows) {
+      save.invalidateReview();
+      setRows(next);
+    }
+  }, [rows, bank, merchant.rules, merchant.stage, hidden, canReveal, save]);
+
   function allowDiscard() {
     if (!save.allowDiscard()) return false;
     return (
@@ -299,7 +306,11 @@ function StatementReviewBody({
           ...row,
           description: next.description,
           category: next.category,
-          manualMerchant: next.manual,
+          manualMerchant: {
+            description:
+              next.manual.description || suggestion.displayName !== null,
+            category: next.manual.category || suggestion.category !== null,
+          },
         };
       })
     );
@@ -882,125 +893,130 @@ function StatementReviewBody({
                     <summary className="text-muted-foreground cursor-pointer text-sm">
                       Details
                     </summary>
-                    {!hidden &&
-                      !save.locked(row.id) &&
-                      save.selection.includes(row.id) &&
-                      (() => {
-                        const input = save.inputFor(row);
-                        return input ? (
-                          <details>
-                            <summary className="cursor-pointer text-sm">
-                              Source note to save
-                            </summary>
-                            <p className="mt-2 text-sm break-words whitespace-pre-wrap">
-                              {buildImportNote(input)}
-                            </p>
-                          </details>
-                        ) : null;
-                      })()}
-                    <div className="space-y-1">
-                      <Label htmlFor={`${id}-${row.id}-classification`}>
-                        Classification
-                      </Label>
-                      <select
-                        id={`${id}-${row.id}-classification`}
-                        className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm disabled:opacity-50"
-                        value={row.classification}
-                        disabled={row.isSummary}
-                        aria-describedby={`${id}-${row.id}-classification-reason`}
-                        onChange={(event) =>
-                          classify(row.id, event.target.value)
-                        }
-                      >
-                        {STATEMENT_CLASSIFICATIONS.map((entry) => (
-                          <option key={entry.value} value={entry.value}>
-                            {entry.label}
-                          </option>
-                        ))}
-                      </select>
-                      <p
-                        id={`${id}-${row.id}-classification-reason`}
-                        className="text-muted-foreground text-sm"
-                      >
-                        {row.isSummary
-                          ? 'Not a transaction'
-                          : `Suggested: ${STATEMENT_CLASSIFICATIONS.find((entry) => entry.value === row.suggestedClassification)?.label}`}
-                        . {row.classificationReason}
-                      </p>
-                      {row.classification !== row.suggestedClassification && (
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                          <span>
-                            Your classification overrides the suggestion.
-                          </span>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="min-w-32 flex-1 space-y-1">
+                        <Label htmlFor={`${id}-${row.id}-classification`}>
+                          Classification
+                        </Label>
+                        <select
+                          id={`${id}-${row.id}-classification`}
+                          className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm disabled:opacity-50"
+                          value={row.classification}
+                          disabled={row.isSummary}
+                          aria-describedby={`${id}-${row.id}-classification-reason`}
+                          onChange={(event) =>
+                            classify(row.id, event.target.value)
+                          }
+                        >
+                          {STATEMENT_CLASSIFICATIONS.map((entry) => (
+                            <option key={entry.value} value={entry.value}>
+                              {entry.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {!hidden && !row.isSummary && (
+                        <div className="flex flex-wrap gap-2">
                           <Button
                             type="button"
-                            variant="link"
-                            className="h-auto p-0"
-                            onClick={() =>
-                              classify(row.id, row.suggestedClassification)
-                            }
+                            size="sm"
+                            aria-label="Review changes / restore"
+                            variant="outline"
+                            onClick={() => {
+                              if (
+                                !canReveal() ||
+                                save.locked(row.id) ||
+                                save.busy
+                              )
+                                return;
+                              restoreOrigin.current =
+                                document.activeElement instanceof HTMLElement
+                                  ? document.activeElement
+                                  : null;
+                              setRestoreId(row.id);
+                            }}
                           >
-                            Restore suggestion
+                            Review changes
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={
+                              !merchant.canEdit ||
+                              row.originalDescription.length > 256 ||
+                              row.description.length > 256
+                            }
+                            onClick={(event) => {
+                              if (
+                                !canReveal() ||
+                                save.locked(row.id) ||
+                                save.busy ||
+                                !merchant.canEdit
+                              )
+                                return;
+                              if (
+                                ruleDraft &&
+                                !window.confirm(
+                                  'Discard the unsaved rule draft?'
+                                )
+                              )
+                                return;
+                              ruleOrigin.current = event.currentTarget;
+                              setRulesOpen(true);
+                              setRuleDraft({
+                                id: crypto.randomUUID(),
+                                label: row.description,
+                                enabled: true,
+                                matchMode: 'exact',
+                                matchText: row.originalDescription,
+                                bank,
+                                displayName: row.description || null,
+                                category: row.category as ExpenseType,
+                              });
+                            }}
+                          >
+                            Create rule
                           </Button>
                         </div>
                       )}
                     </div>
-                    {!hidden && !row.isSummary && (
-                      <>
-                        <MerchantSuggestionReview
-                          originalDescription={row.originalDescription}
-                          bank={bank}
-                          rules={merchant.rules}
-                          manual={row.manualMerchant}
-                          onApply={(suggestion, replace) =>
-                            applySuggestion(row.id, suggestion, replace)
-                          }
-                          onRestore={() => {
-                            restoreOrigin.current =
-                              document.activeElement instanceof HTMLElement
-                                ? document.activeElement
-                                : null;
-                            setRestoreId(row.id);
-                          }}
-                        />
+                    <p
+                      id={`${id}-${row.id}-classification-reason`}
+                      className="text-muted-foreground text-sm"
+                    >
+                      {row.isSummary
+                        ? 'Not a transaction'
+                        : `Suggested: ${STATEMENT_CLASSIFICATIONS.find((entry) => entry.value === row.suggestedClassification)?.label}`}
+                      . {row.classificationReason}
+                    </p>
+                    {row.classification !== row.suggestedClassification && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                        <span>
+                          Your classification overrides the suggestion.
+                        </span>
                         <Button
                           type="button"
                           variant="link"
-                          disabled={
-                            !merchant.canEdit ||
-                            row.originalDescription.length > 256 ||
-                            row.description.length > 256
+                          className="h-auto p-0"
+                          onClick={() =>
+                            classify(row.id, row.suggestedClassification)
                           }
-                          onClick={(event) => {
-                            if (
-                              !canReveal() ||
-                              save.locked(row.id) ||
-                              save.busy ||
-                              !merchant.canEdit
-                            )
-                              return;
-                            if (
-                              ruleDraft &&
-                              !window.confirm('Discard the unsaved rule draft?')
-                            )
-                              return;
-                            ruleOrigin.current = event.currentTarget;
-                            setRulesOpen(true);
-                            setRuleDraft({
-                              id: crypto.randomUUID(),
-                              label: row.description,
-                              enabled: true,
-                              matchMode: 'exact',
-                              matchText: row.originalDescription,
-                              bank,
-                              displayName: row.description || null,
-                              category: row.category as ExpenseType,
-                            });
-                          }}
                         >
-                          Create rule from this row
+                          Restore suggestion
                         </Button>
-                      </>
+                      </div>
+                    )}
+                    {!hidden && !row.isSummary && (
+                      <MerchantSuggestionReview
+                        originalDescription={row.originalDescription}
+                        bank={bank}
+                        rules={merchant.rules}
+                        manual={row.manualMerchant}
+                        onApply={(suggestion, replace) =>
+                          applySuggestion(row.id, suggestion, replace)
+                        }
+                      />
                     )}
                   </details>
                 </fieldset>
@@ -1028,8 +1044,8 @@ function StatementReviewBody({
               {ruleDraft ? 'Review rule' : 'Saved merchant rules'}
             </DialogTitle>
             <DialogDescription>
-              Choose how future statement descriptions and categories are
-              suggested.
+              Saved rules fill matching draft rows automatically. Your manual
+              edits are kept.
             </DialogDescription>
           </DialogHeader>
           {!hidden && (

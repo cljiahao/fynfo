@@ -530,11 +530,9 @@ it('previews both original values before restoring and opens row rules in a dial
   fireEvent.click(screen.getByRole('button', { name: 'Restore values' }));
   expect(screen.getByLabelText('Description')).toHaveValue('SYNTHETIC MARKET');
   expect(screen.getByLabelText('Category')).toHaveValue('other');
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Create rule from this row' })
-  );
+  fireEvent.click(screen.getByRole('button', { name: 'Create rule' }));
   expect(screen.getByRole('dialog', { name: 'Review rule' })).toBeVisible();
-  expect(screen.getByLabelText('Match original description')).toHaveValue(
+  expect(screen.getByLabelText('Matching words')).toHaveValue(
     'SYNTHETIC MARKET'
   );
   expect(mocks.insert).not.toHaveBeenCalled();

@@ -75,7 +75,7 @@ async function fill() {
   fireEvent.change(screen.getByLabelText('Rule name'), {
     target: { value: 'Market category' },
   });
-  fireEvent.change(screen.getByLabelText('Match original description'), {
+  fireEvent.change(screen.getByLabelText('Matching words'), {
     target: { value: 'INVENTED MARKET' },
   });
   fireEvent.change(screen.getByLabelText('Suggested category'), {
@@ -109,7 +109,7 @@ it('preserves draft fields and masks native values through Hide/Show', async () 
 });
 it('keeps rejected validation visible and refuses canceled discard', async () => {
   await fill();
-  fireEvent.change(screen.getByLabelText('Match original description'), {
+  fireEvent.change(screen.getByLabelText('Matching words'), {
     target: { value: '---' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Save rule' }));
