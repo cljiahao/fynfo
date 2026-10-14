@@ -377,8 +377,15 @@ proof with `node supabase/tests/138-recurring-rulebooks.mjs`.
 
 Expenses includes **Review bank PDF** for local, unsaved expense drafts with an
 original-page preview and editable date, description, category and SGD amount.
-Choose UOB, DBS, HSBC or Citibank and enter the actual statement period. These
-labels cover tested constructed date/description/SGD-billed variants. The UOB
+Choose UOB, DBS, HSBC or Citibank and select the PDF. Labelled statement dates,
+months or periods with full years supply the transaction-date window automatically.
+A date/month anchor includes the preceding month for cross-month purchases; it
+is not an exact billing-cycle claim. Transaction dates keep their actual dates,
+including December purchases on January statements. Missing, invalid or conflicting
+headers reveal manual dates; **Dates (optional)** also allows corrections and
+re-extraction without selecting the same PDF again. Clear or close releases the
+selected PDF from component memory. These bank labels cover tested constructed
+date/description/SGD-billed variants. The UOB
 two-date credit-card layout also has synthetic positioned-text regression coverage
 based on owner-supplied layout evidence: the transaction date and main-row SGD
 amount populate the draft; foreign-currency/reference continuations stay in the

@@ -54,7 +54,7 @@ beforeEach(() => {
   });
 });
 afterEach(cleanup);
-function setup(read = async () => new ArrayBuffer(4), size = 4) {
+function setup(read = async () => new ArrayBuffer(4), size = 4, manual = true) {
   render(
     <AmountVisibilityProvider>
       <AmountVisibilityToggle />
@@ -62,12 +62,14 @@ function setup(read = async () => new ArrayBuffer(4), size = 4) {
     </AmountVisibilityProvider>
   );
   fireEvent.click(screen.getByRole('button', { name: 'Review bank PDF' }));
-  fireEvent.change(screen.getByLabelText('Period start'), {
-    target: { value: '2025-12-15' },
-  });
-  fireEvent.change(screen.getByLabelText('Period end'), {
-    target: { value: '2026-01-14' },
-  });
+  if (manual) {
+    fireEvent.change(screen.getByLabelText('Period start'), {
+      target: { value: '2025-12-15' },
+    });
+    fireEvent.change(screen.getByLabelText('Period end'), {
+      target: { value: '2026-01-14' },
+    });
+  }
   const file = new File(['fake'], 'constructed.pdf', {
     type: 'application/pdf',
   });
@@ -373,4 +375,86 @@ it('shows opaque failures and destroys failed sessions', async () => {
   ).toBeVisible();
   expect(screen.queryByText(/SYNTHETIC-PRIVATE/)).not.toBeInTheDocument();
   expect(mocks.destroy).toHaveBeenCalled();
+});
+
+it('extracts without manual dates using the printed statement date', async () => {
+  mocks.extract.mockResolvedValue([
+    { page: 1, line: 1, text: 'UOB' },
+    { page: 1, line: 2, text: 'Statement Date: 14 JAN 2026' },
+    { page: 1, line: 3, text: '31 DEC MARKET SGD 12.30' },
+  ]);
+  setup(undefined, 4, false);
+  expect(screen.getByLabelText('Period start')).not.toBeVisible();
+  expect(await screen.findByLabelText('Description')).toHaveValue('MARKET');
+  expect(screen.getByLabelText('Date')).toHaveValue('2025-12-31');
+  expect(screen.getByLabelText('Period start')).toHaveValue('2025-12-01');
+  expect(screen.getByLabelText('Period end')).toHaveValue('2026-01-14');
+  expect(mocks.insert).not.toHaveBeenCalled();
+});
+it('retains the PDF and reveals manual dates when no reliable header is available', async () => {
+  setup(undefined, 4, false);
+  expect(
+    await screen.findByText(/We could not read a clear statement date/)
+  ).toBeVisible();
+  expect(screen.getByLabelText('Period start')).toBeVisible();
+  expect(screen.queryByLabelText('Description')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Period start'), {
+    target: { value: '2025-12-15' },
+  });
+  fireEvent.change(screen.getByLabelText('Period end'), {
+    target: { value: '2026-01-14' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Extract for review' }));
+  expect(await screen.findByLabelText('Date')).toHaveValue('2025-12-31');
+  expect(mocks.open).toHaveBeenCalledTimes(2);
+});
+it('does not reuse inferred dates for a second PDF', async () => {
+  mocks.extract.mockResolvedValue([
+    { page: 1, line: 1, text: 'UOB' },
+    { page: 1, line: 2, text: 'Statement Date: 14 JAN 2026' },
+    { page: 1, line: 3, text: '31 DEC MARKET SGD 12.30' },
+  ]);
+  setup(undefined, 4, false);
+  await screen.findByLabelText('Date');
+  mocks.extract.mockResolvedValue([
+    { page: 1, line: 1, text: 'UOB' },
+    { page: 1, line: 2, text: 'Statement Date: 14 JAN 2027' },
+    { page: 1, line: 3, text: '31 DEC MARKET SGD 12.30' },
+  ]);
+  const file = new File(['fake'], 'second.pdf', { type: 'application/pdf' });
+  Object.defineProperty(file, 'arrayBuffer', {
+    value: async () => new ArrayBuffer(4),
+  });
+  fireEvent.change(screen.getByLabelText('Bank statement PDF'), {
+    target: { files: [file] },
+  });
+  expect(screen.getByLabelText('Period start')).toHaveValue('');
+  fireEvent.click(screen.getByRole('button', { name: 'Extract for review' }));
+  expect(await screen.findByLabelText('Date')).toHaveValue('2026-12-31');
+});
+
+it('re-extracts a corrected automatic period without reselecting the PDF and releases it on clear', async () => {
+  mocks.extract.mockResolvedValue([
+    { page: 1, line: 1, text: 'UOB' },
+    { page: 1, line: 2, text: 'Statement Date: 14 JAN 2026' },
+    { page: 1, line: 3, text: '31 DEC MARKET SGD 12.30' },
+  ]);
+  setup(undefined, 4, false);
+  await screen.findByLabelText('Date');
+  fireEvent.click(screen.getByText('Change statement'));
+  fireEvent.click(screen.getByText('Dates (optional)'));
+  fireEvent.change(screen.getByLabelText('Period start'), {
+    target: { value: '2025-12-15' },
+  });
+  expect(
+    screen.getByRole('button', { name: 'Extract for review' })
+  ).toBeEnabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Extract for review' }));
+  expect(await screen.findByLabelText('Date')).toHaveValue('2025-12-31');
+  expect(screen.getByLabelText('Period start')).toHaveValue('2025-12-15');
+  expect(mocks.open).toHaveBeenCalledTimes(2);
+  fireEvent.click(screen.getByRole('button', { name: 'Clear review' }));
+  expect(
+    screen.getByRole('button', { name: 'Extract for review' })
+  ).toBeDisabled();
 });
