@@ -393,3 +393,95 @@ it('retains original snapshot identity when month is edited and does not navigat
   );
   expect(external.push).not.toHaveBeenCalled();
 });
+
+it('preserves every category while showing only one and saves all edited balances together', async () => {
+  external.getSnapshot.mockResolvedValue(snapshot);
+  external.getSnapshots.mockResolvedValue([snapshot]);
+  mount(<SnapshotForm editId="2026-01" />);
+  await screen.findByRole('button', { name: 'Update Snapshot' });
+  expect(screen.getAllByRole('spinbutton')).toHaveLength(1);
+  fireEvent.change(screen.getByRole('spinbutton'), {
+    target: { value: '150' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Stocks' }));
+  fireEvent.change(screen.getByRole('spinbutton'), {
+    target: { value: '250' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Savings' }));
+  expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe(
+    '150'
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Update Snapshot' }));
+  await waitFor(() =>
+    expect(external.upsertSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entries: expect.arrayContaining([
+          { category: 'savings', account: 'Bank', amount: 150 },
+          { category: 'stocks', account: 'SG', amount: 250 },
+          { category: 'etf', account: 'US', amount: 300 },
+        ]),
+      }),
+      '2026-01',
+      expect.objectContaining({ revision: '1' })
+    )
+  );
+});
+
+it('reveals a hidden category containing a validation error instead of silently blocking save', async () => {
+  external.getSnapshot.mockResolvedValue(snapshot);
+  mount(<SnapshotForm editId="2026-01" />);
+  const save = await screen.findByRole('button', { name: 'Update Snapshot' });
+  fireEvent.click(screen.getByRole('button', { name: 'Stocks' }));
+  fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '-1' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Savings' }));
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(
+      screen
+        .getByRole('button', { name: 'Stocks · Check fields' })
+        .getAttribute('aria-pressed')
+    ).toBe('true')
+  );
+  expect(
+    within(
+      screen.getByRole('region', { name: 'Stocks · Check fields' })
+    ).getByText('Amount must be positive')
+  ).toBeTruthy();
+  expect(external.upsertSnapshot).not.toHaveBeenCalled();
+});
+
+it('retains two-decimal native amount validation across category navigation', async () => {
+  external.getSnapshot.mockResolvedValue(snapshot);
+  mount(<SnapshotForm editId="2026-01" />);
+  const save = await screen.findByRole('button', { name: 'Update Snapshot' });
+  fireEvent.click(screen.getByRole('button', { name: 'Stocks' }));
+  fireEvent.change(screen.getByRole('spinbutton'), {
+    target: { value: '12.345' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Savings' }));
+  fireEvent.click(save);
+  await screen.findByText('Use no more than two decimal places');
+  expect(
+    screen
+      .getByRole('button', { name: 'Stocks · Check fields' })
+      .getAttribute('aria-pressed')
+  ).toBe('true');
+  expect(document.activeElement).toBe(screen.getByRole('spinbutton'));
+  expect(external.upsertSnapshot).not.toHaveBeenCalled();
+});
+
+it('does not save a native badInput amount as an empty zero value', async () => {
+  external.getSnapshot.mockResolvedValue(snapshot);
+  mount(<SnapshotForm editId="2026-01" />);
+  const save = await screen.findByRole('button', { name: 'Update Snapshot' });
+  const input = screen.getByRole('spinbutton');
+  fireEvent.change(input, { target: { value: '' } });
+  // jsdom sanitizes invalid number text without exposing browser badInput.
+  Object.defineProperty(input, 'validity', {
+    configurable: true,
+    value: { valid: false, badInput: true },
+  });
+  fireEvent.click(save);
+  expect(await screen.findByText('Enter a valid amount')).toBeTruthy();
+  expect(external.upsertSnapshot).not.toHaveBeenCalled();
+});

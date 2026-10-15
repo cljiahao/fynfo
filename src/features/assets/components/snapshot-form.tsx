@@ -16,7 +16,7 @@ import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { formatSGD } from '@/lib/utils/currency';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import type { FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants';
 import { useSnapshotEditor } from '../hooks/use-snapshot-editor';
 import type { AssetCategory } from '../types';
@@ -28,6 +28,9 @@ interface SnapshotFormProps {
 export function SnapshotForm({ editId }: SnapshotFormProps) {
   const { hidden, mask, canReveal, getHideEpoch } = useAmountVisibility();
   const router = useRouter();
+  const categoryId = useId();
+  const [selectedCategory, setSelectedCategory] =
+    useState<AssetCategory>('savings');
   const editor = useSnapshotEditor(editId);
   const {
     form,
@@ -39,6 +42,14 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
     selectedMonth,
     currentEntries,
   } = editor;
+  const errorFocus = useRef<
+    `entries.${number}.account` | `entries.${number}.amount` | null
+  >(null);
+  useEffect(() => {
+    const field = errorFocus.current;
+    errorFocus.current = null;
+    if (field && canReveal()) form.setFocus(field);
+  }, [selectedCategory, form, canReveal]);
   const isDuplicate = !!history.data?.some(
     (record) => record.id === selectedMonth && record.id !== editId
   );
@@ -47,10 +58,58 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
     event.preventDefault();
     if (!canReveal()) return;
     const hideEpoch = getHideEpoch();
-    await form.handleSubmit(async function submitVisibleSnapshot(values) {
-      if (canReveal() && getHideEpoch() === hideEpoch)
-        await editor.submit(values);
-    })(event);
+    // Native submit validation cannot focus inputs in a hidden category. Check
+    // the same browser constraints here, then reveal the first invalid field.
+    const invalidInput = Array.from(event.currentTarget.elements).find(
+      (input): input is HTMLInputElement =>
+        input instanceof HTMLInputElement && !input.validity.valid
+    );
+    if (invalidInput) {
+      const match = /^entries\.(\d+)\.amount$/.exec(invalidInput.name);
+      if (match) {
+        const index = Number(match[1]);
+        const field = `entries.${index}.amount` as const;
+        form.setError(field, {
+          type: 'native',
+          message: invalidInput.validity.badInput
+            ? 'Enter a valid amount'
+            : invalidInput.validity.stepMismatch
+              ? 'Use no more than two decimal places'
+              : invalidInput.validity.rangeUnderflow
+                ? 'Amount must be positive'
+                : 'Check this amount',
+        });
+        const category = currentEntries[index]?.category;
+        if (category && category !== selectedCategory) {
+          errorFocus.current = field;
+          setSelectedCategory(category);
+        } else form.setFocus(field);
+      } else {
+        form.setError('id', {
+          type: 'native',
+          message: 'Choose a valid month',
+        });
+        invalidInput.focus();
+      }
+      return;
+    }
+    await form.handleSubmit(
+      async function submitVisibleSnapshot(values) {
+        if (canReveal() && getHideEpoch() === hideEpoch)
+          await editor.submit(values);
+      },
+      (errors) => {
+        const invalidIndex = currentEntries.findIndex(
+          (_, index) => errors.entries?.[index]
+        );
+        if (invalidIndex >= 0 && canReveal()) {
+          errorFocus.current = errors.entries?.[invalidIndex]?.account
+            ? `entries.${invalidIndex}.account`
+            : `entries.${invalidIndex}.amount`;
+          setSelectedCategory(currentEntries[invalidIndex].category);
+        }
+      }
+    )(event);
   }
 
   function addRow(category: AssetCategory) {
@@ -93,7 +152,7 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form noValidate onSubmit={handleSubmit}>
       <Card>
         <CardHeader>
           <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -117,7 +176,8 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardDescription>
-              Enter your asset values for each account.
+              Choose a category and enter your account balances. Save includes
+              every category.
             </CardDescription>
             {form.formState.errors.id && (
               <p className="text-destructive text-sm">
@@ -171,6 +231,33 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
             disabled={hidden || isSaving || editor.isReviewing}
             className="space-y-6"
           >
+            <div
+              role="group"
+              aria-label="Asset categories"
+              className="flex flex-wrap gap-1 border-b pb-3"
+            >
+              {CATEGORIES.map((cat) => {
+                const hasError = currentEntries.some(
+                  (entry, index) =>
+                    entry.category === cat &&
+                    form.formState.errors.entries?.[index]
+                );
+                return (
+                  <Button
+                    key={cat}
+                    id={`${categoryId}-${cat}-button`}
+                    type="button"
+                    variant={selectedCategory === cat ? 'secondary' : 'ghost'}
+                    aria-pressed={selectedCategory === cat}
+                    aria-controls={`${categoryId}-${cat}`}
+                    onClick={() => setSelectedCategory(cat)}
+                  >
+                    {CATEGORY_LABELS[cat]}
+                    {hasError ? ' · Check fields' : ''}
+                  </Button>
+                );
+              })}
+            </div>
             {CATEGORIES.map((cat) => {
               const rows = getRowsForCategory(cat);
               const catTotal = getCategoryTotal(cat);
@@ -178,7 +265,11 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
               return (
                 <div
                   key={cat}
-                  className="space-y-3 border-b pb-6 last:border-b-0"
+                  id={`${categoryId}-${cat}`}
+                  role="region"
+                  aria-labelledby={`${categoryId}-${cat}-button`}
+                  hidden={selectedCategory !== cat}
+                  className="space-y-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <Label className="flex flex-wrap items-center gap-2 text-base font-semibold">

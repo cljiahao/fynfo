@@ -8,6 +8,7 @@ import {
   calculateTotal,
   CategoryBreakdown,
   SnapshotTable,
+  SummaryCards,
   useChartData,
   useSnapshots,
 } from '@/features/assets';
@@ -53,16 +54,22 @@ export default function AssetsPage() {
             id: 'overview',
             label: 'Overview',
             content: (
-              <div className="grid gap-6 lg:grid-cols-3">
-                <div className="lg:col-span-2">
-                  <AssetLineChart data={chartData} />
-                </div>
-                <CategoryBreakdown
-                  snapshot={
-                    latest ? snapshots?.[snapshots.length - 1] : undefined
-                  }
+              <>
+                <SummaryCards
+                  compact
+                  snapshots={snapshotsWithTotals.slice(-2)}
                 />
-              </div>
+                <div className="grid gap-6 lg:grid-cols-3">
+                  <div className="lg:col-span-2">
+                    <AssetLineChart data={chartData} />
+                  </div>
+                  <CategoryBreakdown
+                    snapshot={
+                      latest ? snapshots?.[snapshots.length - 1] : undefined
+                    }
+                  />
+                </div>
+              </>
             ),
           },
           {

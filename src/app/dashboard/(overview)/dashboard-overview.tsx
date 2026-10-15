@@ -1,17 +1,13 @@
 'use client';
 
-import { DashboardError } from '@/components/layout/dashboard-error';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader, PageViews, QueryContent } from '@/components/widgets';
 import type { MarketBudgets, PlannerValues } from '@/features/assets';
 import {
-  calculateTotal,
   FirstRecordPrompt,
   InvestmentAllocation,
   InvestmentBreakdown,
   SalaryPlanner,
-  SummaryCards,
   usePlannerSettings,
   useSnapshots,
 } from '@/features/assets';
@@ -19,7 +15,7 @@ import { useTrades } from '@/features/equity';
 import { useExpenses } from '@/features/expenses';
 import { LatestRecords, OverviewReadProvider } from '@/features/overview';
 import { MonthlyReview } from '@/features/review';
-import { SalarySummaryCards, useSalaryRecords } from '@/features/salary';
+import { useSalaryRecords } from '@/features/salary';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -74,12 +70,13 @@ function DashboardOverviewContent() {
     setMarketBudgets(budgets);
   }, []);
 
-  const snapshotsWithTotals = (snapshots ?? []).slice(-2).map((s) => ({
-    ...s,
-    total: calculateTotal(s.entries),
-  }));
-
-  const latest = snapshotsWithTotals[snapshotsWithTotals.length - 1];
+  const latest = (snapshots ?? []).reduce<
+    NonNullable<typeof snapshots>[number] | undefined
+  >(
+    (current, snapshot) =>
+      !current || snapshot.id > current.id ? snapshot : current,
+    undefined
+  );
 
   return (
     <div className="max-w-site mx-auto w-full space-y-6 px-4 py-6 sm:px-6 sm:py-8">
@@ -104,6 +101,17 @@ function DashboardOverviewContent() {
             label: 'Overview',
             content: (
               <>
+                {!assetsPending &&
+                  !assetsError &&
+                  !salaryPending &&
+                  !salaryError &&
+                  expensesReady &&
+                  tradesReady &&
+                  snapshots?.length === 0 &&
+                  salaryRecords?.length === 0 &&
+                  expenses?.length === 0 &&
+                  trades?.length === 0 && <FirstRecordPrompt />}
+
                 <LatestRecords
                   snapshots={snapshots}
                   salary={salaryRecords}
@@ -121,42 +129,10 @@ function DashboardOverviewContent() {
                         ? 'ready'
                         : 'loading'
                   }
+                  retryAssets={() => void retryAssets()}
+                  retrySalary={() => void retrySalary()}
                   retryExpenses={() => void retryExpenses()}
                 />
-                {!assetsPending &&
-                  !assetsError &&
-                  !salaryPending &&
-                  !salaryError &&
-                  expensesReady &&
-                  tradesReady &&
-                  snapshots?.length === 0 &&
-                  salaryRecords?.length === 0 &&
-                  expenses?.length === 0 &&
-                  trades?.length === 0 && <FirstRecordPrompt />}
-
-                {assetsPending ? (
-                  <SummarySkeleton label="Loading assets" />
-                ) : assetsError ? (
-                  <DashboardError
-                    compact
-                    title="Couldn’t load assets"
-                    reset={() => void retryAssets()}
-                  />
-                ) : (
-                  <SummaryCards compact snapshots={snapshotsWithTotals} />
-                )}
-
-                {salaryPending ? (
-                  <SummarySkeleton label="Loading salary" />
-                ) : salaryError ? (
-                  <DashboardError
-                    compact
-                    title="Couldn’t load salary"
-                    reset={() => void retrySalary()}
-                  />
-                ) : (
-                  <SalarySummaryCards compact records={salaryRecords ?? []} />
-                )}
               </>
             ),
           },
@@ -167,9 +143,7 @@ function DashboardOverviewContent() {
               <>
                 <SalaryPlanner
                   isSnapshotReady={!assetsPending && !assetsError}
-                  snapshot={
-                    latest ? snapshots?.[snapshots.length - 1] : undefined
-                  }
+                  snapshot={latest}
                   onPlannerValuesChange={handlePlannerValuesChange}
                 />
                 <QueryContent
@@ -186,34 +160,18 @@ function DashboardOverviewContent() {
                     investmentAmount={plannerValues.investmentAmount}
                     emergencyFundGoal={plannerValues.emergencyFundGoal}
                     warChestGoal={plannerValues.warChestGoal}
-                    snapshot={
-                      latest ? snapshots?.[snapshots.length - 1] : undefined
-                    }
+                    snapshot={latest}
                     onBudgetsChange={handleBudgetsChange}
                   />
 
                   <InvestmentAllocation budgets={marketBudgets} />
-                </QueryContent>{' '}
+                </QueryContent>
               </>
             ),
           },
           { id: 'review', label: 'Review month', content: <MonthlyReview /> },
         ]}
       />
-    </div>
-  );
-}
-
-function SummarySkeleton({ label }: { label: string }) {
-  return (
-    <div
-      role="status"
-      aria-label={label}
-      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
-    >
-      {Array.from({ length: 4 }, (_, index) => (
-        <Skeleton key={index} className="h-28 rounded-xl" />
-      ))}
     </div>
   );
 }
