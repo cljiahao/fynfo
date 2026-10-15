@@ -3,7 +3,6 @@
 import { Button } from '@/components/ui/button';
 import { StatementReview } from '@/features/import-review';
 import { useAmountVisibility } from '@/features/privacy';
-import { RecurringReview } from '@/features/recurring-expenses';
 import { useIsMutating, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { getExpenses } from '../actions/expense-actions';
@@ -108,7 +107,6 @@ export function ExpenseEntry() {
               }
         }
       />
-      <RecurringReview />
     </>
   );
 }

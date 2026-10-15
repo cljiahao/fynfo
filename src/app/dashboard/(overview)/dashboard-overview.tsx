@@ -3,7 +3,7 @@
 import { DashboardError } from '@/components/layout/dashboard-error';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PageHeader, QueryContent } from '@/components/widgets';
+import { PageHeader, PageViews, QueryContent } from '@/components/widgets';
 import type { MarketBudgets, PlannerValues } from '@/features/assets';
 import {
   calculateTotal,
@@ -17,7 +17,7 @@ import {
 } from '@/features/assets';
 import { useTrades } from '@/features/equity';
 import { useExpenses } from '@/features/expenses';
-import { OverviewReadProvider } from '@/features/overview';
+import { LatestRecords, OverviewReadProvider } from '@/features/overview';
 import { MonthlyReview } from '@/features/review';
 import { SalarySummaryCards, useSalaryRecords } from '@/features/salary';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
@@ -47,7 +47,12 @@ function DashboardOverviewContent() {
     refetch: retrySalary,
   } = useSalaryRecords();
   const { isSuccess: settingsReady } = usePlannerSettings();
-  const { data: expenses, isSuccess: expensesReady } = useExpenses();
+  const {
+    data: expenses,
+    isSuccess: expensesReady,
+    isError: expensesError,
+    refetch: retryExpenses,
+  } = useExpenses();
   const { data: trades, isSuccess: tradesReady } = useTrades();
 
   const [plannerValues, setPlannerValues] = useState<PlannerValues>({
@@ -77,83 +82,124 @@ function DashboardOverviewContent() {
   const latest = snapshotsWithTotals[snapshotsWithTotals.length - 1];
 
   return (
-    <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
+    <div className="max-w-site mx-auto w-full space-y-6 px-4 py-6 sm:px-6 sm:py-8">
       <PageHeader
         title="Dashboard"
         description="Overview of your financial health"
         action={
-          <Link href={PAGE_ROUTES.ENTRY}>
-            <Button>
+          <Button asChild>
+            <Link href={PAGE_ROUTES.ENTRY}>
               <Plus className="mr-2 size-4" />
               Add Snapshot
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         }
       />
 
-      {!assetsPending &&
-        !assetsError &&
-        !salaryPending &&
-        !salaryError &&
-        expensesReady &&
-        tradesReady &&
-        snapshots?.length === 0 &&
-        salaryRecords?.length === 0 &&
-        expenses?.length === 0 &&
-        trades?.length === 0 && <FirstRecordPrompt />}
+      <PageViews
+        label="Dashboard views"
+        views={[
+          {
+            id: 'overview',
+            label: 'Overview',
+            content: (
+              <>
+                <LatestRecords
+                  snapshots={snapshots}
+                  salary={salaryRecords}
+                  expenses={expenses}
+                  assetsState={
+                    assetsError ? 'error' : assetsPending ? 'loading' : 'ready'
+                  }
+                  salaryState={
+                    salaryError ? 'error' : salaryPending ? 'loading' : 'ready'
+                  }
+                  expensesState={
+                    expensesError
+                      ? 'error'
+                      : expensesReady
+                        ? 'ready'
+                        : 'loading'
+                  }
+                  retryExpenses={() => void retryExpenses()}
+                />
+                {!assetsPending &&
+                  !assetsError &&
+                  !salaryPending &&
+                  !salaryError &&
+                  expensesReady &&
+                  tradesReady &&
+                  snapshots?.length === 0 &&
+                  salaryRecords?.length === 0 &&
+                  expenses?.length === 0 &&
+                  trades?.length === 0 && <FirstRecordPrompt />}
 
-      {assetsPending ? (
-        <SummarySkeleton label="Loading assets" />
-      ) : assetsError ? (
-        <DashboardError
-          compact
-          title="Couldn’t load assets"
-          reset={() => void retryAssets()}
-        />
-      ) : (
-        <SummaryCards snapshots={snapshotsWithTotals} />
-      )}
+                {assetsPending ? (
+                  <SummarySkeleton label="Loading assets" />
+                ) : assetsError ? (
+                  <DashboardError
+                    compact
+                    title="Couldn’t load assets"
+                    reset={() => void retryAssets()}
+                  />
+                ) : (
+                  <SummaryCards compact snapshots={snapshotsWithTotals} />
+                )}
 
-      {salaryPending ? (
-        <SummarySkeleton label="Loading salary" />
-      ) : salaryError ? (
-        <DashboardError
-          compact
-          title="Couldn’t load salary"
-          reset={() => void retrySalary()}
-        />
-      ) : (
-        <SalarySummaryCards records={salaryRecords ?? []} />
-      )}
+                {salaryPending ? (
+                  <SummarySkeleton label="Loading salary" />
+                ) : salaryError ? (
+                  <DashboardError
+                    compact
+                    title="Couldn’t load salary"
+                    reset={() => void retrySalary()}
+                  />
+                ) : (
+                  <SalarySummaryCards compact records={salaryRecords ?? []} />
+                )}
+              </>
+            ),
+          },
+          {
+            id: 'plan',
+            label: 'Plan income',
+            content: (
+              <>
+                <SalaryPlanner
+                  isSnapshotReady={!assetsPending && !assetsError}
+                  snapshot={
+                    latest ? snapshots?.[snapshots.length - 1] : undefined
+                  }
+                  onPlannerValuesChange={handlePlannerValuesChange}
+                />
+                <QueryContent
+                  ready={
+                    !assetsPending &&
+                    !assetsError &&
+                    !salaryPending &&
+                    !salaryError &&
+                    settingsReady &&
+                    expensesReady
+                  }
+                >
+                  <InvestmentBreakdown
+                    investmentAmount={plannerValues.investmentAmount}
+                    emergencyFundGoal={plannerValues.emergencyFundGoal}
+                    warChestGoal={plannerValues.warChestGoal}
+                    snapshot={
+                      latest ? snapshots?.[snapshots.length - 1] : undefined
+                    }
+                    onBudgetsChange={handleBudgetsChange}
+                  />
 
-      <SalaryPlanner
-        isSnapshotReady={!assetsPending && !assetsError}
-        snapshot={latest ? snapshots?.[snapshots.length - 1] : undefined}
-        onPlannerValuesChange={handlePlannerValuesChange}
+                  <InvestmentAllocation budgets={marketBudgets} />
+                </QueryContent>{' '}
+              </>
+            ),
+          },
+          { id: 'review', label: 'Review month', content: <MonthlyReview /> },
+        ]}
       />
-
-      <MonthlyReview />
-
-      <QueryContent
-        ready={
-          !assetsPending &&
-          !assetsError &&
-          !salaryPending &&
-          !salaryError &&
-          settingsReady &&
-          expensesReady
-        }
-      >
-        <InvestmentBreakdown
-          investmentAmount={plannerValues.investmentAmount}
-          emergencyFundGoal={plannerValues.emergencyFundGoal}
-          warChestGoal={plannerValues.warChestGoal}
-          snapshot={latest ? snapshots?.[snapshots.length - 1] : undefined}
-          onBudgetsChange={handleBudgetsChange}
-        />
-
-        <InvestmentAllocation budgets={marketBudgets} />
-      </QueryContent>
     </div>
   );
 }

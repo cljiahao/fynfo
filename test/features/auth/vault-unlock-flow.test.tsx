@@ -51,6 +51,9 @@ describe('VaultUnlockFlow', () => {
     vi.stubGlobal('fetch', fetch);
     const unlocked = mount();
     await screen.findByRole('heading', { name: 'Create your vault' });
+    expect(document.activeElement).toBe(
+      screen.getByLabelText('6-digit vault PIN')
+    );
     fireEvent.change(screen.getByLabelText('6-digit vault PIN'), {
       target: { value: '123456' },
     });
@@ -145,4 +148,29 @@ describe('VaultUnlockFlow', () => {
     );
     await waitFor(() => expect(onUnlocked).toHaveBeenCalled());
   });
+});
+
+it('associates PIN validation feedback with the editable field', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ initialized: true }),
+    })
+  );
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <VaultLockProvider initiallyUnlocked={false}>
+        <VaultUnlockFlow />
+      </VaultLockProvider>
+    </QueryClientProvider>
+  );
+  const input = screen.getByLabelText('6-digit vault PIN');
+  await waitFor(() => expect(document.activeElement).toBe(input));
+  fireEvent.change(input, { target: { value: '12' } });
+  fireEvent.submit(input.closest('form')!);
+  const error = await screen.findByText('PIN must be 6 digits');
+  expect(input.getAttribute('aria-describedby')).toBe(error.id);
+  expect(error.id).not.toBe('');
+  expect(fetch).toHaveBeenCalledTimes(1);
 });

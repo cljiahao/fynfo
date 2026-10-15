@@ -176,9 +176,12 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
               const catTotal = getCategoryTotal(cat);
 
               return (
-                <div key={cat} className="space-y-3 rounded-lg border p-4">
-                  <div className="flex-between">
-                    <Label className="flex items-center gap-2 text-base font-semibold">
+                <div
+                  key={cat}
+                  className="space-y-3 border-b pb-6 last:border-b-0"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <Label className="flex flex-wrap items-center gap-2 text-base font-semibold">
                       <span
                         className="inline-block size-3 rounded-full"
                         style={{ backgroundColor: CATEGORY_COLORS[cat] }}
@@ -203,7 +206,7 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
 
                   {rows.length > 0 && (
                     <div className="space-y-2">
-                      <div className="text-muted-foreground grid grid-cols-[1fr_1fr_auto] gap-2 text-xs font-medium">
+                      <div className="text-muted-foreground grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 text-xs font-medium">
                         <span>Account</span>
                         <span>Amount</span>
                         <span className="w-9" />
@@ -211,7 +214,7 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
                       {rows.map(({ field, idx }) => (
                         <div
                           key={field.id}
-                          className="grid grid-cols-[1fr_1fr_auto] items-center gap-2"
+                          className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2"
                         >
                           <Input
                             placeholder="Account name"

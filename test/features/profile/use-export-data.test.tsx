@@ -11,6 +11,7 @@ import '@testing-library/jest-dom/vitest';
 import {
   act,
   cleanup,
+  fireEvent,
   render,
   renderHook,
   screen,
@@ -414,9 +415,11 @@ it('releases temporary download resources after click failure and permits retry'
 
 it('explains material export limitations beside the existing action', () => {
   render(<ExportDataCard />);
+  expect(screen.getByText(/saved planning scenarios/)).not.toBeVisible();
+  fireEvent.click(screen.getByText(/What.s included/));
   expect(screen.getByText(/saved planning scenarios/)).toBeVisible();
   expect(screen.getByText(/Household data is not included/)).toBeVisible();
-  expect(screen.getByText(/file contains plaintext/)).toBeVisible();
+  expect(screen.getByText(/file contains decrypted/)).toBeVisible();
   expect(screen.getByText(/cannot be restored in Fynfo/)).toBeVisible();
   expect(screen.getByText(/Edits made during export/)).toBeVisible();
   expect(screen.getByRole('button', { name: 'Export my data' })).toBeEnabled();

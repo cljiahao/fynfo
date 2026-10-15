@@ -41,7 +41,7 @@ export function DashboardNavbar({ userMenu }: { userMenu?: React.ReactNode }) {
 
   return (
     <nav className="sticky top-0 z-50 w-full">
-      <div className="flex-between bg-background min-h-20 border-b px-6 py-3 shadow-lg md:px-8">
+      <div className="flex-between bg-background min-h-16 gap-3 border-b px-4 py-3 sm:px-6 lg:px-8">
         <Link
           href={PAGE_ROUTES.HOME}
           onClick={() => window.scrollTo({ top: 0 })}
@@ -50,11 +50,12 @@ export function DashboardNavbar({ userMenu }: { userMenu?: React.ReactNode }) {
           <BrandText />
         </Link>
 
-        <div className="hidden items-center gap-1 md:flex">
+        <div className="hidden items-center gap-1 lg:flex">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive(item) ? 'page' : undefined}
               className={cn(
                 'relative px-3 py-2 text-sm font-medium transition-colors',
                 isActive(item)
@@ -80,7 +81,7 @@ export function DashboardNavbar({ userMenu }: { userMenu?: React.ReactNode }) {
         <div className="flex items-center gap-2">
           <AmountVisibilityToggle />
           <RecordSearch key={pathname} />
-          <div className="flex items-center gap-2 md:hidden">
+          <div className="flex items-center gap-2 lg:hidden">
             {userMenu}
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
@@ -100,11 +101,15 @@ export function DashboardNavbar({ userMenu }: { userMenu?: React.ReactNode }) {
                     <span>fo</span>
                   </SheetTitle>
                 </SheetHeader>
-                <nav className="flex flex-col gap-1 pt-4">
+                <nav
+                  aria-label="Mobile navigation"
+                  className="flex flex-col gap-1 px-3 pt-4"
+                >
                   {NAV_ITEMS.map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}
+                      aria-current={isActive(item) ? 'page' : undefined}
                       onClick={() => setMobileOpen(false)}
                       className={cn(
                         'rounded-md px-3 py-2.5 text-sm font-medium transition-colors',

@@ -12,6 +12,7 @@ interface StatCardProps {
   hint?: ReactNode;
   children?: ReactNode;
   className?: string;
+  compact?: boolean;
 }
 
 const TONE_CLASS: Record<NonNullable<StatCardProps['tone']>, string> = {
@@ -29,7 +30,24 @@ export function StatCard({
   hint,
   children,
   className,
+  compact = false,
 }: StatCardProps) {
+  if (compact)
+    return (
+      <div className={cn('min-w-0 space-y-1 border-b py-3', className)}>
+        <p className="text-muted-foreground text-sm">{label}</p>
+        <div
+          className={cn(
+            'text-xl font-semibold break-words tabular-nums',
+            TONE_CLASS[tone]
+          )}
+        >
+          {value}
+        </div>
+        {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
+        {children}
+      </div>
+    );
   return (
     <Card className={className}>
       <CardHeader className="flex-row items-center justify-between pb-2">

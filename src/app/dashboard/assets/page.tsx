@@ -2,7 +2,7 @@
 
 import { DashboardError } from '@/components/layout/dashboard-error';
 import { Button } from '@/components/ui/button';
-import { PageHeader } from '@/components/widgets';
+import { PageHeader, PageViews } from '@/components/widgets';
 import {
   AssetLineChart,
   calculateTotal,
@@ -32,30 +32,46 @@ export default function AssetsPage() {
   if (isError) return <DashboardError reset={() => void refetch()} />;
 
   return (
-    <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
+    <div className="max-w-site mx-auto w-full space-y-6 px-4 py-6 sm:px-6 sm:py-8">
       <PageHeader
         title="Assets & Investments"
         description="Track your assets and investments over time"
         action={
-          <Link href={PAGE_ROUTES.ENTRY}>
-            <Button>
+          <Button asChild>
+            <Link href={PAGE_ROUTES.ENTRY}>
               <Plus className="mr-2 size-4" />
               Add Snapshot
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <AssetLineChart data={chartData} />
-        </div>
-        <CategoryBreakdown
-          snapshot={latest ? snapshots?.[snapshots.length - 1] : undefined}
-        />
-      </div>
-
-      <SnapshotTable snapshots={snapshots ?? []} />
+      <PageViews
+        label="Asset views"
+        views={[
+          {
+            id: 'overview',
+            label: 'Overview',
+            content: (
+              <div className="grid gap-6 lg:grid-cols-3">
+                <div className="lg:col-span-2">
+                  <AssetLineChart data={chartData} />
+                </div>
+                <CategoryBreakdown
+                  snapshot={
+                    latest ? snapshots?.[snapshots.length - 1] : undefined
+                  }
+                />
+              </div>
+            ),
+          },
+          {
+            id: 'history',
+            label: 'Snapshot history',
+            content: <SnapshotTable snapshots={snapshots ?? []} />,
+          },
+        ]}
+      />
     </div>
   );
 }

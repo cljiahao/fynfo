@@ -11,13 +11,17 @@ import type { SalaryData } from '../types';
 
 interface SalarySummaryCardsProps {
   records: SalaryData[];
+  compact?: boolean;
 }
 
 function formatIncome(value: number): string {
   return Number.isFinite(value) ? formatSGDWhole(value) : '—';
 }
 
-export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
+export function SalarySummaryCards({
+  records,
+  compact = false,
+}: SalarySummaryCardsProps) {
   const { mask } = useAmountVisibility();
   const latest = records[records.length - 1];
   const {
@@ -33,14 +37,22 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
   } = useSalaryYtdStats(records);
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div
+      className={
+        compact
+          ? 'grid grid-cols-2 gap-x-6 gap-y-2 lg:grid-cols-4'
+          : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-4'
+      }
+    >
       <StatCard
+        compact={compact}
         label="Current Salary"
         value={mask(latest ? formatIncome(latest.salary) : '-')}
         icon={Banknote}
         hint={latest?.id ?? 'No records'}
       />
       <StatCard
+        compact={compact}
         label="Est. Annual"
         value={mask(
           formatIncome(
@@ -57,6 +69,7 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
         }
       />
       <StatCard
+        compact={compact}
         label="Est. Tax"
         value={
           profileState === 'ready' && estSummary !== null
@@ -97,6 +110,7 @@ export function SalarySummaryCards({ records }: SalarySummaryCardsProps) {
         )}
       </StatCard>
       <StatCard
+        compact={compact}
         label="YTD Income"
         value={mask(formatIncome(ytdSalary + ytdBonus))}
         icon={Calculator}

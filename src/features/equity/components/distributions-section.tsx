@@ -79,7 +79,7 @@ export function DistributionsSection({ trades }: DistributionsSectionProps) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex-between">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <CardTitle>Distributions</CardTitle>
             <CardDescription>
@@ -89,7 +89,7 @@ export function DistributionsSection({ trades }: DistributionsSectionProps) {
                 : ''}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <DistributionScan
               key={historyReady ? 'ready' : 'unavailable'}
               ready={historyReady}

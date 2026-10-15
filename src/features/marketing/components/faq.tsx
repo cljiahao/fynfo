@@ -9,13 +9,13 @@ import { Reveal } from './reveal';
 
 export function Faq() {
   return (
-    <section id="faq" className="px-6 py-24 md:py-32">
+    <section id="faq" className="scroll-mt-28 px-4 py-14 sm:px-6 md:py-24">
       <div className="mx-auto max-w-3xl">
         <Reveal className="mb-12 text-center">
           <h2 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">
             Questions, answered
           </h2>
-          <p className="mt-4 text-lg text-white/55">
+          <p className="mt-4 text-lg text-white/70">
             Everything worth knowing before you start.
           </p>
         </Reveal>
@@ -31,7 +31,7 @@ export function Faq() {
                 <AccordionTrigger className="text-left text-base font-medium text-white hover:no-underline">
                   {item.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-sm leading-relaxed text-white/55">
+                <AccordionContent className="text-sm leading-relaxed text-white/70">
                   {item.answer}
                 </AccordionContent>
               </AccordionItem>

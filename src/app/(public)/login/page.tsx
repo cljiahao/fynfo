@@ -7,7 +7,7 @@ export default async function LoginPage({
 }) {
   const { error } = await searchParams;
   return (
-    <div className="flex-center min-h-screen">
+    <div className="flex-center min-h-screen px-4 pt-28 pb-10">
       <LoginCard callbackFailed={error === 'auth_callback_failed'} />
     </div>
   );

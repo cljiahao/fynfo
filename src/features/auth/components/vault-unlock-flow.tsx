@@ -4,8 +4,8 @@ import { SignOutButton } from './signout-button';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
-import { Loader2, Lock, Unlock } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Loader2, Lock } from 'lucide-react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { createSupabaseBrowserClient } from '@/integrations/clients/supabase';
 import { deriveKeyClient, deriveKeyLegacy } from '@/lib/client-crypto';
 import { useVaultStatus } from '../hooks/use-vault-status';
@@ -38,6 +39,7 @@ interface VaultUnlockFlowProps {
 
 export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
   const queryClient = useQueryClient();
+  const fieldId = useId();
   const formRef = useRef<HTMLFormElement>(null);
   const derivingRef = useRef<Promise<string> | null>(null);
   const userIdRef = useRef<string | null>(null);
@@ -54,6 +56,13 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
         : vaultStatus.data.initialized
           ? 'existing'
           : 'new';
+
+  useEffect(() => {
+    if (vaultState === 'new' || vaultState === 'existing')
+      formRef.current
+        ?.querySelector<HTMLInputElement>('input[name="pin"]')
+        ?.focus();
+  }, [vaultState]);
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -170,23 +179,32 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="vault-lock-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md"
+      aria-describedby="vault-lock-description"
+      className="bg-background fixed inset-0 z-50 flex overflow-y-auto px-4 py-8 sm:py-12"
     >
-      <div className="border-border bg-card flex w-full max-w-md flex-col items-center rounded-2xl border p-8 shadow-2xl">
-        <div className="bg-brand-subtle text-brand mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+      <div className="border-border bg-card text-card-foreground m-auto flex w-full max-w-sm shrink-0 flex-col rounded-2xl border p-6 shadow-lg sm:p-8">
+        <div className="bg-muted text-foreground mb-5 flex size-10 items-center justify-center rounded-xl">
           {isSubmitting ? (
-            <Loader2 className="h-8 w-8 animate-spin" />
+            <Loader2 aria-hidden="true" className="size-5 animate-spin" />
           ) : (
-            <Lock className="h-8 w-8" />
+            <Lock aria-hidden="true" className="size-5" />
           )}
         </div>
 
-        <h2 id="vault-lock-title" className="mb-2 text-2xl font-bold">
+        <h2
+          id="vault-lock-title"
+          className="mb-2 text-2xl font-semibold tracking-tight"
+        >
           {vaultState === 'new' ? 'Create your vault' : 'Vault Locked'}
         </h2>
-        <p className="text-muted-foreground mb-8 min-h-[3rem] text-center">
+        <p
+          id="vault-lock-description"
+          role="status"
+          aria-live="polite"
+          className="text-muted-foreground mb-6 text-sm leading-relaxed"
+        >
           {isSubmitting ? (
-            <span className="animate-pulse">
+            <span>
               {loadingData ? LOADING_DATA_MESSAGE : 'Unlocking your vault…'}
             </span>
           ) : vaultState === 'new' ? (
@@ -197,12 +215,18 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
         </p>
 
         {vaultState === 'checking' && (
-          <p role="status" className="text-muted-foreground mb-4 text-sm">
+          <p
+            role="status"
+            className="text-muted-foreground mb-4 text-sm leading-relaxed"
+          >
             Checking your vault…
           </p>
         )}
         {vaultState === 'error' && (
-          <div role="alert" className="mb-4 space-y-2 text-center text-sm">
+          <div
+            role="alert"
+            className="bg-muted mb-4 space-y-3 rounded-lg p-3 text-sm"
+          >
             <p>Couldn&apos;t check your vault. Retry to continue.</p>
             <Button
               variant="outline"
@@ -215,7 +239,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
           </div>
         )}
         {vaultState === 'new' && (
-          <p className="text-muted-foreground mb-4 text-sm">
+          <p className="text-muted-foreground mb-4 text-sm leading-relaxed">
             Keep this PIN safe. Resetting your account password won&apos;t
             recover records encrypted with a forgotten PIN.
           </p>
@@ -232,8 +256,14 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
             name="pin"
             control={control}
             render={({ field: { ref, onChange, value }, fieldState }) => (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor={`${fieldId}-pin`}>Vault PIN</Label>
                 <Input
+                  id={`${fieldId}-pin`}
+                  name="pin"
+                  aria-describedby={
+                    fieldState.invalid ? `${fieldId}-pin-error` : undefined
+                  }
                   ref={ref}
                   type="password"
                   aria-label="6-digit vault PIN"
@@ -259,8 +289,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
                   }}
                   placeholder="••••••"
                   aria-invalid={fieldState.invalid}
-                  className="border-input bg-background py-4 text-center font-mono text-3xl tracking-[1em]"
-                  autoFocus
+                  className="border-input bg-background h-12 text-center font-mono text-2xl tracking-[0.5em] md:text-2xl"
                   disabled={
                     isSubmitting ||
                     vaultState === 'checking' ||
@@ -270,7 +299,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
                 {fieldState.invalid && (
                   <FieldError
                     errors={[fieldState.error]}
-                    className="text-center"
+                    id={`${fieldId}-pin-error`}
                   />
                 )}
               </div>
@@ -282,22 +311,33 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
               name="confirmation"
               control={control}
               render={({ field, fieldState }) => (
-                <div className="space-y-1">
+                <div className="space-y-2">
+                  <Label htmlFor={`${fieldId}-confirmation`}>Confirm PIN</Label>
                   <Input
+                    id={`${fieldId}-confirmation`}
+                    aria-describedby={
+                      fieldState.invalid
+                        ? `${fieldId}-confirmation-error`
+                        : undefined
+                    }
+                    className="h-12 text-center font-mono text-2xl tracking-[0.5em] md:text-2xl"
                     {...field}
                     type="password"
                     aria-label="Confirm vault PIN"
                     aria-invalid={fieldState.invalid}
                     inputMode="numeric"
                     maxLength={6}
-                    placeholder="Confirm your PIN"
+                    placeholder="••••••"
                     onChange={(event) =>
                       field.onChange(event.target.value.replace(/\D/g, ''))
                     }
                     disabled={isSubmitting}
                   />
                   {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
+                    <FieldError
+                      id={`${fieldId}-confirmation-error`}
+                      errors={[fieldState.error]}
+                    />
                   )}
                 </div>
               )}
@@ -311,17 +351,19 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
               vaultState === 'checking' ||
               vaultState === 'error'
             }
-            className="bg-brand text-brand-foreground hover:bg-brand/90 flex w-full items-center justify-center gap-2 rounded-xl py-4 text-lg font-semibold disabled:opacity-50"
+            className="h-12 w-full rounded-lg font-semibold"
           >
             {isSubmitting
               ? 'Unlocking…'
               : vaultState === 'new'
                 ? 'Create vault'
                 : 'Unlock Vault'}
-            {!isSubmitting && <Unlock className="h-5 w-5" />}
+            {isSubmitting && (
+              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+            )}
           </Button>
         </form>
-        <div className="mt-4 w-full">
+        <div className="border-border mt-5 border-t pt-3">
           <SignOutButton />
         </div>
       </div>

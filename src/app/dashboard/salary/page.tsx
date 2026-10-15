@@ -2,7 +2,7 @@
 
 import { DashboardError } from '@/components/layout/dashboard-error';
 import { Button } from '@/components/ui/button';
-import { PageHeader } from '@/components/widgets';
+import { PageHeader, PageViews } from '@/components/widgets';
 import {
   SalaryChart,
   SalaryFormDialog,
@@ -33,7 +33,7 @@ export default function SalaryPage() {
   }
 
   return (
-    <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
+    <div className="max-w-site mx-auto w-full space-y-6 px-4 py-6 sm:px-6 sm:py-8">
       <PageHeader
         title="Salary"
         description="Track your salary growth, tax, and CPF contributions"
@@ -45,11 +45,26 @@ export default function SalaryPage() {
         }
       />
 
-      <SalarySummary records={records ?? []} />
-
-      <SalaryChart records={records ?? []} />
-
-      <SalaryTable onEdit={handleEdit} />
+      <PageViews
+        label="Salary views"
+        views={[
+          {
+            id: 'history',
+            label: 'Records',
+            content: <SalaryTable onEdit={handleEdit} />,
+          },
+          {
+            id: 'trends',
+            label: 'Trends',
+            content: <SalaryChart records={records ?? []} />,
+          },
+          {
+            id: 'tax',
+            label: 'Tax & CPF',
+            content: <SalarySummary records={records ?? []} />,
+          },
+        ]}
+      />
 
       <SalaryFormDialog
         open={formOpen}

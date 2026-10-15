@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 // (RSC nav suspense) and the page's client `isLoading` branch.
 export function AssetsSkeleton() {
   return (
-    <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
+    <div className="max-w-site mx-auto w-full space-y-6 px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex-between">
         <div>
           <Skeleton className="h-9 w-52" />
