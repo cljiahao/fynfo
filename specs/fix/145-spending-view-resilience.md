@@ -39,5 +39,4 @@ Impeccable source detector on ExpenseChart returned no findings; source review i
 
 Layout results: 53 tests across four suites passed, covering default Spending, table separation, draft/mode preservation, Reuse activation and cancellation focus. Independent reviewer found no actionable blockers. Synthetic desktop/mobile checks verified entry beneath the overview, table-only Transactions, retained draft and import access. Mobile chart height reduced to 240px; desktop retains 350px. The earlier full pre-push run was interrupted when the owner changed scope; it is not counted as final verification. Full gates rerun on the resulting source.
 
-
 Release verification: production build, format, lint, TypeScript and all 2,084 tests across 185 suites passed locally on commit 0796d8b. Hosted CI and Vercel preview passed before PR 65 merged. No database migration required.
