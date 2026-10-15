@@ -2,7 +2,9 @@
 id: 145
 slug: spending-view-resilience
 area: fix
-status: draft
+status: shipped
+shipped: 2026-10-15
+impl_pr: https://github.com/cljiahao/fynfo/pull/65
 author: Codex
 created: 2026-10-15
 constitution_satisfies: ['§2.4', '§2.5', '§2.6', '§3.1', '§4.1', '§7.4']
@@ -36,3 +38,6 @@ During verification Clarence requested the Assets-style layout: Spending default
 Impeccable source detector on ExpenseChart returned no findings; source review identified the behavior gaps above. No measured performance or WCAG certification claim. Focused regressions passed: 25 tests in two suites. Independent review found no actionable blockers. Synthetic browser inspection verified the populated chart at 390px and 1280px, empty guidance, and the unavailable state in dark mode. Fixture uses actual chart components with synthetic data and blocked server boundaries; it is not a live authenticated test. Browser tab closed and viewport reset. README setup and documented expense contracts remain valid. Full normal gates pending.
 
 Layout results: 53 tests across four suites passed, covering default Spending, table separation, draft/mode preservation, Reuse activation and cancellation focus. Independent reviewer found no actionable blockers. Synthetic desktop/mobile checks verified entry beneath the overview, table-only Transactions, retained draft and import access. Mobile chart height reduced to 240px; desktop retains 350px. The earlier full pre-push run was interrupted when the owner changed scope; it is not counted as final verification. Full gates rerun on the resulting source.
+
+
+Release verification: production build, format, lint, TypeScript and all 2,084 tests across 185 suites passed locally on commit 0796d8b. Hosted CI and Vercel preview passed before PR 65 merged. No database migration required.
