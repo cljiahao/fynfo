@@ -1,4 +1,4 @@
-import { ArrowUpRight, TrendingUp } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 
 const MONO = '[font-family:var(--font-geist-mono)]';
 
@@ -26,7 +26,7 @@ export function DashboardPreview() {
         {/* header */}
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs font-medium tracking-wide text-white/50 uppercase">
+            <p className="text-xs font-medium tracking-wide text-white/70 uppercase">
               Net worth
             </p>
             <p className={`mt-1 text-3xl font-semibold text-white ${MONO}`}>
@@ -83,14 +83,13 @@ export function DashboardPreview() {
         {/* stat tiles */}
         <div className="mt-5 grid grid-cols-3 gap-3">
           {STATS.map((s) => (
-            <div
-              key={s.label}
-              className="rounded-lg border border-white/5 bg-white/[0.03] p-3"
-            >
-              <p className="text-[10px] font-medium tracking-wide text-white/40 uppercase">
+            <div key={s.label} className="min-w-0">
+              <p className="text-xs font-medium tracking-wide text-white/65 uppercase">
                 {s.label}
               </p>
-              <p className={`mt-1 text-sm font-semibold text-white/90 ${MONO}`}>
+              <p
+                className={`mt-1 text-xs font-semibold text-white/90 sm:text-sm ${MONO}`}
+              >
                 {s.value}
               </p>
             </div>
@@ -99,10 +98,8 @@ export function DashboardPreview() {
 
         {/* footer row */}
         <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-4">
-          <span className="text-xs text-white/45">Q2 deployment on track</span>
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-300">
-            View plan
-            <ArrowUpRight className="size-3" />
+          <span className="text-xs text-white/65">
+            Illustrative dashboard. Sample amounts.
           </span>
         </div>
       </div>

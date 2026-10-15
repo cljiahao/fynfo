@@ -6,8 +6,8 @@ import { TrackedCtaLink } from './tracked-cta-link';
 
 export function CtaBand() {
   return (
-    <section className="px-6 pb-28">
-      <Reveal className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-white/10 px-8 py-16 text-center md:py-20">
+    <section className="px-4 pt-6 pb-16 sm:px-6 md:pb-24">
+      <Reveal className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-white/10 px-5 py-12 text-center sm:px-8 md:py-16">
         <div
           aria-hidden
           className="absolute inset-0 -z-10 bg-gradient-to-br from-emerald-500/20 via-zinc-900 to-sky-500/15"
@@ -17,11 +17,11 @@ export function CtaBand() {
           className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.08),transparent_60%)]"
         />
         <h2
-          className={`${fraunces.className} mx-auto max-w-xl text-4xl font-medium tracking-tight text-white md:text-5xl`}
+          className={`${fraunces.className} mx-auto max-w-xl text-3xl font-medium tracking-tight text-white sm:text-4xl md:text-5xl`}
         >
           Ready to take control?
         </h2>
-        <p className="mx-auto mt-4 max-w-md text-lg text-white/60">
+        <p className="mx-auto mt-4 max-w-md text-lg text-white/70">
           Start tracking your wealth today. It only takes a minute — and
           it&apos;s free.
         </p>
