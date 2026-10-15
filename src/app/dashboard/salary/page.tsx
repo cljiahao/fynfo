@@ -33,7 +33,7 @@ export default function SalaryPage() {
   }
 
   return (
-    <div className="max-w-site mx-auto w-full space-y-6 px-6 py-8">
+    <div className="max-w-site mx-auto w-full space-y-6 px-4 py-6 sm:px-6 sm:py-8">
       <PageHeader
         title="Salary"
         description="Track your salary growth, tax, and CPF contributions"

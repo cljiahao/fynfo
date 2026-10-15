@@ -67,7 +67,7 @@ function ProfileFormInner({ initial }: { initial: ProfileData }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Profile</CardTitle>
+        <CardTitle>Personal details</CardTitle>
         <CardDescription>
           Personal details used for tax estimates
         </CardDescription>
@@ -113,7 +113,10 @@ function ProfileFormInner({ initial }: { initial: ProfileData }) {
                     value={field.value}
                     onValueChange={field.onChange}
                   >
-                    <SelectTrigger id="residency">
+                    <SelectTrigger
+                      id="residency"
+                      className="min-h-9 w-full text-left data-[size=default]:h-auto *:data-[slot=select-value]:line-clamp-none [&_[data-slot=select-value]]:whitespace-normal"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

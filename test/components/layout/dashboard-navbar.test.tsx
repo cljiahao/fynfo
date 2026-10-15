@@ -72,3 +72,26 @@ it('opens an explicit personal record search rather than duplicating navigation 
     await screen.findByRole('textbox', { name: 'Search your records' })
   ).toBeInTheDocument();
 });
+it('marks only the current destination in desktop and mobile navigation', async () => {
+  route.pathname = '/dashboard/assets';
+  mountNavbar();
+  expect(screen.getByRole('link', { name: 'Assets' })).toHaveAttribute(
+    'aria-current',
+    'page'
+  );
+  expect(screen.getByRole('link', { name: 'Salary' })).not.toHaveAttribute(
+    'aria-current'
+  );
+  await userEvent.click(
+    screen.getByRole('button', { name: 'Open navigation menu' })
+  );
+  expect(
+    screen.getByRole('navigation', { name: 'Mobile navigation' })
+  ).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Assets' })).toHaveAttribute(
+    'aria-current',
+    'page'
+  );
+  await userEvent.click(screen.getByRole('link', { name: 'Salary' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});

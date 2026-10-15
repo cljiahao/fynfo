@@ -7,8 +7,8 @@ import Link from 'next/link';
 // radix Dialog / useState / Menu out of the public route bundle.
 export function PublicNavbar() {
   return (
-    <nav className="max-w-site fixed inset-x-0 top-0 z-50 mx-auto px-6 pt-6">
-      <div className="flex-between min-h-16 rounded-2xl border border-white/10 bg-zinc-950/60 px-6 py-3 shadow-2xl shadow-black/30 backdrop-blur-xl md:px-8">
+    <nav className="max-w-site fixed inset-x-0 top-0 z-50 mx-auto px-4 pt-4 sm:px-6 sm:pt-6">
+      <div className="flex-between min-h-16 rounded-2xl border border-white/10 bg-zinc-950/60 px-4 py-3 shadow-2xl shadow-black/30 backdrop-blur-xl md:px-8">
         <Link
           href={PAGE_ROUTES.HOME}
           className="text-xl font-bold tracking-tight md:text-2xl"
