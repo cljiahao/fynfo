@@ -184,7 +184,7 @@ when included. The dialog shows your actual remainder even in “Paid for” mod
 settled amounts still count toward the allocation. Historical records are not
 rewritten by this validation.
 
-Dashboard and salary details use the same saved tax reliefs for the current income
+Salary summaries and details use the same saved tax reliefs for the current income
 year. Resident estimates remain unavailable while reliefs load or fail; retry the
 read without changing income records. Unsaved relief edits do not change estimates.
 

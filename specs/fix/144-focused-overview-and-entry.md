@@ -2,7 +2,9 @@
 id: 144
 slug: focused-overview-and-entry
 area: fix
-status: draft
+status: shipped
+shipped: 2026-10-15
+impl_pr: https://github.com/cljiahao/fynfo/pull/64
 author: Codex
 created: 2026-10-15
 constitution_satisfies: ['§2.4', '§2.5', '§2.6', '§3.1', '§4.1', '§7.4']
@@ -41,4 +43,6 @@ Ordinary source revert; no schema rollback. Existing historical financial calcul
 
 Initial targeted run: 46 tests in five suites passed (overview, latest records, snapshot interactions/conflicts/privacy). Independent review caught loss of native step/badInput validation under noValidate; fixed by checking browser validity before Zod/save and revealing/focusing the affected category. The subsequent 34-test snapshot/conflict/privacy run passed, including new precision and malformed-number cases. Reviewer confirmed the finding resolved with no remaining blockers.
 
-Synthetic browser inspection used actual LatestRecords and SnapshotForm with synthetic data/hooks at 1280px and 390px. The three-summary preview fit a 390x844 viewport without horizontal overflow; the single-account snapshot kept Save visible. Entering 12.345, switching category and saving returned to the owning field with a precision error; entering '-' likewise showed a valid-amount error and focused the field. No actual financial records or authentication used. The preview shell substitutes navigation/data and is not an authenticated production test. Browser tab and server closed after the bounded inspection. README setup remains unchanged. Full normal gates pending.
+Synthetic browser inspection used actual LatestRecords and SnapshotForm with synthetic data/hooks at 1280px and 390px. The three-summary preview fit a 390x844 viewport without horizontal overflow; the single-account snapshot kept Save visible. Entering 12.345, switching category and saving returned to the owning field with a precision error; entering '-' likewise showed a valid-amount error and focused the field. No actual financial records or authentication used. The preview shell substitutes navigation/data and is not an authenticated production test. Browser tab and server closed after the bounded inspection. README setup remains unchanged. Full normal gates passed: build, format, lint, typecheck and 2,070 tests across 184 suites. Exact-head hosted CI and Vercel preview passed before PR 64 merged.
+
+Documentation closeout scope: update this shipped record and README.md after merge. The README still attributed tax-relief estimates to the dashboard after detailed salary summaries moved to Salary / Trends. Correct that location only; documentation formatting and diff review apply under §7.4. Rollback is an ordinary documentation revert.
