@@ -1,21 +1,22 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import type { SnapshotData } from '@/features/assets';
+import { DashboardError } from '@/components/layout/dashboard-error';
+import { calculateTotal, type SnapshotData } from '@/features/assets';
 import type { ExpenseData } from '@/features/expenses';
+import { useAmountVisibility } from '@/features/privacy';
+import { buildMonthlyReview } from '@/features/review';
 import type { SalaryData } from '@/features/salary';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
+import { formatSGDWhole } from '@/lib/utils/currency';
 import Link from 'next/link';
 
 type ReadState = 'loading' | 'error' | 'ready';
-
-function latestPeriod(values: string[]) {
-  return values.reduce<string | undefined>(
-    (latest, value) => (!latest || value > latest ? value : latest),
+function latestRecord<T extends { id: string }>(records: T[]) {
+  return records.reduce<T | undefined>(
+    (latest, record) => (!latest || record.id > latest.id ? record : latest),
     undefined
   );
 }
-
 function periodLabel(period: string) {
   const date = new Date(
     `${period.length === 7 ? `${period}-01` : period}T00:00:00Z`
@@ -29,7 +30,6 @@ function periodLabel(period: string) {
         timeZone: 'UTC',
       }).format(date);
 }
-
 export function LatestRecords({
   snapshots,
   salary,
@@ -37,6 +37,8 @@ export function LatestRecords({
   assetsState,
   salaryState,
   expensesState,
+  retryAssets,
+  retrySalary,
   retryExpenses,
 }: {
   snapshots?: SnapshotData[];
@@ -45,91 +47,134 @@ export function LatestRecords({
   assetsState: ReadState;
   salaryState: ReadState;
   expensesState: ReadState;
+  retryAssets: () => void;
+  retrySalary: () => void;
   retryExpenses: () => void;
 }) {
+  const { mask } = useAmountVisibility();
   const parts = new Intl.DateTimeFormat('en-SG', {
     timeZone: 'Asia/Singapore',
     year: 'numeric',
     month: '2-digit',
   }).formatToParts(new Date());
   const currentMonth = `${parts.find((part) => part.type === 'year')?.value}-${parts.find((part) => part.type === 'month')?.value}`;
+  const snapshot =
+    assetsState === 'ready' ? latestRecord(snapshots ?? []) : undefined;
+  const income =
+    salaryState === 'ready' ? latestRecord(salary ?? []) : undefined;
+  const spending =
+    expensesState === 'ready'
+      ? buildMonthlyReview(currentMonth, [], [], expenses ?? [])
+      : null;
+  const expenseDate = (expenses ?? []).reduce<string | undefined>(
+    (latest, record) =>
+      !latest || record.date.slice(0, 10) > latest
+        ? record.date.slice(0, 10)
+        : latest,
+    undefined
+  );
   const records = [
     {
-      label: 'Asset snapshot',
-      period: latestPeriod((snapshots ?? []).map((record) => record.id)),
+      label: 'Total Assets',
+      period: snapshot?.id,
       state: assetsState,
       href: PAGE_ROUTES.ASSETS,
       monthly: true,
+      source: 'assets',
+      retry: retryAssets,
+      value: snapshot
+        ? mask(formatSGDWhole(calculateTotal(snapshot.entries)))
+        : 'Not recorded',
+      hint: 'Latest snapshot',
     },
     {
-      label: 'Salary',
-      period: latestPeriod((salary ?? []).map((record) => record.id)),
+      label: 'Current Salary',
+      period: income?.id,
       state: salaryState,
       href: PAGE_ROUTES.SALARY,
       monthly: true,
+      source: 'salary',
+      retry: retrySalary,
+      value: income ? mask(formatSGDWhole(income.salary)) : 'Not recorded',
+      hint: 'Latest base salary',
     },
     {
-      label: 'Expenses',
-      period: latestPeriod(
-        (expenses ?? []).map((record) => record.date.slice(0, 10))
-      ),
+      label: 'Recorded spending',
+      period: expenseDate,
       state: expensesState,
       href: PAGE_ROUTES.EXPENSES,
       monthly: false,
+      source: 'expenses',
+      retry: retryExpenses,
+      value:
+        spending?.personalSpending === null
+          ? 'Check shared splits'
+          : spending?.expenseCount
+            ? mask(formatSGDWhole(spending.personalSpending))
+            : 'Not recorded',
+      hint: `${periodLabel(currentMonth)} · your share`,
     },
   ];
   return (
-    <section aria-labelledby="latest-records-heading" className="space-y-3">
+    <section aria-labelledby="latest-records-heading" className="space-y-4">
       <div>
         <h2 id="latest-records-heading" className="font-semibold">
-          Latest records
+          At a glance
         </h2>
         <p className="text-muted-foreground text-sm">
-          Recorded periods, not save dates. Recent records may still be
-          incomplete.
+          Based on your saved records. Dates show the recorded period.
         </p>
       </div>
-      <dl className="grid gap-4 border-y py-4 sm:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-3">
         {records.map((record) => (
-          <div
-            key={record.label}
-            className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 sm:block sm:space-y-1"
+          <section
+            key={record.source}
+            aria-label={record.label}
+            className="min-w-0 space-y-2 border-b pb-5"
           >
-            <dt>
-              <Link
-                href={record.href}
-                className="text-sm font-medium underline underline-offset-4"
+            {record.state === 'loading' ? (
+              <p
+                role="status"
+                aria-label={`Loading ${record.source}`}
+                className="text-muted-foreground text-sm"
               >
-                {record.label}
-              </Link>
-            </dt>
-            <dd className="text-sm">
-              {record.state === 'loading'
-                ? 'Loading…'
-                : record.state === 'error'
-                  ? 'Unavailable'
-                  : record.period
-                    ? periodLabel(record.period)
+                Loading {record.source}…
+              </p>
+            ) : record.state === 'error' ? (
+              <DashboardError
+                compact
+                title={`Couldn’t load ${record.source}`}
+                reset={record.retry}
+              />
+            ) : (
+              <>
+                <Link
+                  href={record.href}
+                  className="text-sm font-medium underline underline-offset-4"
+                >
+                  {record.label}
+                </Link>
+                <p className="text-2xl font-semibold break-words tabular-nums">
+                  {record.value}
+                </p>
+                <p className="text-muted-foreground text-sm">{record.hint}</p>
+                <p className="text-muted-foreground text-xs">
+                  {record.period
+                    ? `${record.monthly ? 'Latest' : 'Last expense'}: ${periodLabel(record.period)}`
                     : 'No records yet'}
-            </dd>
-            {record.state === 'ready' &&
-              record.period &&
-              record.monthly &&
-              record.period < currentMonth && (
-                <dd className="text-muted-foreground col-span-2 text-xs">
-                  Earlier than this month
-                </dd>
-              )}
-            {record.label === 'Expenses' && record.state === 'error' && (
-              <dd>
-                <Button size="sm" variant="ghost" onClick={retryExpenses}>
-                  Retry expenses
-                </Button>
-              </dd>
+                </p>
+                {record.period &&
+                  record.monthly &&
+                  record.period < currentMonth && (
+                    <p className="text-muted-foreground text-xs">
+                      Earlier than this month
+                    </p>
+                  )}
+              </>
             )}
-          </div>
+          </section>
         ))}
-      </dl>
+      </div>
     </section>
   );
 }

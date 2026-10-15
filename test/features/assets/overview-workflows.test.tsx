@@ -77,7 +77,7 @@ function getAllocationInput(ticker: string, market: string) {
     .querySelector<HTMLInputElement>('input')!;
 }
 
-it('calculates summary totals only for the latest two months of a long history', async () => {
+it('calculates the high-level asset total only for the latest snapshot', async () => {
   const total = vi.spyOn(calculations, 'calculateTotal');
   api.getSnapshots.mockResolvedValue(
     Array.from({ length: 100 }, (_, index) => ({
@@ -89,8 +89,8 @@ it('calculates summary totals only for the latest two months of a long history',
   );
   render(<Providers>{await getPrefetchedOverview()}</Providers>);
   expect(await screen.findByText('Total Assets')).toBeTruthy();
-  expect(screen.getAllByText('$10,000')).toHaveLength(2);
-  expect(screen.getByText('+$100')).toBeTruthy();
+  expect(screen.getAllByText('$10,000')).toHaveLength(1);
+  expect(screen.queryByText('Savings Change')).toBeNull();
   expect(total).toHaveBeenCalled();
   expect(total.mock.calls.every(([entries]) => entries[0].amount >= 9900)).toBe(
     true
@@ -166,7 +166,7 @@ it('hydrates all four server datasets into the real overview without fetching th
   const page = await getPrefetchedOverview();
   render(<Providers>{page}</Providers>);
   expect(await screen.findByText('Net (after CPF)')).toBeTruthy();
-  expect(screen.getAllByText('$15,000')).toHaveLength(2);
+  expect(screen.getAllByText('$15,000')).toHaveLength(1);
   expect(
     screen.getByRole('link', { name: 'Add Snapshot' }).getAttribute('href')
   ).toBe('/dashboard/entry');

@@ -7,6 +7,7 @@ import {
   SalaryChart,
   SalaryFormDialog,
   SalarySummary,
+  SalarySummaryCards,
   SalaryTable,
   useSalaryRecords,
 } from '@/features/salary';
@@ -56,7 +57,12 @@ export default function SalaryPage() {
           {
             id: 'trends',
             label: 'Trends',
-            content: <SalaryChart records={records ?? []} />,
+            content: (
+              <>
+                <SalarySummaryCards compact records={records ?? []} />
+                <SalaryChart records={records ?? []} />
+              </>
+            ),
           },
           {
             id: 'tax',
