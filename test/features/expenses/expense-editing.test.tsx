@@ -373,7 +373,9 @@ it('chart totals exclude old months and use personal shares while all-time avera
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     ),
   });
-  expect(view.container).toBeEmptyDOMElement();
+  expect(
+    screen.getByText(/No expenses yet. Open Transactions/)
+  ).toBeInTheDocument();
   view.rerender(
     <ExpenseChart
       expenses={[
@@ -399,4 +401,9 @@ it('chart totals exclude old months and use personal shares while all-time avera
   });
   expect(await screen.findByText('Food & Drink')).toBeInTheDocument();
   expect(await screen.findByText('Shopping')).toBeInTheDocument();
+  view.rerender(<ExpenseChart expenses={[{ ...row, amount: -1 }]} />);
+  expect(
+    screen.getByText(/Spending totals are unavailable/)
+  ).toBeInTheDocument();
+  expect(screen.queryByText('$150')).not.toBeInTheDocument();
 });
