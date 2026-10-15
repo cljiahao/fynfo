@@ -1,9 +1,11 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { PageViews } from '@/components/widgets';
 import { StatementReview } from '@/features/import-review';
 import { useAmountVisibility } from '@/features/privacy';
 import { useIsMutating, useQueryClient } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { getExpenses } from '../actions/expense-actions';
 import { EXPENSE_KEY } from '../constants';
@@ -13,7 +15,18 @@ import {
 } from './expense-quick-add';
 import { ExpenseTable } from './expense-table';
 
-export function ExpenseEntry() {
+export function ExpenseEntry({
+  overview,
+  recurring,
+}: { overview?: ReactNode; recurring?: ReactNode } = {}) {
+  const [view, setView] = useState('spending');
+  const returnFocus = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (view === 'transactions' && returnFocus.current) {
+      returnFocus.current.focus();
+      returnFocus.current = null;
+    }
+  }, [view]);
   const { hidden, canReveal, getHideEpoch } = useAmountVisibility();
   const lifetime = useRef({ active: true });
   useEffect(() => {
@@ -31,82 +44,129 @@ export function ExpenseEntry() {
     ExpenseQuickAddHandle['requestReuse']
   > | null>(null);
   useEffect(() => {
-    if (entryMode !== 'quick' || !pendingReuse.current) return;
+    if (
+      entryMode !== 'quick' ||
+      (overview !== undefined && view !== 'spending') ||
+      !pendingReuse.current
+    )
+      return;
     const request = pendingReuse.current;
     pendingReuse.current = null;
     quickAdd.current?.requestReuse(...request);
-  }, [entryMode]);
+  }, [entryMode, view, overview]);
   const [reuseAvailable, setReuseAvailable] = useState(true);
-  return (
-    <>
-      <div className="space-y-3">
-        <div className="flex gap-1" role="group" aria-label="Add expenses">
-          <Button
-            variant={entryMode === 'quick' ? 'default' : 'ghost'}
-            aria-pressed={entryMode === 'quick'}
-            onClick={() => setEntryMode('quick')}
-          >
-            Quick add
-          </Button>
-          <Button
-            variant={entryMode === 'pdf' ? 'default' : 'ghost'}
-            aria-pressed={entryMode === 'pdf'}
-            onClick={() => setEntryMode('pdf')}
-          >
-            Import statement
-          </Button>
-        </div>
-        <div hidden={entryMode !== 'quick'}>
-          <ExpenseQuickAdd
-            ref={quickAdd}
-            onReuseAvailabilityChange={setReuseAvailable}
-            readSavedExpenses={async () => {
-              if (!canReveal()) throw new Error('Review unavailable');
-              const instance = lifetime.current;
-              const readEpoch = getHideEpoch();
-              const records = await getExpenses();
-              if (
-                !instance.active ||
-                !canReveal() ||
-                getHideEpoch() !== readEpoch
-              )
-                throw new Error('Review unavailable');
-              return records;
-            }}
-            onSavedExpensesRead={(records) => {
-              if (
-                lifetime.current.active &&
-                canReveal() &&
-                queryClient.isMutating() === 0
-              )
-                queryClient.setQueryData(EXPENSE_KEY, records);
-            }}
-          />
-        </div>
-        <div
-          hidden={entryMode !== 'pdf'}
-          className="space-y-3 rounded-lg border p-4"
+  const entry = (
+    <div className="space-y-3">
+      <div className="flex gap-1" role="group" aria-label="Add expenses">
+        <Button
+          variant={entryMode === 'quick' ? 'default' : 'ghost'}
+          aria-pressed={entryMode === 'quick'}
+          onClick={() => setEntryMode('quick')}
         >
-          <p className="text-sm">
-            Upload a bank PDF, check the extracted expenses, then save.
-          </p>
-          <StatementReview triggerLabel="Choose bank PDF" />
-        </div>
+          Quick add
+        </Button>
+        <Button
+          variant={entryMode === 'pdf' ? 'default' : 'ghost'}
+          aria-pressed={entryMode === 'pdf'}
+          onClick={() => setEntryMode('pdf')}
+        >
+          Import statement
+        </Button>
       </div>
-      <ExpenseTable
-        onReuse={
-          hidden || pendingWrites || !reuseAvailable
-            ? undefined
-            : (expense, origin) => {
-                if (entryMode === 'quick')
-                  quickAdd.current?.requestReuse(expense, origin);
-                else {
-                  pendingReuse.current = [expense, origin];
-                  setEntryMode('quick');
+      <div hidden={entryMode !== 'quick'}>
+        <ExpenseQuickAdd
+          ref={quickAdd}
+          onReturnToSource={
+            overview === undefined
+              ? undefined
+              : (origin) => {
+                  returnFocus.current = origin;
+                  setView('transactions');
                 }
+          }
+          onReuseAvailabilityChange={setReuseAvailable}
+          readSavedExpenses={async () => {
+            if (!canReveal()) throw new Error('Review unavailable');
+            const instance = lifetime.current;
+            const readEpoch = getHideEpoch();
+            const records = await getExpenses();
+            if (
+              !instance.active ||
+              !canReveal() ||
+              getHideEpoch() !== readEpoch
+            )
+              throw new Error('Review unavailable');
+            return records;
+          }}
+          onSavedExpensesRead={(records) => {
+            if (
+              lifetime.current.active &&
+              canReveal() &&
+              queryClient.isMutating() === 0
+            )
+              queryClient.setQueryData(EXPENSE_KEY, records);
+          }}
+        />
+      </div>
+      <div
+        hidden={entryMode !== 'pdf'}
+        className="space-y-3 rounded-lg border p-4"
+      >
+        <p className="text-sm">
+          Upload a bank PDF, check the extracted expenses, then save.
+        </p>
+        <StatementReview triggerLabel="Choose bank PDF" />
+      </div>
+    </div>
+  );
+  const transactions = (
+    <ExpenseTable
+      onReuse={
+        hidden || pendingWrites || !reuseAvailable
+          ? undefined
+          : (expense, origin) => {
+              if (
+                entryMode === 'quick' &&
+                (overview === undefined || view === 'spending')
+              )
+                quickAdd.current?.requestReuse(expense, origin);
+              else {
+                pendingReuse.current = [expense, origin];
+                setView('spending');
+                setEntryMode('quick');
               }
-        }
-      />
-    </>
+            }
+      }
+    />
+  );
+  if (overview === undefined)
+    return (
+      <>
+        {entry}
+        {transactions}
+      </>
+    );
+  return (
+    <PageViews
+      label="Expense views"
+      value={view}
+      onValueChange={setView}
+      views={[
+        {
+          id: 'spending',
+          label: 'Spending',
+          content: (
+            <>
+              {overview}
+              {entry}
+            </>
+          ),
+        },
+        { id: 'transactions', label: 'Transactions', content: transactions },
+        ...(recurring === undefined
+          ? []
+          : [{ id: 'recurring', label: 'Recurring', content: recurring }]),
+      ]}
+    />
   );
 }

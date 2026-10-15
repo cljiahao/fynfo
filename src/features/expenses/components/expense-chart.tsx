@@ -22,64 +22,14 @@ import {
   YAxis,
 } from '@/lib/recharts';
 import { formatSGDWhole } from '@/lib/utils/currency';
-import { format, subMonths } from 'date-fns';
 import type { TooltipContentProps } from 'recharts/types/component/Tooltip';
 import {
   EXPENSE_TYPES,
   EXPENSE_TYPE_COLORS,
   EXPENSE_TYPE_LABELS,
 } from '../constants';
+import { buildExpenseChart } from '../lib/expense-chart';
 import type { ExpenseData, ExpenseType } from '../types';
-
-interface ChartDataPoint {
-  // "Mar 2026"
-  month: string;
-  // "2026-03"
-  monthKey: string;
-  total: number;
-  [key: string]: number | string;
-}
-
-function buildChartData(expenses: ExpenseData[]): ChartDataPoint[] {
-  const now = new Date();
-  const months: ChartDataPoint[] = [];
-
-  // Generate past 12 months
-  for (let i = 11; i >= 0; i--) {
-    const d = subMonths(now, i);
-    const monthKey = format(d, 'yyyy-MM');
-    const label = format(d, 'MMM yyyy');
-    const point: ChartDataPoint = { month: label, monthKey, total: 0 };
-    for (const t of EXPENSE_TYPES) {
-      point[t] = 0;
-    }
-    months.push(point);
-  }
-
-  // Fill in expenses
-  for (const e of expenses) {
-    // "2026-03"
-    const key = e.date.slice(0, 7);
-    const point = months.find((m) => m.monthKey === key);
-    if (!point) continue;
-
-    // Use the user's share (total - what others owe) for shared expenses
-    let userAmount = e.amount;
-    if (e.splitType === 'shared' && e.splits.length > 0) {
-      const othersTotal = e.splits.reduce((sum, s) => sum + s.amount, 0);
-      userAmount = e.amount - othersTotal;
-    }
-
-    point[e.type] = (point[e.type] as number) + userAmount;
-    point.total += userAmount;
-  }
-
-  return months;
-}
-
-function getActiveTypes(data: ChartDataPoint[]): ExpenseType[] {
-  return EXPENSE_TYPES.filter((t) => data.some((d) => (d[t] as number) > 0));
-}
 
 interface ExpenseChartProps {
   expenses: ExpenseData[];
@@ -87,45 +37,32 @@ interface ExpenseChartProps {
 
 export function ExpenseChart({ expenses }: ExpenseChartProps) {
   const { hidden, mask } = useAmountVisibility();
-  const chartData = buildChartData(expenses);
-  const activeTypes = getActiveTypes(chartData);
-
-  const monthsWithData = chartData.filter((d) => d.total > 0);
-  const avgExpense =
-    monthsWithData.length > 0
-      ? monthsWithData.reduce((sum, d) => sum + d.total, 0) /
-        monthsWithData.length
-      : 0;
-
-  const totalExpense = chartData.reduce((sum, d) => sum + d.total, 0);
-
-  // All-time average: group all expenses by month, average across every month with spend
-  const allTimeMonthTotals = new Map<string, number>();
-  for (const e of expenses) {
-    const key = e.date.slice(0, 7);
-    let userAmount = e.amount;
-    if (e.splitType === 'shared' && e.splits.length > 0) {
-      userAmount = e.amount - e.splits.reduce((sum, s) => sum + s.amount, 0);
-    }
-    allTimeMonthTotals.set(
-      key,
-      (allTimeMonthTotals.get(key) ?? 0) + userAmount
+  const summary = buildExpenseChart(expenses);
+  if (expenses.length === 0 || !summary) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Monthly Expenses</CardTitle>
+          <CardDescription>
+            {expenses.length === 0
+              ? 'No expenses yet. Add an expense or import a bank PDF below.'
+              : 'Spending totals are unavailable. Check amounts and shared splits in Transactions.'}
+          </CardDescription>
+        </CardHeader>
+      </Card>
     );
   }
-  const allTimeAvg =
-    allTimeMonthTotals.size > 0
-      ? Array.from(allTimeMonthTotals.values()).reduce((sum, v) => sum + v, 0) /
-        allTimeMonthTotals.size
-      : 0;
-  const maxTotal = Math.max(...chartData.map((d) => d.total), 0);
+  const { chartData, totalExpense, avgExpense, allTimeAvg } = summary;
+  const activeTypes = EXPENSE_TYPES.filter((type) =>
+    chartData.some((point) => (point[type] as number) > 0)
+  );
+  const maxTotal = Math.max(...chartData.map((point) => point.total), 0);
   const yMax = Math.ceil(maxTotal / 500) * 500 || 500;
-
-  if (expenses.length === 0) return null;
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="text-xl">Monthly Expenses</CardTitle>
             <CardDescription>Breakdown by category</CardDescription>
@@ -133,11 +70,11 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
               <ExpenseAnomalyReview />
             </div>
           </div>
-          <div className="text-right">
+          <div className="min-w-0 sm:text-right">
             <p className="text-muted-foreground mb-0.5 text-xs tracking-wide uppercase">
               12-month total
             </p>
-            <p className="text-2xl font-bold">
+            <p className="text-2xl font-bold break-words tabular-nums">
               {mask(formatSGDWhole(totalExpense))}
             </p>
             <p className="text-muted-foreground text-xs">
@@ -148,11 +85,11 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
       </CardHeader>
       <CardContent>
         {hidden ? (
-          <p className="text-muted-foreground flex h-[350px] items-center justify-center text-sm">
+          <p className="text-muted-foreground flex h-[240px] items-center justify-center text-sm sm:h-[350px]">
             Chart hidden while amounts are hidden.
           </p>
         ) : (
-          <div className="expenses-bar-chart h-[350px] w-full">
+          <div className="expenses-bar-chart h-[240px] w-full sm:h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} barCategoryGap="15%">
                 <XAxis

@@ -1,7 +1,7 @@
 'use client';
 
 import { DashboardError } from '@/components/layout/dashboard-error';
-import { PageHeader, PageViews } from '@/components/widgets';
+import { PageHeader } from '@/components/widgets';
 import {
   ExpenseChart,
   ExpenseEntry,
@@ -24,26 +24,14 @@ export default function ExpensesPage() {
         description="Track your expenses and split shared costs"
       />
 
-      <PageViews
-        label="Expense views"
-        views={[
-          {
-            id: 'transactions',
-            label: 'Transactions',
-            content: <ExpenseEntry />,
-          },
-          {
-            id: 'spending',
-            label: 'Spending',
-            content: (
-              <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-                <ExpenseChart expenses={expenses ?? []} />
-                <OwedSummary expenses={expenses ?? []} />
-              </div>
-            ),
-          },
-          { id: 'recurring', label: 'Recurring', content: <RecurringReview /> },
-        ]}
+      <ExpenseEntry
+        overview={
+          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+            <ExpenseChart expenses={expenses ?? []} />
+            <OwedSummary expenses={expenses ?? []} />
+          </div>
+        }
+        recurring={<RecurringReview />}
       />
     </div>
   );
