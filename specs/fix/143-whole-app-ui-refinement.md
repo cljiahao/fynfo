@@ -2,7 +2,9 @@
 id: 143
 slug: whole-app-ui-refinement
 area: fix
-status: draft
+status: shipped
+shipped: 2026-10-15
+impl_pr: https://github.com/cljiahao/fynfo/pull/63
 author: Codex
 created: 2026-10-15
 constitution_satisfies: ['§2.4', '§2.5', '§3.1', '§4.1', '§7.4']
