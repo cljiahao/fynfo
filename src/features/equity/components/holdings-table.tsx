@@ -121,7 +121,6 @@ function MarketCard({
   rate,
   expanded,
   onToggle,
-  currencyToggle,
 }: {
   title: string;
   total: number | null;
@@ -132,14 +131,12 @@ function MarketCard({
   rate: number | null;
   expanded: boolean;
   onToggle: () => void;
-  currencyToggle?: React.ReactNode;
 }) {
   const { mask } = useAmountVisibility();
   const accordionValue = expanded ? title : '';
 
   return (
     <div className="space-y-2">
-      {currencyToggle}
       <Accordion
         type="single"
         collapsible
@@ -208,52 +205,57 @@ export function HoldingsTable({ trades }: HoldingsTableProps) {
   const toggle = () => setExpanded((p) => !p);
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {sgHoldings.length > 0 && (
-        <MarketCard
-          title="SG Stocks"
-          total={sgTotal}
-          holdings={sgHoldings}
-          prices={prices}
-          pricesLoading={pricesLoading}
-          displayCurrency="SGD"
-          rate={1}
-          expanded={expanded}
-          onToggle={toggle}
-        />
-      )}
+    <div className="space-y-2">
       {usHoldings.length > 0 && (
-        <MarketCard
-          title="US Stocks"
-          total={
-            usTotal === null || usRate === null
-              ? null
-              : finiteProduct(usTotal, usRate)
-          }
-          holdings={usHoldings}
-          prices={prices}
-          pricesLoading={pricesLoading}
-          displayCurrency={usDisplayCurrency}
-          rate={usRate}
-          expanded={expanded}
-          onToggle={toggle}
-          currencyToggle={
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 justify-self-start text-xs"
-              title="Switch US holdings display currency. SGD uses the current exchange-rate estimate."
-              onClick={() =>
-                setUsDisplayCurrency((currency) =>
-                  currency === 'USD' ? 'SGD' : 'USD'
-                )
-              }
-            >
-              {usDisplayCurrency}
-            </Button>
-          }
-        />
+        <div className="flex items-center justify-end gap-2 text-sm">
+          <span className="text-muted-foreground">US display</span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 justify-self-start text-xs"
+            title="Switch US holdings display currency. SGD uses the current exchange-rate estimate."
+            onClick={() =>
+              setUsDisplayCurrency((currency) =>
+                currency === 'USD' ? 'SGD' : 'USD'
+              )
+            }
+          >
+            {usDisplayCurrency}
+          </Button>
+        </div>
       )}
+      <div className="grid items-start gap-4 sm:grid-cols-2">
+        {sgHoldings.length > 0 && (
+          <MarketCard
+            title="SG Stocks"
+            total={sgTotal}
+            holdings={sgHoldings}
+            prices={prices}
+            pricesLoading={pricesLoading}
+            displayCurrency="SGD"
+            rate={1}
+            expanded={expanded}
+            onToggle={toggle}
+          />
+        )}
+        {usHoldings.length > 0 && (
+          <MarketCard
+            title="US Stocks"
+            total={
+              usTotal === null || usRate === null
+                ? null
+                : finiteProduct(usTotal, usRate)
+            }
+            holdings={usHoldings}
+            prices={prices}
+            pricesLoading={pricesLoading}
+            displayCurrency={usDisplayCurrency}
+            rate={usRate}
+            expanded={expanded}
+            onToggle={toggle}
+          />
+        )}
+      </div>
     </div>
   );
 }

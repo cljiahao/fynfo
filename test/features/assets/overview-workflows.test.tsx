@@ -178,6 +178,7 @@ it('hydrates all four server datasets into the real overview without fetching th
     api.getExpenses,
   ])
     expect(read).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
   fireEvent.change(screen.getAllByRole('spinbutton')[1], {
     target: { value: '1000' },
   });
@@ -197,6 +198,7 @@ it('keeps planner inputs unavailable after an upstream error and restores calcul
       <DashboardOverview />
     </QueryClientProvider>
   );
+  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
   expect(await screen.findByText('Net (after CPF)')).toBeTruthy();
   expect(screen.getByText('$4,000.00')).toBeTruthy();
@@ -233,6 +235,7 @@ it('reviews a selected month using existing records and hides failed review tota
     </QueryClientProvider>
   );
   await screen.findByText('Net (after CPF)');
+  fireEvent.click(screen.getByRole('button', { name: 'Review month' }));
   fireEvent.change(screen.getByLabelText('Month'), {
     target: { value: '2026-01' },
   });
@@ -289,6 +292,7 @@ it('connects calculated market budgets to real ticker allocation edits without p
       {await getPrefetchedOverview()}
     </QueryClientProvider>
   );
+  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
   await screen.findByRole('button', { name: 'SG Stocks' });
   const sgInput = getAllocationInput('DBS', 'SG Stocks');
   expect(sgInput.value).toBe('');
@@ -305,10 +309,12 @@ it('connects calculated market budgets to real ticker allocation edits without p
   });
   api.getSnapshots.mockRejectedValueOnce(new Error('offline'));
   await client.invalidateQueries({ queryKey: ['snapshots'] });
+  fireEvent.click(screen.getByRole('button', { name: 'Overview' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
   );
+  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
   expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe(
     '8000'
   );
@@ -317,10 +323,12 @@ it('connects calculated market budgets to real ticker allocation edits without p
 
   api.getExpenses.mockRejectedValueOnce(new Error('offline'));
   await client.invalidateQueries({ queryKey: ['expenses'] });
+  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
   );
+  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
   expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe(
     '8000'
   );

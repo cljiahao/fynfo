@@ -10,7 +10,8 @@ export function SignOutButton() {
     <Button
       onClick={signOut}
       disabled={isSigningOut}
-      className="bg-primary hover:bg-primary-hover h-12 w-full rounded-md font-bold text-white"
+      variant="ghost"
+      className="h-10 w-full"
     >
       Log out
     </Button>

@@ -2,7 +2,7 @@
 
 import { DashboardError } from '@/components/layout/dashboard-error';
 import { Button } from '@/components/ui/button';
-import { PageHeader } from '@/components/widgets';
+import { PageHeader, PageViews } from '@/components/widgets';
 import {
   DistributionsSection,
   EquityTradeData,
@@ -47,13 +47,31 @@ export default function EquityPage() {
         }
       />
 
-      <PortfolioSummary trades={trades ?? []} />
-
-      <HoldingsTable trades={trades ?? []} />
-
-      <TradeTable trades={trades ?? []} onEdit={handleEdit} />
-
-      <DistributionsSection trades={trades ?? []} />
+      <PageViews
+        label="Equity views"
+        views={[
+          {
+            id: 'holdings',
+            label: 'Holdings',
+            content: (
+              <>
+                <PortfolioSummary trades={trades ?? []} />
+                <HoldingsTable trades={trades ?? []} />
+              </>
+            ),
+          },
+          {
+            id: 'trades',
+            label: 'Trade history',
+            content: <TradeTable trades={trades ?? []} onEdit={handleEdit} />,
+          },
+          {
+            id: 'dividends',
+            label: 'Dividends',
+            content: <DistributionsSection trades={trades ?? []} />,
+          },
+        ]}
+      />
 
       <TradeFormDialog
         open={formOpen}

@@ -15,6 +15,7 @@ import type { AssetCategory, SnapshotWithTotals } from '../types';
 
 interface SummaryCardsProps {
   snapshots: SnapshotWithTotals[];
+  compact?: boolean;
 }
 
 function sumByCategories(
@@ -31,11 +32,13 @@ function ChangeCard({
   current,
   previous,
   previousId,
+  compact,
 }: {
   title: string;
   current: number;
   previous: number;
   previousId: string | undefined;
+  compact?: boolean;
 }) {
   const { hidden, mask } = useAmountVisibility();
   const { absolute: change, percentage: pct } = calculateMoMChange(
@@ -44,6 +47,7 @@ function ChangeCard({
   );
   return (
     <StatCard
+      compact={compact}
       label={title}
       value={mask(`${change >= 0 ? '+' : ''}${formatSGDWhole(change)}`)}
       tone={hidden ? 'default' : change >= 0 ? 'gain' : 'loss'}
@@ -57,7 +61,10 @@ function ChangeCard({
   );
 }
 
-export function SummaryCards({ snapshots }: SummaryCardsProps) {
+export function SummaryCards({
+  snapshots,
+  compact = false,
+}: SummaryCardsProps) {
   const { mask } = useAmountVisibility();
   const latest = getLatestSnapshot(snapshots);
   const previous = latest
@@ -82,26 +89,36 @@ export function SummaryCards({ snapshots }: SummaryCardsProps) {
     : 0;
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div
+      className={
+        compact
+          ? 'grid grid-cols-2 gap-x-6 gap-y-2 lg:grid-cols-4'
+          : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-4'
+      }
+    >
       <StatCard
+        compact={compact}
         label="Total Assets"
         value={mask(formatSGDWhole(currentTotal))}
         icon={Wallet}
         hint={latest?.id ?? 'No data'}
       />
       <StatCard
+        compact={compact}
         label="Excl. Pension"
         value={mask(formatSGDWhole(latestExPension))}
         icon={Wallet}
         hint={latest?.id ?? 'No data'}
       />
       <ChangeCard
+        compact={compact}
         title="Savings Change"
         current={currentSavings}
         previous={previousSavings}
         previousId={previous?.id}
       />
       <ChangeCard
+        compact={compact}
         title="Investment Change"
         current={currentInvestment}
         previous={previousInvestment}

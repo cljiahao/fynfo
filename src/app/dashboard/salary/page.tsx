@@ -2,7 +2,7 @@
 
 import { DashboardError } from '@/components/layout/dashboard-error';
 import { Button } from '@/components/ui/button';
-import { PageHeader } from '@/components/widgets';
+import { PageHeader, PageViews } from '@/components/widgets';
 import {
   SalaryChart,
   SalaryFormDialog,
@@ -45,11 +45,26 @@ export default function SalaryPage() {
         }
       />
 
-      <SalarySummary records={records ?? []} />
-
-      <SalaryChart records={records ?? []} />
-
-      <SalaryTable onEdit={handleEdit} />
+      <PageViews
+        label="Salary views"
+        views={[
+          {
+            id: 'history',
+            label: 'Records',
+            content: <SalaryTable onEdit={handleEdit} />,
+          },
+          {
+            id: 'trends',
+            label: 'Trends',
+            content: <SalaryChart records={records ?? []} />,
+          },
+          {
+            id: 'tax',
+            label: 'Tax & CPF',
+            content: <SalarySummary records={records ?? []} />,
+          },
+        ]}
+      />
 
       <SalaryFormDialog
         open={formOpen}
