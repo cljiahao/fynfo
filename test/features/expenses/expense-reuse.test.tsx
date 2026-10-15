@@ -377,6 +377,67 @@ it('uses the activation day rather than a mounted date across local midnight', a
   );
 });
 
+it('opens Spending first and preserves Quick add while Transactions shows only history', () => {
+  render(
+    <ExpenseEntry
+      overview={<p>Spending overview</p>}
+      recurring={<p>Recurring templates</p>}
+    />
+  );
+  expect(screen.getByRole('button', { name: 'Spending' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  expect(screen.getByText('Spending overview')).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: 'Reuse' })
+  ).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole('textbox', { name: 'Item / Brand' }), {
+    target: { value: 'Preserved draft' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Transactions' }));
+  expect(screen.getByRole('button', { name: 'Reuse' })).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: 'Quick add' })
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Spending' }));
+  expect(screen.getByRole('textbox', { name: 'Item / Brand' })).toHaveValue(
+    'Preserved draft'
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Import statement' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Recurring' }));
+  expect(screen.getByText('Recurring templates')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Spending' }));
+  expect(screen.getByRole('button', { name: 'Choose bank PDF' })).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Quick add' }));
+  expect(screen.getByRole('textbox', { name: 'Item / Brand' })).toHaveValue(
+    'Preserved draft'
+  );
+});
+
+it('reveals Quick add for Reuse and returns focus to Transactions on cancellation', async () => {
+  render(<ExpenseEntry overview={<p>Spending overview</p>} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Import statement' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Transactions' }));
+  const origin = screen.getByRole('button', { name: 'Reuse' });
+  fireEvent.click(origin);
+  expect(screen.getByRole('button', { name: 'Spending' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  expect(screen.getByRole('textbox', { name: 'Item / Brand' })).toHaveValue(
+    source.item
+  );
+  expect(screen.getByRole('textbox', { name: 'Item / Brand' })).toHaveFocus();
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel reuse' }));
+  await waitFor(() => expect(origin).toHaveFocus());
+  expect(screen.getByRole('button', { name: 'Transactions' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  expect(boundary.save).not.toHaveBeenCalled();
+});
+
 it('coordinates the actual table action with Quick Add and suppresses optimistic pending sources', () => {
   const { rerender } = render(<ExpenseEntry />);
   fireEvent.click(screen.getByRole('button', { name: 'Reuse' }));

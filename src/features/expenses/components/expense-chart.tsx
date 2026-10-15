@@ -45,7 +45,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
           <CardTitle>Monthly Expenses</CardTitle>
           <CardDescription>
             {expenses.length === 0
-              ? 'No expenses yet. Open Transactions to add an expense or import a bank PDF.'
+              ? 'No expenses yet. Add an expense or import a bank PDF below.'
               : 'Spending totals are unavailable. Check amounts and shared splits in Transactions.'}
           </CardDescription>
         </CardHeader>
@@ -85,11 +85,11 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
       </CardHeader>
       <CardContent>
         {hidden ? (
-          <p className="text-muted-foreground flex h-[350px] items-center justify-center text-sm">
+          <p className="text-muted-foreground flex h-[240px] items-center justify-center text-sm sm:h-[350px]">
             Chart hidden while amounts are hidden.
           </p>
         ) : (
-          <div className="expenses-bar-chart h-[350px] w-full">
+          <div className="expenses-bar-chart h-[240px] w-full sm:h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} barCategoryGap="15%">
                 <XAxis

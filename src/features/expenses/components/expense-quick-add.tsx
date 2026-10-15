@@ -54,8 +54,10 @@ export function ExpenseQuickAdd({
   readSavedExpenses,
   onReuseAvailabilityChange,
   onSavedExpensesRead,
+  onReturnToSource,
 }: {
   ref?: Ref<ExpenseQuickAddHandle>;
+  onReturnToSource?: (origin: HTMLButtonElement) => void;
   readSavedExpenses?: () => Promise<ExpenseData[]>;
   onReuseAvailabilityChange?: (available: boolean) => void;
   onSavedExpensesRead?: (records: ExpenseData[]) => void;
@@ -167,8 +169,10 @@ export function ExpenseQuickAdd({
     setDate(format(new Date(), 'yyyy-MM-dd'));
     setType('food_drink');
     setDialog(null);
-    if (originRef.current?.isConnected) originRef.current.focus();
-    else headingRef.current?.focus();
+    if (originRef.current?.isConnected) {
+      if (onReturnToSource) onReturnToSource(originRef.current);
+      else originRef.current.focus();
+    } else headingRef.current?.focus();
     dialogReturnFocus.current = originRef.current?.isConnected
       ? originRef.current
       : headingRef.current;

@@ -7,11 +7,16 @@ import { useId, useState, type ReactNode } from 'react';
 export function PageViews({
   label,
   views,
+  value,
+  onValueChange,
 }: {
+  value?: string;
+  onValueChange?: (value: string) => void;
   label: string;
   views: { id: string; label: string; content: ReactNode }[];
 }) {
-  const [selected, setSelected] = useState(views[0]?.id);
+  const [internalSelected, setSelected] = useState(views[0]?.id);
+  const selected = value ?? internalSelected;
   const id = useId();
   return (
     <div className="space-y-6">
@@ -28,7 +33,10 @@ export function PageViews({
             variant={selected === view.id ? 'secondary' : 'ghost'}
             aria-pressed={selected === view.id}
             aria-controls={`${id}-${view.id}`}
-            onClick={() => setSelected(view.id)}
+            onClick={() => {
+              setSelected(view.id);
+              onValueChange?.(view.id);
+            }}
           >
             {view.label}
           </Button>

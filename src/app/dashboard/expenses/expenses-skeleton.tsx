@@ -19,25 +19,6 @@ export function ExpensesSkeleton() {
       </div>
 
       <Skeleton className="h-20 w-full rounded-xl" />
-
-      <div className="rounded-xl border">
-        <div className="flex-between border-b px-4 py-3">
-          <Skeleton className="h-5 w-28" />
-          <Skeleton className="h-8 w-24" />
-        </div>
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-4 border-b px-4 py-3 last:border-0"
-          >
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-4 flex-1" />
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-5 w-16 rounded-full" />
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

@@ -374,7 +374,7 @@ it('chart totals exclude old months and use personal shares while all-time avera
     ),
   });
   expect(
-    screen.getByText(/No expenses yet. Open Transactions/)
+    screen.getByText(/No expenses yet. Add an expense/)
   ).toBeInTheDocument();
   view.rerender(
     <ExpenseChart
