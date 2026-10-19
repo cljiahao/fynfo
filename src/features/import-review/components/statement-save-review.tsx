@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { buildImportNote } from '@/features/expenses';
+import { buildImportNote, IMPORT_SAVE_LIMIT } from '@/features/expenses';
 import { useAmountVisibility } from '@/features/privacy';
 import { IMPORT_OUTCOME_LABELS } from '../constants';
 import type { useStatementSave } from '../hooks/use-statement-save';
@@ -20,9 +20,9 @@ export function StatementSaveReview({ save }: { save: SaveReview }) {
           {save.selection.length} selected · SGD {save.total.toFixed(2)}
         </p>
       )}
-      {!hidden && save.selection.length > 20 && (
+      {!hidden && save.selection.length > IMPORT_SAVE_LIMIT && (
         <p role="status" className="text-warning-strong text-sm">
-          Select up to 20 purchases at a time to continue.
+          Select up to {IMPORT_SAVE_LIMIT} purchases at a time to continue.
         </p>
       )}
       <div className="flex flex-wrap gap-2">
@@ -43,12 +43,24 @@ export function StatementSaveReview({ save }: { save: SaveReview }) {
           Save selected expenses
         </Button>
       </div>
+      {!hidden && save.busy && Object.keys(save.attempts).length > 0 && (
+        <p role="status" className="text-sm tabular-nums">
+          Saving expenses:{' '}
+          {
+            Object.values(save.attempts).filter(
+              (attempt) => !['pending', 'not_started'].includes(attempt.status)
+            ).length
+          }{' '}
+          of {Object.keys(save.attempts).length} checked. Keep this review open.
+        </p>
+      )}
       <details className="text-muted-foreground text-sm">
         <summary className="cursor-pointer">What gets saved</summary>
         <p className="mt-2">
-          Self expenses in SGD only, up to 20 per batch. Each expense includes
-          its original transaction text in an encrypted source note. Duplicate
-          warnings do not guarantee prevention across imports.
+          Self expenses in SGD only. Selected purchases are saved in automatic
+          groups. Each expense includes its original transaction text in an
+          encrypted source note. Duplicate warnings do not guarantee prevention
+          across imports.
         </p>
       </details>
       {!hidden && save.duplicateIds.length > 0 && (

@@ -420,10 +420,12 @@ after edits. Current invalid expense draft fields also need review.
 Only unprotected text PDFs up to 10 MiB and 100 pages are supported. The PDF is
 not uploaded. Select eligible positive SGD self expenses, compare the source
 page, run **Check possible duplicates**, and explicitly **Save selected expenses**
-(maximum 20 per batch). Possible matches require source comparison and acknowledgement;
+(up to 500 selected purchases, saved automatically in bounded groups). Possible matches require source comparison and acknowledgement;
 they are warnings, not durable cross-file prevention. Selected fields and original
 transaction source notes are sent only on save and encrypted before storage.
-Each insert is separate: partial outcomes stay visible. A confirmed record cannot
+Each group uses one encrypted insert transaction; partial outcomes across groups stay visible.
+Request deadlines release stalled reviews without assuming a write failed. Check saved
+expenses after an unconfirmed save; keep the review open to preserve its retry identities. A confirmed record cannot
 be submitted again in that review. Definite rejection permits an identical-ID/payload
 retry; lost acknowledgements retain a frozen submission for **Check saved expenses**.
 An exact read confirms it, changed values freeze a conflict, and absence remains

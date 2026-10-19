@@ -118,3 +118,11 @@ export const EXPENSE_ANOMALY_REVIEW_MESSAGES = {
   'invalid-metadata': 'Recorded category, split type or identity needs review.',
   'duplicate-id': 'Repeated record identities prevent a reliable comparison.',
 } as const;
+
+// Internal group size bounds the encrypted action payload; selection is separate.
+export const IMPORT_SAVE_LIMIT = 500;
+export const IMPORT_SAVE_GROUP_SIZE = 20;
+export const IMPORT_REQUEST_TIMEOUT_MS = 30_000;
+export const IMPORT_SERVER_STEP_TIMEOUT_MS = 8_000;
+export const IMPORT_SAVE_MAX_BYTES = 512 * 1024;
+export const EXPENSE_READ_TIMEOUT_MS = 15_000;

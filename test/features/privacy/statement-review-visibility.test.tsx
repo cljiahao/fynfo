@@ -29,8 +29,13 @@ vi.mock('@/features/expenses', async () => ({
   ...(await import('@/features/expenses/lib/import-expense')),
   EXPENSE_TYPE_LABELS: { other: 'Other', groceries: 'Groceries' },
   EXPENSE_KEY: ['expenses'],
+  IMPORT_SAVE_LIMIT: 500,
+  IMPORT_SAVE_GROUP_SIZE: 20,
+  IMPORT_SAVE_MAX_BYTES: 512 * 1024,
+  IMPORT_REQUEST_TIMEOUT_MS: 30_000,
   getExpenses: vi.fn().mockResolvedValue([]),
   insertImportedExpense: vi.fn(),
+  insertImportedExpenses: vi.fn(),
 }));
 const lines: StatementLine[] = [
   { page: 1, line: 1, text: 'UOB' },

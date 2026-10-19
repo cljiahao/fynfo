@@ -48,8 +48,21 @@ vi.mock('@/features/expenses', async () => ({
   ...(await import('@/features/expenses/lib/import-expense')),
   EXPENSE_TYPE_LABELS: { other: 'Other', groceries: 'Groceries' },
   EXPENSE_KEY: ['expenses'],
+  IMPORT_SAVE_LIMIT: 500,
+  IMPORT_SAVE_GROUP_SIZE: 20,
+  IMPORT_SAVE_MAX_BYTES: 512 * 1024,
+  IMPORT_REQUEST_TIMEOUT_MS: 30_000,
   getExpenses: mocks.read,
   insertImportedExpense: mocks.insert,
+  insertImportedExpenses: async (inputs: unknown[]) =>
+    Promise.all(
+      inputs.map((input) =>
+        mocks.insert(input).catch(() => ({
+          id: (input as { id: string }).id,
+          status: 'unconfirmed',
+        }))
+      )
+    ),
 }));
 beforeEach(() => {
   vi.clearAllMocks();
@@ -280,7 +293,7 @@ it('hide during pending save rejects its late acknowledgement, masks notes and p
   fireEvent.click(
     screen.getByRole('button', { name: 'Save selected expenses' })
   );
-  await screen.findByText(/Saving/);
+  await screen.findByText(/Saving expenses:/);
   fireEvent.click(
     screen.getByRole('button', { name: 'Hide amounts', hidden: true })
   );
@@ -433,7 +446,7 @@ it('does not recreate a removed private query when a deferred refresh is release
   expect(invalidation).not.toHaveBeenCalled();
   client.clear();
 });
-it('stops a partial batch on unknown outcome, retains unsent payload and resumes only after exact check', async () => {
+it('pauses after an uncertain group and checks all submitted identities without resending', async () => {
   mocks.extract.mockResolvedValue(
     [
       'UOB SGD billed',
@@ -443,16 +456,12 @@ it('stops a partial batch on unknown outcome, retains unsent payload and resumes
     ].map((text, index) => ({ page: 1, line: index + 1, text }))
   );
   await setup();
-  fireEvent.click(screen.getByLabelText('Select expense from page 1, line 2'));
-  fireEvent.click(screen.getByLabelText('Select expense from page 1, line 3'));
-  fireEvent.click(screen.getByLabelText('Select expense from page 1, line 4'));
+  fireEvent.click(screen.getByRole('button', { name: 'Select all expenses' }));
   mocks.insert.mockImplementationOnce(async (input: ImportedExpenseInput) => ({
     id: input.id,
     status: 'confirmed',
   }));
-  mocks.insert.mockImplementationOnce(async () => {
-    throw new Error('lost ack');
-  });
+  mocks.insert.mockRejectedValueOnce(new Error('lost ack'));
   fireEvent.click(
     screen.getByRole('button', { name: 'Check possible duplicates' })
   );
@@ -464,32 +473,18 @@ it('stops a partial batch on unknown outcome, retains unsent payload and resumes
   fireEvent.click(
     screen.getByRole('button', { name: 'Save selected expenses' })
   );
-  await screen.findByText(
-    /1 confirmed · 0 not saved · 1 unconfirmed · 0 conflicts · 1 not started/
-  );
-  expect(mocks.insert).toHaveBeenCalledTimes(2);
-  expect(
-    screen.getByRole('button', { name: 'Continue frozen batch' })
-  ).toBeDisabled();
+  await screen.findByText(/2 confirmed · 0 not saved · 1 unconfirmed/);
+  expect(mocks.insert).toHaveBeenCalledTimes(3);
   mocks.read.mockResolvedValue(
     mocks.insert.mock.calls.map(([input]) => importedExpenseValues(input))
   );
   fireEvent.click(screen.getByRole('button', { name: 'Check saved expenses' }));
-  await waitFor(() =>
-    expect(
-      screen.getByRole('button', { name: 'Continue frozen batch' })
-    ).toBeEnabled()
-  );
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Continue frozen batch' })
-  );
   await screen.findByText(/3 confirmed · 0 not saved/);
   expect(mocks.insert).toHaveBeenCalledTimes(3);
-  expect(mocks.insert.mock.calls[2][0].description).toBe('MARKET THREE');
 });
 // Dense native-control fixture exceeded 10s in the parallel V8 coverage run.
 // Keep all 21 selections/assertions; only this test gets a 20s harness allowance.
-it('selection across pages is included and a twenty-one row selection blocks the bounded batch', async () => {
+it('selection across pages is included and twenty-one rows save in automatic groups', async () => {
   mocks.extract.mockResolvedValue(
     [
       'UOB SGD billed',
@@ -512,15 +507,21 @@ it('selection across pages is included and a twenty-one row selection blocks the
   fireEvent.click(screen.getByLabelText('Select expense from page 1, line 22'));
   expect(screen.getByText(/21 selected/)).toBeVisible();
   expect(
-    screen.getByText('Select up to 20 purchases at a time to continue.')
-  ).toBeVisible();
-  expect(
     screen.getByRole('button', { name: 'Check possible duplicates' })
-  ).toBeDisabled();
-  expect(
+  ).toBeEnabled();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Check possible duplicates' })
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Save selected expenses' })
+    ).toBeEnabled()
+  );
+  fireEvent.click(
     screen.getByRole('button', { name: 'Save selected expenses' })
-  ).toBeDisabled();
-  expect(mocks.insert).not.toHaveBeenCalled();
+  );
+  await screen.findByText(/21 confirmed · 0 not saved/);
+  expect(mocks.insert).toHaveBeenCalledTimes(21);
 }, 20_000);
 
 it('checks a hidden interrupted save before its old acknowledgement returns and ignores that late result', async () => {

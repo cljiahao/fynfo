@@ -1,11 +1,14 @@
-import { insertImportedExpense } from '@/features/expenses/actions/import-expense-actions';
+import {
+  insertImportedExpense,
+  insertImportedExpenses,
+} from '@/features/expenses/actions/import-expense-actions';
 import {
   importedExpenseSchema,
   importedExpenseValues,
   type ImportedExpenseInput,
 } from '@/features/expenses/lib/import-expense';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeFakeSupabase } from '../../helpers/fake-supabase';
 
 const key = Buffer.alloc(32, 7);
@@ -207,4 +210,144 @@ describe('insert-only import boundary', () => {
     });
     expect((await insertImportedExpense(input)).status).toBe('unconfirmed');
   });
+});
+
+describe('grouped insert-only import', () => {
+  const second = { ...input, id: '6712c00e-90cd-44f7-9d55-4dd4e55044b3' };
+  it('authenticates once and encrypts multiple purchases in one insert', async () => {
+    const fake = setup();
+    expect(await insertImportedExpenses([input, second])).toEqual([
+      { id: input.id, status: 'confirmed' },
+      { id: second.id, status: 'confirmed' },
+    ]);
+    expect(mocks.context).toHaveBeenCalledTimes(1);
+    expect(fake.calls.insert).toHaveLength(1);
+    const records = fake.calls.insert[0] as Record<string, string>[];
+    expect(records).toHaveLength(2);
+    for (const record of records) {
+      expect(record.user_id).toBe('synthetic-owner');
+      expect(decryptPayload(record.item, key)).toBe(input.description);
+      expect(decryptPayload(record.amount, key)).toBe('12.3');
+    }
+    expect(fake.calls.upsert).toHaveLength(0);
+    expect(fake.calls.update).toHaveLength(0);
+  });
+  it.each(
+    [[input, input], Array(21).fill(input), [{ ...input, cents: -1 }], []].map(
+      (rows) => [rows]
+    )
+  )('rejects malformed or oversized groups before auth %#', async (rows) => {
+    const fake = setup();
+    expect(await insertImportedExpenses(rows)).toEqual([]);
+    expect(mocks.context).not.toHaveBeenCalled();
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+  it('reconciles identical IDs after atomic rejection, leaving absent rows safely retryable', async () => {
+    const fake = setup({
+      insertError: { code: '23505', message: 'private' },
+      selectDataByTable: await savedRows(),
+    });
+    expect(await insertImportedExpenses([input, second])).toEqual([
+      { id: input.id, status: 'confirmed' },
+      { id: second.id, status: 'not_saved' },
+    ]);
+    expect(fake.calls.insert).toHaveLength(1);
+    expect(fake.calls.update).toHaveLength(0);
+  });
+  it('never overwrites a changed retained ID', async () => {
+    setup({
+      insertError: { code: '23505', message: 'private' },
+      selectDataByTable: await savedRows({
+        item: encryptPayload('Changed', key),
+      }),
+    });
+    expect(await insertImportedExpenses([input])).toEqual([
+      { id: input.id, status: 'conflict' },
+    ]);
+  });
+  it.each(['23502', '23503', '23514', '42501'])(
+    'reports definite rejection %s without DB detail',
+    async (code) => {
+      setup({ insertError: { code, message: 'private' } });
+      expect(await insertImportedExpenses([input])).toEqual([
+        { id: input.id, status: 'not_saved', reason: 'rejected' },
+      ]);
+    }
+  );
+  it.each(['57014', 'PGRST000'])('keeps %s unconfirmed', async (code) => {
+    setup({ insertError: { code, message: 'private' } });
+    expect(await insertImportedExpenses([input])).toEqual([
+      { id: input.id, status: 'unconfirmed' },
+    ]);
+  });
+  it('returns a fixed access hint without dispatching if the vault is unavailable', async () => {
+    const fake = setup();
+    mocks.context.mockRejectedValue(new Error('private'));
+    expect(await insertImportedExpenses([input])).toEqual([
+      { id: input.id, status: 'not_saved', reason: 'access' },
+    ]);
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+});
+
+afterEach(() => vi.useRealTimers());
+it('releases an unavailable auth request without ever dispatching after a late auth response', async () => {
+  vi.useFakeTimers();
+  const fake = setup();
+  let finish!: (context: unknown) => void;
+  mocks.context.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  const result = insertImportedExpenses([input]);
+  await vi.advanceTimersByTimeAsync(8_000);
+  expect(await result).toEqual([
+    { id: input.id, status: 'not_saved', reason: 'access' },
+  ]);
+  finish({ userId: 'synthetic-owner', dek: key, supabase: fake.client });
+  await Promise.resolve();
+  expect(fake.calls.insert).toHaveLength(0);
+});
+it('releases a hung insert as unconfirmed, never definite rejection', async () => {
+  vi.useFakeTimers();
+  mocks.context.mockResolvedValue({
+    userId: 'synthetic-owner',
+    dek: key,
+    supabase: { from: () => ({ insert: () => new Promise(() => {}) }) },
+  });
+  const result = insertImportedExpenses([input]);
+  await vi.advanceTimersByTimeAsync(8_000);
+  expect(await result).toEqual([{ id: input.id, status: 'unconfirmed' }]);
+});
+
+it('bounds hung expense-history reads on the server so later reads can proceed', async () => {
+  vi.useFakeTimers();
+  const { getExpenses } =
+    await import('@/features/expenses/actions/expense-actions');
+  const builder = {
+    select() {
+      return this;
+    },
+    eq() {
+      return this;
+    },
+    order() {
+      return this;
+    },
+    range() {
+      return new Promise(() => {});
+    },
+  };
+  mocks.context.mockResolvedValue({
+    userId: 'synthetic-owner',
+    dek: key,
+    supabase: { from: () => builder },
+  });
+  const result = expect(getExpenses()).rejects.toThrow('Request timed out');
+  await vi.advanceTimersByTimeAsync(15_000);
+  await result;
+  setup({ selectData: [] });
+  expect(await getExpenses()).toEqual([]);
 });

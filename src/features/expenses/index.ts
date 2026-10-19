@@ -1,7 +1,17 @@
 export { getExpenses } from './actions/expense-actions';
-export { insertImportedExpense } from './actions/import-expense-actions';
+export {
+  insertImportedExpense,
+  insertImportedExpenses,
+} from './actions/import-expense-actions';
 export * from './components';
-export { EXPENSE_KEY, EXPENSE_TYPE_LABELS } from './constants';
+export {
+  EXPENSE_KEY,
+  EXPENSE_TYPE_LABELS,
+  IMPORT_REQUEST_TIMEOUT_MS,
+  IMPORT_SAVE_GROUP_SIZE,
+  IMPORT_SAVE_LIMIT,
+  IMPORT_SAVE_MAX_BYTES,
+} from './constants';
 export * from './hooks';
 export {
   buildImportNote,
