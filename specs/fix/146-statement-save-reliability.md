@@ -2,7 +2,9 @@
 id: 146
 slug: statement-save-reliability
 area: fix
-status: draft
+status: shipped
+shipped: 2026-10-20
+impl_pr: https://github.com/cljiahao/fynfo/pull/66
 author: Codex
 created: 2026-10-19
 constitution_satisfies: ['§2.1', '§2.2', '§2.3', '§2.6', '§4.1', '§7.4']
@@ -38,3 +40,9 @@ Independent review identified that client deadlines alone leave hung reads ahead
 Final source: 112 tests across six affected suites and typecheck passed. Second source review found no further actionable changes after the bounded expense-history response fix. Security review confirms grouped input validation, identity/vault gating, encrypted financial fields, insert-only DB writes, fixed rejection hints, and retained ambiguous identities. No production data or credentials used. Synthetic 45-row success requires three write actions rather than 45, with one final invalidation; this measures request count, not live latency. Browser success/progress confirmed; recovery verification and full gates follow.
 
 Browser recovery verified on synthetic data: first 20 unconfirmed pause the remaining 25, continuation is disabled, an exact saved-values check confirms the retained 20 IDs, and continuation saves only the remaining groups. No live actions were loaded by the fixture. Deadline and late-result paths are covered by deterministic regression tests.
+
+## Shipped closeout
+
+Merged PR #66 as cb157eef8e3b905786df03ee6f5d36615b06f450 on 2026-10-20 (Asia/Singapore), after exact-head CI for 374f4ada5780061e5b2251b8f3577d30c7078478 passed. CI: https://github.com/cljiahao/fynfo/actions/runs/39285584272. Normal pre-commit and pre-push hooks passed: production build, check (format/lint/typecheck), and 2,106 tests across 186 suites, with 94.23% line coverage. GitHub status reporting was delayed during its Actions incident; merge waited for the final successful conclusion. Vercel preview checks passed. Live production deployment and importing real expenses were not verified; the specific original production error remains unknown.
+
+The temporary synthetic preview server on 4189 was stopped and its tab closed. The existing 4187 user preview was not disturbed. The main branch is held by the separate existing primary worktree, which was not edited; this checkout follows origin/main detached for closeout and is left clean. No branches are deleted under the repository rules.
