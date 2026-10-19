@@ -3,7 +3,10 @@
 import {
   EXPENSE_KEY,
   getExpenses,
-  insertImportedExpense,
+  IMPORT_SAVE_GROUP_SIZE,
+  IMPORT_SAVE_LIMIT,
+  IMPORT_SAVE_MAX_BYTES,
+  insertImportedExpenses,
   type ImportedExpenseInput,
   type ImportExpenseOutcome,
 } from '@/features/expenses';
@@ -16,6 +19,7 @@ import {
   hasSourceDuplicate,
   possibleImportDuplicates,
 } from '../lib/import-selection';
+import { withImportDeadline } from '../lib/request-deadline';
 import type {
   StatementBank,
   StatementCandidate,
@@ -25,6 +29,7 @@ import type {
 type Attempt = {
   input: ImportedExpenseInput;
   status: ImportExpenseOutcome['status'] | 'not_started' | 'pending';
+  reason?: ImportExpenseOutcome['reason'];
 };
 
 export function useStatementSave(
@@ -123,7 +128,7 @@ export function useStatementSave(
   const signature = JSON.stringify(inputs);
   const ready =
     inputs.length > 0 &&
-    inputs.length <= 20 &&
+    inputs.length <= IMPORT_SAVE_LIMIT &&
     inputs.every((input) => input !== null);
   const duplicateIds = duplicates.filter((id) =>
     inputs.some((input) => input?.id === id)
@@ -147,7 +152,7 @@ export function useStatementSave(
     const eligible = candidates.filter(
       (row) => !attemptsRef.current[row.id] && inputFor(row) !== null
     );
-    setSelection(eligible.slice(0, 20).map((row) => row.id));
+    setSelection(eligible.slice(0, IMPORT_SAVE_LIMIT).map((row) => row.id));
     setChecked('');
     setAcknowledged(false);
   }
@@ -196,7 +201,7 @@ export function useStatementSave(
     const op = ++operation.current;
     const epoch = privacy.getHideEpoch();
     try {
-      const saved = await getExpenses();
+      const saved = await withImportDeadline(getExpenses());
       if (!valid(op, epoch)) return;
       const chosen = inputs.filter(
         (input): input is ImportedExpenseInput => input !== null
@@ -243,54 +248,87 @@ export function useStatementSave(
     setMessage('');
     const op = ++operation.current;
     const epoch = privacy.getHideEpoch();
+    let confirmed = false;
     try {
-      for (const [key, attempt] of batch) {
+      for (let offset = 0; offset < batch.length; ) {
         if (!valid(op, epoch)) break;
-        updateAttempts({
-          ...attemptsRef.current,
-          [key]: { ...attempt, status: 'pending' },
-        });
-        let status: ImportExpenseOutcome['status'] = 'unconfirmed';
+        const group: Array<[string, Attempt]> = [];
+        let bytes = 2;
+        while (offset < batch.length && group.length < IMPORT_SAVE_GROUP_SIZE) {
+          const next = batch[offset];
+          const size =
+            new TextEncoder().encode(JSON.stringify(next[1].input)).length + 1;
+          if (group.length && bytes + size > IMPORT_SAVE_MAX_BYTES) break;
+          group.push(next);
+          bytes += size;
+          offset++;
+        }
+        const pending = { ...attemptsRef.current };
+        for (const [key, attempt] of group)
+          pending[key] = { ...attempt, status: 'pending' };
+        updateAttempts(pending);
+        let results: ImportExpenseOutcome[] = [];
         try {
-          const result = await insertImportedExpense(attempt.input);
-          if (
-            result?.id === attempt.input.id &&
-            ['confirmed', 'not_saved', 'unconfirmed', 'conflict'].includes(
-              result.status
-            )
-          )
-            status = result.status;
+          results = await withImportDeadline(
+            insertImportedExpenses(group.map(([, attempt]) => attempt.input))
+          );
         } catch {
-          /* A transport error is not evidence of rollback. */
+          // Timeout or transport failure never establishes rollback.
         }
         if (!valid(op, epoch)) {
           if (alive.current && operation.current === op) {
-            updateAttempts({
-              ...attemptsRef.current,
-              [key]: { ...attempt, status: 'unconfirmed' },
-            });
-            setBusy(false);
-            setChecked('');
-            setAcknowledged(false);
+            const next = { ...attemptsRef.current };
+            for (const [key, attempt] of group)
+              next[key] = { ...attempt, status: 'unconfirmed' };
+            updateAttempts(next);
           }
           break;
         }
-        updateAttempts({
-          ...attemptsRef.current,
-          [key]: { ...attempt, status },
-        });
-        if (status === 'confirmed') refresh();
-        if (status === 'unconfirmed' || status === 'conflict') break;
+        const next = { ...attemptsRef.current };
+        let stopped = false;
+        for (const [key, attempt] of group) {
+          const matches = Array.isArray(results)
+            ? results.filter((result) => result?.id === attempt.input.id)
+            : [];
+          const result = matches.length === 1 ? matches[0] : undefined;
+          const status =
+            result &&
+            ['confirmed', 'not_saved', 'unconfirmed', 'conflict'].includes(
+              result.status
+            )
+              ? result.status
+              : 'unconfirmed';
+          next[key] = { ...attempt, status, reason: result?.reason };
+          if (status === 'confirmed') confirmed = true;
+          if (status === 'unconfirmed' || status === 'conflict') stopped = true;
+        }
+        updateAttempts(next);
+        if (stopped) {
+          setMessage(
+            'Import paused. Check saved expenses before continuing; do not start the same import again.'
+          );
+          break;
+        }
+        if (group.some(([key]) => next[key].status === 'not_saved')) {
+          setMessage(
+            group.some(([key]) => next[key].reason === 'access')
+              ? 'Saving was blocked. Check that you are signed in and your vault is unlocked, then retry the same expenses.'
+              : 'This group was not saved. Retry the same expenses, or cancel rejected attempts to correct their details.'
+          );
+          break;
+        }
       }
     } finally {
       if (operation.current === op) running.current = false;
-      if (valid(op, epoch)) {
+      if (alive.current && operation.current === op) {
         setBusy(false);
         setChecked('');
         setAcknowledged(false);
+        if (confirmed && valid(op, epoch)) refresh();
       }
     }
   }
+
   async function save() {
     if (
       !reviewed ||
@@ -321,7 +359,7 @@ export function useStatementSave(
     const op = ++operation.current;
     const epoch = privacy.getHideEpoch();
     try {
-      const saved = await getExpenses();
+      const saved = await withImportDeadline(getExpenses());
       if (!valid(op, epoch)) return;
       const next = { ...attemptsRef.current };
       for (const key of Object.keys(next)) {
@@ -380,6 +418,15 @@ export function useStatementSave(
   const unresolved = Object.values(attempts).some((attempt) =>
     ['unconfirmed', 'conflict', 'pending'].includes(attempt.status)
   );
+  useEffect(() => {
+    if (!busy && !unresolved) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [busy, unresolved]);
   return {
     selection,
     attempts,

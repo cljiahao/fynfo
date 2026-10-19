@@ -16,7 +16,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { EXPENSE_TYPE_LABELS, type ExpenseType } from '@/features/expenses';
+import {
+  EXPENSE_TYPE_LABELS,
+  IMPORT_SAVE_LIMIT,
+  type ExpenseType,
+} from '@/features/expenses';
 import {
   MerchantRuleManager,
   MerchantSuggestionReview,
@@ -591,8 +595,8 @@ function StatementReviewBody({
               disabled={hidden || save.busy || eligibleCount === 0}
               onClick={() => save.selectExpenses(filteredRows)}
             >
-              {eligibleCount > 20
-                ? 'Select next 20 expenses'
+              {eligibleCount > IMPORT_SAVE_LIMIT
+                ? `Select next ${IMPORT_SAVE_LIMIT} expenses`
                 : 'Select all expenses'}
             </Button>
             {save.selection.length > 0 && (
@@ -620,7 +624,7 @@ function StatementReviewBody({
               <PopoverContent className="text-sm">
                 Select purchases, check the details, then save. Repayments are
                 hidden here. Refunds can be reviewed but are not added as
-                expenses. Select up to 20 expenses per batch.
+                expenses. Larger selections are saved in automatic groups.
               </PopoverContent>
             </Popover>
           </div>

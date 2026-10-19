@@ -35,8 +35,21 @@ vi.mock('@/features/expenses', async () => ({
   ...(await import('@/features/expenses/lib/import-expense')),
   EXPENSE_TYPE_LABELS: { other: 'Other', groceries: 'Groceries' },
   EXPENSE_KEY: ['expenses'],
+  IMPORT_SAVE_LIMIT: 500,
+  IMPORT_SAVE_GROUP_SIZE: 20,
+  IMPORT_SAVE_MAX_BYTES: 512 * 1024,
+  IMPORT_REQUEST_TIMEOUT_MS: 30_000,
   getExpenses: mocks.read,
   insertImportedExpense: mocks.insert,
+  insertImportedExpenses: async (inputs: unknown[]) =>
+    Promise.all(
+      inputs.map((input) =>
+        mocks.insert(input).catch(() => ({
+          id: (input as { id: string }).id,
+          status: 'unconfirmed',
+        }))
+      )
+    ),
 }));
 beforeEach(() => {
   vi.clearAllMocks();
@@ -475,7 +488,7 @@ it('re-extracts a corrected automatic period without reselecting the PDF and rel
   ).toBeDisabled();
 });
 
-it('hides repayments, filters refunds and bulk-selects only eligible expenses up to 20', async () => {
+it('hides repayments, filters refunds and bulk-selects all eligible expenses across pages', async () => {
   mocks.extract.mockResolvedValue(
     [
       'UOB SGD billed',
@@ -487,10 +500,8 @@ it('hides repayments, filters refunds and bulk-selects only eligible expenses up
   setup();
   await screen.findAllByLabelText('Item / Brand');
   expect(screen.queryByDisplayValue('CARD PAYMENT')).not.toBeInTheDocument();
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Select next 20 expenses' })
-  );
-  expect(screen.getByText('20 selected · SGD 246.00')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Select all expenses' }));
+  expect(screen.getByText('22 selected · SGD 270.60')).toBeVisible();
   expect(mocks.insert).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText('Show transactions'), {
     target: { value: 'refunds' },

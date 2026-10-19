@@ -6,7 +6,9 @@ import { decryptNumber, decryptOptionalString } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
+import { withDeadline } from '@/lib/with-deadline';
 import { randomUUID } from 'crypto';
+import { EXPENSE_READ_TIMEOUT_MS } from '../constants';
 import { expenseDataSchema } from '../schemas';
 import type { ExpenseData } from '../types';
 
@@ -27,6 +29,11 @@ type ExpenseRow = {
 };
 
 export async function getExpenses(): Promise<ExpenseData[]> {
+  return withDeadline(readExpenses(), EXPENSE_READ_TIMEOUT_MS);
+}
+
+// Bound the action response as well as client waiting, so later actions can run.
+async function readExpenses(): Promise<ExpenseData[]> {
   const { userId, dek, supabase } = await requireActionContext();
 
   const records = await readAllRows<ExpenseRow>(
