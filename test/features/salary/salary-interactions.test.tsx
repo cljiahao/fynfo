@@ -123,6 +123,39 @@ it('keeps salary dialog label targets distinct across mounted instances', () => 
 });
 
 describe('salary recording through real forms and queries', () => {
+  it('prefills a new record with the latest salary and leaves bonus blank', async () => {
+    actions.getSalaryRecords.mockResolvedValue([
+      { id: '2026-01', salary: 4000, bonus: 0 },
+      { id: '2026-02', salary: 4200, bonus: 500 },
+    ]);
+    mount(<SalaryFormDialog open onOpenChange={vi.fn()} />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('spinbutton', { name: 'Gross Salary' })
+      ).toHaveValue(4200)
+    );
+    expect(screen.getByRole('spinbutton', { name: 'Bonus' })).toHaveValue(null);
+  });
+
+  it('warns that saving a new record replaces an existing month', async () => {
+    actions.getSalaryRecords.mockResolvedValue([
+      { id: '2026-02', salary: 4200, bonus: 0 },
+    ]);
+    mount(<SalaryFormDialog open onOpenChange={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Month'), {
+      target: { value: '2026-02' },
+    });
+    expect(
+      await screen.findByText(
+        '2026-02 already has a record. Saving replaces it.'
+      )
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Month'), {
+      target: { value: '2026-03' },
+    });
+    expect(screen.queryByText(/already has a record/)).toBeNull();
+  });
+
   it('keeps tax calculations unavailable until a missing profile is completed', async () => {
     actions.getProfile.mockResolvedValue(null);
     mount(

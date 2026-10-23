@@ -24,6 +24,8 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   poweredByHeader: false,
+  // `next dev` otherwise appends generated rules to the governed AGENTS.md.
+  agentRules: false,
   // pino + pino-pretty + thread-stream are Node-only — keep them out of the
   // bundler so RSC / route handlers resolve them at runtime, not at build.
   serverExternalPackages: ['pino', 'pino-pretty', 'thread-stream'],
