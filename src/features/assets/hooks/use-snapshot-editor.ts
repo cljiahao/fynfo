@@ -11,7 +11,12 @@ import { toast } from 'sonner';
 import { getSnapshot } from '../actions/snapshot-actions';
 import { CATEGORIES } from '../constants';
 import { snapshotFormSchema, type SnapshotFormValues } from '../schemas';
-import type { SnapshotData, SnapshotRecord, SnapshotVersion } from '../types';
+import type {
+  AssetCategory,
+  SnapshotData,
+  SnapshotRecord,
+  SnapshotVersion,
+} from '../types';
 import {
   SNAPSHOTS_KEY,
   useSnapshot,
@@ -69,6 +74,25 @@ export function useSnapshotEditor(editId?: string) {
   const rows = useFieldArray({ control: form.control, name: 'entries' });
   const selectedMonth = useWatch({ control: form.control, name: 'id' });
   const currentEntries = useWatch({ control: form.control, name: 'entries' });
+  const previous = editId ? undefined : history.data?.at(-1);
+
+  function previousAmount(category: AssetCategory, account: string) {
+    const name = account.trim();
+    if (!previous || !name) return undefined;
+    return previous.entries.find(
+      (entry) => entry.category === category && entry.account === name
+    )?.amount;
+  }
+
+  // Fills only blank amounts so values already typed this month are kept.
+  function copyPrevious() {
+    form.getValues('entries').forEach((entry, index) => {
+      if (Number(entry.amount)) return;
+      const amount = previousAmount(entry.category, entry.account);
+      if (amount !== undefined)
+        form.setValue(`entries.${index}.amount`, amount, { shouldDirty: true });
+    });
+  }
 
   useEffect(() => {
     activeContext.current = context;
@@ -229,6 +253,9 @@ export function useSnapshotEditor(editId?: string) {
     snapshot,
     submit,
     reviewLatest,
+    previousMonth: previous?.id,
+    previousAmount,
+    copyPrevious,
     issue: activeIssue,
     isReviewing,
     isSaving: isSubmitting || upsert.isPending,

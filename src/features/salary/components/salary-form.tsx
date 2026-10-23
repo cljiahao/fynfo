@@ -15,9 +15,13 @@ import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useId, type FormEvent } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
-import { useSalaryRecord, useUpsertSalary } from '../hooks/use-salary';
+import {
+  useSalaryRecord,
+  useSalaryRecords,
+  useUpsertSalary,
+} from '../hooks/use-salary';
 
 interface SalaryFormValues {
   id: string;
@@ -44,7 +48,10 @@ export function SalaryFormDialog({
     isError,
     refetch,
   } = useSalaryRecord(editId ?? '');
+  const records = useSalaryRecords();
   const upsert = useUpsertSalary();
+  // Records are ordered by month, so the last one is the latest salary.
+  const latestSalary = records.data?.at(-1)?.salary;
 
   const defaultMonth = format(new Date(), 'yyyy-MM');
 
@@ -75,6 +82,19 @@ export function SalaryFormDialog({
       });
     }
   }, [open, editId, form, defaultMonth]);
+
+  // Salary rarely changes month to month; start a new record from the latest
+  // one, but never overwrite a value the user has already typed.
+  useEffect(() => {
+    if (!open || editId || latestSalary === undefined) return;
+    if (form.getFieldState('salary').isDirty) return;
+    if (String(form.getValues('salary')) !== '') return;
+    form.setValue('salary', latestSalary);
+  }, [open, editId, form, latestSalary]);
+
+  const selectedMonth = useWatch({ control: form.control, name: 'id' });
+  const replacesExisting =
+    !editId && !!records.data?.some((record) => record.id === selectedMonth);
 
   async function onSubmit(values: SalaryFormValues) {
     if (!canReveal()) {
@@ -144,6 +164,11 @@ export function SalaryFormDialog({
                 disabled={hidden || !!editId}
                 onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               />
+              {replacesExisting && (
+                <p role="status" className="text-warning text-sm">
+                  {selectedMonth} already has a record. Saving replaces it.
+                </p>
+              )}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

@@ -13,6 +13,7 @@ vi.mock('@/features/salary/hooks/use-salary', () => ({
     isError: true,
     refetch: state.refetch,
   }),
+  useSalaryRecords: () => ({ data: [state.record] }),
   useUpsertSalary: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 afterEach(cleanup);

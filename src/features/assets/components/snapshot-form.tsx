@@ -14,7 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { formatSGD } from '@/lib/utils/currency';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Copy, Loader2, Plus, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS } from '../constants';
@@ -117,6 +118,11 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
     append({ category, account: '', amount: '' as unknown as number });
   }
 
+  function amountPlaceholder(category: AssetCategory, account: string) {
+    const amount = editor.previousAmount(category, account);
+    return amount === undefined ? '0.00' : `Last: ${mask(formatSGD(amount))}`;
+  }
+
   function getRowsForCategory(category: AssetCategory) {
     return fields
       .map((field, idx) => ({ field, idx }))
@@ -186,7 +192,13 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
             )}
             {!form.formState.errors.id && isDuplicate && (
               <p className="text-destructive text-sm">
-                A snapshot for this month already exists.
+                A snapshot for this month already exists.{' '}
+                <Link
+                  href={`${PAGE_ROUTES.ENTRY}?edit=${encodeURIComponent(selectedMonth)}`}
+                  className="underline underline-offset-4"
+                >
+                  Edit {selectedMonth} instead
+                </Link>
               </p>
             )}
           </div>
@@ -231,6 +243,24 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
             disabled={hidden || isSaving || editor.isReviewing}
             className="space-y-6"
           >
+            {editor.previousMonth && (
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (canReveal()) editor.copyPrevious();
+                  }}
+                >
+                  <Copy className="mr-1 size-3" />
+                  Copy {editor.previousMonth} amounts
+                </Button>
+                <span className="text-muted-foreground">
+                  Fills blank amounts. Edit only what changed.
+                </span>
+              </div>
+            )}
             <div
               role="group"
               aria-label="Asset categories"
@@ -331,7 +361,10 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
                             type="number"
                             step="0.01"
                             min="0"
-                            placeholder="0.00"
+                            placeholder={amountPlaceholder(
+                              cat,
+                              currentEntries[idx]?.account ?? ''
+                            )}
                             aria-label={`${CATEGORY_LABELS[cat]} amount ${idx + 1}`}
                             {...form.register(`entries.${idx}.amount`, {
                               setValueAs: (v: string) =>
