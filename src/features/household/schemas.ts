@@ -41,9 +41,34 @@ export const addItemPaymentSchema = z.object({
   date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
 });
 
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+export const createSpaceSchema = z
+  .object({
+    kind: z.enum(['ongoing', 'trip']),
+    name: z.string().trim().min(1).max(80),
+    startDate: z.string().regex(ISO_DAY).optional(),
+    endDate: z.string().regex(ISO_DAY).optional(),
+  })
+  .refine(
+    (space) =>
+      !space.startDate || !space.endDate || space.startDate <= space.endDate,
+    { message: 'end date must not be before start date', path: ['endDate'] }
+  );
+
+export const addSpendingSchema = z.object({
+  spaceId: z.string().uuid(),
+  date: z.string().regex(ISO_DAY, 'date must be YYYY-MM-DD'),
+  category: z.string().trim().min(1).max(40),
+  amount: z.number().positive().finite(),
+  note: z.string().trim().max(200).optional(),
+});
+
 export type CreateHouseholdInput = z.infer<typeof createHouseholdSchema>;
 export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>;
 export type CreateGoalInput = z.infer<typeof createGoalSchema>;
 export type AddContributionInput = z.infer<typeof addContributionSchema>;
 export type AddGoalItemInput = z.infer<typeof addGoalItemSchema>;
 export type AddItemPaymentInput = z.infer<typeof addItemPaymentSchema>;
+export type CreateSpaceInput = z.infer<typeof createSpaceSchema>;
+export type AddSpendingInput = z.infer<typeof addSpendingSchema>;

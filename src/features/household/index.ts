@@ -15,6 +15,13 @@ export {
   getHousehold,
   unlockHousehold,
 } from './actions/household-actions';
+export {
+  addSpending,
+  createSpace,
+  deleteSpace,
+  deleteSpending,
+  getSpaces,
+} from './actions/spending-actions';
 export { HouseholdOverview } from './components';
 export type {
   AcceptInviteResult,
@@ -24,6 +31,9 @@ export type {
   GoalItemPayment,
   HouseholdGoal,
   HouseholdRole,
+  HouseholdSpace,
+  HouseholdSpaceKind,
   HouseholdSummary,
   InviteResult,
+  SharedSpendingEntry,
 } from './types';

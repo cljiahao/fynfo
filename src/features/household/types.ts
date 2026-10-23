@@ -69,3 +69,25 @@ export interface HouseholdGoal {
   /** Sum of payments across items. */
   paid: number;
 }
+
+export type HouseholdSpaceKind = 'ongoing' | 'trip';
+
+export interface SharedSpendingEntry {
+  id: string;
+  date: string;
+  category: string;
+  amount: number;
+  note: string | null;
+  /** True if the current caller paid. */
+  isSelf: boolean;
+}
+
+/** A group of shared spending: day-to-day household costs, or one trip. */
+export interface HouseholdSpace {
+  id: string;
+  kind: HouseholdSpaceKind;
+  name: string;
+  startDate: string | null;
+  endDate: string | null;
+  entries: SharedSpendingEntry[];
+}

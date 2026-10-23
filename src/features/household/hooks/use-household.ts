@@ -19,9 +19,17 @@ import {
   getHousehold,
   unlockHousehold,
 } from '../actions/household-actions';
+import {
+  addSpending,
+  createSpace,
+  deleteSpace,
+  deleteSpending,
+  getSpaces,
+} from '../actions/spending-actions';
 
 export const HOUSEHOLD_KEY = ['household'] as const;
 export const GOALS_KEY = ['household-goals'] as const;
+export const SPACES_KEY = ['household-spaces'] as const;
 
 export function useHousehold() {
   return useQuery({ queryKey: HOUSEHOLD_KEY, queryFn: getHousehold });
@@ -48,6 +56,7 @@ export function useCreateHousehold() {
     onSuccess: () => {
       void refreshQueriesAfterMutation(qc, HOUSEHOLD_KEY);
       void refreshQueriesAfterMutation(qc, GOALS_KEY);
+      void refreshQueriesAfterMutation(qc, SPACES_KEY);
     },
   });
 }
@@ -59,6 +68,7 @@ export function useUnlockHousehold() {
     onSuccess: () => {
       void refreshQueriesAfterMutation(qc, HOUSEHOLD_KEY);
       void refreshQueriesAfterMutation(qc, GOALS_KEY);
+      void refreshQueriesAfterMutation(qc, SPACES_KEY);
     },
   });
 }
@@ -74,6 +84,7 @@ export function useAcceptInvite() {
     onSuccess: () => {
       void refreshQueriesAfterMutation(qc, HOUSEHOLD_KEY);
       void refreshQueriesAfterMutation(qc, GOALS_KEY);
+      void refreshQueriesAfterMutation(qc, SPACES_KEY);
     },
   });
 }
@@ -124,4 +135,38 @@ export function useAddItemPayment() {
 
 export function useDeleteItemPayment() {
   return useGoalsMutation(deleteItemPayment);
+}
+
+/** Shared spending spaces; like goals, a locked household surfaces as an error. */
+export function useSpaces(enabled: boolean) {
+  return useQuery({
+    queryKey: SPACES_KEY,
+    queryFn: getSpaces,
+    enabled,
+    retry: false,
+  });
+}
+
+function useSpacesMutation<T>(mutationFn: (input: T) => Promise<void>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: () => refreshQueriesAfterMutation(qc, SPACES_KEY),
+  });
+}
+
+export function useCreateSpace() {
+  return useSpacesMutation(createSpace);
+}
+
+export function useDeleteSpace() {
+  return useSpacesMutation(deleteSpace);
+}
+
+export function useAddSpending() {
+  return useSpacesMutation(addSpending);
+}
+
+export function useDeleteSpending() {
+  return useSpacesMutation(deleteSpending);
 }
