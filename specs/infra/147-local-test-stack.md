@@ -62,7 +62,7 @@ which must never touch the real vault.
   Supabase URL host is not `127.0.0.1` or `localhost`.
 
 - **`package.json` scripts.**
-  - `db:start` runs `supabase start`, which applies all 19 migrations.
+  - `db:start` runs `supabase start`, which applies all migrations.
   - `db:reset` runs `supabase db reset`, which re-applies migrations and the
     seed.
   - `db:stop` runs `supabase stop`.
@@ -107,6 +107,6 @@ and persisted.
 ## Open questions
 
 - [ ] Q1: Approve `supabase` as a pinned dev dependency? — Owner: Clarence — A: Approved 2026-10-23; pinned at 2.120.0 (newest stable older than two weeks), with `supabase: true` added to `allowBuilds` for its binary download.
-- [ ] Q2: Do all 19 migrations apply on a clean database? Some may assume
+- [ ] Q2: Do all migrations apply on a clean database? Some may assume
       hosted-only state. This is checked during implementation; any failure is
-      reported, not patched silently. — Owner: implementer — A: All 19 migrations and the seed apply cleanly on a fresh stack (2026-10-23).
+      reported, not patched silently. — Owner: implementer — A: All 21 migrations and the seed apply cleanly on a fresh stack (2026-10-23).
