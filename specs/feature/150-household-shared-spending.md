@@ -2,12 +2,12 @@
 id: '150'
 slug: household-shared-spending
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-10-23
 approved: 2026-10-23
-shipped:
-impl_pr:
+shipped: 2026-10-23
+impl_pr: https://github.com/cljiahao/fynfo/pull/71
 supersedes:
 constitution_satisfies:
   - '§1.1'
@@ -95,3 +95,11 @@ until the owner confirms the SQL has been applied.
 ## Open questions
 
 None blocking. Even split assumed; ratios can follow if wanted.
+
+## Results
+
+Shipped in PR 71. Migration `20261023000150_household_shared_spending.sql` was
+applied in production by the owner. Gates green after merging 149: tests,
+coverage and build. Live on the local stack: $122.45 of shared spending showed
+"Partner owes you $61.22" to split evenly. The squashed 149 commit conflicted
+with 150's copy of it; that was resolved by merging main into the branch.

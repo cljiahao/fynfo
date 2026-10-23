@@ -2,12 +2,12 @@
 id: '149'
 slug: household-project-breakdown
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-10-23
 approved: 2026-10-23
-shipped:
-impl_pr:
+shipped: 2026-10-23
+impl_pr: https://github.com/cljiahao/fynfo/pull/70
 supersedes:
 constitution_satisfies:
   - '§1.1'
@@ -97,3 +97,11 @@ the owner confirms the SQL has been applied.
 ## Open questions
 
 None blocking. Production SQL is owner-run.
+
+## Results
+
+Shipped in PR 70. Migration `20261023000149_household_project_items.sql` was
+applied in production by the owner. RLS test
+`supabase/tests/149-household-project-items.sql` passed on the local stack.
+Live on the local stack: a project with item budgets over the target showed
+"Over by $1,000.00", and hiding amounts masked every value.
