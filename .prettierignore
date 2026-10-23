@@ -17,3 +17,4 @@ pnpm-lock.yaml
 **/credentials.json
 .netrc
 .secrets/
+.claude/worktrees/

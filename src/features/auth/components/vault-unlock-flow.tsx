@@ -247,6 +247,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
 
         <form
           ref={formRef}
+          method="post"
           onSubmit={(e) => {
             void handleSubmit(onSubmit)(e);
           }}

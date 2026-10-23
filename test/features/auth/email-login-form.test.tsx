@@ -8,6 +8,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const boundary = vi.hoisted(() => ({
@@ -102,5 +103,16 @@ describe('email sign-in', () => {
     submit();
     await waitFor(() => expect(boundary.push).toHaveBeenCalledOnce());
     expect(screen.queryByText('Invalid email or password')).toBeNull();
+  });
+
+  it('cannot leak credentials into a URL through a native pre-hydration submit', () => {
+    const html = renderToString(<EmailLoginForm />);
+    expect(html).toMatch(/<form[^>]*method="post"/);
+    expect(html).toMatch(/<button[^>]*type="submit"[^>]*disabled=""/);
+    render(<EmailLoginForm />);
+    expect(
+      (screen.getByRole('button', { name: 'Sign in' }) as HTMLButtonElement)
+        .disabled
+    ).toBe(false);
   });
 });
