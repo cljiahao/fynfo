@@ -2,6 +2,7 @@
 import { GoalCard } from '@/features/household/components/goal-card';
 import { computeGoalProgress } from '@/features/household/lib/goal-progress';
 import type { HouseholdGoal } from '@/features/household/types';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -16,6 +17,9 @@ function mountGoal(target: number, contributed: number) {
     targetAmount: target,
     targetDate: null,
     createdAt: '2026-10-10',
+    items: [],
+    budgeted: 0,
+    paid: 0,
     contributions: [
       {
         id: 'synthetic-contribution',
@@ -29,7 +33,11 @@ function mountGoal(target: number, contributed: number) {
     remaining: progress.remaining,
     pct: progress.pct,
   };
-  render(<GoalCard goal={goal} onContribute={vi.fn()} onDelete={vi.fn()} />);
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <GoalCard goal={goal} onContribute={vi.fn()} onDelete={vi.fn()} />
+    </QueryClientProvider>
+  );
   return progress;
 }
 

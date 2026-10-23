@@ -10,6 +10,7 @@ import {
   FinancialValue,
   useAmountVisibility,
 } from '@/features/privacy';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import {
   act,
@@ -175,24 +176,29 @@ it('conceals household values and progress geometry and prevents hidden goal act
   const contribute = vi.fn();
   const remove = vi.fn();
   render(
-    <AmountVisibilityProvider>
-      <Controls />
-      <GoalCard
-        goal={{
-          id: 'synthetic-goal',
-          name: 'Synthetic 9876.54',
-          createdAt: '2026-10-11',
-          targetDate: null,
-          targetAmount: 9876.54,
-          contributed: 1234.56,
-          remaining: 8641.98,
-          pct: 13,
-          contributions: [],
-        }}
-        onContribute={contribute}
-        onDelete={remove}
-      />
-    </AmountVisibilityProvider>
+    <QueryClientProvider client={new QueryClient()}>
+      <AmountVisibilityProvider>
+        <Controls />
+        <GoalCard
+          goal={{
+            id: 'synthetic-goal',
+            name: 'Synthetic 9876.54',
+            createdAt: '2026-10-11',
+            items: [],
+            budgeted: 0,
+            paid: 0,
+            targetDate: null,
+            targetAmount: 9876.54,
+            contributed: 1234.56,
+            remaining: 8641.98,
+            pct: 13,
+            contributions: [],
+          }}
+          onContribute={contribute}
+          onDelete={remove}
+        />
+      </AmountVisibilityProvider>
+    </QueryClientProvider>
   );
   fireEvent.click(screen.getByRole('button', { name: 'Hide', hidden: true }));
   expect(document.body.textContent).not.toMatch(
