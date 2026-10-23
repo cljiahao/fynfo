@@ -7,7 +7,7 @@ author: Claude Code
 created: 2026-10-23
 approved: 2026-10-23
 shipped: 2026-10-23
-impl_pr:
+impl_pr: https://github.com/cljiahao/fynfo/pull/68
 supersedes:
 constitution_satisfies:
   - '§2.1'

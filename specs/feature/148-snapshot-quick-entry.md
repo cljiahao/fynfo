@@ -2,12 +2,12 @@
 id: '148'
 slug: snapshot-quick-entry
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-10-23
 approved: 2026-10-23
-shipped:
-impl_pr:
+shipped: 2026-10-23
+impl_pr: https://github.com/cljiahao/fynfo/pull/69
 supersedes:
 constitution_satisfies:
   - '§1.1'
@@ -66,14 +66,24 @@ given on 2026-10-23.
 
 ## Acceptance
 
-- [ ] Regression tests: placeholder shows the previous amount; copy fills only
+- [x] Regression tests: placeholder shows the previous amount; copy fills only
       blank amounts; copy is hidden when editing or with no history; duplicate
       notice links to the edit route; a new salary record prefills the latest
       salary and warns before replacing an existing month.
-- [ ] Existing snapshot conflict and duplicate tests stay green.
-- [ ] `pnpm check && pnpm test:ci && pnpm build` green.
-- [ ] Manual on the local test stack (spec 147): save month A, start month B,
+- [x] Existing snapshot conflict and duplicate tests stay green.
+- [x] `pnpm check && pnpm test:ci && pnpm build` green.
+- [x] Manual on the local test stack (spec 147): save month A, start month B,
       copy, change one amount, save, and confirm B's totals.
+
+## Results
+
+Shipped in PR 69. New `snapshot-quick-entry.test.tsx` (4 tests) and two salary
+interaction tests. Gates green: 2112 tests, build. Live on the local stack:
+saved September (Bank $5,000, SSB $2,000), opened October, copied, changed only
+Bank to $5,200 and saved; Assets showed $7,200 and a +$200 savings change.
+Testing found that records loading after the salary dialog opened re-ran its
+reset and dropped the chosen month; the prefill now only fills an untouched,
+blank salary field.
 
 ## Risk & reversibility
 
