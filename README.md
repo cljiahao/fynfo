@@ -72,6 +72,22 @@ pnpm dev
 
 Open `http://localhost:3000`. Sign in, then create your financial vault by choosing
 and confirming a six-digit PIN. Returning users unlock with their existing PIN.
+
+### Local test stack
+
+To exercise the app without a real account, run a local Supabase stack in Docker.
+It applies every migration and seeds one synthetic user, whose email, password and
+test PIN are in `supabase/seed.sql`. Those values work only on the local stack.
+
+```powershell
+pnpm db:start
+pnpm db:reset
+pnpm dev:local
+```
+
+`pnpm dev:local` passes the local URL and keys to `next dev` through the process
+environment, so `.env*` files are not read for them. It refuses to start if the
+Supabase URL is not local. Stop the stack with `pnpm db:stop`.
 The browser derives the encryption key; the server seals it in an
 HttpOnly session cookie to encrypt and decrypt financial payloads. Keep your PIN
 safe: it protects the financial vault independently of your login account.
