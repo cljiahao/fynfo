@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import {
   useGoals,
   useHousehold,
+  useSpaces,
   useUnlockHousehold,
 } from '../hooks/use-household';
 import { CreateGoalDialog } from './create-goal-dialog';
@@ -17,6 +18,13 @@ import { GoalList } from './goal-list';
 import { HouseholdSetup } from './household-setup';
 import { HouseholdSkeleton } from './household-skeleton';
 import { InvitePanel } from './invite-panel';
+import { SharedSpending } from './shared-spending';
+
+const VIEWS = [
+  { id: 'goals', label: 'Goals' },
+  { id: 'spending', label: 'Spending' },
+] as const;
+type View = (typeof VIEWS)[number]['id'];
 
 export function HouseholdOverview() {
   const { hidden, canReveal } = useAmountVisibility();
@@ -25,6 +33,8 @@ export function HouseholdOverview() {
   // failed goals read — so a real DB error doesn't masquerade as "locked".
   const locked = !!household.data && household.data.locked;
   const goals = useGoals(!!household.data && !locked);
+  const [view, setView] = useState<View>('goals');
+  const spaces = useSpaces(!!household.data && !locked && view === 'spending');
   const unlock = useUnlockHousehold();
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -65,9 +75,10 @@ export function HouseholdOverview() {
     <div className="space-y-6">
       <PageHeader
         title={household.data.name}
-        description="Shared goals for your household."
+        description="Shared goals and spending for your household."
         action={
           !locked &&
+          view === 'goals' &&
           goals.data && (
             <Button
               disabled={hidden}
@@ -82,9 +93,44 @@ export function HouseholdOverview() {
         }
       />
 
-      {!locked && goals.isLoading && <HouseholdSkeleton />}
+      {!locked && (
+        <div
+          role="group"
+          aria-label="Household views"
+          className="flex gap-1 border-b pb-3"
+        >
+          {VIEWS.map((option) => (
+            <Button
+              key={option.id}
+              type="button"
+              variant={view === option.id ? 'secondary' : 'ghost'}
+              aria-pressed={view === option.id}
+              onClick={() => setView(option.id)}
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
+      )}
 
-      {!locked && goals.isError && (
+      {!locked && view === 'spending' && spaces.isLoading && (
+        <HouseholdSkeleton />
+      )}
+      {!locked && view === 'spending' && spaces.isError && (
+        <div className="rounded-xl border border-dashed py-14 text-center">
+          <p className="font-medium">Couldn&apos;t load shared spending</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Refresh to try again.
+          </p>
+        </div>
+      )}
+      {!locked && view === 'spending' && spaces.data && (
+        <SharedSpending spaces={spaces.data} />
+      )}
+
+      {!locked && view === 'goals' && goals.isLoading && <HouseholdSkeleton />}
+
+      {!locked && view === 'goals' && goals.isError && (
         <div className="rounded-xl border border-dashed py-14 text-center">
           <p className="font-medium">Couldn&apos;t load your goals</p>
           <p className="text-muted-foreground mt-1 text-sm">
@@ -113,7 +159,7 @@ export function HouseholdOverview() {
         </div>
       )}
 
-      {!locked && goals.data && (
+      {!locked && view === 'goals' && goals.data && (
         <>
           {isOwner && <InvitePanel />}
           <GoalList goals={goals.data} />

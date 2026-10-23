@@ -5,6 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 vi.mock('@/features/household/hooks/use-household', () => ({
   useHousehold: () => ({ data: { locked: true, role: 'owner', name: 'Home' } }),
   useGoals: () => ({ data: [{ id: 'cached' }] }),
+  useSpaces: () => ({ data: [{ id: 'cached-space' }] }),
   useUnlockHousehold: () => ({ mutate: vi.fn() }),
 }));
 vi.mock('@/features/household/components/goal-list', () => ({
