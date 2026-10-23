@@ -4,8 +4,12 @@ import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addContribution,
+  addGoalItem,
+  addItemPayment,
   createGoal,
   deleteGoal,
+  deleteGoalItem,
+  deleteItemPayment,
   getGoals,
 } from '../actions/goal-actions';
 import {
@@ -96,4 +100,28 @@ export function useDeleteGoal() {
     mutationFn: deleteGoal,
     onSuccess: () => refreshQueriesAfterMutation(qc, GOALS_KEY),
   });
+}
+
+function useGoalsMutation<T>(mutationFn: (input: T) => Promise<void>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: () => refreshQueriesAfterMutation(qc, GOALS_KEY),
+  });
+}
+
+export function useAddGoalItem() {
+  return useGoalsMutation(addGoalItem);
+}
+
+export function useDeleteGoalItem() {
+  return useGoalsMutation(deleteGoalItem);
+}
+
+export function useAddItemPayment() {
+  return useGoalsMutation(addItemPayment);
+}
+
+export function useDeleteItemPayment() {
+  return useGoalsMutation(deleteItemPayment);
 }

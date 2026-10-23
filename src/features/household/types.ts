@@ -32,6 +32,27 @@ export interface GoalContribution {
   isSelf: boolean;
 }
 
+export interface GoalItemPayment {
+  id: string;
+  amount: number;
+  note: string | null;
+  date: string;
+  /** True if the current caller recorded this payment. */
+  isSelf: boolean;
+}
+
+/** One budget line of a project goal, e.g. "Venue" for a wedding. */
+export interface GoalItem {
+  id: string;
+  name: string;
+  budget: number;
+  payments: GoalItemPayment[];
+  paid: number;
+  remaining: number;
+  /** Amount paid beyond the budget; 0 when within budget. */
+  over: number;
+}
+
 export interface HouseholdGoal {
   id: string;
   name: string;
@@ -42,4 +63,9 @@ export interface HouseholdGoal {
   contributed: number;
   remaining: number;
   pct: number;
+  items: GoalItem[];
+  /** Sum of item budgets. */
+  budgeted: number;
+  /** Sum of payments across items. */
+  paid: number;
 }

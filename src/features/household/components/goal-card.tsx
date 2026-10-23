@@ -9,6 +9,7 @@ import { formatSGD } from '@/lib/utils/currency';
 import { format } from 'date-fns';
 import { Check, Plus, Trash2 } from 'lucide-react';
 import type { HouseholdGoal } from '../types';
+import { ProjectBreakdown } from './project-breakdown';
 
 interface GoalCardProps {
   goal: HouseholdGoal;
@@ -99,6 +100,8 @@ export function GoalCard({ goal, onContribute, onDelete }: GoalCardProps) {
             Partner {mask(formatSGD(partner))}
           </span>
         </div>
+
+        <ProjectBreakdown goal={goal} />
 
         <div className="flex items-center justify-between gap-2 pt-1">
           <Button

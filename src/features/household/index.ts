@@ -1,7 +1,11 @@
 export {
   addContribution,
+  addGoalItem,
+  addItemPayment,
   createGoal,
   deleteGoal,
+  deleteGoalItem,
+  deleteItemPayment,
   getGoals,
 } from './actions/goal-actions';
 export {
@@ -16,6 +20,8 @@ export type {
   AcceptInviteResult,
   CreateHouseholdResult,
   GoalContribution,
+  GoalItem,
+  GoalItemPayment,
   HouseholdGoal,
   HouseholdRole,
   HouseholdSummary,
