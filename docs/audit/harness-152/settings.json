@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "skillListingBudgetFraction": 0.02,
+  "permissions": {
+    "allow": [
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git switch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git restore:*)",
+      "Bash(git stash:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(ls:*)",
+      "Read(//**)",
+      "Grep(//**)",
+      "Glob(//**)",
+      "Bash(git push:*)",
+      "Bash(pnpm check)",
+      "Bash(pnpm build)",
+      "Bash(pnpm test:ci)",
+      "Bash(pnpm test:coverage)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm format:check)",
+      "Bash(pnpm test)",
+      "Bash(pnpm exec:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -f:*)",
+      "Bash(git branch -D:*)",
+      "Bash(rm -rf:*)",
+      "Bash(docker push:*)",
+      "Bash(./scripts/build-push.sh:*)",
+      "Read(.env)",
+      "Read(.env.local)",
+      "Read(.env.*.local)",
+      "Read(.env.development)",
+      "Read(.env.production)",
+      "Read(.env.production.*)",
+      "Read(.env.staging)",
+      "Read(./secrets/**)",
+      "Read(.next/**)",
+      "Read(dist/**)",
+      "Read(.turbo/**)",
+      "Read(**/*.tsbuildinfo)",
+      "Write(.env)",
+      "Write(.env.local)",
+      "Write(.env.*.local)",
+      "Write(.env.development)",
+      "Write(.env.production)",
+      "Write(.env.production.*)",
+      "Write(.env.staging)",
+      "Edit(.env)",
+      "Edit(.env.local)",
+      "Edit(.env.*.local)",
+      "Edit(.env.development)",
+      "Edit(.env.production)",
+      "Edit(.env.production.*)",
+      "Edit(.env.staging)"
+    ],
+    "ask": [
+      "Write(.claude/settings.json)",
+      "Edit(.claude/settings.json)",
+      "Write(.claude/hooks/**)",
+      "Edit(.claude/hooks/**)",
+      "Write(.claude/harness.json)",
+      "Edit(.claude/harness.json)",
+      "Write(.claude/skills/**)",
+      "Edit(.claude/skills/**)",
+      "Write(CLAUDE.md)",
+      "Edit(CLAUDE.md)",
+      "Write(AGENTS.md)",
+      "Edit(AGENTS.md)",
+      "Write(CONSTITUTION.md)",
+      "Edit(CONSTITUTION.md)",
+      "Write(.github/workflows/**)",
+      "Edit(.github/workflows/**)",
+      "Write(scripts/build-push.sh)",
+      "Edit(scripts/build-push.sh)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/session-banner.mjs"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const fs=require('fs');if(!fs.existsSync('specs'))console.log('WARN: specs/ missing - bootstrap before any impl work')\""
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/injection-guard.mjs"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/guard-protected-paths.mjs"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/guard-destructive-bash.mjs"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/post-edit-tsc.mjs"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/stop-tests.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}
