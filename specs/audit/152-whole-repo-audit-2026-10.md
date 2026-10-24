@@ -656,8 +656,7 @@ a same-origin copy (temporary, removed afterwards); no save was performed.
 **Residual risks**
 
 - `style-src 'unsafe-inline'` remains; inline styles need a later token pass.
-- Not exercised in a browser: PDF statement import (pdf.js worker + wasm under
-  the new CSP), `next dev` mode, the Google OAuth redirect.
+- Not exercised in a browser: `next dev` mode, the Google OAuth redirect.
 - A new third-party host needs a `buildCsp` change or it will be blocked.
 - `eslint-plugin-react-hooks` held at 7.0.1 until phase 3 (D2).
 - First-load JS stays above the 200 KB budget; not addressed here.
