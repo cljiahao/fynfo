@@ -6,3 +6,7 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
   supabase: true
+overrides:
+  # react-hooks 7.1 adds set-state-in-effect/refs/immutability findings in 6 files
+  # (phase 3 D2 splits them); hold at 7.0.1 until then. Not a security pin.
+  eslint-plugin-react-hooks: 7.0.1

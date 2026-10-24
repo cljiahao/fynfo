@@ -553,3 +553,37 @@ other migration.
 - [Next.js Content Security Policy guide](https://nextjs.org/docs/app/guides/content-security-policy) — nonce via proxy forces dynamic rendering; SRI is experimental.
 - [Claude Code hooks reference](https://code.claude.com/docs/en/hooks) and [permissions](https://code.claude.com/docs/en/permissions) — `permissionDecision: "ask"`, `Bash|PowerShell` matcher, deny > ask > allow precedence, and which Bash reads `Read` denies cover.
 - templateCentral 6.0.4 `comments.md` consensus basis (PEP 8, Google/Airbnb guides, Sonar, ESLint docs).
+
+## Phase 1 batch record (B0 + B1 + B2 + V1), branch `impl/152-phase-1`
+
+**Affected paths**
+
+- B0: `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`.
+- B1: all 17 `src/features/*/actions/*.ts` files, `src/features/household/schemas.ts`,
+  new `test/features/**` action-boundary tests.
+- B2: `src/proxy.ts`, `src/app/api/vault/route.ts`, `src/app/api/track/route.ts`,
+  new `src/lib/request-guard.ts`, `next.config.ts`, tests, README.
+
+**Evidence and decisions**
+
+- Starting `pnpm audit --prod`: 11 findings (2 critical, 6 high). After the bumps:
+  none. Versions: `next`/`eslint-config-next` 16.4.2, `react`/`react-dom` 19.2.9,
+  `@types/react` 19.2.18, `@types/react-dom` 19.2.7, `eslint-plugin-sonarjs` 4.2.2,
+  `@supabase/supabase-js` 2.118.0, `vitest`/`@vitest/coverage-v8` 4.1.12,
+  `tailwindcss`/`@tailwindcss/postcss` 4.3.3.
+- `zod` 4.3.6 had a high advisory (memory exhaustion on oversized collections,
+  fixed in 4.6.6). It is an existing dependency, so it was bumped to 4.6.7 (same
+  major) to meet the "no high/critical" acceptance. Flagged for owner awareness.
+- Transitive advisories (`ws`, `browserslist`, `baseline-browser-mapping`,
+  `source-map-js`, `@babel/core`) cleared with an in-range `pnpm update`; no
+  security override was needed.
+- One `pnpm.overrides` entry exists: `eslint-plugin-react-hooks` 7.0.1. The
+  `eslint-config-next` 16.4.2 bump pulls react-hooks 7.1.1, which adds 11 new
+  lint errors in 6 component/hook files. The override keeps lint green; phase 3
+  (D2) removes it when those files are split.
+
+**Acceptance**: `pnpm audit --prod` clean; `pnpm check && pnpm test:ci && pnpm build`
+green; regression test per hardened action and per guard rejection; CSP numbers
+and browser check recorded below.
+
+**Rollback**: revert the squash commit (restores `package.json` and the lockfile).
