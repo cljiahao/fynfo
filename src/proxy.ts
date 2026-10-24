@@ -1,6 +1,7 @@
 import { AUTH_CACHE_HEADERS } from '@/lib/constants/auth';
 import { getSupabaseEnv } from '@/lib/constants/env';
 import { API_ROUTES, PAGE_ROUTES } from '@/lib/constants/routes';
+import { buildCsp, generateNonce } from '@/lib/csp';
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
@@ -38,7 +39,26 @@ export function isServerActionRequest(
 }
 
 export async function proxy(req: NextRequest) {
+  const response = await handle(req);
+  const csp = req.headers.get('content-security-policy');
+  if (csp) response.headers.set('Content-Security-Policy', csp);
+  return response;
+}
+
+async function handle(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  if (!isApiRoute(pathname)) {
+    const nonce = generateNonce();
+    req.headers.set('x-nonce', nonce);
+    req.headers.set(
+      'content-security-policy',
+      buildCsp(
+        nonce,
+        getSupabaseEnv().url,
+        process.env.NODE_ENV === 'development'
+      )
+    );
+  }
   if (PUBLIC_API_PATHS.has(pathname)) {
     return NextResponse.next({ request: req });
   }

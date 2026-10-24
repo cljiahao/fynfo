@@ -185,3 +185,34 @@ describe('proxy boundaries', () => {
     );
   });
 });
+
+describe('proxy CSP', () => {
+  it.each(['/', '/login', '/dashboard'])(
+    'sets a nonce CSP on page %s',
+    async (path) => {
+      const response = await proxy(
+        new NextRequest(`https://fynfo.example${path}`)
+      );
+      const csp = response.headers.get('content-security-policy') ?? '';
+      expect(csp).toMatch(/script-src 'self' 'nonce-[^']+' 'strict-dynamic'/);
+      expect(csp).toContain("connect-src 'self' https://fixture.example");
+    }
+  );
+
+  it('uses a fresh nonce for each request', async () => {
+    const nonce = async () =>
+      (
+        (
+          await proxy(new NextRequest('https://fynfo.example/login'))
+        ).headers.get('content-security-policy') ?? ''
+      ).match(/'nonce-([^']+)'/)?.[1];
+    expect(await nonce()).not.toBe(await nonce());
+  });
+
+  it('does not add a page CSP to API responses', async () => {
+    const response = await proxy(
+      new NextRequest('https://fynfo.example/api/health')
+    );
+    expect(response.headers.get('content-security-policy')).toBeNull();
+  });
+});

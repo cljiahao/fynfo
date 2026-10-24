@@ -587,3 +587,60 @@ green; regression test per hardened action and per guard rejection; CSP numbers
 and browser check recorded below.
 
 **Rollback**: revert the squash commit (restores `package.json` and the lockfile).
+
+### Phase 1 results
+
+**B1 decisions.** Expense, trade and dividend ids are `TEXT` primary keys (init
+migration) and may be legacy non-UUID values, so they use `RECORD_ID`
+(`^[A-Za-z0-9_-]{1,64}$`), not `z.uuid()`. Household ids are `UUID` columns and
+use `z.uuid()` (`ROW_UUID`). `settleMonthSplits` is bounded to 2000 ids.
+`getTaxReliefs`, `getSalaryRecord` and `deleteSalaryRecord` validate year and
+month. `select('*')` is narrowed in profile, planner, salary and relief reads.
+Two `select('*')` remain in `equity-actions.ts:21` and `dividend-actions.ts:21`
+(outside the S3 list; they map most columns).
+Regression tests: `test/security/action-input-boundary.test.ts`.
+
+**B2 / S5.** `src/lib/request-guard.ts` rejects `Sec-Fetch-Site` other than
+`same-origin`/`none`, falls back to an Origin-host match, requires
+`application/json` on POST, and caps bodies (vault 2 KiB, track 1 KiB; actual
+bytes are counted, not just `content-length`). Requests with neither header
+(non-browser) pass; `SameSite=Strict` stays the primary defence. `/api/vault/lock`
+is not guarded (no body, must work after session expiry). Tests:
+`test/security/request-guard.test.ts`.
+
+**B2 / S6 measurements** (local `next start`, Windows dev machine, 24 requests
+per route after one warm-up, median time to first byte; local Supabase):
+
+| Route    | Before (static `/`, dynamic `/login`) | After (nonce CSP) |
+| -------- | ------------------------------------- | ----------------- |
+| `/`      | 38.6 ms                               | 49.4 ms (+10.8)   |
+| `/login` | 40.4 ms                               | 20.2 ms (noise)   |
+
+First-load JS for `/` is unchanged: 16 script tags, 1270 KB raw, 388 KB gzip
+(all routes share one chunk set; this is above the 200 KB §4.5 budget before and
+after, and is not changed by this phase). `/login` was already dynamic; only `/`
+lost static rendering. A cost of about 11 ms on a personal-use landing page is
+acceptable, so the nonce policy covers every page route (no `/dashboard`-only
+scope). The route table now shows `/` as dynamic.
+Policy: `default-src 'self'`; `script-src 'self' 'nonce-…' 'strict-dynamic'
+'wasm-unsafe-eval'` (pdf.js wasm); `style-src 'self' 'unsafe-inline'`;
+`connect-src 'self' <Supabase origin>`; `img-src 'self' blob: data:`;
+`worker-src 'self' blob:`; plus the old frame/base/object/form directives.
+Development adds `'unsafe-eval'` and `ws:`. The next-themes inline script gets
+the nonce through `x-nonce` in the root layout.
+
+**V1 / CSP browser check** (built-in browser, production build against the local
+stack, seed test user only): sign-in redirected to `/dashboard` with the URL
+clean (closes the spec 151 manual check); vault unlock with the seed PIN
+succeeded; `/dashboard`, `assets`, `salary`, `equity`, `expenses`, `household`,
+`profile` and `entry` loaded with no CSP violation in the console (only an
+existing recharts zero-size warning). Page scripts carried the request nonce.
+
+**Residual risks**
+
+- `style-src 'unsafe-inline'` remains; inline styles need a later token pass.
+- Not exercised in a browser: PDF statement import (pdf.js worker + wasm under
+  the new CSP), `next dev` mode, the Google OAuth redirect.
+- A new third-party host needs a `buildCsp` change or it will be blocked.
+- `eslint-plugin-react-hooks` held at 7.0.1 until phase 3 (D2).
+- First-load JS stays above the 200 KB budget; not addressed here.

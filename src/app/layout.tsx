@@ -1,6 +1,7 @@
 import { Providers, ThemeProvider } from '@/components/layout';
 import type { Metadata } from 'next';
 import { Geist_Mono, Lato } from 'next/font/google';
+import { headers } from 'next/headers';
 import { Toaster } from 'sonner';
 import './globals.css';
 
@@ -21,17 +22,19 @@ export const metadata: Metadata = {
     'Personal finance tracker - track your assets, salary, expenses, and equity',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   return (
     <html lang="en" suppressHydrationWarning className="no-scrollbar">
       <body
         className={`${lato.variable} ${geistMono.variable} relative antialiased`}
       >
         <ThemeProvider
+          nonce={nonce}
           attribute="class"
           defaultTheme="light"
           disableTransitionOnChange
