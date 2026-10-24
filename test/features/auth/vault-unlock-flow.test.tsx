@@ -173,4 +173,5 @@ it('associates PIN validation feedback with the editable field', async () => {
   expect(input.getAttribute('aria-describedby')).toBe(error.id);
   expect(error.id).not.toBe('');
   expect(fetch).toHaveBeenCalledTimes(1);
+  expect(input.closest('form')!.getAttribute('method')).toBe('post');
 });

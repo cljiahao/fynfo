@@ -8,7 +8,7 @@ import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useForm } from 'react-hook-form';
 import { EMAIL_SIGN_IN_UNAVAILABLE } from '../constants';
 import {
@@ -16,8 +16,16 @@ import {
   type EmailLoginValues,
 } from '../lib/email-login-schema';
 
+const noopSubscribe = () => () => {};
+
 export function EmailLoginForm() {
   const router = useRouter();
+  // Until hydration the browser would submit natively; keep the button off.
+  const hydrated = useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false
+  );
   const [authError, setAuthError] = useState<string | null>(null);
   const {
     register,
@@ -50,7 +58,11 @@ export function EmailLoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
+    <form
+      method="post"
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex flex-col gap-3"
+    >
       <div className="space-y-1">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -80,7 +92,7 @@ export function EmailLoginForm() {
           {authError}
         </p>
       )}
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={!hydrated || isSubmitting}>
         {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
         Sign in
       </Button>
