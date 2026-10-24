@@ -1,6 +1,6 @@
 # Fynfo Constitution
 
-**Version:** 4.1.0
+**Version:** 4.1.1
 **Effective:** 2026-05-25
 **Owner:** Clarence (cljiahao27@gmail.com)
 **Status:** Living document. Amendments tracked in git history.
@@ -15,7 +15,7 @@ Rules tagged `HARD` are never broken. `SOFT` rules are defaults; overrides requi
 
 ### §1.1 What Fynfo is
 
-Personal wealth management dashboard for a single Singapore user. Tracks savings, investments, equity trades, salary, expenses. Self-hosted on Raspberry Pi via Docker.
+Personal wealth management dashboard for a single Singapore user. Tracks savings, investments, equity trades, salary, expenses. Deployed on Vercel from `main`.
 
 Fynfo MAY link **two** accounts into a **household** for household-scoped data only (joint goals, shared planning). Each linked account stays single-user and zero-knowledge for its **personal** vault; the household introduces no third party and no server-readable key. Household data is encrypted under a shared household key the server cannot read (§5.1). Authorized by `specs/governance/052-household-two-person.md`.
 
@@ -28,7 +28,7 @@ Fynfo MAY link **two** accounts into a **household** for household-scoped data o
 
 It MAY have a public marketing storefront, anonymous non-PII operational telemetry (§2.2 carve-out), and open account signup (OAuth or email/password). Each account stays single-user and zero-knowledge — more accounts do not weaken the per-user RLS + PIN-derived encryption model. **Exception (§1.1 household):** two accounts MAY share a household space whose data is encrypted under a shared household key the server cannot read; membership is capped at two and no personal vaults are merged.
 
-**Why:** The security model (zero-knowledge, per-user RLS — §2.1, §5) and the deployment model (single Pi / Vercel, no horizontal scale) must hold regardless of how many accounts exist. Monetisation is gated behind an explicit governance decision, not drifted into.
+**Why:** The security model (zero-knowledge, per-user RLS — §2.1, §5) and the deployment model (single Vercel deployment, no horizontal scale) must hold regardless of how many accounts exist. Monetisation is gated behind an explicit governance decision, not drifted into.
 
 ---
 
@@ -185,13 +185,13 @@ Do not write SQL that filters/sorts on encrypted columns. All such operations de
 
 ## §6. Deployment & Operations
 
-### §6.1 `HARD` Docker multi-stage build is the deployment artifact
+### §6.1 `HARD` Vercel deploys `main`
 
-Pi runs `cljiahao/fynfo:latest` via Watchtower. Local `pnpm dev` is dev-only.
+Vercel's Git integration builds and deploys `main`; that is the only production path. No container image is built or published. Local `pnpm dev` and `pnpm dev:local` are dev-only.
 
 ### §6.2 `SOFT` One environment
 
-Currently no staging. Production = Pi. Migrations run against prod after spec approval + local replay against a fresh DB copy.
+Currently no staging. Production = the Vercel deployment of `main`. Migrations run against prod after spec approval + local replay against a fresh DB copy.
 
 ### §6.3 `HARD` Schema migrations are forward-only
 
@@ -296,3 +296,4 @@ edit; uncertainty alone does not prohibit read-only investigation.
 | 3.0.1   | 2026-06-27 | §8.2 clarification: narrow the `.env*` hard-stop to real secret env files (`.env`, `.env.local`, `.env.*.local`, `.env.development`, `.env.production`, `.env.production.*`, `.env.staging`); `.env.example` (committed placeholder template per §5.3) is NOT a secret and IS agent-editable. No expansion of secret access. Authorized by `specs/governance/055-env-example-editable.md`.                                                                                                                         |
 | 4.0.0   | 2026-10-08 | Owner-authorized audit/remediation path (§7.4); scoped permission for rulebooks and enforcement/CI edits (§8.2); explicit prohibition on secret reads; independent work continues while protected operations await approval. Authorized by `specs/governance/069-owner-authorized-audit-remediation.md`.                                                                                                                                                                                                           |
 | 4.1.0   | 2026-10-11 | §7.4 verification timing: targeted regressions and active hooks before commit; all full local gates before executable PR, allowing an unchanged pre-push run to supply them. Hooks, HARD quality/security rules and green CI before merge remain unchanged. Explicitly approved by Clarence in `specs/governance/126-verification-timing.md`.                                                                                                                                                                      |
+| 4.1.1   | 2026-10-24 | §1.1, §1.2, §6.1, §6.2 clarification: deployment wording matches reality (Vercel deploys `main`; no Raspberry Pi, Docker image or Watchtower). No rule loosened. Approved by Clarence in `specs/governance/153-deployment-wording-vercel.md`.                                                                                                                                                                                                                                                                      |
