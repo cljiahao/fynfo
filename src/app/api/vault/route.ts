@@ -7,6 +7,7 @@ import { sealCookie } from '@/lib/cookie-seal';
 import { DecryptionError, decryptPayload, encryptPayload } from '@/lib/crypto';
 import { AppError, handleApiError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
+import { readBoundedJson, rejectUnsafeRequest } from '@/lib/request-guard';
 import { withLogging } from '@/lib/utils/with-logging';
 import {
   VAULT_COOKIE_BASE_OPTS,
@@ -19,6 +20,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const VAULT_CANARY = 'fynfo_vault_ok';
+const VAULT_BODY_MAX_BYTES = 2048;
 
 const base64Dek = z
   .string()
@@ -99,7 +101,9 @@ export const GET = withLogging('api.vault.status', async () => {
   }
 });
 
-export const DELETE = withLogging('api.vault.reset', async () => {
+export const DELETE = withLogging('api.vault.reset', async (req: Request) => {
+  const rejected = rejectUnsafeRequest(req);
+  if (rejected) return rejected;
   try {
     const supabase = await createSupabaseServerClient();
     const {
@@ -131,10 +135,15 @@ export const DELETE = withLogging('api.vault.reset', async () => {
 });
 
 export const POST = withLogging('api.vault.unlock', async (req: Request) => {
+  const rejected = rejectUnsafeRequest(req, {
+    json: true,
+    maxBodyBytes: VAULT_BODY_MAX_BYTES,
+  });
+  if (rejected) return rejected;
   try {
     const [supabase, raw] = await Promise.all([
       createSupabaseServerClient(),
-      req.json().catch(() => null),
+      readBoundedJson(req, VAULT_BODY_MAX_BYTES),
     ]);
 
     const parsed = VaultUnlockSchema.safeParse(raw);

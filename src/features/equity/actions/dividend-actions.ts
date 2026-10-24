@@ -6,6 +6,7 @@ import { decryptNumber } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
+import { RECORD_ID } from '@/lib/zod-utils';
 import { randomUUID } from 'crypto';
 import { dividendInputSchema } from '../schemas';
 import type { DividendData } from '../types';
@@ -78,6 +79,7 @@ export async function updateDividend(
   id: string,
   data: Omit<DividendData, 'id'>
 ): Promise<void> {
+  parseOrThrow(RECORD_ID, id, 'dividend.id');
   const parsed = parseOrThrow(dividendInputSchema, data, 'dividend.input');
   const { userId, dek, supabase } = await requireActionContext();
 
@@ -97,6 +99,7 @@ export async function updateDividend(
 }
 
 export async function deleteDividend(id: string): Promise<void> {
+  parseOrThrow(RECORD_ID, id, 'dividend.id');
   const { userId, supabase } = await requireActionContext();
 
   const { error } = await supabase

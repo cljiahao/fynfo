@@ -22,20 +22,20 @@ export const createGoalSchema = z.object({
 });
 
 export const addContributionSchema = z.object({
-  goalId: z.string().uuid(),
+  goalId: z.uuid(),
   amount: z.number().positive().finite(),
   note: z.string().trim().max(200).optional(),
   date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
 });
 
 export const addGoalItemSchema = z.object({
-  goalId: z.string().uuid(),
+  goalId: z.uuid(),
   name: z.string().trim().min(1).max(80),
   budget: z.number().positive().finite(),
 });
 
 export const addItemPaymentSchema = z.object({
-  itemId: z.string().uuid(),
+  itemId: z.uuid(),
   amount: z.number().positive().finite(),
   note: z.string().trim().max(200).optional(),
   date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
@@ -57,7 +57,7 @@ export const createSpaceSchema = z
   );
 
 export const addSpendingSchema = z.object({
-  spaceId: z.string().uuid(),
+  spaceId: z.uuid(),
   date: z.string().regex(ISO_DAY, 'date must be YYYY-MM-DD'),
   category: z.string().trim().min(1).max(40),
   amount: z.number().positive().finite(),

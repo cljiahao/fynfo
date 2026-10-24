@@ -5,6 +5,7 @@ import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
+import { ROW_UUID } from '@/lib/zod-utils';
 import { randomUUID } from 'crypto';
 import { computeGoalProgress } from '../lib/goal-progress';
 import { computeItemBudget, computeProjectTotals } from '../lib/project-budget';
@@ -262,6 +263,7 @@ export async function addContribution(input: unknown): Promise<void> {
  * Requires the same unlocked household session as other goal mutations.
  */
 export async function deleteGoal(id: string): Promise<void> {
+  parseOrThrow(ROW_UUID, id, 'household.deleteGoal.id');
   const { supabase } = await requireHouseholdContext();
   const { error } = await supabase
     .from('household_goals')
@@ -285,6 +287,7 @@ export async function addGoalItem(input: unknown): Promise<void> {
 
 /** Deletes a budget line (RLS scoped); its payments cascade. */
 export async function deleteGoalItem(id: string): Promise<void> {
+  parseOrThrow(ROW_UUID, id, 'household.deleteGoalItem.id');
   const { supabase } = await requireHouseholdContext();
   const { error } = await supabase
     .from('household_goal_items')
@@ -314,6 +317,7 @@ export async function addItemPayment(input: unknown): Promise<void> {
 
 /** Deletes one recorded payment (RLS scoped). */
 export async function deleteItemPayment(id: string): Promise<void> {
+  parseOrThrow(ROW_UUID, id, 'household.deleteItemPayment.id');
   const { supabase } = await requireHouseholdContext();
   const { error } = await supabase
     .from('household_goal_payments')

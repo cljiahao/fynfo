@@ -7,3 +7,5 @@ export type MarketingEventType = (typeof MARKETING_EVENT_TYPES)[number];
 
 // Mirrors the `char_length(path) <= 128` CHECK in the migration.
 export const TELEMETRY_PATH_MAX = 128;
+
+export const TRACK_BODY_MAX_BYTES = 1024;

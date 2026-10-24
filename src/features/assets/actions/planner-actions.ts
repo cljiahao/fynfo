@@ -12,7 +12,9 @@ export async function getPlannerSettings(): Promise<PlannerSettingsData | null> 
 
   const { data, error } = await supabase
     .from('planner_settings')
-    .select('*')
+    .select(
+      'emergency_months, war_chest_months, tithe_enabled, tithe_pct, allowance_enabled, allowance_pct'
+    )
     .eq('user_id', userId)
     .maybeSingle();
 

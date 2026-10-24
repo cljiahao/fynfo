@@ -1,6 +1,8 @@
 import { recordMarketingEvent } from '@/integrations/services/security-rpc';
+import { TRACK_BODY_MAX_BYTES } from '@/lib/constants/telemetry';
 import { handleApiError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
+import { readBoundedJson, rejectUnsafeRequest } from '@/lib/request-guard';
 import { withLogging } from '@/lib/utils/with-logging';
 import { TrackEventSchema } from '@/lib/validation/track-event';
 import { NextResponse } from 'next/server';
@@ -10,8 +12,13 @@ import { z } from 'zod';
 // Stores only event_type + path — never identity, never financial data. The
 // Only the trusted RPC may insert; direct Data API ingestion is denied.
 export const POST = withLogging('api.track', async (req: Request) => {
+  const rejected = rejectUnsafeRequest(req, {
+    json: true,
+    maxBodyBytes: TRACK_BODY_MAX_BYTES,
+  });
+  if (rejected) return rejected;
   try {
-    const raw = await req.json().catch(() => null);
+    const raw = await readBoundedJson(req, TRACK_BODY_MAX_BYTES);
     const parsed = TrackEventSchema.safeParse(raw);
     if (!parsed.success) {
       return NextResponse.json(
