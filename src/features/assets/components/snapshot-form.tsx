@@ -1,5 +1,6 @@
 'use client';
 
+import { ColorSwatch } from '@/components/widgets';
 import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
@@ -303,9 +304,9 @@ export function SnapshotForm({ editId }: SnapshotFormProps) {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <Label className="flex flex-wrap items-center gap-2 text-base font-semibold">
-                      <span
-                        className="inline-block size-3 rounded-full"
-                        style={{ backgroundColor: CATEGORY_COLORS[cat] }}
+                      <ColorSwatch
+                        color={CATEGORY_COLORS[cat]}
+                        className="size-3"
                       />
                       {CATEGORY_LABELS[cat]}
                       {rows.length > 0 && (

@@ -69,6 +69,22 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-chart-6: var(--chart-6);
+
+  /* Categorical palette (dataviz slots 1-8 validated; 9-14 extend it) */
+  --color-cat-1: var(--cat-1);
+  --color-cat-2: var(--cat-2);
+  --color-cat-3: var(--cat-3);
+  --color-cat-4: var(--cat-4);
+  --color-cat-5: var(--cat-5);
+  --color-cat-6: var(--cat-6);
+  --color-cat-7: var(--cat-7);
+  --color-cat-8: var(--cat-8);
+  --color-cat-9: var(--cat-9);
+  --color-cat-10: var(--cat-10);
+  --color-cat-11: var(--cat-11);
+  --color-cat-12: var(--cat-12);
+  --color-cat-13: var(--cat-13);
+  --color-cat-14: var(--cat-14);
 }
 
 :root {
@@ -125,6 +141,22 @@
   --chart-5: oklch(0.6 0.2 27);
   --chart-6: oklch(0.62 0.1 195);
 
+  /* Categorical palette */
+  --cat-1: oklch(0.58 0.163 256);
+  --cat-2: oklch(0.67 0.175 41);
+  --cat-3: oklch(0.67 0.141 162);
+  --cat-4: oklch(0.76 0.161 75);
+  --cat-5: oklch(0.72 0.141 357);
+  --cat-6: oklch(0.53 0.18 142);
+  --cat-7: oklch(0.53 0.197 283);
+  --cat-8: oklch(0.62 0.191 25);
+  --cat-9: oklch(0.62 0.1 200);
+  --cat-10: oklch(0.65 0.17 340);
+  --cat-11: oklch(0.66 0.15 125);
+  --cat-12: oklch(0.52 0.09 55);
+  --cat-13: oklch(0.52 0.17 270);
+  --cat-14: oklch(0.62 0.02 250);
+
   /* Form */
   --border: oklch(0.91 0.005 240);
   --input: oklch(0.922 0.004 240);
@@ -179,6 +211,22 @@
   --chart-4: oklch(0.7 0.16 300);
   --chart-5: oklch(0.72 0.19 22);
   --chart-6: oklch(0.75 0.11 195);
+
+  /* Categorical palette */
+  --cat-1: oklch(0.62 0.161 255);
+  --cat-2: oklch(0.62 0.173 40);
+  --cat-3: oklch(0.62 0.128 163);
+  --cat-4: oklch(0.67 0.143 73);
+  --cat-5: oklch(0.62 0.171 1);
+  --cat-6: oklch(0.53 0.18 142);
+  --cat-7: oklch(0.67 0.145 287);
+  --cat-8: oklch(0.67 0.159 22);
+  --cat-9: oklch(0.7 0.1 200);
+  --cat-10: oklch(0.72 0.15 340);
+  --cat-11: oklch(0.74 0.15 125);
+  --cat-12: oklch(0.66 0.09 55);
+  --cat-13: oklch(0.68 0.14 270);
+  --cat-14: oklch(0.72 0.02 250);
 
   /* Form */
   --border: oklch(1 0 0 / 10%);

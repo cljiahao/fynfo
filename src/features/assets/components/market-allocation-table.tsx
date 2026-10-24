@@ -9,6 +9,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Input } from '@/components/ui/input';
+import type { Holding } from '@/features/equity';
 import {
   finiteProduct,
   holdingPrice,
@@ -16,7 +17,6 @@ import {
   validExchangeRate,
   type ValuationQuote,
 } from '@/features/equity';
-import type { Holding } from '@/features/equity/lib/holdings';
 import { formatCurrency } from '@/lib/utils/currency';
 import { ArrowDown, ArrowUp, ArrowUpDown, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';

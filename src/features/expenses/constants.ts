@@ -1,3 +1,4 @@
+import { chartColors } from '@/lib/chart-palette';
 import type { ExpenseType } from './types';
 
 export const EXPENSE_TYPES: ExpenseType[] = [
@@ -44,22 +45,22 @@ export const EXPENSE_TOTAL_EXCLUDED_TYPES: readonly ExpenseType[] = [
   'insurance',
 ];
 
-export const EXPENSE_TYPE_COLORS: Record<ExpenseType, string> = {
-  bills: '#6366f1',
-  charity: '#a855f7',
-  electronics: '#3b82f6',
-  entertainment: '#ec4899',
-  food_drink: '#f97316',
-  gift: '#d946ef',
-  groceries: '#22c55e',
-  health: '#ef4444',
-  insurance: '#eab308',
-  other: '#94a3b8',
-  shopping: '#14b8a6',
-  subscriptions: '#8b5cf6',
-  transport: '#0ea5e9',
-  travel: '#f43f5e',
-};
+export const EXPENSE_TYPE_COLORS = chartColors<ExpenseType>({
+  bills: 13,
+  charity: 7,
+  electronics: 1,
+  entertainment: 5,
+  food_drink: 2,
+  gift: 10,
+  groceries: 6,
+  health: 8,
+  insurance: 4,
+  other: 14,
+  shopping: 9,
+  subscriptions: 12,
+  transport: 3,
+  travel: 11,
+});
 
 export const EXPENSE_PASTE_MONTHS = [
   'january',

@@ -1,12 +1,12 @@
-import { decryptPayload, encryptPayload } from '@/lib/crypto';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createScenario,
   deleteScenario,
   getScenarios,
   updateScenario,
-} from '../actions/scenario-actions';
-import { computeSalaryPlan } from '../lib/salary-plan';
+} from '@/features/assets/actions/scenario-actions';
+import { computeSalaryPlan } from '@/features/assets/lib/salary-plan';
+import { decryptPayload, encryptPayload } from '@/lib/crypto';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ context: vi.fn(), rpc: vi.fn() }));
 vi.mock('@/lib/action-guard', () => ({ requireActionContext: mocks.context }));
 const dek = Buffer.alloc(32, 3);

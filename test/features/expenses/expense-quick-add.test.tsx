@@ -22,7 +22,7 @@ function pasteRows(node: Element, text: string) {
 }
 
 // Keep the save pending: awaiting it before reset would leave the form filled
-// and fail the spec 048 immediate-reset contract.
+// and fail the immediate-reset contract.
 const { mutate } = vi.hoisted(() => ({
   mutate: vi.fn(() => new Promise<void>(() => undefined)),
 }));

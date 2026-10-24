@@ -1,5 +1,6 @@
 'use client';
 
+import { BarFill } from '@/components/widgets';
 import { useAmountVisibility } from '@/features/privacy';
 
 import {
@@ -79,9 +80,9 @@ export function MarketDeploymentCard({
           </span>
         </div>
         <div className="bg-muted h-1.5 overflow-hidden rounded-full">
-          <div
-            className={`h-full rounded-full ${qPct >= 100 ? 'bg-gain' : 'bg-chart-1'}`}
-            style={{ width: hidden ? '0%' : `${qPct}%` }}
+          <BarFill
+            pct={hidden ? 0 : qPct}
+            className={`rounded-full ${qPct >= 100 ? 'bg-gain' : 'bg-chart-1'}`}
           />
         </div>
       </div>
@@ -112,9 +113,9 @@ export function MarketDeploymentCard({
           </span>
         </div>
         <div className="bg-muted h-1.5 overflow-hidden rounded-full">
-          <div
-            className={`h-full rounded-full ${targetPct >= 100 ? 'bg-gain' : 'bg-chart-4'}`}
-            style={{ width: hidden ? '0%' : `${targetPct}%` }}
+          <BarFill
+            pct={hidden ? 0 : targetPct}
+            className={`rounded-full ${targetPct >= 100 ? 'bg-gain' : 'bg-chart-4'}`}
           />
         </div>
       </div>

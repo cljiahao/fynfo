@@ -1,5 +1,6 @@
 'use client';
 
+import { ColorSwatch } from '@/components/widgets';
 import { useAmountVisibility } from '@/features/privacy';
 
 import { Checkbox } from '@/components/ui/checkbox';
@@ -95,7 +96,7 @@ export function PlannerResults({
                 paddingAngle={2}
                 stroke="none"
                 isAnimationActive={false}
-                style={{ cursor: 'default', outline: 'none' }}
+                className="cursor-default outline-none"
               />
               <Tooltip
                 formatter={(value: unknown) => {
@@ -187,10 +188,7 @@ export function PlannerResults({
           {breakdownItems.map((item) => (
             <div key={item.label} className="flex-between">
               <span className="flex items-center gap-1.5">
-                <span
-                  className="inline-block size-2.5 rounded-full"
-                  style={{ backgroundColor: item.color }}
-                />
+                <ColorSwatch color={item.color} />
                 {hidden ? item.label.split(' (')[0] : item.label}
               </span>
               <span

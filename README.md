@@ -291,7 +291,7 @@ specs/                         # Specifications and scoped audit records
 ## Development checks
 
 ```powershell
-pnpm check          # Route logging, formatting, lint, typecheck
+pnpm check          # Route logging, comment hygiene, formatting, lint, typecheck
 pnpm test:ci        # Vitest suite with coverage thresholds
 pnpm test:coverage  # Coverage reporting and configured thresholds
 pnpm build         # Production build
@@ -304,6 +304,12 @@ coverage, alongside stricter security-critical file thresholds. Empty test
 discovery fails. Two test workers limit memory pressure from browser suites.
 The project verification skill and quality gates are documented in
 [AGENTS.md](AGENTS.md).
+
+Lint rejects cross-feature deep imports (`@/features/<name>/<path>`); import from
+the feature barrel instead. Disable directives need a `-- reason`, and
+`pnpm check:comments` fails on change-log style comments and spec/audit
+references. Chart and legend colours come from the `--cat-1..14` tokens in
+`globals.css` through `chartColor()` in `src/lib/chart-palette.ts`, not hex values.
 
 With PostgreSQL 17 installed, verify database authorization and real concurrent
 transactions in a new, disposable local cluster:

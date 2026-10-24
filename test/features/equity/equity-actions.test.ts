@@ -90,7 +90,7 @@ describe('equity-actions — getTrades', () => {
     expect(await getTrades()).toEqual([]);
   });
 
-  // Regression (spec 032): a read error must surface as an opaque AppError, not
+  // Regression: a read error must surface as an opaque AppError, not
   // be swallowed into an empty list that masks RLS/connection failures.
   it('throws an opaque error instead of returning [] on a read failure', async () => {
     setSupabase({

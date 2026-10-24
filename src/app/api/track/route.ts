@@ -8,9 +8,9 @@ import { TrackEventSchema } from '@/lib/validation/track-event';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// Anonymous, non-PII marketing telemetry ingestion (gov-013 §2.2 carve-out).
-// Stores only event_type + path — never identity, never financial data. The
-// Only the trusted RPC may insert; direct Data API ingestion is denied.
+// Anonymous, non-PII marketing telemetry (constitution §2.2 carve-out): stores
+// only event_type + path, never identity or financial data. Only the trusted
+// RPC may insert; direct Data API ingestion is denied.
 export const POST = withLogging('api.track', async (req: Request) => {
   const rejected = rejectUnsafeRequest(req, {
     json: true,

@@ -88,9 +88,7 @@ function SummaryColumn({
         <p className="text-muted-foreground text-sm">{subtitle}</p>
       </CardHeader>
       <CardContent className="space-y-1">
-        <p className="text-muted-foreground pb-1 text-xs font-semibold tracking-wide uppercase">
-          Income
-        </p>
+        <p className="text-muted-foreground pb-1 text-sm font-medium">Income</p>
         <Row
           label={incomeLabel}
           value={formatSGD(summary.grossAnnual)}
@@ -100,7 +98,7 @@ function SummaryColumn({
 
         <Separator className="my-2" />
 
-        <p className="text-muted-foreground pb-1 text-xs font-semibold tracking-wide uppercase">
+        <p className="text-muted-foreground pb-1 text-sm font-medium">
           Deductions
         </p>
         <Row
@@ -113,9 +111,7 @@ function SummaryColumn({
         <Separator className="my-2" />
 
         <div className="flex items-center gap-2">
-          <p className="text-muted-foreground pb-1 text-xs font-semibold tracking-wide uppercase">
-            Tax
-          </p>
+          <p className="text-muted-foreground pb-1 text-sm font-medium">Tax</p>
           {!summary.isNonResident && (
             <button
               type="button"

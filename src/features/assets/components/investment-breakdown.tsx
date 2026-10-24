@@ -11,14 +11,14 @@ import {
 } from '@/components/ui/card';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
+  computeHoldings,
   finiteProduct,
+  getMarket,
   useExchangeRate,
   useStockPrices,
+  useTrades,
   validExchangeRate,
 } from '@/features/equity';
-import { useTrades } from '@/features/equity/hooks/use-equity';
-import { computeHoldings } from '@/features/equity/lib/holdings';
-import { getMarket } from '@/features/equity/lib/ticker-map';
 import { formatSGD } from '@/lib/utils/currency';
 import { loadLocal, saveLocal } from '@/lib/utils/local-store';
 import { useEffect, useMemo, useState } from 'react';

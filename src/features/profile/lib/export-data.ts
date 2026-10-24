@@ -1,13 +1,13 @@
-import type { ScenarioRecord } from '@/features/assets';
 import type {
   PlannerSettingsData,
+  ScenarioRecord,
   SnapshotData,
-} from '@/features/assets/types';
-import type { DividendData, EquityTradeData } from '@/features/equity/types';
-import type { ExpenseData } from '@/features/expenses/types';
+} from '@/features/assets';
+import type { DividendData, EquityTradeData } from '@/features/equity';
+import type { ExpenseData } from '@/features/expenses';
 import type { MerchantRule } from '@/features/merchant-rules';
 import type { RecurringTemplate } from '@/features/recurring-expenses';
-import type { SalaryData, TaxReliefData } from '@/features/salary/types';
+import type { SalaryData, TaxReliefData } from '@/features/salary';
 import type { ProfileData } from '../types';
 
 /** Envelope schema version. Bump when `ExportData` shape changes; a future

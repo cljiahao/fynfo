@@ -1,4 +1,6 @@
+export { BarFill } from './bar-fill';
 export { BrandText } from './brand-text';
+export { ColorSwatch } from './color-swatch';
 export { ConfirmDeleteDialog } from './confirm-delete-dialog';
 export { CustomCard } from './custom-card';
 export { EmptyState } from './empty-state';

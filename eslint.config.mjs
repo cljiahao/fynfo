@@ -1,3 +1,4 @@
+import eslintComments from '@eslint-community/eslint-plugin-eslint-comments/configs';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
 import prettier from 'eslint-config-prettier/flat';
@@ -8,9 +9,21 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   prettier,
+  eslintComments.recommended,
+  {
+    linterOptions: {
+      reportUnusedDisableDirectives: 'error',
+      reportUnusedInlineConfigs: 'error',
+    },
+  },
   {
     plugins: { sonarjs },
     rules: {
+      '@eslint-community/eslint-comments/require-description': 'error',
+      '@eslint-community/eslint-comments/disable-enable-pair': [
+        'error',
+        { allowWholeFile: true },
+      ],
       'sonarjs/no-commented-code': 'error',
       'sonarjs/no-identical-functions': 'error',
       'sonarjs/no-collection-size-mischeck': 'error',
@@ -38,6 +51,23 @@ const eslintConfig = defineConfig([
             "ThrowStatement > NewExpression[callee.name='Error'] Identifier[name='message']",
           message:
             'Do not throw `new Error(supabaseError.message)` — use throwIfSupabaseError() from @/lib/errors to keep DB detail server-side.',
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/features/*/*'],
+              message:
+                'Import from the feature barrel (@/features/<name>), not its internals (constitution 2.6).',
+            },
+          ],
         },
       ],
     },

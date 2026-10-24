@@ -1,11 +1,10 @@
+import type { EquityTradeData, Holding } from '@/features/equity';
 import {
   finiteProduct,
   marketValue,
   validExchangeRate,
   type ValuationQuote,
 } from '@/features/equity';
-import type { Holding } from '@/features/equity/lib/holdings';
-import type { EquityTradeData } from '@/features/equity/types';
 import type { AssetCategory, SnapshotData } from '../types';
 
 export interface MarketBudget {

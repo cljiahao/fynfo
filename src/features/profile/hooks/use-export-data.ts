@@ -2,16 +2,16 @@
 
 import { useAmountVisibility } from '@/features/privacy';
 
-import { getScenarios } from '@/features/assets';
-import { getPlannerSettings } from '@/features/assets/actions/planner-actions';
-import { getSnapshots } from '@/features/assets/actions/snapshot-actions';
-import { getDividends } from '@/features/equity/actions/dividend-actions';
-import { getTrades } from '@/features/equity/actions/equity-actions';
-import { getExpenses } from '@/features/expenses/actions/expense-actions';
+import {
+  getPlannerSettings,
+  getScenarios,
+  getSnapshots,
+} from '@/features/assets';
+import { getDividends, getTrades } from '@/features/equity';
+import { getExpenses } from '@/features/expenses';
 import { getMerchantRulebook } from '@/features/merchant-rules';
 import { getRecurringRulebook } from '@/features/recurring-expenses';
-import { getAllTaxReliefs } from '@/features/salary/actions/relief-actions';
-import { getSalaryRecords } from '@/features/salary/actions/salary-actions';
+import { getAllTaxReliefs, getSalaryRecords } from '@/features/salary';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { getProfile } from '../actions/profile-actions';

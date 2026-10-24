@@ -18,7 +18,7 @@ export interface TradeFormValues {
  * Single source for `defaultValues` and both `form.reset(...)` calls so the
  * three objects cannot drift — the drift is how `isPO` got dropped from the
  * reset paths, leaving it `undefined` after an edit/reopen. On edit, `isCdp` /
- * `isPO` are restored from the saved trade (spec 044); new trades default false.
+ * `isPO` are restored from the saved trade; new trades default false.
  */
 export function buildTradeFormDefaults(
   editTrade?: EquityTradeData,

@@ -44,7 +44,7 @@ export const plannerSettingsSchema = z.object({
   allowancePct: z.number().min(0).max(100),
 });
 
-// Spec103 bounds apply only to saved snapshots, not the live planner contract.
+// Bounds apply only to saved snapshots, not the live planner contract.
 export const scenarioInputsSchema = z.strictObject({
   salary: z.number().min(0).max(1e9),
   expenses: z.number().min(0).max(1e9),

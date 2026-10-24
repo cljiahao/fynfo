@@ -1,5 +1,5 @@
 export interface DailyPoint {
-  // ISO date "2026-06-11"
+  // ISO calendar date (YYYY-MM-DD)
   day: string;
   pageViews: number;
   ctaClicks: number;

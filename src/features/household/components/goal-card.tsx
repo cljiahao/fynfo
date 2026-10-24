@@ -1,5 +1,6 @@
 'use client';
 
+import { BarFill } from '@/components/widgets';
 import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
@@ -64,14 +65,8 @@ export function GoalCard({ goal, onContribute, onDelete }: GoalCardProps) {
         {!hidden && (
           <div className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
             <div className="flex h-full">
-              <div
-                className="bg-primary h-full"
-                style={{ width: `${selfPct}%` }}
-              />
-              <div
-                className="bg-gain h-full"
-                style={{ width: `${partnerPct}%` }}
-              />
+              <BarFill pct={selfPct} className="bg-primary" />
+              <BarFill pct={partnerPct} className="bg-gain" />
             </div>
           </div>
         )}

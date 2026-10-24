@@ -9,12 +9,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { useTrades } from '@/features/equity/hooks/use-equity';
 import {
+  computeHoldings,
   useExchangeRate,
   useStockPrices,
-} from '@/features/equity/hooks/use-prices';
-import { computeHoldings } from '@/features/equity/lib/holdings';
+  useTrades,
+} from '@/features/equity';
 import { useEffect, useMemo, useState } from 'react';
 import type { MarketBudgets } from './investment-breakdown';
 import { MarketAllocationTable } from './market-allocation-table';

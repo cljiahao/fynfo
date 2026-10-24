@@ -47,7 +47,7 @@ async function callSecurityRpc(
   if (!url || !secret) unavailable();
   try {
     // This credential bypasses RLS. Keep the raw client private and all financial
-    // queries on the separate user-session client (spec071).
+    // queries on the separate user-session client.
     const client = createClient(url, secret, {
       auth: {
         persistSession: false,

@@ -18,7 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { EmptyState } from '@/components/widgets';
+import { ColorSwatch, EmptyState } from '@/components/widgets';
 import {
   CHART_AXIS_TICK_PROPS,
   CHART_TOOLTIP_PROPS,
@@ -150,11 +150,7 @@ export function AssetLineChart({ data }: AssetLineChartProps) {
                   onCheckedChange={() => toggle(line.key)}
                   onSelect={(e) => e.preventDefault()}
                 >
-                  <span
-                    aria-hidden="true"
-                    className="mr-2 inline-block size-2.5 rounded-full"
-                    style={{ backgroundColor: line.color }}
-                  />
+                  <ColorSwatch color={line.color} className="mr-2 size-2.5" />
                   {line.label}
                 </DropdownMenuCheckboxItem>
               ))}
@@ -167,10 +163,9 @@ export function AssetLineChart({ data }: AssetLineChartProps) {
                   onCheckedChange={() => toggle(cat)}
                   onSelect={(e) => e.preventDefault()}
                 >
-                  <span
-                    aria-hidden="true"
-                    className="mr-2 inline-block size-2.5 rounded-full"
-                    style={{ backgroundColor: CATEGORY_COLORS[cat] }}
+                  <ColorSwatch
+                    color={CATEGORY_COLORS[cat]}
+                    className="mr-2 size-2.5"
                   />
                   {CATEGORY_LABELS[cat]}
                 </DropdownMenuCheckboxItem>

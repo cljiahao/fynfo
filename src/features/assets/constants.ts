@@ -1,3 +1,4 @@
+import { chartColors } from '@/lib/chart-palette';
 import type { AssetCategory } from './types';
 
 export const CATEGORIES: AssetCategory[] = [
@@ -20,15 +21,15 @@ export const CATEGORY_LABELS: Record<AssetCategory, string> = {
   pension: 'Pension',
 };
 
-export const CATEGORY_COLORS: Record<AssetCategory, string> = {
-  savings: '#3b82f6',
-  bonds: '#f59e0b',
-  stocks: '#10b981',
-  etf: '#f97316',
-  non_equity: '#ec4899',
-  crypto: '#8b5cf6',
-  pension: '#b45309',
-};
+export const CATEGORY_COLORS = chartColors<AssetCategory>({
+  savings: 1,
+  bonds: 4,
+  stocks: 3,
+  etf: 2,
+  non_equity: 5,
+  crypto: 7,
+  pension: 12,
+});
 
 // Categories that roll up into "Total Investment" on the chart
 export const INVESTMENT_CATEGORIES: AssetCategory[] = [

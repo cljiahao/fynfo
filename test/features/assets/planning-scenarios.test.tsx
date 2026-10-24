@@ -1,4 +1,8 @@
 // @vitest-environment jsdom
+import { SalaryPlanner } from '@/features/assets/components/salary-planner';
+import { ScenarioDialog } from '@/features/assets/components/scenario-dialog';
+import { useScenarioMutations } from '@/features/assets/hooks/use-scenarios';
+import type { ScenarioPayload, ScenarioRecord } from '@/features/assets/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import {
@@ -12,10 +16,6 @@ import {
   within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SalaryPlanner } from '../components/salary-planner';
-import { ScenarioDialog } from '../components/scenario-dialog';
-import { useScenarioMutations } from '../hooks/use-scenarios';
-import type { ScenarioPayload, ScenarioRecord } from '../types';
 const state = vi.hoisted(() => ({
   get: vi.fn(),
   create: vi.fn(),
@@ -26,13 +26,13 @@ const state = vi.hoisted(() => ({
   expenseWrites: vi.fn(),
   snapshotWrites: vi.fn(),
 }));
-vi.mock('../actions/scenario-actions', () => ({
+vi.mock('@/features/assets/actions/scenario-actions', () => ({
   getScenarios: state.get,
   createScenario: state.create,
   updateScenario: state.update,
   deleteScenario: state.remove,
 }));
-vi.mock('../hooks/use-planner-settings', () => ({
+vi.mock('@/features/assets/hooks/use-planner-settings', () => ({
   usePlannerSettings: () => ({ data: null, isLoading: false, isError: false }),
   useUpsertPlannerSettings: () => ({ mutate: state.settings }),
 }));
@@ -49,7 +49,7 @@ vi.mock('@/features/expenses', () => ({
   isCountedInExpenseTotals: () => true,
   useUpsertExpense: state.expenseWrites,
 }));
-vi.mock('../hooks/use-snapshots', () => ({
+vi.mock('@/features/assets/hooks/use-snapshots', () => ({
   useUpsertSnapshot: state.snapshotWrites,
 }));
 const payload: ScenarioPayload = {

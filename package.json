@@ -21,7 +21,8 @@
     "typecheck": "tsc --noEmit",
     "check:harness": "node scripts/verify-harness.mjs",
     "check:routes": "node scripts/check-route-logging.mjs",
-    "check": "pnpm check:routes && pnpm format:check && pnpm lint && pnpm typecheck",
+    "check:comments": "node scripts/check-comment-hygiene.mjs",
+    "check": "pnpm check:routes && pnpm check:comments && pnpm format:check && pnpm lint && pnpm typecheck",
     "// testing": "",
     "test": "vitest",
     "test:ci": "vitest run --coverage",
@@ -54,6 +55,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",
     "@tailwindcss/postcss": "4.3.3",
     "@tailwindcss/typography": "0.5.19",
     "@testing-library/jest-dom": "^6.9.1",

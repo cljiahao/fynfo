@@ -7,7 +7,7 @@ import {
 import crypto from 'crypto';
 
 /**
- * Household key-wrapping primitives (spec 053, constitution §5.1a).
+ * Household key-wrapping primitives (constitution §5.1a).
  *
  * A single random household key `K_h` encrypts all household data. It is stored
  * only *wrapped* — sealed under each member's PIN-derived DEK — and the raw key
@@ -58,7 +58,7 @@ export function deriveInviteKey(
   });
 }
 
-/** SHA-256 hex of the invite secret — the non-reversible lookup key stored at rest. */
+/** Hex digest (SHA-256) of the invite secret, the non-reversible lookup key stored at rest. */
 export function hashInviteCode(secret: string): string {
   return crypto.createHash('sha256').update(secret).digest('hex');
 }

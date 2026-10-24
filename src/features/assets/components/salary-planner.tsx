@@ -1,6 +1,7 @@
 'use client';
 
 import { useAmountVisibility } from '@/features/privacy';
+import { chartColor } from '@/lib/chart-palette';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -13,7 +14,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryContent } from '@/components/widgets';
 import { useExpenses } from '@/features/expenses';
-import { useSalaryRecords } from '@/features/salary/hooks/use-salary';
+import { useSalaryRecords } from '@/features/salary';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   usePlannerSettings,
@@ -258,15 +259,19 @@ function SalaryPlannerInner({
   ]);
 
   const pieData = [
-    { name: 'Savings', value: Math.max(savingsAmt, 0), fill: '#3b82f6' },
-    { name: 'Expenses', value: expensesAmt, fill: '#ef4444' },
-    { name: 'Insurance', value: insuranceAmt, fill: '#eab308' },
-    { name: 'Investment', value: Math.max(investmentAmt, 0), fill: '#22c55e' },
+    { name: 'Savings', value: Math.max(savingsAmt, 0), fill: chartColor(1) },
+    { name: 'Expenses', value: expensesAmt, fill: chartColor(8) },
+    { name: 'Insurance', value: insuranceAmt, fill: chartColor(4) },
+    {
+      name: 'Investment',
+      value: Math.max(investmentAmt, 0),
+      fill: chartColor(6),
+    },
     ...(titheEnabled
-      ? [{ name: 'Tithe', value: titheAmt, fill: '#8b5cf6' }]
+      ? [{ name: 'Tithe', value: titheAmt, fill: chartColor(7) }]
       : []),
     ...(allowanceEnabled
-      ? [{ name: 'Allowance', value: allowanceAmt, fill: '#b45309' }]
+      ? [{ name: 'Allowance', value: allowanceAmt, fill: chartColor(12) }]
       : []),
   ];
 
@@ -274,29 +279,29 @@ function SalaryPlannerInner({
     {
       label: `Savings (${(savingsPct * 100).toFixed(1)}%)`,
       value: savingsAmt,
-      color: '#3b82f6',
+      color: chartColor(1),
     },
     {
       label: `Expenses (${(expensesPct * 100).toFixed(1)}%)`,
       value: expensesAmt,
-      color: '#ef4444',
+      color: chartColor(8),
     },
     {
       label: `Insurance (${(insurancePct * 100).toFixed(0)}%)`,
       value: insuranceAmt,
-      color: '#eab308',
+      color: chartColor(4),
     },
     {
       label: `Investment (${(investmentPct * 100).toFixed(1)}%)`,
       value: investmentAmt,
-      color: '#22c55e',
+      color: chartColor(6),
     },
     ...(titheEnabled
       ? [
           {
             label: `Tithe (${(tithePct * 100).toFixed(0)}%)`,
             value: titheAmt,
-            color: '#8b5cf6',
+            color: chartColor(7),
           },
         ]
       : []),
@@ -305,7 +310,7 @@ function SalaryPlannerInner({
           {
             label: `Allowance (${(allowancePct * 100).toFixed(0)}%)`,
             value: allowanceAmt,
-            color: '#b45309',
+            color: chartColor(12),
           },
         ]
       : []),

@@ -19,7 +19,7 @@ export default defineConfig({
     // Four workers caused DOM-test timeouts on the dev host (spec082).
     maxWorkers: 2,
     passWithNoTests: false,
-    include: ['test/**/*.{test,spec}.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],
+    include: ['test/**/*.{test,spec}.{ts,tsx}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

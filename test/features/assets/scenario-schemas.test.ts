@@ -1,6 +1,9 @@
+import { computeSalaryPlan } from '@/features/assets/lib/salary-plan';
+import {
+  scenarioPayloadSchema,
+  scenarioRevisionSchema,
+} from '@/features/assets/schemas';
 import { describe, expect, it } from 'vitest';
-import { computeSalaryPlan } from '../lib/salary-plan';
-import { scenarioPayloadSchema, scenarioRevisionSchema } from '../schemas';
 
 const payload = {
   schemaVersion: 1,
