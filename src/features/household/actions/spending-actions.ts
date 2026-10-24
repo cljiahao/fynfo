@@ -5,6 +5,7 @@ import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
+import { ROW_UUID } from '@/lib/zod-utils';
 import { randomUUID } from 'crypto';
 import { addSpendingSchema, createSpaceSchema } from '../schemas';
 import type {
@@ -119,6 +120,7 @@ export async function createSpace(input: unknown): Promise<void> {
 
 /** Deletes a space (RLS scoped); its spending cascades. */
 export async function deleteSpace(id: string): Promise<void> {
+  parseOrThrow(ROW_UUID, id, 'household.deleteSpace.id');
   const { supabase } = await requireHouseholdContext();
   const { error } = await supabase
     .from('household_spaces')
@@ -149,6 +151,7 @@ export async function addSpending(input: unknown): Promise<void> {
 
 /** Deletes one shared spending entry (RLS scoped). */
 export async function deleteSpending(id: string): Promise<void> {
+  parseOrThrow(ROW_UUID, id, 'household.deleteSpending.id');
   const { supabase } = await requireHouseholdContext();
   const { error } = await supabase
     .from('household_spending')

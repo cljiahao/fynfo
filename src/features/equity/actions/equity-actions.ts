@@ -6,6 +6,7 @@ import { decryptNumber, decryptOptionalNumber } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
+import { RECORD_ID } from '@/lib/zod-utils';
 import { randomUUID } from 'crypto';
 import { equityTradeInputSchema } from '../schemas';
 import type { EquityTradeData } from '../types';
@@ -72,6 +73,7 @@ export async function updateTrade(
   id: string,
   data: Omit<EquityTradeData, 'id'>
 ): Promise<void> {
+  parseOrThrow(RECORD_ID, id, 'equity.trade.id');
   const parsed = parseOrThrow(
     equityTradeInputSchema,
     data,
@@ -100,6 +102,7 @@ export async function updateTrade(
 }
 
 export async function deleteTrade(id: string): Promise<void> {
+  parseOrThrow(RECORD_ID, id, 'equity.trade.id');
   const { userId, supabase } = await requireActionContext();
 
   const { error } = await supabase

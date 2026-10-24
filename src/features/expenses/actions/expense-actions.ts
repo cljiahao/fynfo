@@ -7,9 +7,10 @@ import { throwIfSupabaseError } from '@/lib/errors';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { withDeadline } from '@/lib/with-deadline';
+import { RECORD_ID } from '@/lib/zod-utils';
 import { randomUUID } from 'crypto';
 import { EXPENSE_READ_TIMEOUT_MS } from '../constants';
-import { expenseDataSchema } from '../schemas';
+import { expenseDataSchema, settleSplitSchema } from '../schemas';
 import type { ExpenseData } from '../types';
 
 type ExpenseSplitRow = {
@@ -130,6 +131,7 @@ export async function upsertExpense(data: ExpenseData): Promise<void> {
 }
 
 export async function deleteExpense(id: string): Promise<void> {
+  parseOrThrow(RECORD_ID, id, 'expense.id');
   const { userId, supabase } = await requireActionContext();
 
   const { error } = await supabase
@@ -146,14 +148,19 @@ export async function settleSplit(
   person: string,
   settled: boolean
 ): Promise<void> {
+  const args = parseOrThrow(
+    settleSplitSchema,
+    { expenseIds: [expenseId], person, settled },
+    'expense.settle-split'
+  );
   const { supabase } = await requireActionContext();
 
   // RLS limits our mutations automatically to expenses we own.
   const { error } = await supabase
     .from('expense_splits')
     .update({ settled })
-    .eq('expense_id', expenseId)
-    .eq('person', person);
+    .eq('expense_id', args.expenseIds[0])
+    .eq('person', args.person);
 
   throwIfSupabaseError(error, 'expense settle split');
 }
@@ -163,13 +170,18 @@ export async function settleMonthSplits(
   person: string,
   settled: boolean
 ): Promise<void> {
+  const args = parseOrThrow(
+    settleSplitSchema,
+    { expenseIds, person, settled },
+    'expense.settle-month'
+  );
   const { supabase } = await requireActionContext();
 
   const { error } = await supabase
     .from('expense_splits')
-    .update({ settled })
-    .in('expense_id', expenseIds)
-    .eq('person', person);
+    .update({ settled: args.settled })
+    .in('expense_id', args.expenseIds)
+    .eq('person', args.person);
 
   throwIfSupabaseError(error, 'expense settle month');
 }

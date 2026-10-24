@@ -7,6 +7,8 @@ export const salaryDataSchema = z.object({
   bonus: z.number().min(0),
 });
 
+export const TAX_YEAR = z.number().int().positive();
+
 export const taxReliefDataSchema = z.object({
   reliefKey: z.string().min(1),
   amount: z.number().min(0),

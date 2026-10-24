@@ -1,3 +1,4 @@
+import { RECORD_ID } from '@/lib/zod-utils';
 import { z } from 'zod';
 import { EXPENSE_TYPES } from './constants';
 import { getSplitAllocationError } from './lib/split-amounts';
@@ -9,6 +10,14 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T.*)?$/;
 export const expenseSplitSchema = z.object({
   person: z.string().min(1),
   amount: z.number().min(0).finite(),
+  settled: z.boolean(),
+});
+
+export const MAX_SETTLE_EXPENSE_IDS = 2000;
+
+export const settleSplitSchema = z.object({
+  expenseIds: z.array(RECORD_ID).min(1).max(MAX_SETTLE_EXPENSE_IDS),
+  person: expenseSplitSchema.shape.person,
   settled: z.boolean(),
 });
 

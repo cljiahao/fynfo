@@ -6,6 +6,7 @@ import { decryptNumber } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
+import { YYYY_MM } from '@/lib/zod-utils';
 import { randomUUID } from 'crypto';
 import { salaryDataSchema } from '../schemas';
 import type { SalaryData } from '../types';
@@ -17,7 +18,7 @@ export async function getSalaryRecords(): Promise<SalaryData[]> {
     (from, to) =>
       supabase
         .from('salary_records')
-        .select('*', { count: 'exact' })
+        .select('month, salary, bonus', { count: 'exact' })
         .eq('user_id', userId)
         .order('month', { ascending: true })
         .order('id', { ascending: true })
@@ -35,11 +36,12 @@ export async function getSalaryRecords(): Promise<SalaryData[]> {
 }
 
 export async function getSalaryRecord(id: string): Promise<SalaryData | null> {
+  parseOrThrow(YYYY_MM, id, 'salary.read.month');
   const { userId, dek, supabase } = await requireActionContext();
 
   const { data, error } = await supabase
     .from('salary_records')
-    .select('*')
+    .select('month, salary, bonus')
     .eq('user_id', userId)
     .eq('month', id)
     .maybeSingle();
@@ -82,6 +84,7 @@ export async function upsertSalaryRecord(data: SalaryData): Promise<void> {
 }
 
 export async function deleteSalaryRecord(id: string): Promise<void> {
+  parseOrThrow(YYYY_MM, id, 'salary.delete.month');
   const { userId, supabase } = await requireActionContext();
 
   const { error } = await supabase

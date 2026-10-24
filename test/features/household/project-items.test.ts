@@ -76,7 +76,7 @@ describe('getGoals with budget items', () => {
         ],
         household_goal_payments: [
           {
-            id: 'p1',
+            id: '3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b',
             item_id: ITEM_ID,
             payer_user_id: USER_ID,
             amount: encryptPayload('5000', KH),
@@ -106,7 +106,13 @@ describe('getGoals with budget items', () => {
       over: 1000,
     });
     expect(goal.items[0].payments).toEqual([
-      { id: 'p1', amount: 5000, note: null, date: '2026-10-02', isSelf: true },
+      {
+        id: '3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b',
+        amount: 5000,
+        note: null,
+        date: '2026-10-02',
+        isSelf: true,
+      },
       {
         id: 'p2',
         amount: 8000,
@@ -221,7 +227,7 @@ describe('item and payment writes', () => {
     const { deleteGoalItem, deleteItemPayment } =
       await import('@/features/household/actions/goal-actions');
     await deleteGoalItem(ITEM_ID);
-    await deleteItemPayment('p1');
+    await deleteItemPayment('3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b');
     expect(fake.calls.delete).toBe(2);
     expect(
       fake.calls.queries
@@ -229,7 +235,10 @@ describe('item and payment writes', () => {
         .map((query) => [query.table, query.eq])
     ).toEqual([
       ['household_goal_items', [{ column: 'id', value: ITEM_ID }]],
-      ['household_goal_payments', [{ column: 'id', value: 'p1' }]],
+      [
+        'household_goal_payments',
+        [{ column: 'id', value: '3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b' }],
+      ],
     ]);
   });
 });

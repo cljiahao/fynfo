@@ -7,18 +7,18 @@ import { throwIfSupabaseError } from '@/lib/errors';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
-import { z } from 'zod';
-import { taxReliefListSchema } from '../schemas';
+import { TAX_YEAR, taxReliefListSchema } from '../schemas';
 import type { TaxReliefData } from '../types';
 
 export async function getTaxReliefs(year: number): Promise<TaxReliefData[]> {
+  parseOrThrow(TAX_YEAR, year, 'tax_relief.year');
   const { userId, dek, supabase } = await requireActionContext();
 
   const data = await readAllRows(
     (from, to) =>
       supabase
         .from('tax_relief_entries')
-        .select('*', { count: 'exact' })
+        .select('relief_key, amount', { count: 'exact' })
         .eq('user_id', userId)
         .eq('year', year)
         .order('id', { ascending: true })
@@ -44,7 +44,7 @@ export async function getAllTaxReliefs(): Promise<
     (from, to) =>
       supabase
         .from('tax_relief_entries')
-        .select('*', { count: 'exact' })
+        .select('year, relief_key, amount', { count: 'exact' })
         .eq('user_id', userId)
         .order('year', { ascending: true })
         .order('id', { ascending: true })
@@ -65,7 +65,7 @@ export async function upsertTaxReliefs(
   year: number,
   reliefs: TaxReliefData[]
 ): Promise<void> {
-  parseOrThrow(z.number().int().positive(), year, 'tax_relief.year');
+  parseOrThrow(TAX_YEAR, year, 'tax_relief.year');
   const validatedReliefs = parseOrThrow(
     taxReliefListSchema,
     reliefs,

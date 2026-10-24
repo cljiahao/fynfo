@@ -327,6 +327,20 @@ concise explanations where required; avoid redundant narration and temporary not
 
 Add shadcn primitives using `npx shadcn@latest add <component-name>`.
 
+## Request security
+
+- `src/proxy.ts` sets a per-request nonce CSP (`src/lib/csp.ts`) on every page
+  response and forwards the nonce to the root layout as `x-nonce`. Pages are
+  therefore rendered per request, including `/`. Scripts need the nonce
+  (`strict-dynamic`); `connect-src` allows only the app origin and
+  `NEXT_PUBLIC_SUPABASE_URL`; styles keep `unsafe-inline` for React style
+  attributes and chart libraries. New third-party hosts must be added to
+  `buildCsp`.
+- `/api/vault` POST/DELETE and `/api/track` POST reject cross-site requests
+  (`Sec-Fetch-Site`, `Origin` fallback), non-JSON bodies and oversized bodies
+  through `src/lib/request-guard.ts`. Server actions validate every input with
+  `parseOrThrow` before authentication or database access.
+
 ## Personal data export
 
 The profile page downloads a versioned JSON export of profile, snapshots,

@@ -32,7 +32,7 @@ describe('goal-actions — getGoals', () => {
       selectDataByTable: {
         household_goals: [
           {
-            id: 'g1',
+            id: '3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b',
             name: encryptPayload('Sofa', KH),
             target_amount: encryptPayload('1000', KH),
             target_date: '2026-12-01',
@@ -42,7 +42,7 @@ describe('goal-actions — getGoals', () => {
         household_goal_contributions: [
           {
             id: 'c1',
-            goal_id: 'g1',
+            goal_id: '3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b',
             contributor_user_id: USER_ID,
             amount: encryptPayload('300', KH),
             note: encryptPayload('first', KH),
@@ -50,7 +50,7 @@ describe('goal-actions — getGoals', () => {
           },
           {
             id: 'c2',
-            goal_id: 'g1',
+            goal_id: '3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b',
             contributor_user_id: PARTNER_ID,
             amount: encryptPayload('200', KH),
             note: null,
@@ -171,7 +171,7 @@ describe('goal-actions — deleteGoal', () => {
     const fake = setSupabase();
     const { deleteGoal } =
       await import('@/features/household/actions/goal-actions');
-    await deleteGoal('g1');
+    await deleteGoal('3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b');
     expect(fake.calls.from).toContain('household_goals');
     expect(fake.calls.delete).toBe(1);
     expect(
@@ -179,15 +179,17 @@ describe('goal-actions — deleteGoal', () => {
         (query) =>
           query.table === 'household_goals' && query.operation === 'delete'
       )?.eq
-    ).toEqual([{ column: 'id', value: 'g1' }]);
+    ).toEqual([
+      { column: 'id', value: '3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b' },
+    ]);
   });
 
   it('surfaces an opaque error on a delete failure', async () => {
     setSupabase({ selectError: { message: 'permission denied' } });
     const { deleteGoal } =
       await import('@/features/household/actions/goal-actions');
-    await expect(deleteGoal('g1')).rejects.toThrow(
-      'household goal delete failed'
-    );
+    await expect(
+      deleteGoal('3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b')
+    ).rejects.toThrow('household goal delete failed');
   });
 });
