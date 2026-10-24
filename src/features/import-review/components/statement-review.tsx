@@ -9,21 +9,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  EXPENSE_TYPE_LABELS,
-  IMPORT_SAVE_LIMIT,
-  type ExpenseType,
-} from '@/features/expenses';
+import { IMPORT_SAVE_LIMIT, type ExpenseType } from '@/features/expenses';
 import {
   MerchantRuleManager,
-  MerchantSuggestionReview,
   applyMerchantSuggestion,
   restoreMerchantSource,
   useMerchantRulebook,
@@ -33,12 +26,7 @@ import {
 import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
 import { Info } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
-import {
-  STATEMENT_BANKS,
-  STATEMENT_CLASSIFICATIONS,
-  STATEMENT_LIMITS,
-  STATEMENT_REVIEW_STATUS_LABELS,
-} from '../constants';
+import { STATEMENT_CLASSIFICATIONS, STATEMENT_LIMITS } from '../constants';
 import { useStatementSave } from '../hooks/use-statement-save';
 import type { LocalStatementPdf } from '../lib/local-pdf';
 import { applyRulesToStatement } from '../lib/merchant-rules';
@@ -52,12 +40,15 @@ import {
   type DetectedStatementPeriod,
 } from '../lib/statement-period';
 import type { StatementBank, StatementCandidate } from '../types';
+import { RestoreMerchantDialog } from './restore-merchant-dialog';
+import { StatementRowCard } from './statement-row-card';
 import { StatementSaveReview } from './statement-save-review';
+import { StatementSourceForm } from './statement-source-form';
 
 function StatementReviewBody({
-  discardGuard,
+  onGuardChange,
 }: {
-  discardGuard: React.RefObject<(() => boolean) | null>;
+  onGuardChange: (guard: (() => boolean) | null) => void;
 }) {
   const { hidden, mask, canReveal, getHideEpoch } = useAmountVisibility();
   const id = useId();
@@ -96,6 +87,7 @@ function StatementReviewBody({
     const next = applyRulesToStatement(rows, bank, merchant.rules, save.locked);
     if (next !== rows) {
       save.invalidateReview();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync with the privacy or rulebook signal
       setRows(next);
     }
   }, [rows, bank, merchant.rules, merchant.stage, hidden, canReveal, save]);
@@ -110,10 +102,8 @@ function StatementReviewBody({
     );
   }
   useEffect(() => {
-    discardGuard.current = allowDiscard;
-    return () => {
-      discardGuard.current = null;
-    };
+    onGuardChange(allowDiscard);
+    return () => onGuardChange(null);
   });
 
   useEffect(
@@ -133,6 +123,7 @@ function StatementReviewBody({
         controller.current?.abort();
         session.current?.destroy();
         session.current = null;
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync with the privacy or rulebook signal
         setBusy(false);
       }
     },
@@ -357,6 +348,63 @@ function StatementReviewBody({
       )
     );
   }
+  function changeBank(next: StatementBank) {
+    if (!reset()) return;
+    setBank(next);
+  }
+  function changeFile(next: File | null) {
+    if (!reset()) return;
+    if (!manualPeriod) {
+      setFrom('');
+      setTo('');
+    }
+    setFile(next);
+  }
+  function changePeriod(edge: 'from' | 'to', value: string) {
+    if (!reset()) return;
+    setManualPeriod(true);
+    if (edge === 'from') setFrom(value);
+    else setTo(value);
+  }
+  function usePdfDates() {
+    if (!reset()) return;
+    setManualPeriod(false);
+    setFrom('');
+    setTo('');
+  }
+  function clearReview() {
+    if (!reset()) return;
+    setFile(null);
+  }
+  function focusRow(row: StatementCandidate) {
+    setSelected(row.id);
+    setPage(row.source[0].page);
+  }
+  function compareSource(row: StatementCandidate) {
+    focusRow(row);
+    setView('statement');
+  }
+  function requestRestore(rowId: string) {
+    restoreOrigin.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    setRestoreId(rowId);
+  }
+  function createRule(row: StatementCandidate, origin: HTMLElement) {
+    ruleOrigin.current = origin;
+    setRulesOpen(true);
+    setRuleDraft({
+      id: crypto.randomUUID(),
+      label: row.description,
+      enabled: true,
+      matchMode: 'exact',
+      matchText: row.originalDescription,
+      bank,
+      displayName: row.description || null,
+      category: row.category as ExpenseType,
+    });
+  }
   const reviewedRows = rows.map((row) => ({
     ...row,
     review: getStatementReview(row, { from, to }),
@@ -386,141 +434,23 @@ function StatementReviewBody({
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <AmountsHiddenNotice />
       <div className="max-h-[35dvh] shrink-0 overflow-y-auto">
-        <details open={rows.length === 0} className="space-y-3 open:w-full">
-          <summary className="cursor-pointer text-sm font-medium">
-            {rows.length ? 'Change statement' : 'Choose a statement'}
-          </summary>
-          <form
-            className="grid gap-3 sm:grid-cols-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (canReveal()) void extract();
-            }}
-          >
-            <div className="space-y-2">
-              <Label htmlFor={`${id}-bank`}>Statement bank</Label>
-              <select
-                disabled={hidden}
-                id={`${id}-bank`}
-                value={bank}
-                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-                onChange={(event) => {
-                  if (!canReveal()) return;
-                  if (!reset()) return;
-                  setBank(event.target.value as StatementBank);
-                }}
-              >
-                {STATEMENT_BANKS.map((entry) => (
-                  <option key={entry.value} value={entry.value}>
-                    {entry.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${id}-file`}>Bank statement PDF</Label>
-              <Input
-                disabled={hidden}
-                id={`${id}-file`}
-                type="file"
-                accept=".pdf,application/pdf"
-                onChange={(event) => {
-                  if (!canReveal()) return;
-                  if (!reset()) return;
-                  if (!manualPeriod) {
-                    setFrom('');
-                    setTo('');
-                  }
-                  setFile(event.currentTarget.files?.[0] ?? null);
-                  event.currentTarget.value = '';
-                }}
-              />
-            </div>
-            <details open={manualPeriod} className="space-y-3 sm:col-span-2">
-              <summary className="text-muted-foreground cursor-pointer text-sm">
-                Dates (optional)
-              </summary>
-              <p className="text-muted-foreground text-sm">
-                {detectedBasis === 'printed-period'
-                  ? 'Period read from your PDF.'
-                  : detectedBasis
-                    ? 'Date range inferred from the statement date or month. Correct it here if needed.'
-                    : 'Dates are read from your PDF. Enter them only if needed.'}
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor={`${id}-from`}>Period start</Label>
-                  <Input
-                    disabled={hidden}
-                    id={`${id}-from`}
-                    type="date"
-                    value={hidden ? '' : from}
-                    required={manualPeriod}
-                    onChange={(event) => {
-                      if (!canReveal()) return;
-                      if (!reset()) return;
-                      setManualPeriod(true);
-                      setFrom(event.target.value);
-                    }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`${id}-to`}>Period end</Label>
-                  <Input
-                    disabled={hidden}
-                    id={`${id}-to`}
-                    type="date"
-                    value={hidden ? '' : to}
-                    required={manualPeriod}
-                    onChange={(event) => {
-                      if (!canReveal()) return;
-                      if (!reset()) return;
-                      setManualPeriod(true);
-                      setTo(event.target.value);
-                    }}
-                  />
-                </div>
-              </div>
-              {manualPeriod && (
-                <Button
-                  type="button"
-                  variant="link"
-                  className="h-auto p-0"
-                  disabled={hidden}
-                  onClick={() => {
-                    if (!canReveal() || !reset()) return;
-                    setManualPeriod(false);
-                    setFrom('');
-                    setTo('');
-                  }}
-                >
-                  Use dates from PDF
-                </Button>
-              )}
-            </details>
-            <div className="flex flex-wrap gap-2 sm:col-span-2">
-              <Button type="submit" disabled={hidden || busy || !file}>
-                {busy ? 'Extracting locally…' : 'Extract for review'}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={hidden}
-                onClick={() => {
-                  if (!canReveal()) return;
-                  if (!reset()) return;
-                  setFile(null);
-                }}
-              >
-                Clear review
-              </Button>
-            </div>
-          </form>
-          <p className="text-muted-foreground text-sm">
-            Text PDFs up to 10 MiB and 100 pages. Use an unprotected PDF. Scans
-            and some bank layouts need manual entry.
-          </p>
-        </details>
+        <StatementSourceForm
+          controlId={id}
+          hasRows={rows.length > 0}
+          bank={bank}
+          from={from}
+          to={to}
+          manualPeriod={manualPeriod}
+          detectedBasis={detectedBasis}
+          busy={busy}
+          hasFile={!!file}
+          onBankChange={changeBank}
+          onFileChange={changeFile}
+          onPeriodChange={changePeriod}
+          onUsePdfDates={usePdfDates}
+          onClear={clearReview}
+          onExtract={() => void extract()}
+        />
         {rows.length > 0 && (
           <Button
             type="button"
@@ -743,287 +673,24 @@ function StatementReviewBody({
                 </p>
               )}
               {visibleRows.map((row, index) => (
-                <fieldset
+                <StatementRowCard
                   key={row.id}
-                  disabled={hidden || save.locked(row.id) || save.busy}
-                  className={`min-w-0 space-y-2 border-b px-3 py-3 ${selected === row.id ? 'bg-muted/50' : ''}`}
-                  onFocusCapture={() => {
-                    if (!canReveal()) return;
-                    setSelected(row.id);
-                    setPage(row.source[0].page);
-                  }}
-                >
-                  <legend className="sr-only">
-                    Row {rowPage * 20 + index + 1}:{' '}
-                    {STATEMENT_REVIEW_STATUS_LABELS[row.review.status]}
-                  </legend>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="order-1 h-auto p-0 text-xs"
-                      aria-label={`View source page ${row.source[0].page}, line ${row.source[0].line}`}
-                      onClick={() => {
-                        if (!canReveal()) return;
-                        setSelected(row.id);
-                        setPage(row.source[0].page);
-                        setView('statement');
-                      }}
-                    >
-                      Compare source · Page {row.source[0].page}
-                    </Button>
-                    {!hidden &&
-                      !save.locked(row.id) &&
-                      (() => {
-                        const input = save.inputFor(row);
-                        return (
-                          <>
-                            <label className="flex min-h-9 min-w-9 cursor-pointer items-center gap-2 text-sm">
-                              <input
-                                type="checkbox"
-                                className="accent-primary size-4"
-                                aria-label={`Select expense from page ${row.source[0].page}, line ${row.source[0].line}`}
-                                disabled={!input || save.busy}
-                                checked={save.selection.includes(row.id)}
-                                onChange={() => save.toggle(row)}
-                              />
-                              {row.review.status !== 'candidate' && (
-                                <span className="text-muted-foreground text-sm">
-                                  {row.review.status === 'excluded'
-                                    ? 'Not a purchase'
-                                    : 'Check details'}
-                                </span>
-                              )}
-                              <span className="sr-only">Select purchase</span>
-                            </label>
-                            {!input && row.review.status === 'candidate' && (
-                              <p className="text-warning-strong order-2 w-full text-sm">
-                                This row exceeds supported saving fields or
-                                source-note limits, or its source cannot
-                                establish positive spending. Use manual entry
-                                after checking the source. Source notes allow at
-                                most 32 lines, 4096 characters per line and 16
-                                KiB total.
-                              </p>
-                            )}
-                          </>
-                        );
-                      })()}
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-12">
-                    <div className="space-y-1 sm:col-span-8">
-                      <Label htmlFor={`${id}-${row.id}-description`}>
-                        Item / Brand
-                      </Label>
-                      <Input
-                        id={`${id}-${row.id}-description`}
-                        value={hidden ? '' : row.description}
-                        maxLength={4096}
-                        onChange={(event) =>
-                          edit(row.id, 'description', event.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1 sm:col-span-4">
-                      <Label htmlFor={`${id}-${row.id}-amount`}>
-                        SGD billed amount
-                      </Label>
-                      <Input
-                        id={`${id}-${row.id}-amount`}
-                        inputMode="decimal"
-                        value={hidden ? '' : row.amount}
-                        onChange={(event) =>
-                          edit(row.id, 'amount', event.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="w-full max-w-40 min-w-0 space-y-1 sm:col-span-4">
-                      <Label htmlFor={`${id}-${row.id}-date`}>Date</Label>
-                      <Input
-                        id={`${id}-${row.id}-date`}
-                        type="date"
-                        value={hidden ? '' : row.date}
-                        onChange={(event) =>
-                          edit(row.id, 'date', event.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1 sm:col-span-8">
-                      <Label htmlFor={`${id}-${row.id}-category`}>
-                        Category
-                      </Label>
-                      <select
-                        id={`${id}-${row.id}-category`}
-                        className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-                        value={row.category}
-                        onChange={(event) =>
-                          edit(row.id, 'category', event.target.value)
-                        }
-                      >
-                        {Object.entries(EXPENSE_TYPE_LABELS).map(
-                          ([key, label]) => (
-                            <option key={key} value={key}>
-                              {label}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-                  </div>
-                  {row.review.issues.map((issue) =>
-                    issue.startsWith('A source credit') ? (
-                      <Popover key={issue}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Why this credit is excluded"
-                          >
-                            <Info className="size-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="text-sm">
-                          {issue}
-                        </PopoverContent>
-                      </Popover>
-                    ) : (
-                      <p key={issue} className="text-sm">
-                        {issue}
-                      </p>
-                    )
-                  )}
-                  <details className="space-y-3">
-                    <summary className="text-muted-foreground cursor-pointer text-sm">
-                      Details
-                    </summary>
-                    <div className="flex flex-wrap items-end gap-2">
-                      <div className="min-w-32 flex-1 space-y-1">
-                        <Label htmlFor={`${id}-${row.id}-classification`}>
-                          Classification
-                        </Label>
-                        <select
-                          id={`${id}-${row.id}-classification`}
-                          className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm disabled:opacity-50"
-                          value={row.classification}
-                          disabled={row.isSummary}
-                          aria-describedby={`${id}-${row.id}-classification-reason`}
-                          onChange={(event) =>
-                            classify(row.id, event.target.value)
-                          }
-                        >
-                          {STATEMENT_CLASSIFICATIONS.map((entry) => (
-                            <option key={entry.value} value={entry.value}>
-                              {entry.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      {!hidden && !row.isSummary && (
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            aria-label="Review changes / restore"
-                            variant="outline"
-                            onClick={() => {
-                              if (
-                                !canReveal() ||
-                                save.locked(row.id) ||
-                                save.busy
-                              )
-                                return;
-                              restoreOrigin.current =
-                                document.activeElement instanceof HTMLElement
-                                  ? document.activeElement
-                                  : null;
-                              setRestoreId(row.id);
-                            }}
-                          >
-                            Review changes
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={
-                              !merchant.canEdit ||
-                              row.originalDescription.length > 256 ||
-                              row.description.length > 256
-                            }
-                            onClick={(event) => {
-                              if (
-                                !canReveal() ||
-                                save.locked(row.id) ||
-                                save.busy ||
-                                !merchant.canEdit
-                              )
-                                return;
-                              if (
-                                ruleDraft &&
-                                !window.confirm(
-                                  'Discard the unsaved rule draft?'
-                                )
-                              )
-                                return;
-                              ruleOrigin.current = event.currentTarget;
-                              setRulesOpen(true);
-                              setRuleDraft({
-                                id: crypto.randomUUID(),
-                                label: row.description,
-                                enabled: true,
-                                matchMode: 'exact',
-                                matchText: row.originalDescription,
-                                bank,
-                                displayName: row.description || null,
-                                category: row.category as ExpenseType,
-                              });
-                            }}
-                          >
-                            Create rule
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                    <p
-                      id={`${id}-${row.id}-classification-reason`}
-                      className="text-muted-foreground text-sm"
-                    >
-                      {row.isSummary
-                        ? 'Not a transaction'
-                        : `Suggested: ${STATEMENT_CLASSIFICATIONS.find((entry) => entry.value === row.suggestedClassification)?.label}`}
-                      . {row.classificationReason}
-                    </p>
-                    {row.classification !== row.suggestedClassification && (
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                        <span>
-                          Your classification overrides the suggestion.
-                        </span>
-                        <Button
-                          type="button"
-                          variant="link"
-                          className="h-auto p-0"
-                          onClick={() =>
-                            classify(row.id, row.suggestedClassification)
-                          }
-                        >
-                          Restore suggestion
-                        </Button>
-                      </div>
-                    )}
-                    {!hidden && !row.isSummary && (
-                      <MerchantSuggestionReview
-                        originalDescription={row.originalDescription}
-                        bank={bank}
-                        rules={merchant.rules}
-                        manual={row.manualMerchant}
-                        onApply={(suggestion, replace) =>
-                          applySuggestion(row.id, suggestion, replace)
-                        }
-                      />
-                    )}
-                  </details>
-                </fieldset>
+                  row={row}
+                  number={rowPage * 20 + index + 1}
+                  isSelected={selected === row.id}
+                  controlId={id}
+                  bank={bank}
+                  hasRuleDraft={!!ruleDraft}
+                  save={save}
+                  merchant={merchant}
+                  onFocus={focusRow}
+                  onCompare={compareSource}
+                  onRestore={requestRestore}
+                  onCreateRule={createRule}
+                  onEdit={edit}
+                  onClassify={classify}
+                  onApplySuggestion={applySuggestion}
+                />
               ))}
             </section>
           </div>
@@ -1065,67 +732,13 @@ function StatementReviewBody({
           )}
         </DialogContent>
       </Dialog>
-      <Dialog
-        open={!!restoreRow && !hidden}
-        onOpenChange={(next) => {
-          if (!next) setRestoreId(null);
-        }}
-      >
-        <DialogContent
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            restoreOrigin.current?.focus();
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>Restore item and category</DialogTitle>
-            <DialogDescription>
-              Compare your edits with the extracted values before restoring.
-            </DialogDescription>
-          </DialogHeader>
-          {!hidden && restoreRow && (
-            <>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="min-w-0 space-y-2">
-                  <h3 className="font-medium">Current</h3>
-                  <p className="break-words">
-                    Item / Brand: {restoreRow.description}
-                  </p>
-                  <p>
-                    Category:{' '}
-                    {EXPENSE_TYPE_LABELS[restoreRow.category as ExpenseType]}
-                  </p>
-                </div>
-                <div className="min-w-0 space-y-2">
-                  <h3 className="font-medium">Restore to</h3>
-                  <p className="break-words">
-                    Item / Brand: {restoreRow.originalDescription}
-                  </p>
-                  <p>Category: Other</p>
-                </div>
-              </div>
-              <p className="text-muted-foreground text-sm">
-                Other is the initial category; bank PDFs do not supply an
-                expense category.
-              </p>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setRestoreId(null)}>
-                  Keep edits
-                </Button>
-                <Button
-                  disabled={save.busy || save.locked(restoreRow.id)}
-                  onClick={() => {
-                    restoreMerchant(restoreRow.id);
-                    setRestoreId(null);
-                  }}
-                >
-                  Restore values
-                </Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      <RestoreMerchantDialog
+        restoreRow={restoreRow}
+        origin={restoreOrigin}
+        save={save}
+        onClose={() => setRestoreId(null)}
+        onRestore={restoreMerchant}
+      />
     </div>
   );
 }
@@ -1154,7 +767,11 @@ export function StatementReview({
           <DialogTitle>Review a bank statement</DialogTitle>
           <DialogDescription>Your PDF stays on this device.</DialogDescription>
         </DialogHeader>
-        <StatementReviewBody discardGuard={discardGuard} />
+        <StatementReviewBody
+          onGuardChange={(guard) => {
+            discardGuard.current = guard;
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

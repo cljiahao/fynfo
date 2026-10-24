@@ -43,6 +43,7 @@ export function useRecurringExpenseLinks() {
     if (hidden) {
       generation.current++;
       pending.current = false;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync with the privacy or rulebook signal
       setBusy(false);
       setRows(null);
       setMessage('');
@@ -111,6 +112,7 @@ export function useRecurringRulebook() {
     if (!hidden) return;
     generation.current++;
     pending.current = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync with the privacy or rulebook signal
     setBusy(false);
     setStage(
       frozen.current ? 'unconfirmed' : loaded.current ? 'ready' : 'idle'
@@ -193,6 +195,7 @@ export function useRecurringRulebook() {
     }
   }, [canReveal, getHideEpoch, valid]);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync with the privacy or rulebook signal
     if (stage === 'idle' && !hidden) void load();
   }, [stage, hidden, load]);
 

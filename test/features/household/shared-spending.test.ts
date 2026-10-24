@@ -10,6 +10,7 @@ const USER_ID = 'user-1';
 const PARTNER_ID = 'user-2';
 const KH = Buffer.alloc(32, 5);
 const SPACE_ID = '00000000-0000-4000-8000-0000000000c1';
+const SPENDING_ID = '00000000-0000-4000-8000-0000000000d1';
 
 let supabase: ReturnType<typeof makeFakeSupabase>['client'];
 
@@ -327,15 +328,24 @@ describe('spending actions — failure and delete paths', () => {
       await import('@/features/household/actions/spending-actions');
     const fake = setSupabase();
     await deleteSpace(SPACE_ID);
-    await deleteSpending('s1');
+    await deleteSpending(SPENDING_ID);
     expect(fake.calls.delete).toBe(2);
     expect(fake.calls.queries.map((q) => q.eq[0]?.value)).toEqual([
       SPACE_ID,
-      's1',
+      SPENDING_ID,
     ]);
 
     setSupabase({ selectError: { message: 'permission denied for table x' } });
     await expect(deleteSpace(SPACE_ID)).rejects.toThrow();
-    await expect(deleteSpending('s1')).rejects.toThrow();
+    await expect(deleteSpending(SPENDING_ID)).rejects.toThrow();
+  });
+
+  it('rejects a malformed id before any delete', async () => {
+    const fake = setSupabase();
+    const { deleteSpace, deleteSpending } =
+      await import('@/features/household/actions/spending-actions');
+    await expect(deleteSpace('nope')).rejects.toThrow();
+    await expect(deleteSpending('nope')).rejects.toThrow();
+    expect(fake.calls.delete).toBe(0);
   });
 });

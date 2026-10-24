@@ -777,3 +777,27 @@ paths). Floors were added for all 14 listed files, a few points under the
 measured values; no existing floor changed. `salary-actions.ts` keeps a 65%
 branch floor (measured 75%); its remaining branches are residual and not
 tested in this batch.
+
+**D2 result:** `statement-review.tsx` 1161 -> 774 lines, with
+`statement-row-card.tsx`, `statement-source-form.tsx` and
+`restore-merchant-dialog.tsx` extracted as props-driven presentational
+components; state, effects and privacy guards stay in the body.
+`expense-quick-add.tsx` 804 -> 672 lines, with `reuse-status-bar.tsx`,
+`quick-add-date-field.tsx` and `reuse-confirm-dialog.tsx`. No existing test
+file changed for the splits. `recurring-review.tsx` and `use-statement-save.ts`
+were not split: no clear SRP seam beyond what the privacy-reset effects tie
+together.
+
+**react-hooks pin removed:** `pnpm.overrides` for `eslint-plugin-react-hooks`
+7.0.1 is gone; the lockfile resolves 7.1.1. The 12 new findings were fixed or
+suppressed: `dividend-form.tsx` uses `useWatch` instead of `watch`; the
+statement dialog's guard is registered through a callback instead of mutating
+a ref prop; 9 effects that intentionally sync state to the privacy-hide signal
+or an idle rulebook load carry a described `eslint-disable-next-line`
+(`react-hooks/set-state-in-effect` x8, `react-hooks/refs` x1). Residual: those
+effects could be reworked into derived state later; that needs behaviour-level
+tests and is not part of this batch.
+
+**Gates (solo, this branch rebased on main 492adcc):** `pnpm check` green,
+`pnpm test:ci` 197 files / 2194 tests green with all new floors, `pnpm build`
+green.
