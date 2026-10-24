@@ -85,9 +85,9 @@ describe('authenticated financial actions still require an unlocked key session'
   );
   it('household goal deletion requires the household key even with a valid personal key', async () => {
     boundary.personalKey.mockResolvedValue(Buffer.alloc(32, 1));
-    await expect(deleteGoal('goal-fixture')).rejects.toThrow(
-      'Household is locked'
-    );
+    await expect(
+      deleteGoal('3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b')
+    ).rejects.toThrow('Household is locked');
     expect(boundary.user).toHaveBeenCalledTimes(1);
     expect(boundary.householdKey).toHaveBeenCalledTimes(1);
     expect(fake.calls.from).toEqual([]);
