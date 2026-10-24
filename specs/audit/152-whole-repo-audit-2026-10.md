@@ -660,3 +660,71 @@ a same-origin copy (temporary, removed afterwards); no save was performed.
 - A new third-party host needs a `buildCsp` change or it will be blocked.
 - `eslint-plugin-react-hooks` held at 7.0.1 until phase 3 (D2).
 - First-load JS stays above the 200 KB budget; not addressed here.
+
+## Batch record: phase 2 (B3 + B4 + B5), `impl/152-phase-2`
+
+**B3 colour-tokens (T1, T2, F1).** Authenticated app and chart palettes only;
+marketing and `public-navbar` are untouched (owner decision).
+
+- Paths: `src/app/globals.css`, `src/lib/chart-palette.ts` (new),
+  `src/components/widgets/{color-swatch,bar-fill}.tsx` (new),
+  `assets/constants.ts`, `expenses/constants.ts`, and the assets, expenses,
+  household and salary components that held hex literals or `style={{…}}`.
+- Evidence: 46 hex literals in 4 chart files; 13 `style={{…}}` uses outside
+  marketing.
+- Decisions:
+  - `--cat-1..14` OKLCH tokens, light and dark. Slots 1–8 are the `dataviz`
+    reference palette (validated order, hex converted to OKLCH); slots 9–14 are
+    extensions for the 14 expense categories and are covered by the legend and
+    swatches, not colour alone. Each entity keeps a fixed slot.
+  - Legend dots are SVG (`ColorSwatch`, `fill` attribute), so they need no
+    inline style.
+  - Percentage widths have no Tailwind class, and §3.2 (HARD) allows no
+    in-file justification. `ProgressBar` draws them as SVG `<rect>` widths
+    (percent attributes, `fill-*` token classes), so no `style` attribute is
+    left in `src/`. The bar stays decorative (`aria-hidden`); every consumer
+    already shows the value as adjacent text. A `no-restricted-syntax`
+    selector on `JSXAttribute[name.name='style']` now fails lint on any new
+    inline style.
+  - `planner-results.tsx` static style became `cursor-default outline-none`.
+  - F1: `uppercase tracking-wide` labels in `salary-summary.tsx` (3) and
+    `expense-chart.tsx` (1) became sentence-case `text-sm` labels like
+    `StatCard`. `tax-reliefs-dialog.tsx` has the same pattern but was not in
+    the finding; left for a later pass.
+- Acceptance: no hex/rgb literals or `style` attributes in `src/` (lint
+  enforced); light and dark visual check of each restyled dashboard page.
+- Rollback: revert the squash commit.
+
+**B4 barrels-structure (T3, T4).**
+
+- Paths: `features/{assets,equity,salary}/index.ts` (new exports),
+  8 importers in `assets`, `profile`, `salary`, `eslint.config.mjs`
+  (`no-restricted-imports` for `@/features/*/*` in `src/**`),
+  `vitest.config.ts` (drop `src/**/*.test.*`), 3 tests moved from
+  `src/features/assets/__tests__/` to `test/features/assets/`.
+- Evidence: 22 deep imports. `salary` ↔ `profile` now form a barrel cycle
+  (`use-salary-ytd-stats` → profile, `use-export-data` → salary). Both sides
+  use the imports only inside functions, so module evaluation order does not
+  matter; recorded rather than split.
+- Acceptance: `pnpm lint` shows no `no-restricted-imports` hits; tests green.
+- Rollback: revert the squash commit.
+
+**B5 comment-lint (T5a/b/c, S7).**
+
+- Paths: `eslint.config.mjs`, `package.json`/`pnpm-lock.yaml` (owner-approved
+  devDependency `@eslint-community/eslint-plugin-eslint-comments@4.8.1`),
+  `scripts/check-comment-hygiene.mjs` + `scripts/comment-hygiene-patterns.txt`
+  (new, wired as `pnpm check:comments` inside `pnpm check`), 22 narration
+  comments in `src`, `test` and `scripts`, `src/app/api/track/route.ts`, README.
+- Evidence: the check found 22 narration comments (spec/gov numbers, one ISO
+  date example, one `SHA-256` text that matched the ticket-id pattern and was
+  reworded). `track/route.ts` had a truncated sentence ("The") that is fixed.
+- Rules: `eslint-comments` recommended, `require-description`,
+  `disable-enable-pair` with `allowWholeFile`, and `linterOptions`
+  `reportUnusedDisableDirectives` / `reportUnusedInlineConfigs` set to `error`.
+  The existing tree needed no directive fixes. A scratch file confirmed the
+  rules fire.
+- Not done: T5d (`eslint-plugin-sonarjs` 4.2.2 and the `recommended` set)
+  depends on the Phase 1 toolchain bump and is not part of this PR.
+- Acceptance: `pnpm check`, `pnpm test:ci`, `pnpm build` green.
+- Rollback: revert the squash commit; `pnpm install` restores the lockfile.

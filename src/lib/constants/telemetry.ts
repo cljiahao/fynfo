@@ -1,6 +1,6 @@
 // Anonymous, non-PII marketing telemetry event types. Shared by the /api/track
 // ingestion route, the client beacon, the SQL CHECK constraint, and the admin
-// read layer so all four stay in lock-step. See spec 004 / gov-013.
+// read layer so all four stay in lock-step.
 export const MARKETING_EVENT_TYPES = ['page_view', 'cta_click'] as const;
 
 export type MarketingEventType = (typeof MARKETING_EVENT_TYPES)[number];

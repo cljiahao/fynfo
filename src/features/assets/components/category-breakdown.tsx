@@ -9,6 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { ColorSwatch, ProgressBar } from '@/components/widgets';
+import { chartColor } from '@/lib/chart-palette';
 import {
   Bar,
   BarChart,
@@ -41,10 +43,10 @@ function sumCategory(
 
 const CPF_ACCOUNTS = ['OA', 'SA', 'MA', 'SRS'] as const;
 const CPF_COLORS: Record<string, string> = {
-  OA: '#3b82f6',
-  SA: '#10b981',
-  MA: '#f59e0b',
-  SRS: '#8b5cf6',
+  OA: chartColor(1),
+  SA: chartColor(3),
+  MA: chartColor(4),
+  SRS: chartColor(7),
 };
 
 export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
@@ -85,9 +87,9 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
             <div key={cat} className="space-y-1">
               <div className="flex-between text-sm">
                 <span className="flex items-center gap-2">
-                  <span
-                    className="inline-block size-3 rounded-full"
-                    style={{ backgroundColor: CATEGORY_COLORS[cat] }}
+                  <ColorSwatch
+                    color={CATEGORY_COLORS[cat]}
+                    className="size-3"
                   />
                   {CATEGORY_LABELS[cat]}
                 </span>
@@ -101,12 +103,10 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
                 </span>
               </div>
               <div className="bg-muted h-2 rounded-full">
-                <div
-                  className="h-2 rounded-full transition-all"
-                  style={{
-                    width: hidden ? '0%' : `${pct}%`,
-                    backgroundColor: CATEGORY_COLORS[cat],
-                  }}
+                <ProgressBar
+                  segments={[
+                    { pct: hidden ? 0 : pct, color: CATEGORY_COLORS[cat] },
+                  ]}
                 />
               </div>
             </div>
@@ -148,7 +148,7 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
                       {cpfData.map((entry) => (
                         <Cell
                           key={entry.name}
-                          fill={CPF_COLORS[entry.name] ?? '#6b7280'}
+                          fill={CPF_COLORS[entry.name] ?? chartColor(14)}
                         />
                       ))}
                       <LabelList

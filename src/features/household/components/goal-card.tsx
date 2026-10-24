@@ -1,5 +1,6 @@
 'use client';
 
+import { ProgressBar } from '@/components/widgets';
 import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
@@ -63,16 +64,12 @@ export function GoalCard({ goal, onContribute, onDelete }: GoalCardProps) {
         {/* Two-tone joint progress: primary = you, gain = partner */}
         {!hidden && (
           <div className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
-            <div className="flex h-full">
-              <div
-                className="bg-primary h-full"
-                style={{ width: `${selfPct}%` }}
-              />
-              <div
-                className="bg-gain h-full"
-                style={{ width: `${partnerPct}%` }}
-              />
-            </div>
+            <ProgressBar
+              segments={[
+                { pct: selfPct, className: 'fill-primary' },
+                { pct: partnerPct, className: 'fill-gain' },
+              ]}
+            />
           </div>
         )}
 

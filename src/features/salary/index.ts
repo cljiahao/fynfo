@@ -1,3 +1,4 @@
+export { getAllTaxReliefs } from './actions/relief-actions';
 export { getSalaryRecords } from './actions/salary-actions';
 export * from './components';
 export * from './hooks';

@@ -7,7 +7,7 @@ export interface GoalProgress {
 }
 
 /**
- * Pure progress math for a household goal (spec 054). Extracted to a gated lib so
+ * Pure progress math for a household goal. Extracted to a gated lib so
  * the sum / percent / remaining contract is unit-tested independent of the UI.
  */
 export function computeGoalProgress(

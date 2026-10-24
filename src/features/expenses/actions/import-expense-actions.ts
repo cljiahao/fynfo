@@ -56,7 +56,7 @@ export async function insertImportedExpense(
       };
     }
     // These SQLSTATE errors reject the insert transaction; gateway/timeout errors
-    // do not establish rollback and must remain unconfirmed (spec136).
+    // do not establish rollback and must remain unconfirmed.
     return {
       id: value.id,
       status: ['23502', '23503', '23514', '42501'].includes(error.code ?? '')

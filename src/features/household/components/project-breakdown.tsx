@@ -1,5 +1,6 @@
 'use client';
 
+import { ProgressBar } from '@/components/widgets';
 import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
@@ -193,9 +194,10 @@ function ItemRow({ item }: { item: GoalItem }) {
       </div>
       {!hidden && (
         <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
-          <div
-            className={cn('h-full', item.over > 0 ? 'bg-loss' : 'bg-primary')}
-            style={{ width: `${pct}%` }}
+          <ProgressBar
+            segments={[
+              { pct, className: item.over > 0 ? 'fill-loss' : 'fill-primary' },
+            ]}
           />
         </div>
       )}

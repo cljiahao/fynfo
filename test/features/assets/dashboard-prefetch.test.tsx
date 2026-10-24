@@ -12,7 +12,7 @@ vi.mock('@/features/assets/actions/snapshot-actions', () => actions);
 vi.mock('@/features/assets/actions/planner-actions', () => actions);
 vi.mock('@/features/salary/actions/salary-actions', () => actions);
 vi.mock('@/features/expenses/actions/expense-actions', () => actions);
-// Spec119: model the preserved Next compiler boundary, not ordinary JS exports.
+// Model the preserved Next compiler boundary, not ordinary JS exports.
 vi.mock('@/features/assets/hooks/use-snapshots', () => ({
   SNAPSHOTS_KEY: () => null,
 }));

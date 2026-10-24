@@ -33,7 +33,20 @@ const state = vi.hoisted(() => ({
   success: vi.fn(),
   error: vi.fn(),
 }));
-vi.mock('@/features/assets', () => ({ getScenarios: state.scenarios }));
+vi.mock('@/features/assets', () => ({
+  getScenarios: state.scenarios,
+  getPlannerSettings: state.plannerSettings,
+  getSnapshots: state.snapshots,
+}));
+vi.mock('@/features/equity', () => ({
+  getTrades: state.trades,
+  getDividends: state.dividends,
+}));
+vi.mock('@/features/expenses', () => ({ getExpenses: state.expenses }));
+vi.mock('@/features/salary', () => ({
+  getAllTaxReliefs: state.taxReliefs,
+  getSalaryRecords: state.salary,
+}));
 vi.mock('@/features/recurring-expenses/actions/recurring-actions', () => ({
   getRecurringRulebook: state.recurringTemplates,
   mutateRecurringRulebook: vi.fn(),
@@ -41,27 +54,6 @@ vi.mock('@/features/recurring-expenses/actions/recurring-actions', () => ({
 vi.mock('@/features/merchant-rules/actions/rulebook-actions', () => ({
   getMerchantRulebook: state.merchantRules,
   saveMerchantRulebook: vi.fn(),
-}));
-vi.mock('@/features/assets/actions/planner-actions', () => ({
-  getPlannerSettings: state.plannerSettings,
-}));
-vi.mock('@/features/assets/actions/snapshot-actions', () => ({
-  getSnapshots: state.snapshots,
-}));
-vi.mock('@/features/equity/actions/equity-actions', () => ({
-  getTrades: state.trades,
-}));
-vi.mock('@/features/equity/actions/dividend-actions', () => ({
-  getDividends: state.dividends,
-}));
-vi.mock('@/features/expenses/actions/expense-actions', () => ({
-  getExpenses: state.expenses,
-}));
-vi.mock('@/features/salary/actions/relief-actions', () => ({
-  getAllTaxReliefs: state.taxReliefs,
-}));
-vi.mock('@/features/salary/actions/salary-actions', () => ({
-  getSalaryRecords: state.salary,
 }));
 vi.mock('@/features/profile/actions/profile-actions', () => ({
   getProfile: state.profile,

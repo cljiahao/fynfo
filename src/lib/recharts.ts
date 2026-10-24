@@ -4,12 +4,12 @@ import dynamic from 'next/dynamic';
 // only mounts inside the ssr:false Bar/Pie. It MUST be a static re-export, not a
 // next/dynamic wrapper: recharts matches Cell children by displayName via
 // findAllByType, and a dynamic wrapper's displayName ('LoadableComponent') never
-// matches 'Cell', silently dropping per-bar colors. See spec 027.
+// matches 'Cell', silently dropping per-bar colors.
 export { Cell } from 'recharts';
 
 // Theme-aware axis tick text. Spread onto XAxis/YAxis so tick labels use the
 // Tailwind --foreground token (fill is an inherited SVG property) instead of
-// recharts' default #666, keeping them legible in dark mode. See spec 027.
+// recharts' default #666, keeping them legible in dark mode.
 export const CHART_AXIS_TICK_PROPS = {
   className: 'fill-foreground',
   tick: { fill: 'currentColor' },
@@ -19,7 +19,7 @@ export const CHART_AXIS_TICK_PROPS = {
 // (no custom content). recharts' default popup is a hard-coded white box with
 // near-black label text — illegible/jarring in dark mode. Driving the surface
 // and label from Tailwind theme vars makes it track light/dark. itemStyle is
-// left untouched so each series keeps its own color. See spec 028.
+// left untouched so each series keeps its own color.
 export const CHART_TOOLTIP_PROPS = {
   contentStyle: {
     backgroundColor: 'var(--background)',

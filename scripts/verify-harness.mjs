@@ -7,7 +7,7 @@
 // and an LF git/CI checkout of the same content hash identically. NOTE: for this to
 // match the manifest, /regen-harness must hash the SAME normalized bytes — until the
 // regen skill is updated to normalize, this script is NOT wired into `pnpm check`
-// (see spec 065 "Known limitation"). Run it manually: `pnpm check:harness`.
+// (see the harness verifier note in AGENTS.md section 11). Run it manually: `pnpm check:harness`.
 //
 // The baseline is only re-blessed by a HUMAN running /regen-harness — this script
 // never rewrites it.

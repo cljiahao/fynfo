@@ -1,5 +1,6 @@
 'use client';
 
+import { ColorSwatch } from '@/components/widgets';
 import { useAmountVisibility } from '@/features/privacy';
 import { ExpenseAnomalyReview } from './expense-anomaly-review';
 
@@ -71,7 +72,7 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
             </div>
           </div>
           <div className="min-w-0 sm:text-right">
-            <p className="text-muted-foreground mb-0.5 text-xs tracking-wide uppercase">
+            <p className="text-muted-foreground mb-0.5 text-sm">
               12-month total
             </p>
             <p className="text-2xl font-bold break-words tabular-nums">
@@ -137,9 +138,9 @@ export function ExpenseChart({ expenses }: ExpenseChartProps) {
                               key={String(item.dataKey)}
                               className="flex items-center gap-2 text-xs"
                             >
-                              <span
-                                className="size-2 shrink-0 rounded-full"
-                                style={{ backgroundColor: item.color }}
+                              <ColorSwatch
+                                color={String(item.color)}
+                                className="size-2"
                               />
                               <span className="text-muted-foreground">
                                 {EXPENSE_TYPE_LABELS[
