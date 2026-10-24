@@ -801,3 +801,27 @@ tests and is not part of this batch.
 **Gates (solo, this branch rebased on main 492adcc):** `pnpm check` green,
 `pnpm test:ci` 197 files / 2194 tests green with all new floors, `pnpm build`
 green.
+
+## Phase 3 lint suppressions
+
+Removing the `eslint-plugin-react-hooks` 7.0.1 pin surfaced new
+`react-hooks/set-state-in-effect` and `react-hooks/refs` findings. Constitution
+§4.3 allows a suppression only with an inline spec citation, so each of the ten
+below cites this section. None changes behaviour. Each synchronises React state
+with a signal outside React state (the privacy-hide flag or the rulebook
+loader), or allocates an idempotency key. Converting them to derived state or
+subtree key-resets would change the privacy-hide and idle-lock reset order and
+needs its own behaviour tests, so that is a separate follow-up.
+
+| File:line                                                          | Rule                | Why                                                                               |
+| ------------------------------------------------------------------ | ------------------- | --------------------------------------------------------------------------------- |
+| `import-review/components/statement-review.tsx:90`                 | set-state-in-effect | Applies saved merchant rules to the draft rows once the rulebook is ready.        |
+| `import-review/components/statement-review.tsx:126`                | set-state-in-effect | Cancels the running extraction when amounts are hidden.                           |
+| `import-review/hooks/use-statement-save.ts:105`                    | set-state-in-effect | Resets save state and marks pending attempts unconfirmed when amounts are hidden. |
+| `import-review/hooks/use-statement-save.ts:128`                    | refs                | Per-row import ids are allocated lazily and must stay stable across renders.      |
+| `merchant-rules/hooks/use-merchant-rulebook.ts:54`                 | set-state-in-effect | Releases the busy gate and rejects stale callbacks when amounts are hidden.       |
+| `merchant-rules/hooks/use-merchant-rulebook.ts:108`                | set-state-in-effect | Starts the rulebook load when idle and visible; `load()` sets stage.              |
+| `recurring-expenses/components/recurring-occurrence-editor.tsx:50` | set-state-in-effect | Clears the read and checked state when amounts are hidden.                        |
+| `recurring-expenses/hooks/use-recurring-rulebook.ts:46`            | set-state-in-effect | Resets busy and rows when amounts are hidden.                                     |
+| `recurring-expenses/hooks/use-recurring-rulebook.ts:115`           | set-state-in-effect | Releases the busy gate and rejects stale callbacks when amounts are hidden.       |
+| `recurring-expenses/hooks/use-recurring-rulebook.ts:198`           | set-state-in-effect | Starts the rulebook load when idle and visible; `load()` sets stage.              |

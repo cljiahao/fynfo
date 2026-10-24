@@ -87,7 +87,7 @@ function StatementReviewBody({
     const next = applyRulesToStatement(rows, bank, merchant.rules, save.locked);
     if (next !== rows) {
       save.invalidateReview();
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync with the privacy or rulebook signal
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- audit 152 §Phase 3 lint suppressions: intentional sync with the privacy or rulebook signal
       setRows(next);
     }
   }, [rows, bank, merchant.rules, merchant.stage, hidden, canReveal, save]);
@@ -123,7 +123,7 @@ function StatementReviewBody({
         controller.current?.abort();
         session.current?.destroy();
         session.current = null;
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync with the privacy or rulebook signal
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- audit 152 §Phase 3 lint suppressions: intentional sync with the privacy or rulebook signal
         setBusy(false);
       }
     },

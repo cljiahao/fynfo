@@ -51,7 +51,7 @@ export function useMerchantRulebook() {
     // authoritative check after Show, while rejecting the older callback.
     lifetime.current++;
     pending.current = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync with the privacy or rulebook signal
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- audit 152 §Phase 3 lint suppressions: intentional sync with the privacy or rulebook signal
     setBusy(false);
     setStage(
       frozen.current ? 'unconfirmed' : loaded.current ? 'ready' : 'idle'
@@ -105,7 +105,7 @@ export function useMerchantRulebook() {
   }, [canReveal, getHideEpoch, valid]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync with the privacy or rulebook signal
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- audit 152 §Phase 3 lint suppressions: intentional sync with the privacy or rulebook signal
     if (stage === 'idle' && !privacy.hidden) void load();
   }, [stage, privacy.hidden, load]);
 

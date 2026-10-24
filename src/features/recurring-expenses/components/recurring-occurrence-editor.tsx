@@ -47,7 +47,7 @@ export function RecurringOccurrenceEditor({
     if (privacy.hidden) {
       operation.current++;
       running.current = false;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional sync with the privacy or rulebook signal
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- audit 152 §Phase 3 lint suppressions: intentional sync with the privacy or rulebook signal
       setReading(false);
       setChecked('');
       setAcknowledged(false);
