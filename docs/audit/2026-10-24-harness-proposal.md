@@ -28,6 +28,7 @@ in `docs/audit/harness-152/` so you can review and copy them. Nothing under
 | `hooks/guard-protected-paths.mjs`                   | The governance patterns match only paths inside the project. Today any path containing `/.claude/hooks/` is blocked, so the planner could not even save these drafts in its own scratchpad.                                                                                     | H7      |
 | `settings.json`                                     | Removes the `Read(node_modules/**)` and `Read(coverage/**)` denies. They stop dependency-source and coverage-report reading during audits, and they protect no secret.                                                                                                          | H4      |
 | `hooks/stop-tests.mjs`                              | Skips the run when no `src/`, `test/`, `supabase/` or config files changed. Otherwise runs `vitest run --changed HEAD` without coverage, instead of the full 2148-test coverage suite at every turn end. Pre-push still runs all the gates.                                     | H5      |
+| `hooks/stop-tests.mjs`                              | No longer writes `coverage/`, so it cannot overwrite a concurrent pre-push coverage run in the same checkout (false threshold failures seen 2026-10-24).                                                                                                                        | H8      |
 
 `injection-guard.mjs`, `post-edit-tsc.mjs` and `session-banner.mjs` stay as
 they are.

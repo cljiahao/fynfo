@@ -418,6 +418,14 @@ them in; agents do not apply them. See
   project, so any path containing `/.claude/hooks/` is blocked, including
   scratchpad drafts. The draft matches governance paths only inside the
   project root.
+- **H8** – Two `pnpm test:ci` runs in the same checkout (the Stop hook plus a
+  pre-push in another session) share `coverage/`. They overwrite each other's
+  output and report false per-file threshold failures. This was observed
+  2026-10-24: `crypto.ts` showed 40% while a solo run passed all 2148 tests.
+  The H5 draft removes coverage from the Stop hook. B7 also sets
+  `coverage.reportsDirectory` from an optional `VITEST_COVERAGE_DIR` variable
+  (default `coverage`), so a concurrent run can use its own folder. Spec 151
+  (PR 72) separately adds `.claude/worktrees/` to `.prettierignore`.
 
 ### Governance drift — NEEDS APPROVAL (rulebook edits, draft only)
 
@@ -437,18 +445,21 @@ the evidence, the acceptance checks and the rollback. Each PR also adds
 regression tests for every behaviour change, updates the README and comments
 for the touched behaviour, and passes `pnpm check && pnpm test:ci && pnpm build`.
 
-| Batch                | Findings                      | Gate                                                    |
-| -------------------- | ----------------------------- | ------------------------------------------------------- |
-| B0 deps-security     | S1, T5d                       | **Owner approval of dependency bumps**                  |
-| B1 action-boundary   | S2, S3                        | Authorized (§7.4)                                       |
-| B2 csrf-csp          | S5, S6, perf measures         | Authorized; nonce scope decided from measurement        |
-| B3 colour-tokens     | T1, T2, F1                    | Authorized                                              |
-| B4 barrels-structure | T3, T4                        | Authorized                                              |
-| B5 comment-lint      | T5a/c, S7, cleanup            | Authorized; T5b only with **new-dependency approval**   |
-| B6 debt              | D1, D2                        | Authorized                                              |
-| B7 coverage-floors   | D3                            | Authorized                                              |
-| B8 docs-hygiene      | D4, README                    | Authorized (docs-only; may go straight to `main`)       |
-| H, G1, G2, S4        | harness, rulebooks, migration | **Owner applies / approves**; not implemented by agents |
+| Batch                   | Findings                  | Gate                                                                 |
+| ----------------------- | ------------------------- | -------------------------------------------------------------------- |
+| B0 deps-security        | S1, T5d                   | **Owner approval of dependency bumps**                               |
+| B1 action-boundary      | S2, S3                    | Authorized (§7.4)                                                    |
+| B2 csrf-csp             | S5, S6, perf measures     | Authorized; nonce scope decided from measurement                     |
+| B3 colour-tokens        | T1, T2, F1                | Authorized                                                           |
+| B4 barrels-structure    | T3, T4                    | Authorized                                                           |
+| B5 comment-lint         | T5a/c, S7, cleanup        | Authorized; T5b only with **new-dependency approval**                |
+| B6 debt                 | D1, D2                    | Authorized                                                           |
+| B7 coverage-floors      | D3                        | Authorized                                                           |
+| B8 docs-hygiene         | D4, README                | Authorized (docs-only; may go straight to `main`)                    |
+| B9 profile-minimisation | S4 (profile columns only) | Approved 2026-10-24; owner runs prod SQL before merge                |
+| G1, G2                  | rulebooks                 | Approved 2026-10-24; agent drafts, owner approves commit; G2 after H |
+| H                       | harness                   | **Owner applies** drafts in `docs/audit/harness-152/`                |
+| S4 split names          | crypto                    | Roadmap X6; not in this audit                                        |
 
 Order: B0 first, because it changes the toolchain the other batches lint
 against. B1, B2, B3, B4, B6 and B7 touch separate files. B5 runs after B3, B4
@@ -466,12 +477,45 @@ A second independent review pass (the planner reviews every PR before merge)
 is required.
 
 Rollback: revert the batch's squash commit. Dependency rollback restores
-`package.json`/`pnpm-lock.yaml` from the parent commit. No batch includes a
-migration, a crypto protocol change or a protected-file edit.
+`package.json`/`pnpm-lock.yaml` from the parent commit. Batches B0–B8 include no
+migration, no crypto protocol change and no protected-file edit. The approved
+items below are separate.
+
+## Owner approvals (2026-10-24, in chat with the planner)
+
+Clarence answered the planner's approval questions in this session:
+
+- **B0 approved:** `next`/`eslint-config-next` 16.4.2, `react`/`react-dom`
+  19.2.9 (matching `@types/*`), `eslint-plugin-sonarjs` 4.2.2, plus in-range
+  updates that clear transitive advisories. `pnpm.overrides` is allowed only
+  when no in-range parent update exists, each with a reason.
+- **B5 plugin approved:** new devDependency
+  `@eslint-community/eslint-plugin-eslint-comments@4.8.1` (`recommended` +
+  `require-description` + `disable-enable-pair: { allowWholeFile: true }`).
+- **Storefront, telemetry, admin: keep, no polish.** B3 covers only the
+  authenticated app and the chart palettes. Marketing raw-palette colours and
+  `public-navbar` stay as they are. Retirement stays a roadmap decision.
+- **Protected items approved, staged:**
+  - **B9 profile-minimisation**, its own PR. The vault route stops writing
+    `users_profile.email`. A forward migration drops `email`, `name` and
+    `image`, after a consumer search, a local replay with `pnpm db:reset`, and
+    an RLS check. Clarence runs the production SQL before the app PR merges.
+    Suggested order: ship the route change first, then the drop migration.
+  - **G1:** a `specs/governance/` amendment plus a CONSTITUTION §1.1/§6.1 edit.
+    It records that Vercel deploys from `main` and that no Docker/Pi artifact
+    exists. It is a PATCH version bump. Clarence approves the commit.
+  - **G2:** update the AGENTS.md templateCentral marker and the §11 notes to
+    6.0.4. This happens only after Clarence applies the H drafts and runs
+    `/regen-harness`.
+
+These approvals do not cover editing `.claude/settings.json`, `.claude/hooks/**`
+or `.claude/harness.json`, reading secrets, production deployment, or any
+other migration.
 
 ## Residual risks and blocked items (at planning time)
 
-- S1 stays exploitable in production until B0 is approved, merged and deployed.
+- S1 stays exploitable in production until B0 (approved 2026-10-24) is merged
+  and deployed.
 - S4 plaintext split names and unused profile PII stay until an owner-approved
   migration and crypto design.
 - Same-user replay of a key cookie inside its 6-hour lifetime stays (accepted
