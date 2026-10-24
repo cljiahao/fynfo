@@ -2,12 +2,12 @@
 id: 126
 slug: verification-timing
 area: governance
-status: approved
+status: shipped
 author: Codex
 created: 2026-10-11
 approved: 2026-10-11
-shipped:
-impl_pr:
+shipped: 2026-10-11
+impl_pr: https://github.com/cljiahao/fynfo/pull/45
 supersedes:
 constitution_satisfies: ['§4.1', '§4.4', '§7.1', '§7.4', '§8.2']
 constitution_overrides: []

@@ -2,12 +2,12 @@
 id: 069
 slug: owner-authorized-audit-remediation
 area: governance
-status: approved
+status: shipped
 author: Codex
 created: 2026-10-08
 approved: 2026-10-08
-shipped:
-impl_pr:
+shipped: 2026-10-08
+impl_pr: https://github.com/cljiahao/fynfo/pull/4
 supersedes:
 constitution_satisfies:
   - '§7.1'

@@ -1,7 +1,8 @@
 ---
 id: '104'
 area: audit
-status: draft
+status: superseded
+superseded_by: docs/audit/2026-10-24-roadmap.md (IV2)
 created: 2026-10-10
 author: Codex
 constitution_satisfies: ['§1.1', '§2.3', '§3.2', '§4', '§7.4', '§8.2']

@@ -2,12 +2,12 @@
 id: 070
 slug: full-codebase-audit
 area: refactor
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-08
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-08
+impl_pr: https://github.com/cljiahao/fynfo/pull/4
 constitution_satisfies:
   - '§7.4'
   - '§2.1'

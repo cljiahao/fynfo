@@ -2,12 +2,12 @@
 id: 128
 slug: stabilization-record-closeout
 area: fix
-status: draft
+status: shipped
 author: Codex
 created: 2026-10-11
 approved:
-shipped:
-impl_pr:
+shipped: 2026-10-11
+impl_pr: https://github.com/cljiahao/fynfo/pull/48
 constitution_satisfies: ['§4.1', '§7.4', '§8.2']
 constitution_overrides: []
 ---

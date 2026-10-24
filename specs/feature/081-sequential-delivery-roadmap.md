@@ -1,7 +1,8 @@
 ---
 id: '081'
 area: feature
-status: approved
+status: superseded
+superseded_by: docs/audit/2026-10-24-roadmap.md
 created: 2026-10-09
 approved: 2026-10-09
 author: Codex

@@ -1,6 +1,7 @@
 # 138 recurring template and atomic occurrence contract
 
 Status: owner approved recurring scope and this storage contract, 2026-10-13.
+Delivered: shipped 2026-10-13 via spec 138 (PR #58).
 Exact response: “Approve recurring scope and this storage contract”.
 Recommendation: monthly SGD self-expense templates with explicit Confirm/Skip.
 The owner requested recommendation and implementation; new SQL still requires

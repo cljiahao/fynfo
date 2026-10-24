@@ -728,3 +728,52 @@ marketing and `public-navbar` are untouched (owner decision).
   depends on the Phase 1 toolchain bump and is not part of this PR.
 - Acceptance: `pnpm check`, `pnpm test:ci`, `pnpm build` green.
 - Rollback: revert the squash commit; `pnpm install` restores the lockfile.
+
+## Phase 3 batch record (B6 + B7 + B8, branch `impl/152-phase-3`)
+
+Owner-authorized under §7.4. No migration, crypto change, dependency or
+protected-file edit.
+
+**Paths**
+
+- KDC bug (owner-reported 2026-10-24): `src/features/equity/lib/ticker-map.ts`,
+  `test/features/equity/ticker-map.test.ts`.
+- D1: `src/features/equity/actions/price-actions.ts`,
+  `test/features/equity/price-actions.test.ts`.
+- D3/H8: `vitest.config.ts`, new or extended tests for the files D3 lists, and
+  one README line for `VITEST_COVERAGE_DIR`.
+- D4: frontmatter-only status edits in specs 055, 069, 070, 071, 072, 079, 081,
+  087, 104, 126, 128; a reason comment on open drafts 080, 091, 094; a
+  `Delivered:` line on the 137 and 138 storage contracts.
+- D2 (last, after phases 1 and 2 merge): `import-review/components/statement-review.tsx`,
+  `expenses/components/expense-quick-add.tsx`, and new sibling files in the same features.
+
+**Evidence**
+
+- `KDC: 'EB5.SI'` maps to First Resources Limited (about S$3.68). Keppel DC REIT
+  is `AJBU.SI` (about S$2.13). The other 13 SG mappings matched Yahoo `longName`.
+  `fetchStockPrices` and `fetchDividends` both resolve through `getYahooSymbol`,
+  so KDC prices, dividend scans and suggestions used the First Resources
+  symbol. Stored KDC dividend rows created from a scan (or KDC prices cached on
+  screen) may hold First Resources amounts. Rows are encrypted, so the owner must
+  re-check them in the app. Production data is untouched.
+- D1: three identical fetch/timeout/`res.ok`/JSON blocks became one private
+  `fetchYahooChart`. The request-shape test pins URL, headers, `revalidate` and
+  the timeout signal for all three consumers.
+- D4 evidence: 055 `5004d7e`; 069 and 070 and 071 PR 4 (`96c8077`, `0b4ad4c`);
+  126 PR 45; 128 PR 48; 079 replaced by shipped 133 (PR 49); 072, 081, 087, 104
+  carried by `docs/audit/2026-10-24-roadmap.md`.
+
+**Acceptance**: `pnpm check && pnpm test:ci && pnpm build` green; existing
+tests unchanged for D1 and D2; every new coverage floor sits below the measured
+value and no existing floor is lowered.
+
+**Rollback**: revert the squash commit.
+
+**D3 result (measured on this branch, solo run):** `auth-guard.ts` was 0%
+because every suite mocks it; a real test now covers it. `spending-actions.ts`
+rose from 82.9% lines to 100% (no-household, write-error, delete and null-note
+paths). Floors were added for all 14 listed files, a few points under the
+measured values; no existing floor changed. `salary-actions.ts` keeps a 65%
+branch floor (measured 75%); its remaining branches are residual and not
+tested in this batch.

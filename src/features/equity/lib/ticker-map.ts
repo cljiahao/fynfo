@@ -5,7 +5,7 @@ const SG_TICKER_MAP: Record<string, string> = {
   SUNTEC: 'T82U.SI',
   LENDLEASE: 'JYEU.SI',
   DBS: 'D05.SI',
-  KDC: 'EB5.SI',
+  KDC: 'AJBU.SI',
   FCT: 'J69U.SI',
   OCBC: 'O39.SI',
   ASCENDAS: 'A17U.SI',

@@ -65,20 +65,29 @@ const dividendPointSchema = z.object({
   date: z.number().int().min(0).max(253_402_300_799).finite(),
 });
 
+/** Returns the chart JSON, or null on a non-OK response. Network errors throw. */
+async function fetchYahooChart(
+  symbol: string,
+  query: string,
+  revalidate: number
+): Promise<unknown | null> {
+  const res = await fetch(
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?${query}`,
+    {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      next: { revalidate },
+      signal: AbortSignal.timeout(PRICE_FETCH_TIMEOUT_MS),
+    }
+  );
+  if (!res.ok) return null;
+  return res.json();
+}
+
 async function readQuote(ticker: string): Promise<StockPrice | null> {
   const symbol = getYahooSymbol(ticker);
   try {
-    const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`,
-      {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        next: { revalidate: 300 },
-        signal: AbortSignal.timeout(PRICE_FETCH_TIMEOUT_MS),
-      }
-    );
-    if (!res.ok) return null;
-
-    const data: unknown = await res.json();
+    const data = await fetchYahooChart(symbol, 'interval=1d&range=1d', 300);
+    if (data === null) return null;
     const parsed = quoteResponseSchema.safeParse(data);
     if (!parsed.success) return null;
     const meta = parsed.data.chart.result[0].meta;
@@ -152,16 +161,8 @@ export async function fetchExchangeRate(
 
   try {
     const symbol = `${parsed.data.from}${parsed.data.to}=X`;
-    const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`,
-      {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        next: { revalidate: 300 },
-        signal: AbortSignal.timeout(PRICE_FETCH_TIMEOUT_MS),
-      }
-    );
-    if (!res.ok) return null;
-    const data: unknown = await res.json();
+    const data = await fetchYahooChart(symbol, 'interval=1d&range=1d', 300);
+    if (data === null) return null;
     const quote = quoteResponseSchema.safeParse(data);
     if (!quote.success) return null;
     const rate = quote.data.chart.result[0].meta.regularMarketPrice;
@@ -181,18 +182,13 @@ export async function fetchDividends(
 
   try {
     const symbol = getYahooSymbol(parsedTicker.data);
-    const res = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5y&events=div`,
-      {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        next: { revalidate: 86400 },
-        signal: AbortSignal.timeout(PRICE_FETCH_TIMEOUT_MS),
-      }
+    const data = await fetchYahooChart(
+      symbol,
+      'interval=1d&range=5y&events=div',
+      86400
     );
-    if (!res.ok)
+    if (data === null)
       throw new AppError('EXTERNAL_API', 'Dividend data unavailable');
-
-    const data: unknown = await res.json();
     const parsed = dividendResponseSchema.safeParse(data);
     if (!parsed.success)
       throw new AppError('EXTERNAL_API', 'Dividend data unavailable');
