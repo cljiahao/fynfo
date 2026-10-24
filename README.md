@@ -301,7 +301,9 @@ pnpm check:harness # Read-only manifest comparison; known baseline drift tracked
 Use `pnpm format` to format files and `pnpm test` for watch mode. Both `test:ci`
 and `test:coverage` require at least 81% global line, statement, function and branch
 coverage, alongside stricter security-critical file thresholds. Empty test
-discovery fails. Two test workers limit memory pressure from browser suites.
+discovery fails. Two test workers limit memory pressure from browser suites. Set `VITEST_COVERAGE_DIR` to give a concurrent coverage run its own
+report folder; two runs sharing `coverage/` overwrite each other and report false
+threshold failures.
 The project verification skill and quality gates are documented in
 [AGENTS.md](AGENTS.md).
 

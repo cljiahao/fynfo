@@ -2,7 +2,7 @@
 id: '080'
 slug: dividend-source-and-reconciliation
 area: feature
-status: draft
+status: draft # open: roadmap IV1 (needs provider permission)
 author: Codex
 created: 2026-10-09
 approved:

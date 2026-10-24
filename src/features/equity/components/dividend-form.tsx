@@ -22,7 +22,7 @@ import {
 import { format } from 'date-fns';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { fetchDividends } from '../actions/price-actions';
 import { DIVIDEND_SUGGESTED_MESSAGE } from '../constants';
@@ -93,8 +93,11 @@ function DividendFormEditor({
   const form = useForm<DividendFormValues>({
     defaultValues: defaults(editDividend),
   });
-  const { register, handleSubmit, reset, setValue, getValues, watch } = form;
-  const currency = watch('currency');
+  const { register, handleSubmit, reset, setValue, getValues, control } = form;
+  const [currency, tickerValue, amountValue] = useWatch({
+    control,
+    name: ['currency', 'ticker', 'amount'],
+  });
 
   useLayoutEffect(() => {
     const state = work.current;
@@ -237,7 +240,7 @@ function DividendFormEditor({
               placeholder="MLT"
               {...register('ticker', { required: true })}
               disabled={hidden}
-              value={hidden ? '' : watch('ticker')}
+              value={hidden ? '' : tickerValue}
               onBlur={(event) => {
                 if (canReveal()) void register('ticker').onBlur(event);
               }}
@@ -273,7 +276,7 @@ function DividendFormEditor({
                 min="0"
                 {...register('amount', { valueAsNumber: true, required: true })}
                 disabled={hidden}
-                value={hidden ? '' : watch('amount')}
+                value={hidden ? '' : amountValue}
                 onBlur={(event) => {
                   if (canReveal()) void register('amount').onBlur(event);
                 }}

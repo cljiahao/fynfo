@@ -728,3 +728,100 @@ marketing and `public-navbar` are untouched (owner decision).
   depends on the Phase 1 toolchain bump and is not part of this PR.
 - Acceptance: `pnpm check`, `pnpm test:ci`, `pnpm build` green.
 - Rollback: revert the squash commit; `pnpm install` restores the lockfile.
+
+## Phase 3 batch record (B6 + B7 + B8, branch `impl/152-phase-3`)
+
+Owner-authorized under §7.4. No migration, crypto change, dependency or
+protected-file edit.
+
+**Paths**
+
+- KDC bug (owner-reported 2026-10-24): `src/features/equity/lib/ticker-map.ts`,
+  `test/features/equity/ticker-map.test.ts`.
+- D1: `src/features/equity/actions/price-actions.ts`,
+  `test/features/equity/price-actions.test.ts`.
+- D3/H8: `vitest.config.ts`, new or extended tests for the files D3 lists, and
+  one README line for `VITEST_COVERAGE_DIR`.
+- D4: frontmatter-only status edits in specs 055, 069, 070, 071, 072, 079, 081,
+  087, 104, 126, 128; a reason comment on open drafts 080, 091, 094; a
+  `Delivered:` line on the 137 and 138 storage contracts.
+- D2 (last, after phases 1 and 2 merge): `import-review/components/statement-review.tsx`,
+  `expenses/components/expense-quick-add.tsx`, and new sibling files in the same features.
+
+**Evidence**
+
+- `KDC: 'EB5.SI'` maps to First Resources Limited (about S$3.68). Keppel DC REIT
+  is `AJBU.SI` (about S$2.13). The other 13 SG mappings matched Yahoo `longName`.
+  `fetchStockPrices` and `fetchDividends` both resolve through `getYahooSymbol`,
+  so KDC prices, dividend scans and suggestions used the First Resources
+  symbol. Stored KDC dividend rows created from a scan (or KDC prices cached on
+  screen) may hold First Resources amounts. Rows are encrypted, so the owner must
+  re-check them in the app. Production data is untouched.
+- D1: three identical fetch/timeout/`res.ok`/JSON blocks became one private
+  `fetchYahooChart`. The request-shape test pins URL, headers, `revalidate` and
+  the timeout signal for all three consumers.
+- D4 evidence: 055 `5004d7e`; 069 and 070 and 071 PR 4 (`96c8077`, `0b4ad4c`);
+  126 PR 45; 128 PR 48; 079 replaced by shipped 133 (PR 49); 072, 081, 087, 104
+  carried by `docs/audit/2026-10-24-roadmap.md`.
+
+**Acceptance**: `pnpm check && pnpm test:ci && pnpm build` green; existing
+tests unchanged for D1 and D2; every new coverage floor sits below the measured
+value and no existing floor is lowered.
+
+**Rollback**: revert the squash commit.
+
+**D3 result (measured on this branch, solo run):** `auth-guard.ts` was 0%
+because every suite mocks it; a real test now covers it. `spending-actions.ts`
+rose from 82.9% lines to 100% (no-household, write-error, delete and null-note
+paths). Floors were added for all 14 listed files, a few points under the
+measured values; no existing floor changed. `salary-actions.ts` keeps a 65%
+branch floor (measured 75%); its remaining branches are residual and not
+tested in this batch.
+
+**D2 result:** `statement-review.tsx` 1161 -> 774 lines, with
+`statement-row-card.tsx`, `statement-source-form.tsx` and
+`restore-merchant-dialog.tsx` extracted as props-driven presentational
+components; state, effects and privacy guards stay in the body.
+`expense-quick-add.tsx` 804 -> 672 lines, with `reuse-status-bar.tsx`,
+`quick-add-date-field.tsx` and `reuse-confirm-dialog.tsx`. No existing test
+file changed for the splits. `recurring-review.tsx` and `use-statement-save.ts`
+were not split: no clear SRP seam beyond what the privacy-reset effects tie
+together.
+
+**react-hooks pin removed:** `pnpm.overrides` for `eslint-plugin-react-hooks`
+7.0.1 is gone; the lockfile resolves 7.1.1. The 12 new findings were fixed or
+suppressed: `dividend-form.tsx` uses `useWatch` instead of `watch`; the
+statement dialog's guard is registered through a callback instead of mutating
+a ref prop; 9 effects that intentionally sync state to the privacy-hide signal
+or an idle rulebook load carry a described `eslint-disable-next-line`
+(`react-hooks/set-state-in-effect` x8, `react-hooks/refs` x1). Residual: those
+effects could be reworked into derived state later; that needs behaviour-level
+tests and is not part of this batch.
+
+**Gates (solo, this branch rebased on main 492adcc):** `pnpm check` green,
+`pnpm test:ci` 197 files / 2194 tests green with all new floors, `pnpm build`
+green.
+
+## Phase 3 lint suppressions
+
+Removing the `eslint-plugin-react-hooks` 7.0.1 pin surfaced new
+`react-hooks/set-state-in-effect` and `react-hooks/refs` findings. Constitution
+§4.3 allows a suppression only with an inline spec citation, so each of the ten
+below cites this section. None changes behaviour. Each synchronises React state
+with a signal outside React state (the privacy-hide flag or the rulebook
+loader), or allocates an idempotency key. Converting them to derived state or
+subtree key-resets would change the privacy-hide and idle-lock reset order and
+needs its own behaviour tests, so that is a separate follow-up.
+
+| File:line                                                          | Rule                | Why                                                                               |
+| ------------------------------------------------------------------ | ------------------- | --------------------------------------------------------------------------------- |
+| `import-review/components/statement-review.tsx:90`                 | set-state-in-effect | Applies saved merchant rules to the draft rows once the rulebook is ready.        |
+| `import-review/components/statement-review.tsx:126`                | set-state-in-effect | Cancels the running extraction when amounts are hidden.                           |
+| `import-review/hooks/use-statement-save.ts:105`                    | set-state-in-effect | Resets save state and marks pending attempts unconfirmed when amounts are hidden. |
+| `import-review/hooks/use-statement-save.ts:128`                    | refs                | Per-row import ids are allocated lazily and must stay stable across renders.      |
+| `merchant-rules/hooks/use-merchant-rulebook.ts:54`                 | set-state-in-effect | Releases the busy gate and rejects stale callbacks when amounts are hidden.       |
+| `merchant-rules/hooks/use-merchant-rulebook.ts:108`                | set-state-in-effect | Starts the rulebook load when idle and visible; `load()` sets stage.              |
+| `recurring-expenses/components/recurring-occurrence-editor.tsx:50` | set-state-in-effect | Clears the read and checked state when amounts are hidden.                        |
+| `recurring-expenses/hooks/use-recurring-rulebook.ts:46`            | set-state-in-effect | Resets busy and rows when amounts are hidden.                                     |
+| `recurring-expenses/hooks/use-recurring-rulebook.ts:115`           | set-state-in-effect | Releases the busy gate and rejects stale callbacks when amounts are hidden.       |
+| `recurring-expenses/hooks/use-recurring-rulebook.ts:198`           | set-state-in-effect | Starts the rulebook load when idle and visible; `load()` sets stage.              |

@@ -2,7 +2,8 @@
 id: '072'
 slug: minimal-onboarding-and-roadmap
 area: feature
-status: approved
+status: superseded
+superseded_by: docs/audit/2026-10-24-roadmap.md
 author: Codex
 created: 2026-10-09
 approved: 2026-10-09

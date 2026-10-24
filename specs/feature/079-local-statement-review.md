@@ -2,7 +2,8 @@
 id: '079'
 slug: local-statement-review
 area: feature
-status: draft
+status: superseded
+superseded_by: spec 133 (shipped, PR #49)
 author: Codex
 created: 2026-10-09
 approved:

@@ -2,7 +2,7 @@
 id: '091'
 slug: export-recovery-contract
 area: audit
-status: draft
+status: draft # open: roadmap DS1 builds on it
 author: Codex
 created: 2026-10-10
 approved:

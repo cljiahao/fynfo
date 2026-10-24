@@ -1,7 +1,9 @@
 ---
 id: 071
 title: Repair database authorization and bind key-session envelopes
-status: approved
+status: shipped
+impl_pr: https://github.com/cljiahao/fynfo/pull/4
+shipped: 2026-10-08
 created: 2026-10-08
 approved: 2026-10-08
 ---
