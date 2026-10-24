@@ -1,6 +1,6 @@
 'use client';
 
-import { BarFill } from '@/components/widgets';
+import { ProgressBar } from '@/components/widgets';
 import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
@@ -64,10 +64,12 @@ export function GoalCard({ goal, onContribute, onDelete }: GoalCardProps) {
         {/* Two-tone joint progress: primary = you, gain = partner */}
         {!hidden && (
           <div className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
-            <div className="flex h-full">
-              <BarFill pct={selfPct} className="bg-primary" />
-              <BarFill pct={partnerPct} className="bg-gain" />
-            </div>
+            <ProgressBar
+              segments={[
+                { pct: selfPct, className: 'fill-primary' },
+                { pct: partnerPct, className: 'fill-gain' },
+              ]}
+            />
           </div>
         )}
 

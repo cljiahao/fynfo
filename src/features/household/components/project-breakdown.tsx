@@ -1,6 +1,6 @@
 'use client';
 
-import { BarFill } from '@/components/widgets';
+import { ProgressBar } from '@/components/widgets';
 import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
@@ -194,9 +194,10 @@ function ItemRow({ item }: { item: GoalItem }) {
       </div>
       {!hidden && (
         <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
-          <BarFill
-            pct={pct}
-            className={item.over > 0 ? 'bg-loss' : 'bg-primary'}
+          <ProgressBar
+            segments={[
+              { pct, className: item.over > 0 ? 'fill-loss' : 'fill-primary' },
+            ]}
           />
         </div>
       )}

@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { BarFill, ColorSwatch } from '@/components/widgets';
+import { ColorSwatch, ProgressBar } from '@/components/widgets';
 import { chartColor } from '@/lib/chart-palette';
 import {
   Bar,
@@ -103,10 +103,10 @@ export function CategoryBreakdown({ snapshot }: CategoryBreakdownProps) {
                 </span>
               </div>
               <div className="bg-muted h-2 rounded-full">
-                <BarFill
-                  pct={hidden ? 0 : pct}
-                  color={CATEGORY_COLORS[cat]}
-                  className="rounded-full transition-all"
+                <ProgressBar
+                  segments={[
+                    { pct: hidden ? 0 : pct, color: CATEGORY_COLORS[cat] },
+                  ]}
                 />
               </div>
             </div>

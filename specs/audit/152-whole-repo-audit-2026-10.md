@@ -679,16 +679,20 @@ marketing and `public-navbar` are untouched (owner decision).
     swatches, not colour alone. Each entity keeps a fixed slot.
   - Legend dots are SVG (`ColorSwatch`, `fill` attribute), so they need no
     inline style.
-  - Percentage widths have no Tailwind class. `BarFill` is the single
-    sanctioned inline style (documented in the file); all former width
-    `style` uses go through it.
+  - Percentage widths have no Tailwind class, and §3.2 (HARD) allows no
+    in-file justification. `ProgressBar` draws them as SVG `<rect>` widths
+    (percent attributes, `fill-*` token classes), so no `style` attribute is
+    left in `src/`. The bar stays decorative (`aria-hidden`); every consumer
+    already shows the value as adjacent text. A `no-restricted-syntax`
+    selector on `JSXAttribute[name.name='style']` now fails lint on any new
+    inline style.
   - `planner-results.tsx` static style became `cursor-default outline-none`.
   - F1: `uppercase tracking-wide` labels in `salary-summary.tsx` (3) and
     `expense-chart.tsx` (1) became sentence-case `text-sm` labels like
     `StatCard`. `tax-reliefs-dialog.tsx` has the same pattern but was not in
     the finding; left for a later pass.
-- Acceptance: no hex/rgb literals or `style={{` outside marketing and `BarFill`;
-  light and dark visual check of each restyled dashboard page.
+- Acceptance: no hex/rgb literals or `style` attributes in `src/` (lint
+  enforced); light and dark visual check of each restyled dashboard page.
 - Rollback: revert the squash commit.
 
 **B4 barrels-structure (T3, T4).**

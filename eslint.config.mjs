@@ -52,6 +52,11 @@ const eslintConfig = defineConfig([
           message:
             'Do not throw `new Error(supabaseError.message)` — use throwIfSupabaseError() from @/lib/errors to keep DB detail server-side.',
         },
+        {
+          selector: "JSXAttribute[name.name='style']",
+          message:
+            'No inline styles (constitution 3.2). Use Tailwind classes, theme tokens, or SVG attributes (see ProgressBar, ColorSwatch).',
+        },
       ],
     },
   },
