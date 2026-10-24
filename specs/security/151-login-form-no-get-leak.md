@@ -2,12 +2,12 @@
 id: '151'
 slug: login-form-no-get-leak
 area: security
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-10-24
 approved: 2026-10-24
-shipped:
-impl_pr:
+shipped: 2026-10-24
+impl_pr: https://github.com/cljiahao/fynfo/pull/72
 supersedes:
 constitution_satisfies:
   - '§5.1'
@@ -59,10 +59,10 @@ named this fix.
 
 ## Acceptance
 
-- [ ] `pnpm check` green
-- [ ] `pnpm test:ci` green; new tests assert both forms declare
+- [x] `pnpm check` green
+- [x] `pnpm test:ci` green; new tests assert both forms declare
       `method="post"` and the sign-in button renders disabled in server HTML
-- [ ] `pnpm build` green
+- [x] `pnpm build` green
 - [ ] Manual: local stack sign-in still works
 
 ## Risk & reversibility
@@ -74,3 +74,10 @@ named this fix.
 ## Open questions
 
 None.
+
+## Results
+
+Shipped in PR 72. Gates green locally and in CI: 2148 tests, coverage
+thresholds and build. Regression tests fail without the fix. The manual
+local-stack sign-in check was not run. The PR also adds `.claude/worktrees/`
+to `.prettierignore`, because nested session worktrees broke `format:check`.
