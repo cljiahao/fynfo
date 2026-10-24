@@ -636,6 +636,23 @@ succeeded; `/dashboard`, `assets`, `salary`, `equity`, `expenses`, `household`,
 `profile` and `entry` loaded with no CSP violation in the console (only an
 existing recharts zero-size warning). Page scripts carried the request nonce.
 
+**PDF import under the CSP** (production build and `next start`, seed test user,
+fixtures from `docs/audit/pdf-import-fixtures/`, each loaded into the real
+statement-review dialog and extracted to the review screen). No
+`securitypolicyviolation` event and no console error for any bank; the pdf.js
+module worker loaded from `/pdfjs/6.4.299/pdf.worker.mjs` and `WebAssembly`
+compile worked. No `buildCsp` change was needed.
+
+| Bank     | Result                                           |
+| -------- | ------------------------------------------------ |
+| UOB      | 2 source rows: 2 expense suggestions             |
+| DBS      | 2 source rows: 2 expense suggestions             |
+| HSBC     | 3 source rows: 1 expense suggestion, 2 excluded  |
+| Citibank | 3 source rows: 2 expense suggestions, 1 excluded |
+
+Counts match the fixture README. The files were fed through the file input from
+a same-origin copy (temporary, removed afterwards); no save was performed.
+
 **Residual risks**
 
 - `style-src 'unsafe-inline'` remains; inline styles need a later token pass.
