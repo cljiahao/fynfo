@@ -437,10 +437,12 @@ them in; agents do not apply them. See
 - **G2** – The AGENTS.md templateCentral marker and §11/§12 notes are at
   5.0.0-era wording. Align them with 6.0.4 together with H.
 
-## Remediation batches (implementer: Sonnet session)
+## Remediation batches
 
-Each batch is one branch `impl/152-<batch-slug>` and one PR into `main`
-(squash). Before editing, each PR appends to this record: the affected paths,
+Batches ship as the phase PRs in `docs/audit/2026-10-24-roadmap.md`: one
+branch `impl/152-phase-<n>` and one squash PR into `main` per phase, merged
+and pushed before the next phase starts. Phase 1 = B0+B1+B2, phase 2 =
+B3+B4+B5, phase 3 = B6+B7+B8, phase 4 = B9. Before editing, each PR appends to this record: the affected paths,
 the evidence, the acceptance checks and the rollback. Each PR also adds
 regression tests for every behaviour change, updates the README and comments
 for the touched behaviour, and passes `pnpm check && pnpm test:ci && pnpm build`.
@@ -461,9 +463,9 @@ for the touched behaviour, and passes `pnpm check && pnpm test:ci && pnpm build`
 | H                       | harness                   | **Owner applies** drafts in `docs/audit/harness-152/`                |
 | S4 split names          | crypto                    | Roadmap X6; not in this audit                                        |
 
-Order: B0 first, because it changes the toolchain the other batches lint
-against. B1, B2, B3, B4, B6 and B7 touch separate files. B5 runs after B3, B4
-and B6, so its cleanup sees the final comments. B8 is last.
+Order inside a phase: B0 first, because it changes the toolchain the other
+batches lint against. B5 runs after B3 and B4 in phase 2, so its cleanup sees
+the final comments.
 
 Acceptance for the whole audit:
 
@@ -473,7 +475,7 @@ Acceptance for the whole audit:
 - every listed security-critical file has a per-file coverage floor;
 - this record lists residual risks and blocked items.
 
-A second independent review pass (the planner reviews every PR before merge)
+A second independent review pass (fresh-eyes review of every phase PR before merge)
 is required.
 
 Rollback: revert the batch's squash commit. Dependency rollback restores
