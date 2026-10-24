@@ -50,10 +50,8 @@
       "Read(.env.production.*)",
       "Read(.env.staging)",
       "Read(./secrets/**)",
-      "Read(node_modules/**)",
       "Read(.next/**)",
       "Read(dist/**)",
-      "Read(coverage/**)",
       "Read(.turbo/**)",
       "Read(**/*.tsbuildinfo)",
       "Write(.env)",
@@ -69,13 +67,27 @@
       "Edit(.env.development)",
       "Edit(.env.production)",
       "Edit(.env.production.*)",
-      "Edit(.env.staging)",
+      "Edit(.env.staging)"
+    ],
+    "ask": [
       "Write(.claude/settings.json)",
       "Edit(.claude/settings.json)",
       "Write(.claude/hooks/**)",
       "Edit(.claude/hooks/**)",
       "Write(.claude/harness.json)",
-      "Edit(.claude/harness.json)"
+      "Edit(.claude/harness.json)",
+      "Write(.claude/skills/**)",
+      "Edit(.claude/skills/**)",
+      "Write(CLAUDE.md)",
+      "Edit(CLAUDE.md)",
+      "Write(AGENTS.md)",
+      "Edit(AGENTS.md)",
+      "Write(CONSTITUTION.md)",
+      "Edit(CONSTITUTION.md)",
+      "Write(.github/workflows/**)",
+      "Edit(.github/workflows/**)",
+      "Write(scripts/build-push.sh)",
+      "Edit(scripts/build-push.sh)"
     ]
   },
   "hooks": {
@@ -118,7 +130,7 @@
         ]
       },
       {
-        "matcher": "Bash",
+        "matcher": "Bash|PowerShell",
         "hooks": [
           {
             "type": "command",

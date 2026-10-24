@@ -1,10 +1,10 @@
 {
   "templatecentral_version": "5.0.0",
   "stack": "nextjs",
-  "seeded_at": "2026-07-04",
+  "seeded_at": "2026-10-24",
   "seeded_files": {
     "AGENTS.md": {
-      "origin_hash": "57fa920072985cb3dca63bd8d5bcd95d6a2cb6fbc4d00523bce6e634484303fb",
+      "origin_hash": "e5202a242a6dfc108fe3711e6dd867825f84ed0d87dac1374c2c8e4e02f44471",
       "path": "AGENTS.md"
     },
     "CLAUDE.md": {
@@ -12,7 +12,7 @@
       "path": "CLAUDE.md"
     },
     ".claude/settings.json": {
-      "origin_hash": "13f8d12b6eb0d03e7ac6c7fa9ad30179c0d988948f0fcbc399b21e0c34e3d0a3",
+      "origin_hash": "ef77138650315c6ede1950e552711b2e6e867333fdd794f20cfe9d4e79d31ac2",
       "path": ".claude/settings.json"
     },
     ".claude/skills/next-verify/SKILL.md": {
@@ -24,11 +24,11 @@
       "path": ".claude/skills/regen-harness/SKILL.md"
     },
     ".claude/hooks/guard-destructive-bash.mjs": {
-      "origin_hash": "97ce078f266969cf73b9c930fc0cca8262b6039284838140e9f1415a7a3cdb32",
+      "origin_hash": "aeb65ce6a18cbe0a02cd39d064be51b5c6fef0c5d8caf263ee4885fbc3c74e97",
       "path": ".claude/hooks/guard-destructive-bash.mjs"
     },
     ".claude/hooks/guard-protected-paths.mjs": {
-      "origin_hash": "1e34eb2866a24a6a33ad409b738b9d5a2e7b029bb148c44f1487adf4959334cc",
+      "origin_hash": "5b83b36359fa07474385cf8ef13bea8bcdb764bdb4ce350cfb7aec4294c45f5a",
       "path": ".claude/hooks/guard-protected-paths.mjs"
     },
     ".claude/hooks/injection-guard.mjs": {
@@ -44,7 +44,7 @@
       "path": ".claude/hooks/session-banner.mjs"
     },
     ".claude/hooks/stop-tests.mjs": {
-      "origin_hash": "ce4238ca04804b71cf884888529486c145723dbcb282edcdeb80c2c0330361da",
+      "origin_hash": "3e91464f48f7f3ec5be9188ffaab69f92f2d36e08f1aa1d4692f266e67b34967",
       "path": ".claude/hooks/stop-tests.mjs"
     }
   }
