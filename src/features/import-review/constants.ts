@@ -95,4 +95,4 @@ export const STATEMENT_ZOOM_LEVELS = [
   },
 ] as const;
 export const IMPORT_ABOUT_TEXT =
-  'Self expenses in SGD only. Selected purchases are saved in automatic groups. Each expense includes its original transaction text in an encrypted source note. Duplicate warnings do not guarantee prevention across imports.';
+  'Self expenses in SGD only. Selected purchases are saved in automatic groups. Each expense saves its Item / Brand and an optional description you write; the statement text is not stored. Duplicate warnings do not guarantee prevention across imports.';

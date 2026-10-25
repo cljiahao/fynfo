@@ -278,7 +278,7 @@ function StatementReviewBody({
 
   function edit(
     rowId: string,
-    field: 'date' | 'description' | 'amount' | 'category',
+    field: 'date' | 'description' | 'note' | 'amount' | 'category',
     value: string
   ) {
     if (!canReveal() || save.locked(rowId) || save.busy) return;

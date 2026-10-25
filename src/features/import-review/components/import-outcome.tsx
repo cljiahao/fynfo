@@ -76,7 +76,7 @@ export function ImportOutcome({
           )}
           <details>
             <summary className="text-muted-foreground cursor-pointer">
-              Submitted source note
+              Statement source
             </summary>
             <p className="mt-2 break-words whitespace-pre-wrap">
               {buildImportNote(attempt.input)}

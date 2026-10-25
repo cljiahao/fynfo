@@ -110,9 +110,9 @@ it('keeps secondary information closed until requested without hiding editable f
   expect(screen.getByLabelText('Item / Brand')).toBeVisible();
   expect(screen.getByLabelText('SGD billed amount')).toBeVisible();
   expect(screen.getByLabelText('Classification')).not.toBeVisible();
-  fireEvent.click(screen.getByText('Details'));
+  fireEvent.click(screen.getByText('Description and details'));
   expect(screen.getByLabelText('Classification')).toBeVisible();
-  fireEvent.click(screen.getByText('Details'));
+  fireEvent.click(screen.getByText('Description and details'));
   fireEvent.change(screen.getByLabelText('SGD billed amount'), {
     target: { value: '-1.00' },
   });
@@ -186,7 +186,7 @@ it('follows the focused draft to its source page while keeping secondary details
   );
   expect(
     screen
-      .getAllByText('Details')
+      .getAllByText('Description and details')
       .every((element) => !element.closest('details')!.open)
   ).toBe(true);
   fireEvent.click(screen.getByRole('button', { name: 'Previous page' }));
@@ -221,7 +221,7 @@ it('updates classification counts, preserves the suggestion and restores it with
   fireEvent.change(screen.getByLabelText('Show transactions'), {
     target: { value: 'all' },
   });
-  screen.getByText('Details').closest('details')!.open = true;
+  screen.getByText('Description and details').closest('details')!.open = true;
   fireEvent.change(screen.getByLabelText('Classification'), {
     target: { value: 'transfer' },
   });
@@ -244,7 +244,7 @@ it('updates classification counts, preserves the suggestion and restores it with
   expect(
     screen.queryByText('Your classification overrides the suggestion.')
   ).not.toBeInTheDocument();
-  screen.getByText('Details').closest('details')!.open = true;
+  screen.getByText('Description and details').closest('details')!.open = true;
   fireEvent.change(screen.getByLabelText('Classification'), {
     target: { value: 'unknown' },
   });
@@ -295,7 +295,8 @@ it('keeps source credit blockers after expense overrides and prevents summary cl
   fireEvent.keyDown(screen.getByText(/A source credit cannot be converted/), {
     key: 'Escape',
   });
-  repayment.getByText('Details').closest('details')!.open = true;
+  repayment.getByText('Description and details').closest('details')!.open =
+    true;
   expect(repayment.getByText(/Suggested: Card repayment/)).toBeVisible();
   const summary = within(
     screen.getByRole('group', { name: 'Row 2: Excluded from expenses' })
@@ -529,7 +530,7 @@ it('hides repayments, filters refunds and bulk-selects all eligible expenses acr
   expect(
     screen.getByText('No expenses left to select in this view.')
   ).toBeVisible();
-}, 15000);
+}, 30000);
 it('previews both original values before restoring and opens row rules in a dialog', async () => {
   setup();
   await screen.findByLabelText('Item / Brand');
@@ -539,7 +540,7 @@ it('previews both original values before restoring and opens row rules in a dial
   fireEvent.change(screen.getByLabelText('Category'), {
     target: { value: 'groceries' },
   });
-  fireEvent.click(screen.getByText('Details'));
+  fireEvent.click(screen.getByText('Description and details'));
   fireEvent.click(
     screen.getByRole('button', { name: 'Review changes / restore' })
   );

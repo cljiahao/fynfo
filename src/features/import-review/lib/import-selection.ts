@@ -29,6 +29,7 @@ export function createImportInput(
     type: row.category,
     description: row.description,
     cents: Math.round(Number(row.amount.replaceAll(',', '')) * 100),
+    note: row.note?.trim() || undefined,
     bank,
     period,
     source: row.source,

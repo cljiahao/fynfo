@@ -44,7 +44,7 @@ interface StatementRowCardProps {
   onCreateRule: (row: ReviewedRow, origin: HTMLElement) => void;
   onEdit: (
     rowId: string,
-    field: 'date' | 'description' | 'amount' | 'category',
+    field: 'date' | 'description' | 'note' | 'amount' | 'category',
     value: string
   ) => void;
   onClassify: (rowId: string, value: string) => void;
@@ -288,8 +288,20 @@ export function StatementRowCard({
       )}
       <details className="space-y-3">
         <summary className="text-muted-foreground cursor-pointer text-sm">
-          Details
+          Description and details
         </summary>
+        <div className="space-y-1">
+          <Label htmlFor={`${controlId}-${row.id}-note`}>
+            Description (optional)
+          </Label>
+          <Input
+            id={`${controlId}-${row.id}-note`}
+            value={hidden ? '' : (row.note ?? '')}
+            maxLength={1024}
+            disabled={hidden || save.locked(row.id) || save.busy}
+            onChange={(event) => onEdit(row.id, 'note', event.target.value)}
+          />
+        </div>
         <div className="flex flex-wrap items-end gap-2">
           <div className="min-w-32 flex-1 space-y-1">
             <Label htmlFor={`${controlId}-${row.id}-classification`}>

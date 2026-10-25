@@ -192,12 +192,16 @@ it('offers one primary action per step and closes on Done after a confirmed save
     screen.queryByRole('button', { name: /for duplicates/ })
   ).not.toBeInTheDocument();
   expect(screen.queryByText('Source note to save')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Description (optional)'), {
+    target: { value: 'Team lunch' },
+  });
   fireEvent.click(screen.getByRole('button', { name: 'Save 1 expense' }));
   expect(await screen.findByText('1 expense saved')).toBeVisible();
   expect(screen.getByRole('button', { name: 'Done' })).toHaveFocus();
   expect(mocks.insert).toHaveBeenCalledTimes(1);
   const input = mocks.insert.mock.calls[0][0] as ImportedExpenseInput;
   expect(input.description).toBe('Corrected market');
+  expect(input.note).toBe('Team lunch');
   expect(input.source[0].text).toContain('INVENTED MARKET');
   fireEvent.click(screen.getByRole('button', { name: 'Done' }));
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -713,7 +717,7 @@ it('merchant rules fill drafts automatically and preserve manual edits and expli
   expect(screen.getByLabelText('Item / Brand')).toHaveValue('My merchant');
   expect(screen.getByLabelText('Category')).toHaveValue('groceries');
   expect(saveButton()).toBeEnabled();
-  fireEvent.click(screen.getByText('Details'));
+  fireEvent.click(screen.getByText('Description and details'));
   fireEvent.click(
     screen.getByRole('button', { name: 'Review changes / restore' })
   );
@@ -742,7 +746,9 @@ it('saving a rule fills every matching row and invalidates checked duplicates wi
     screen.getByRole('button', { name: 'Check 2 for duplicates' })
   );
   await screen.findByRole('button', { name: 'Save 2 expenses' });
-  fireEvent.click(screen.getAllByText('Details', { exact: true })[0]);
+  fireEvent.click(
+    screen.getAllByText('Description and details', { exact: true })[0]
+  );
   fireEvent.click(
     screen.getAllByRole('button', { name: 'Create rule', exact: true })[0]
   );
@@ -814,7 +820,7 @@ it('keeps an explicit conflict choice after the chosen rule is paused', async ()
   });
   mocks.saveRules.mockResolvedValue({ status: 'saved', revision: '2' });
   await setup();
-  fireEvent.click(screen.getByText('Details', { exact: true }));
+  fireEvent.click(screen.getByText('Description and details', { exact: true }));
   fireEvent.click(
     screen.getByRole('button', { name: 'Choose Rule B', exact: true })
   );

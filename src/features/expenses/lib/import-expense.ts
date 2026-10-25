@@ -20,6 +20,7 @@ const importedExpenseBaseSchema = z.strictObject({
     .max(4096)
     .refine((value) => value.trim().length > 0),
   cents: z.number().int().positive().max(1_000_000_000_000),
+  note: z.string().max(1024).optional(),
   bank: z.enum(['uob', 'dbs', 'hsbc', 'citibank']),
   period: z.strictObject({ from: z.iso.date(), to: z.iso.date() }),
   suggestedClassification: kindSchema,
@@ -91,7 +92,7 @@ export function importedExpenseValues(
     date: value.date,
     type: value.type,
     item: value.description,
-    info: buildImportNote(value),
+    info: value.note?.trim() ?? '',
     amount: value.cents / 100,
     splitType: 'self',
     splits: [],

@@ -325,6 +325,22 @@ in one commit:
 - On phones the description and inactive step labels are visually hidden and
   the pager uses icon buttons, so one full row fits.
 
+### Amendment: own description, no stored statement text (2026-10-26)
+
+Owner-approved in chat on 2026-10-26 ("yes please fix it"; "i want to write my
+own description … if not it would be blank by default"). This amends Out of
+scope, which excluded changes to what an import saves.
+
+- Each row's "Description and details" section has an optional Description
+  (up to 1024 characters), blank by default.
+- An imported expense saves that text as its description (`info`), trimmed.
+  The statement source note is no longer stored with the expense; the source
+  lines are still sent so the server can check the row is positive spending,
+  and they stay visible during the import.
+- The description is not part of the duplicate signature, so editing it needs
+  no recheck.
+- Expenses imported before this change keep their stored source note.
+
 ## Out of scope
 
 - Changes to parsing, classification, the duplicate-matching rule or the save

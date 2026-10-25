@@ -30,7 +30,15 @@ describe('import eligibility and warnings', () => {
       id
     )!;
     expect(input.cents).toBe(1230);
-    expect(importedExpenseValues(input).info).toContain('01 OCT MARKET 12.30');
+    expect(input.source[0].text).toBe('01 OCT MARKET 12.30');
+    expect(importedExpenseValues(input).info).toBe('');
+    const noted = createImportInput(
+      { ...row, note: '  Lunch with team  ' },
+      'uob',
+      period,
+      id
+    )!;
+    expect(importedExpenseValues(noted).info).toBe('Lunch with team');
     expect(importedExpenseValues(input).item).toBe('Corrected merchant');
   });
   it.each([

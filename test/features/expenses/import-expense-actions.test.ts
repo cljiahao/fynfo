@@ -83,7 +83,7 @@ describe('insert-only import boundary', () => {
     expect(row.user_id).toBe('synthetic-owner');
     expect(row.split_type).toBe('self');
     expect(await decryptPayload(row.item, key)).toBe(input.description);
-    expect(await decryptPayload(row.info, key)).toContain('ORIGINAL MARKET');
+    expect(await decryptPayload(row.info, key)).toBe('');
     expect(await decryptPayload(row.amount, key)).toBe('12.3');
     expect(fake.calls.from).toEqual(['expense_records']);
     expect(fake.calls.upsert).toEqual([]);

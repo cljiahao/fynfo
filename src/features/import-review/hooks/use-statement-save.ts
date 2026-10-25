@@ -37,7 +37,9 @@ type SavedMatch = Extract<DuplicateMatch, { kind: 'saved' }>;
 export type ImportActivity = 'check' | 'save' | 'verify';
 type SaveRun = { keys: string[]; group: number; groups: number };
 
-const signatureOf = (input: ImportedExpenseInput) => JSON.stringify(input);
+// The description is not compared for duplicates, so editing it needs no recheck.
+const signatureOf = ({ note: _note, ...input }: ImportedExpenseInput) =>
+  JSON.stringify(input);
 
 export function useStatementSave(
   rows: StatementCandidate[],

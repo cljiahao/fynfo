@@ -21,6 +21,7 @@ export interface StatementCandidate {
   date: string;
   description: string;
   originalDescription: string;
+  note?: string;
   manualMerchant: { description: boolean; category: boolean };
   amount: string;
   category: string;
