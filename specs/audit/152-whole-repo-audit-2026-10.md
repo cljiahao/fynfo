@@ -836,7 +836,8 @@ needs its own behaviour tests, so that is a separate follow-up.
 | 3     | B6, B7, B8, KDC | PR 75, `99e9593`                        | 2194 tests; 14 new coverage floors; KDC → `AJBU.SI`; suppressions cited (§4.3)                                  |
 
 Owner-approved additions beyond the plan: `zod` 4.3.6 → 4.6.7 (clears a high
-advisory, approved 2026-10-24). Remaining: phase 4 (B9 profile minimisation,
-owner runs production SQL first). Residual risks moved to roadmap items HR6–HR11
-and the owner actions in `docs/audit/2026-10-24-roadmap.md`. This record stays
-open until B9 ships.
+advisory, approved 2026-10-24). Remaining: B9 profile minimisation (owner runs
+production SQL first). On 2026-10-25 the owner re-ranked the roadmap and B9
+moved to roadmap item S4a in phase 9 (P3); its approval stands. Residual risks
+moved to roadmap items HR6–HR11 and the owner actions in
+`docs/audit/2026-10-24-roadmap.md`. This record stays open until B9 ships.
