@@ -825,3 +825,18 @@ needs its own behaviour tests, so that is a separate follow-up.
 | `recurring-expenses/hooks/use-recurring-rulebook.ts:46`            | set-state-in-effect | Resets busy and rows when amounts are hidden.                                     |
 | `recurring-expenses/hooks/use-recurring-rulebook.ts:115`           | set-state-in-effect | Releases the busy gate and rejects stale callbacks when amounts are hidden.       |
 | `recurring-expenses/hooks/use-recurring-rulebook.ts:198`           | set-state-in-effect | Starts the rulebook load when idle and visible; `load()` sets stage.              |
+
+## Close-out: phases 0–3 (2026-10-25)
+
+| Phase | Batches         | Merged                                  | Verification                                                                                                    |
+| ----- | --------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 0     | H1–H8, G1, G2   | `f38b13b` (owner), `27e73b7` (spec 153) | Guard self-test 106/106; CONSTITUTION 4.1.1, AGENTS marker 6.0.4                                                |
+| 1     | B0, B1, B2, V1  | PR 73, `e3bdbe5`                        | `pnpm audit --prod` 11 → 0 findings; CSP clean on every page; PDF import for UOB, DBS, HSBC, Citibank under CSP |
+| 2     | B3, B4, B5      | PR 74, `492adcc`                        | 2180 tests; SVG `ProgressBar`, inline `style=` lint rule; light/dark page check                                 |
+| 3     | B6, B7, B8, KDC | PR 75, `99e9593`                        | 2194 tests; 14 new coverage floors; KDC → `AJBU.SI`; suppressions cited (§4.3)                                  |
+
+Owner-approved additions beyond the plan: `zod` 4.3.6 → 4.6.7 (clears a high
+advisory, approved 2026-10-24). Remaining: phase 4 (B9 profile minimisation,
+owner runs production SQL first). Residual risks moved to roadmap items HR6–HR11
+and the owner actions in `docs/audit/2026-10-24-roadmap.md`. This record stays
+open until B9 ships.
