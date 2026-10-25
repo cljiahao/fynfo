@@ -26,7 +26,15 @@ import {
 } from '@/features/merchant-rules';
 import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
 import { cn } from '@/lib/utils';
-import { BookMarked, Check, FileText, Info, X } from 'lucide-react';
+import {
+  BookMarked,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Info,
+  X,
+} from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import {
   IMPORT_ABOUT_TEXT,
@@ -439,7 +447,10 @@ function StatementReviewBody({
       );
     });
   }
-  const filteredRows = rowsFor(filter);
+  // Once every duplicate is skipped the duplicates view is empty; fall back.
+  const activeFilter: RowFilter =
+    filter === 'duplicates' && save.duplicateCount === 0 ? 'expenses' : filter;
+  const filteredRows = rowsFor(activeFilter);
   const lastRowPage = Math.max(
     0,
     Math.ceil(filteredRows.length / STATEMENT_ROWS_PER_PAGE) - 1
@@ -456,7 +467,10 @@ function StatementReviewBody({
       save.inputFor(row)
   );
   const remaining = rows.filter(
-    (row) => !save.locked(row.id) && save.inputFor(row)
+    (row) =>
+      !save.locked(row.id) &&
+      save.resolutionFor(row.id) !== 'skip' &&
+      save.inputFor(row)
   ).length;
   const restoreRow = rows.find((row) => row.id === restoreId);
   const chosen = rows.find((row) => row.id === selected);
@@ -511,7 +525,7 @@ function StatementReviewBody({
         <div className="flex shrink-0 items-start justify-between gap-3">
           <DialogHeader className="min-w-0 gap-1">
             <DialogTitle>Review a bank statement</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="sr-only sm:not-sr-only">
               Your PDF stays on this device.
             </DialogDescription>
             <ol
@@ -543,7 +557,13 @@ function StatementReviewBody({
                       index + 1
                     )}
                   </span>
-                  {entry.label}
+                  <span
+                    className={
+                      index === stepIndex ? undefined : 'sr-only sm:not-sr-only'
+                    }
+                  >
+                    {entry.label}
+                  </span>
                   {index < IMPORT_STEPS.length - 1 && (
                     <span aria-hidden="true" className="text-muted-foreground">
                       ›
@@ -698,7 +718,7 @@ function StatementReviewBody({
               <section
                 ref={list}
                 aria-label="Extracted transaction drafts"
-                className={`${view === 'extracted' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-col overflow-y-auto overscroll-contain lg:flex`}
+                className={`${view === 'extracted' ? 'flex' : 'hidden'} relative min-h-0 min-w-0 flex-col overflow-y-auto overscroll-contain lg:flex`}
               >
                 <div className="bg-background sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b pb-2">
                   <label className="sr-only" htmlFor={`${id}-filter`}>
@@ -707,7 +727,7 @@ function StatementReviewBody({
                   <select
                     id={`${id}-filter`}
                     className="border-input bg-background h-9 rounded-md border px-2 text-sm"
-                    value={filter}
+                    value={activeFilter}
                     disabled={hidden || save.busy}
                     onChange={(event) => {
                       if (!canReveal()) return;
@@ -721,7 +741,7 @@ function StatementReviewBody({
                     </option>
                     <option value="refunds">Refunds</option>
                     <option value="all">All statement rows</option>
-                    {(save.duplicateCount > 0 || filter === 'duplicates') && (
+                    {save.duplicateCount > 0 && (
                       <option value="duplicates">
                         Possible duplicates ({save.duplicateCount})
                       </option>
@@ -758,12 +778,14 @@ function StatementReviewBody({
                       onClassify={classify}
                       onApplySuggestion={applySuggestion}
                       describeRow={describeRow}
-                      onJumpToRow={(rowId) => goToRow(rowId, false, filter)}
+                      onJumpToRow={(rowId) =>
+                        goToRow(rowId, false, activeFilter)
+                      }
                     />
                   ))}
                 </div>
                 {filteredRows.length > STATEMENT_ROWS_PER_PAGE && (
-                  <div className="bg-background sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-2 border-t py-2">
+                  <div className="bg-background sticky bottom-0 z-10 flex items-center justify-between gap-2 border-t py-2">
                     <Button
                       type="button"
                       variant="outline"
@@ -771,7 +793,10 @@ function StatementReviewBody({
                       disabled={hidden || currentRowPage === 0}
                       onClick={() => changeRowPage(currentRowPage - 1)}
                     >
-                      Previous rows
+                      <ChevronLeft aria-hidden="true" />
+                      <span className="sr-only sm:not-sr-only">
+                        Previous rows
+                      </span>
                     </Button>
                     <span className="text-sm tabular-nums" aria-live="polite">
                       Rows {currentRowPage * STATEMENT_ROWS_PER_PAGE + 1}–
@@ -788,7 +813,8 @@ function StatementReviewBody({
                       disabled={hidden || currentRowPage >= lastRowPage}
                       onClick={() => changeRowPage(currentRowPage + 1)}
                     >
-                      Next rows
+                      <span className="sr-only sm:not-sr-only">Next rows</span>
+                      <ChevronRight aria-hidden="true" />
                     </Button>
                   </div>
                 )}

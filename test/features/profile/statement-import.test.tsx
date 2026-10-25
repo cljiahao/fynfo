@@ -216,13 +216,18 @@ it('names the matched saved expense and requires a per-row keep that an edit inv
     )
   ).toBeVisible();
   expect(saveButton()).not.toBeInTheDocument();
-  expect(screen.getByText('0 of 1 possible duplicate resolved.')).toBeVisible();
+  expect(
+    screen.getByText(
+      '0 of 1 possible duplicate resolved. Compare each with its source line.'
+    )
+  ).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Keep both' }));
   expect(screen.getByRole('button', { name: 'Keep both' })).toHaveAttribute(
     'aria-pressed',
     'true'
   );
   expect(saveButton()).toBeEnabled();
+  expect(screen.queryByText(/to resolve|Compare each/)).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('SGD billed amount'), {
     target: { value: '12.40' },
   });
@@ -251,6 +256,9 @@ it('skips a duplicate row reversibly and rechecks a row marked needs amend', asy
   fireEvent.click(screen.getByRole('button', { name: 'Needs amend' }));
   expect(screen.getByLabelText('Item / Brand')).toHaveFocus();
   expect(saveButton()).not.toBeInTheDocument();
+  expect(
+    screen.getByText('Correct the 1 row marked Needs amend, then recheck.')
+  ).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Recheck 1 row' }));
   await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(2));
   await waitFor(() =>
@@ -296,6 +304,8 @@ it('links statement-internal duplicates and clears the partner warning on skip w
   fireEvent.click(partner);
   await waitFor(() => expect(document.activeElement?.tagName).toBe('FIELDSET'));
   expect(document.activeElement).toHaveTextContent('#2');
+  const filter = screen.getByLabelText('Show transactions');
+  fireEvent.change(filter, { target: { value: 'duplicates' } });
   fireEvent.click(
     within(
       screen.getByRole('group', { name: 'Duplicate decision for row 1' })
@@ -304,8 +314,14 @@ it('links statement-internal duplicates and clears the partner warning on skip w
   expect(
     screen.queryByRole('group', { name: 'Duplicate decision for row 2' })
   ).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Save 1 expense' })).toBeEnabled();
+  expect(filter).toHaveValue('expenses');
+  expect(screen.getByText('2 rows')).toBeVisible();
   expect(mocks.read).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Save 1 expense' }));
+  expect(await screen.findByText('1 expense saved')).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: /unsaved row/ })
+  ).not.toBeInTheDocument();
 });
 it('goes to the next unresolved duplicate and focuses its decision', async () => {
   mocks.extract.mockResolvedValue(

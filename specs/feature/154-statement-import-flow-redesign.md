@@ -305,6 +305,26 @@ label follows the state:
 - Hiding amounts still clears every duplicate check, as it cleared the old
   review.
 
+### Manual check follow-ups (2026-10-26)
+
+A local-stack run with a constructed 3-page, 45-row UOB PDF found these, fixed
+in one commit:
+
+- The row list lacked `relative`, so its `sr-only` labels made the dialog
+  itself scroll and "Go to next duplicate" pushed the header off-screen.
+- The check stored "N possible duplicates to resolve" as a message that stayed
+  after each was resolved. The action bar status now carries it live.
+- Needs amend said "1 changed row needs a recheck" before any edit. It now
+  asks to correct the row marked Needs amend.
+- pdf.js paints on an opaque canvas, so pages flashed black while rendering.
+  Pages render off-screen and are copied when complete.
+- "Back to N unsaved rows" counted skipped duplicates. Skipped rows no longer
+  count.
+- The duplicates filter stayed on an empty list once every duplicate was
+  skipped. It falls back to "Expenses to review".
+- On phones the description and inactive step labels are visually hidden and
+  the pager uses icon buttons, so one full row fits.
+
 ## Out of scope
 
 - Changes to parsing, classification, the duplicate-matching rule or the save

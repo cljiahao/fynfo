@@ -74,9 +74,12 @@ export function ImportActionBar({
       'A selected row cannot be saved yet. Fix the details marked on it, or deselect it.';
     action = { label: 'Fix selected rows', run: () => {}, disabled: true };
   } else if (save.pendingCount > 0) {
-    status = save.recheck
-      ? `${plural(save.pendingCount, 'changed row')} need${save.pendingCount === 1 ? 's' : ''} a recheck.`
-      : 'Not checked for duplicates yet.';
+    const need = save.pendingCount === 1 ? 'needs' : 'need';
+    status = !save.recheck
+      ? 'Not checked for duplicates yet.'
+      : save.awaitingAmend === save.pendingCount
+        ? `Correct the ${plural(save.awaitingAmend, 'row')} marked Needs amend, then recheck.`
+        : `${plural(save.pendingCount, 'row')} ${need} a recheck.`;
     action = {
       label: save.recheck
         ? `Recheck ${plural(save.pendingCount, 'row')}`
@@ -84,7 +87,7 @@ export function ImportActionBar({
       run: () => void save.compare(),
     };
   } else if (save.openDuplicates.length > 0) {
-    status = `${duplicatesResolved} of ${plural(save.duplicateCount, 'possible duplicate')} resolved.`;
+    status = `${duplicatesResolved} of ${plural(save.duplicateCount, 'possible duplicate')} resolved. Compare each with its source line.`;
     action = { label: 'Go to next duplicate', run: onNextDuplicate };
   } else {
     status = save.duplicateCount

@@ -157,12 +157,15 @@ export async function openLocalStatementPdf(
           Math.sqrt(STATEMENT_LIMITS.pixels / (base.width * base.height))
         );
         const viewport = page.getViewport({ scale });
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
+        // pdf.js paints on an opaque canvas, so resizing the visible one shows
+        // black until the page is drawn. Render off-screen, then copy.
+        const buffer = globalThis.document.createElement('canvas');
+        buffer.width = Math.floor(viewport.width);
+        buffer.height = Math.floor(viewport.height);
         const deadline = setTimeout(destroy, STATEMENT_LIMITS.deadlineMs);
         try {
           renderTask = page.render({
-            canvas,
+            canvas: buffer,
             viewport,
             annotationMode: pdfjs.AnnotationMode.DISABLE,
           });
@@ -170,6 +173,13 @@ export async function openLocalStatementPdf(
         } finally {
           clearTimeout(deadline);
         }
+        if (!active || currentRender !== renderGeneration)
+          throw new Error('Cancelled');
+        canvas.width = buffer.width;
+        canvas.height = buffer.height;
+        const context = canvas.getContext('2d');
+        context?.drawImage(buffer, 0, 0);
+        buffer.width = 0;
         const boxes = (options.highlight ?? []).flatMap((line) => {
           const box = lineBoxes.get(pageNumber)?.[line - 1];
           return box ? [box] : [];
@@ -185,7 +195,6 @@ export async function openLocalStatementPdf(
         });
         const top = Math.max(0, Math.min(...edges) - 2);
         const bottom = Math.min(canvas.height, Math.max(...edges) + 2);
-        const context = canvas.getContext('2d');
         const color = getComputedStyle(canvas)
           .getPropertyValue('--brand')
           .trim();

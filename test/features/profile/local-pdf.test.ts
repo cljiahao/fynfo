@@ -216,6 +216,7 @@ it('renders at a requested width within limits and paints a highlight band over 
     save: vi.fn(),
     restore: vi.fn(),
     fillRect,
+    drawImage: vi.fn(),
   } as unknown as CanvasRenderingContext2D);
   vi.spyOn(window, 'getComputedStyle').mockReturnValue({
     getPropertyValue: () => 'oklch(0.55 0.13 240)',
@@ -229,5 +230,38 @@ it('renders at a requested width within limits and paints a highlight band over 
   expect(canvas.width * canvas.height).toBeLessThanOrEqual(
     STATEMENT_LIMITS.pixels
   );
+  session.destroy();
+});
+it('renders off-screen and leaves the visible canvas alone when superseded', async () => {
+  let finishFirst = () => {};
+  page.render
+    .mockImplementationOnce(() => ({
+      promise: new Promise<void>((resolve) => {
+        finishFirst = resolve;
+      }),
+      cancel: mocks.cancel,
+    }))
+    .mockImplementation(() => ({
+      promise: Promise.resolve(),
+      cancel: mocks.cancel,
+    }));
+  const session = await openLocalStatementPdf(
+    new ArrayBuffer(4),
+    new AbortController().signal
+  );
+  const canvas = globalThis.document.createElement('canvas');
+  const drawImage = vi.fn();
+  vi.spyOn(canvas, 'getContext').mockReturnValue({
+    drawImage,
+  } as unknown as CanvasRenderingContext2D);
+  const first = session.render(1, canvas, { width: 600 });
+  await vi.waitFor(() => expect(page.render).toHaveBeenCalledTimes(1));
+  expect(page.render.mock.calls[0][0].canvas).not.toBe(canvas);
+  expect(canvas.width).toBe(300);
+  await session.render(2, canvas, { width: 900 });
+  finishFirst();
+  await expect(first).rejects.toThrow('Cancelled');
+  expect(canvas.width).toBe(900);
+  expect(drawImage).toHaveBeenCalledTimes(1);
   session.destroy();
 });

@@ -174,6 +174,10 @@ export function useStatementSave(
       !isChecked(row.id, input) || resolutions[row.id] === 'amend'
   );
   const recheck = pending.some(({ row }) => row.id in checks);
+  const awaitingAmend = pending.filter(
+    ({ row, input }) =>
+      resolutions[row.id] === 'amend' && isChecked(row.id, input)
+  ).length;
   const matched = entries.filter(({ row }) => matchFor(row.id));
   const openDuplicates = matched
     .filter(({ row }) => !resolutions[row.id])
@@ -299,9 +303,10 @@ export function useStatementSave(
       setChecks(nextChecks);
       setSavedMatches(nextMatches);
       setResolutions(nextResolutions);
+      // The action bar reports open duplicates live; a stored count goes stale.
       setMessage(
         count
-          ? `${count} possible duplicate${count === 1 ? '' : 's'} to resolve. Compare each with its source line.`
+          ? ''
           : 'No possible matches found in this read. Concurrent or overlapping imports can still duplicate purchases.'
       );
     } catch {
@@ -525,6 +530,7 @@ export function useStatementSave(
     checking,
     pendingCount: pending.length,
     recheck,
+    awaitingAmend,
     openDuplicates,
     duplicateCount: matched.length,
     kept: attempted.filter((key) => resolutions[key] === 'keep').length,
