@@ -18,7 +18,7 @@ files = ['AGENTS.md', 'CLAUDE.md', '.claude/settings.json',
          '.claude/hooks/session-banner.mjs',
          '.claude/hooks/stop-tests.mjs']
 out = {
-    'templatecentral_version': '5.0.0',
+    'templatecentral_version': '6.0.4',
     'stack': 'nextjs',
     'seeded_at': datetime.date.today().isoformat(),
     'seeded_files': {},

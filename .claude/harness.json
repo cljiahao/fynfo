@@ -1,10 +1,10 @@
 {
-  "templatecentral_version": "5.0.0",
+  "templatecentral_version": "6.0.4",
   "stack": "nextjs",
-  "seeded_at": "2026-10-24",
+  "seeded_at": "2026-10-25",
   "seeded_files": {
     "AGENTS.md": {
-      "origin_hash": "e5202a242a6dfc108fe3711e6dd867825f84ed0d87dac1374c2c8e4e02f44471",
+      "origin_hash": "beee540e4ab892011b9796df42a12b1dbfe8a27e6fd303dc690a41562860bb13",
       "path": "AGENTS.md"
     },
     "CLAUDE.md": {
@@ -20,7 +20,7 @@
       "path": ".claude/skills/next-verify/SKILL.md"
     },
     ".claude/skills/regen-harness/SKILL.md": {
-      "origin_hash": "0813f097639a8c5e3bf0493f148ec1ed824355cf7bfcc9a11c4f4c90d568f9ef",
+      "origin_hash": "6ef8fc23e6fb76d1f4de94c6984818d5aed045eb7f61d8031d866a87af936f76",
       "path": ".claude/skills/regen-harness/SKILL.md"
     },
     ".claude/hooks/guard-destructive-bash.mjs": {
