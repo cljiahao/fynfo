@@ -1,25 +1,11 @@
 'use client';
 
-import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
+import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { CalendarIcon, ClipboardPaste, Plus, Zap } from 'lucide-react';
+import { ClipboardPaste, Plus, Zap } from 'lucide-react';
 import {
   useEffect,
   useId,
@@ -36,12 +22,15 @@ import { buildSelfExpense } from '../lib/utils';
 import { expenseDataSchema } from '../schemas';
 import type { ExpenseData, ExpenseType } from '../types';
 import { ExpenseTypeSelect } from './expense-type-select';
+import { QuickAddDateField } from './quick-add-date-field';
+import { ReuseConfirmDialog } from './reuse-confirm-dialog';
+import { ReuseStatusBar } from './reuse-status-bar';
 
 export interface ExpenseQuickAddHandle {
   requestReuse: (source: ExpenseData, origin: HTMLButtonElement) => void;
 }
 
-type ReusePhase =
+export type ReusePhase =
   | 'editing'
   | 'saving'
   | 'unconfirmed'
@@ -251,6 +240,33 @@ export function ExpenseQuickAdd({
     }
   };
 
+  const requestCancelReuse = () => {
+    if (!canReveal() || !reuse) return;
+    const current = {
+      ...reuse,
+      date,
+      type,
+      item,
+      info,
+      amount: Number(amount),
+    };
+    if (sameExpenseValues(current, reuse)) cancelReuse();
+    else setDialog('cancel');
+  };
+
+  const retryReuse = () => {
+    if (!canReveal()) return;
+    if (submitted.current) void submitReuse(submitted.current);
+  };
+
+  const commitDate = (next: string) => {
+    if (!canReveal() || frozen) return;
+    setDate(next);
+    setReuseInvalid((current) => ({ ...current, date: false }));
+    setIssues((current) => current.filter((issue) => issue.field !== 'date'));
+    setDateOpen(false);
+  };
+
   const handleContainerPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
     if (!canReveal()) return;
     const text = e.clipboardData.getData('text/plain');
@@ -446,66 +462,16 @@ export function ExpenseQuickAdd({
       </div>
 
       {reuse && (
-        <div className="mb-3 space-y-2">
-          <p role="status" className="text-sm">
-            Reused expense · Date set to today · Self expense
-          </p>
-          {reuseError && (
-            <p
-              id={feedbackId + '-reuse'}
-              role="alert"
-              className="text-loss-strong text-sm"
-            >
-              {reuseError}
-            </p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={hidden || frozen}
-              onClick={() => {
-                if (!canReveal()) return;
-                const current = {
-                  ...reuse,
-                  date,
-                  type,
-                  item,
-                  info,
-                  amount: Number(amount),
-                };
-                if (sameExpenseValues(current, reuse)) cancelReuse();
-                else setDialog('cancel');
-              }}
-            >
-              Cancel reuse
-            </Button>
-            {(phase === 'unconfirmed' ||
-              phase === 'conflict' ||
-              phase === 'checking') && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={hidden || phase === 'checking' || !readSavedExpenses}
-                onClick={() => void checkReuseSave()}
-              >
-                {phase === 'checking' ? 'Checking expenses…' : 'Check expenses'}
-              </Button>
-            )}
-            {phase === 'unconfirmed' && (
-              <Button
-                size="sm"
-                disabled={hidden}
-                onClick={() => {
-                  if (!canReveal()) return;
-                  if (submitted.current) void submitReuse(submitted.current);
-                }}
-              >
-                Retry same expense
-              </Button>
-            )}
-          </div>
-        </div>
+        <ReuseStatusBar
+          errorId={feedbackId + '-reuse'}
+          reuseError={reuseError}
+          phase={phase}
+          frozen={frozen}
+          canCheck={!!readSavedExpenses}
+          onCancel={requestCancelReuse}
+          onCheck={() => void checkReuseSave()}
+          onRetry={retryReuse}
+        />
       )}
 
       {issues.length > 0 && (
@@ -522,88 +488,17 @@ export function ExpenseQuickAdd({
         </p>
       )}
       <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1">
-          <label
-            htmlFor={feedbackId + '-date'}
-            className="text-muted-foreground block text-xs font-medium"
-          >
-            Date
-          </label>
-          <Popover
-            open={dateOpen && !hidden && !frozen}
-            onOpenChange={(open) => {
-              if (canReveal() && !frozen) setDateOpen(open);
-            }}
-          >
-            <PopoverTrigger asChild>
-              <Button
-                id={feedbackId + '-date'}
-                disabled={hidden || frozen}
-                aria-invalid={invalidDate || undefined}
-                aria-describedby={
-                  invalidDate
-                    ? reuse
-                      ? feedbackId + '-reuse-date'
-                      : feedbackId
-                    : undefined
-                }
-                variant="outline"
-                className={cn(
-                  'bg-background h-9 w-[140px] justify-start gap-2 text-sm font-normal',
-                  !date && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="size-3.5" />
-                {date ? format(new Date(date), 'dd MMM yyyy') : 'Pick date'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                defaultMonth={date ? new Date(date) : undefined}
-                selected={date ? new Date(date) : undefined}
-                onSelect={(d) => {
-                  if (d) {
-                    if (!canReveal() || frozen) return;
-                    setDate(format(d, 'yyyy-MM-dd'));
-                    setReuseInvalid((current) => ({ ...current, date: false }));
-                    setIssues((current) =>
-                      current.filter((issue) => issue.field !== 'date')
-                    );
-                    setDateOpen(false);
-                  }
-                }}
-                initialFocus
-              />
-              <div className="border-border border-t p-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => {
-                    if (!canReveal() || frozen) return;
-                    setDate(format(new Date(), 'yyyy-MM-dd'));
-                    setReuseInvalid((current) => ({ ...current, date: false }));
-                    setIssues((current) =>
-                      current.filter((issue) => issue.field !== 'date')
-                    );
-                    setDateOpen(false);
-                  }}
-                >
-                  Today
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
-          {reuseInvalid.date && (
-            <p
-              id={feedbackId + '-reuse-date'}
-              className="text-loss-strong text-xs"
-            >
-              Choose a valid date.
-            </p>
-          )}
-        </div>
+        <QuickAddDateField
+          controlId={feedbackId}
+          date={date}
+          open={dateOpen}
+          frozen={frozen}
+          invalid={invalidDate}
+          isReuse={!!reuse}
+          reuseDateInvalid={reuseInvalid.date}
+          onOpenChange={setDateOpen}
+          onPick={commitDate}
+        />
         <div className="space-y-1">
           <label
             htmlFor={feedbackId + '-category'}
@@ -754,51 +649,24 @@ export function ExpenseQuickAdd({
           {phase === 'saving' && reuse ? 'Saving expense…' : 'Add Expense'}
         </Button>
       </div>
-      <Dialog
-        open={dialog !== null}
-        onOpenChange={(open) => {
-          if (!open) setDialog(null);
+      <ReuseConfirmDialog
+        mode={
+          dialog === null ? null : dialog === 'cancel' ? 'cancel' : 'replace'
+        }
+        onClose={() => setDialog(null)}
+        onKeep={() => {
+          dialogReturnFocus.current = itemRef.current;
+          setDialog(null);
         }}
-      >
-        <DialogContent
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            (dialogReturnFocus.current ?? itemRef.current)?.focus();
-          }}
-        >
-          <DialogTitle>
-            {dialog === 'cancel'
-              ? 'Discard changes to this draft?'
-              : 'Replace current draft?'}
-          </DialogTitle>
-          <DialogDescription>
-            Your current unsaved inputs will be discarded. No expense will be
-            saved.
-          </DialogDescription>
-          <AmountsHiddenNotice />
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                dialogReturnFocus.current = itemRef.current;
-                setDialog(null);
-              }}
-            >
-              Keep draft
-            </Button>
-            <Button
-              disabled={hidden}
-              onClick={() => {
-                if (!canReveal()) return;
-                if (dialog === 'cancel') cancelReuse();
-                else if (dialog) activateReuse(dialog);
-              }}
-            >
-              {dialog === 'cancel' ? 'Discard draft' : 'Replace draft'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onConfirm={() => {
+          if (!canReveal()) return;
+          if (dialog === 'cancel') cancelReuse();
+          else if (dialog) activateReuse(dialog);
+        }}
+        onCloseFocus={() =>
+          (dialogReturnFocus.current ?? itemRef.current)?.focus()
+        }
+      />
     </div>
   );
 }

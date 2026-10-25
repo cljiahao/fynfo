@@ -10,6 +10,7 @@ const USER_ID = 'user-1';
 const PARTNER_ID = 'user-2';
 const KH = Buffer.alloc(32, 5);
 const SPACE_ID = '00000000-0000-4000-8000-0000000000c1';
+const SPENDING_ID = '00000000-0000-4000-8000-0000000000d1';
 
 let supabase: ReturnType<typeof makeFakeSupabase>['client'];
 
@@ -231,5 +232,120 @@ describe('spending actions', () => {
     const write = kind === 'space' ? actions.createSpace : actions.addSpending;
     await expect(write(input)).rejects.toThrow();
     expect(fake.calls.insert).toHaveLength(0);
+  });
+});
+
+describe('spending actions — failure and delete paths', () => {
+  it('refuses to create a space when the caller has no household', async () => {
+    const fake = setSupabase({
+      selectDataByTable: { household_members: [] },
+    });
+    const { createSpace } =
+      await import('@/features/household/actions/spending-actions');
+    await expect(
+      createSpace({ kind: 'ongoing', name: 'Household' })
+    ).rejects.toThrow('No household');
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+
+  it('surfaces an opaque error when a member, space or spending write fails', async () => {
+    const actions =
+      await import('@/features/household/actions/spending-actions');
+    setSupabase({
+      selectError: { message: 'relation "household_members" denied' },
+    });
+    await expect(
+      actions.createSpace({ kind: 'ongoing', name: 'Household' })
+    ).rejects.toThrow();
+
+    setSupabase({
+      selectDataByTable: { household_members: [{ household_id: 'h1' }] },
+      insertError: { message: 'duplicate key household_spaces_pkey' },
+    });
+    await expect(
+      actions.createSpace({ kind: 'ongoing', name: 'Household' })
+    ).rejects.toThrow();
+
+    setSupabase({
+      insertError: { message: 'violates household_spending_fkey' },
+    });
+    await expect(
+      actions.addSpending({
+        spaceId: SPACE_ID,
+        date: '2026-10-05',
+        category: 'Food',
+        amount: 5,
+      })
+    ).rejects.toThrow();
+  });
+
+  it('stores a null note when none is given', async () => {
+    const fake = setSupabase();
+    const { addSpending } =
+      await import('@/features/household/actions/spending-actions');
+    await addSpending({
+      spaceId: SPACE_ID,
+      date: '2026-10-05',
+      category: 'Food',
+      amount: 5,
+    });
+    expect((fake.calls.insert[0] as { note: unknown }).note).toBeNull();
+  });
+
+  it('returns a null note for entries read without one', async () => {
+    setSupabase({
+      selectDataByTable: {
+        household_spaces: [
+          {
+            id: SPACE_ID,
+            kind: 'ongoing',
+            name: encryptPayload('Home', KH),
+            start_date: null,
+            end_date: null,
+          },
+        ],
+        household_spending: [
+          {
+            id: 's1',
+            space_id: SPACE_ID,
+            payer_user_id: USER_ID,
+            date: '2026-12-02',
+            category: encryptPayload('Rent', KH),
+            amount: encryptPayload('100', KH),
+            note: null,
+          },
+        ],
+      },
+    });
+    const { getSpaces } =
+      await import('@/features/household/actions/spending-actions');
+    const [space] = await getSpaces();
+    expect(space.entries[0]).toMatchObject({ note: null, isSelf: true });
+  });
+
+  it('deletes a space and a spending entry by id, and hides write errors', async () => {
+    const { deleteSpace, deleteSpending } =
+      await import('@/features/household/actions/spending-actions');
+    const fake = setSupabase();
+    await deleteSpace(SPACE_ID);
+    await deleteSpending(SPENDING_ID);
+    expect(fake.calls.delete).toBe(2);
+    expect(fake.calls.queries.map((q) => q.eq[0]?.value)).toEqual([
+      SPACE_ID,
+      SPENDING_ID,
+    ]);
+
+    setSupabase({ selectError: { message: 'permission denied for table x' } });
+    await expect(deleteSpace(SPACE_ID)).rejects.toThrow();
+    await expect(deleteSpending(SPENDING_ID)).rejects.toThrow();
+  });
+
+  it('rejects a malformed id before any delete', async () => {
+    const fake = setSupabase();
+    const { deleteSpace, deleteSpending } =
+      await import('@/features/household/actions/spending-actions');
+    await expect(deleteSpace('nope')).rejects.toThrow();
+    await expect(deleteSpending('nope')).rejects.toThrow();
+    expect(fake.calls.delete).toBe(0);
   });
 });

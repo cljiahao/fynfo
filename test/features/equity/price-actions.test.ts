@@ -370,3 +370,29 @@ describe('price-actions — fetchDividends', () => {
     });
   });
 });
+
+describe('price-actions — Yahoo chart request shape', () => {
+  const base = 'https://query1.finance.yahoo.com/v8/finance/chart/';
+
+  it('sends the same headers and per-call URL and cache window from each consumer', async () => {
+    fetchMock.mockResolvedValue(chartResponse({ regularMarketPrice: 2 }));
+    const { fetchStockPrices, fetchExchangeRate, fetchDividends } =
+      await import('@/features/equity/actions/price-actions');
+
+    await fetchStockPrices(['KDC']);
+    await fetchExchangeRate('USD', 'SGD');
+    await fetchDividends('KDC');
+
+    const [quote, fx, div] = fetchMock.mock.calls;
+    expect(quote[0]).toBe(`${base}AJBU.SI?interval=1d&range=1d`);
+    expect(quote[1].next).toEqual({ revalidate: 300 });
+    expect(fx[0]).toBe(`${base}USDSGD%3DX?interval=1d&range=1d`);
+    expect(fx[1].next).toEqual({ revalidate: 300 });
+    expect(div[0]).toBe(`${base}AJBU.SI?interval=1d&range=5y&events=div`);
+    expect(div[1].next).toEqual({ revalidate: 86400 });
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(init.headers).toEqual({ 'User-Agent': 'Mozilla/5.0' });
+      expect(init.signal).toBeInstanceOf(AbortSignal);
+    }
+  });
+});

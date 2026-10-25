@@ -1,7 +1,8 @@
 ---
 id: '087'
 area: audit
-status: draft
+status: superseded
+superseded_by: docs/audit/2026-10-24-roadmap.md (HR3)
 created: 2026-10-10
 author: Codex
 constitution_satisfies:

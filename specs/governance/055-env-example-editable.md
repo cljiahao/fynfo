@@ -2,13 +2,13 @@
 id: 055
 slug: env-example-editable
 area: governance
-status: approved # draft | approved | shipped | superseded
+status: shipped
 author: Claude (Opus 4.8)
 approved_by: Clarence
 created: 2026-06-27
 approved: 2026-06-27
-shipped:
-impl_pr:
+shipped: 2026-06-27
+impl_pr: https://github.com/cljiahao/fynfo/commit/5004d7e
 supersedes:
 constitution_satisfies:
   - '§7.1'

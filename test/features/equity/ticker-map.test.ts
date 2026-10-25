@@ -11,6 +11,33 @@ describe('getYahooSymbol', () => {
     expect(getYahooSymbol('ASCENDAS')).toBe('A17U.SI');
   });
 
+  it('maps KDC to Keppel DC REIT, not First Resources (EB5.SI)', () => {
+    expect(getYahooSymbol('KDC')).toBe('AJBU.SI');
+  });
+
+  it('pins every SG mapping to its verified Yahoo symbol', () => {
+    const expected: Record<string, string> = {
+      SASSEUR: 'CRPU.SI',
+      SINGTEL: 'Z74.SI',
+      SUNTEC: 'T82U.SI',
+      LENDLEASE: 'JYEU.SI',
+      DBS: 'D05.SI',
+      KDC: 'AJBU.SI',
+      FCT: 'J69U.SI',
+      OCBC: 'O39.SI',
+      ASCENDAS: 'A17U.SI',
+      FLCT: 'BUOU.SI',
+      MLT: 'M44U.SI',
+      MIT: 'ME8U.SI',
+      UOB: 'U11.SI',
+      NETLINK: 'CJLU.SI',
+    };
+    for (const [ticker, symbol] of Object.entries(expected)) {
+      expect(getYahooSymbol(ticker)).toBe(symbol);
+      expect(getMarket(ticker)).toBe('SG');
+    }
+  });
+
   it('returns the ticker as-is for US stocks', () => {
     expect(getYahooSymbol('AAPL')).toBe('AAPL');
     expect(getYahooSymbol('MSFT')).toBe('MSFT');

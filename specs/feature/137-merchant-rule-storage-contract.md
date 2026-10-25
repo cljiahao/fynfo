@@ -1,6 +1,7 @@
 # 137 exact merchant-rule storage proposal
 
 Status: owner approved schema and implementation, 2026-10-13.
+Delivered: shipped 2026-10-13 via spec 137 (PR #57).
 Exact owner response: “Approve this storage contract and implementation”.
 The approval covers this table, restricted function, encrypted rulebook contract
 and export v4. Production application remains a separate owner action.

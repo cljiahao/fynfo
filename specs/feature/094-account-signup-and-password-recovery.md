@@ -2,7 +2,7 @@
 id: '094'
 slug: account-signup-and-password-recovery
 area: feature
-status: draft
+status: draft # open: deprioritized in the 2026-10-24 roadmap
 created: 2026-10-10
 author: Codex
 constitution_satisfies:

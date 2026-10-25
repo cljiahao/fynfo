@@ -102,6 +102,7 @@ export function useStatementSave(
     if (!privacy.hidden) return;
     operation.current++;
     running.current = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- audit 152 §Phase 3 lint suppressions: intentional sync with the privacy or rulebook signal
     setBusy(false);
     setChecked('');
     setAcknowledged(false);
@@ -124,6 +125,7 @@ export function useStatementSave(
   const inputs = selection
     .map((key) => rows.find((row) => row.id === key))
     .filter((row): row is StatementCandidate => !!row)
+    // eslint-disable-next-line react-hooks/refs -- audit 152 §Phase 3 lint suppressions: row ids are allocated lazily and stay stable
     .map(inputFor);
   const signature = JSON.stringify(inputs);
   const ready =
