@@ -17,6 +17,7 @@ import {
 import { useAmountVisibility } from '@/features/privacy';
 import { Info } from 'lucide-react';
 import {
+  DUPLICATE_RESOLUTIONS,
   STATEMENT_CLASSIFICATIONS,
   STATEMENT_REVIEW_STATUS_LABELS,
 } from '../constants';
@@ -52,6 +53,12 @@ interface StatementRowCardProps {
     suggestion: MerchantSuggestion,
     replace: { description: boolean; category: boolean }
   ) => void;
+  describeRow: (rowId: string) => {
+    number: number;
+    page: number;
+    line: number;
+  };
+  onJumpToRow: (rowId: string) => void;
 }
 
 export function StatementRowCard({
@@ -70,12 +77,20 @@ export function StatementRowCard({
   onEdit,
   onClassify,
   onApplySuggestion,
+  describeRow,
+  onJumpToRow,
 }: StatementRowCardProps) {
   const { hidden, canReveal } = useAmountVisibility();
+  const match = save.matchFor(row.id);
+  const resolution = save.resolutionFor(row.id);
+  const partner =
+    match?.kind === 'statement' ? describeRow(match.rowId) : undefined;
   return (
     <fieldset
+      id={`${controlId}-${row.id}-card`}
+      tabIndex={-1}
       disabled={hidden || save.locked(row.id) || save.busy}
-      className={`min-w-0 space-y-2 border-b px-3 py-3 ${isSelected ? 'bg-muted/50' : ''}`}
+      className={`min-w-0 scroll-mt-14 space-y-2 border-b px-3 py-3 outline-none ${isSelected ? 'bg-muted/50' : ''}`}
       onFocusCapture={() => {
         if (canReveal()) onFocus(row);
       }}
@@ -83,18 +98,86 @@ export function StatementRowCard({
       <legend className="sr-only">
         Row {number}: {STATEMENT_REVIEW_STATUS_LABELS[row.review.status]}
       </legend>
+      {!hidden && match && (
+        <div className="border-warning bg-warning-subtle space-y-2 rounded-md border p-3 text-sm">
+          <p className="text-warning-strong font-medium">
+            {match.kind === 'saved' ? (
+              `Possible duplicate of a saved expense: ${match.date} · ${match.item} · SGD ${match.amount.toFixed(2)}`
+            ) : (
+              <>
+                Possible duplicate of{' '}
+                <Button
+                  type="button"
+                  variant="link"
+                  className="text-warning-strong h-auto p-0 font-medium underline"
+                  onClick={() => canReveal() && onJumpToRow(match.rowId)}
+                >
+                  #{partner?.number} (page {partner?.page} · line{' '}
+                  {partner?.line})
+                </Button>{' '}
+                in this statement
+              </>
+            )}
+          </p>
+          <div
+            id={`${controlId}-${row.id}-resolution`}
+            role="group"
+            aria-label={`Duplicate decision for row ${number}`}
+            className="flex flex-wrap gap-1"
+          >
+            {DUPLICATE_RESOLUTIONS.map((choice) => (
+              <Button
+                key={choice.value}
+                type="button"
+                size="sm"
+                variant={resolution === choice.value ? 'default' : 'outline'}
+                aria-pressed={resolution === choice.value}
+                onClick={() => {
+                  if (!canReveal()) return;
+                  save.resolve(row.id, choice.value);
+                  if (choice.value === 'amend')
+                    document
+                      .getElementById(`${controlId}-${row.id}-description`)
+                      ?.focus();
+                }}
+              >
+                {choice.label}
+              </Button>
+            ))}
+          </div>
+          {resolution === 'amend' && (
+            <p className="text-muted-foreground">
+              Correct the fields below, then recheck this row.
+            </p>
+          )}
+          {resolution === 'skip' && (
+            <p className="text-muted-foreground">
+              Skipped. Select the row again to bring it back.
+            </p>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Button
-          type="button"
-          variant="link"
-          className="order-1 h-auto p-0 text-xs"
-          aria-label={`View source page ${row.source[0].page}, line ${row.source[0].line}`}
-          onClick={() => {
-            if (canReveal()) onCompare(row);
-          }}
-        >
-          Compare source · Page {row.source[0].page}
-        </Button>
+        <div className="order-1 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-muted-foreground font-medium tabular-nums">
+            #{number}
+          </span>
+          <Button
+            type="button"
+            variant="link"
+            className="h-auto p-0 text-xs"
+            aria-label={`View source page ${row.source[0].page}, line ${row.source[0].line}`}
+            onClick={() => {
+              if (canReveal()) onCompare(row);
+            }}
+          >
+            Compare source · Page {row.source[0].page} · line{' '}
+            {row.source[0].line}
+          </Button>
+          {!hidden && save.isStale(row.id) && (
+            <span className="text-warning-strong">Changed · recheck</span>
+          )}
+        </div>
         {!hidden &&
           !save.locked(row.id) &&
           (() => {

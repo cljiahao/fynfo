@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -24,9 +25,16 @@ import {
   type MerchantSuggestion,
 } from '@/features/merchant-rules';
 import { AmountsHiddenNotice, useAmountVisibility } from '@/features/privacy';
-import { Info } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { BookMarked, Check, FileText, Info, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
-import { STATEMENT_CLASSIFICATIONS, STATEMENT_LIMITS } from '../constants';
+import {
+  IMPORT_ABOUT_TEXT,
+  IMPORT_STEPS,
+  STATEMENT_CLASSIFICATIONS,
+  STATEMENT_LIMITS,
+  STATEMENT_ROWS_PER_PAGE,
+} from '../constants';
 import { useStatementSave } from '../hooks/use-statement-save';
 import type { LocalStatementPdf } from '../lib/local-pdf';
 import { applyRulesToStatement } from '../lib/merchant-rules';
@@ -40,10 +48,21 @@ import {
   type DetectedStatementPeriod,
 } from '../lib/statement-period';
 import type { StatementBank, StatementCandidate } from '../types';
+import { ImportActionBar } from './import-action-bar';
+import { ImportComplete } from './import-complete';
+import { ImportOutcome } from './import-outcome';
+import { ImportProgressOverlay } from './import-progress-overlay';
 import { RestoreMerchantDialog } from './restore-merchant-dialog';
 import { StatementRowCard } from './statement-row-card';
-import { StatementSaveReview } from './statement-save-review';
 import { StatementSourceForm } from './statement-source-form';
+import { StatementViewer } from './statement-viewer';
+
+type RowFilter =
+  | 'expenses'
+  | 'expenses-refunds'
+  | 'refunds'
+  | 'all'
+  | 'duplicates';
 
 function StatementReviewBody({
   onGuardChange,
@@ -52,10 +71,12 @@ function StatementReviewBody({
 }) {
   const { hidden, mask, canReveal, getHideEpoch } = useAmountVisibility();
   const id = useId();
-  const canvas = useRef<HTMLCanvasElement>(null);
   const session = useRef<LocalStatementPdf | null>(null);
   const controller = useRef<AbortController | null>(null);
   const generation = useRef(0);
+  const list = useRef<HTMLElement>(null);
+  const focusTarget = useRef<{ rowId: string; decision: boolean } | null>(null);
+  const [pdf, setPdf] = useState<LocalStatementPdf | null>(null);
   const [bank, setBank] = useState<StatementBank>('uob');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -72,7 +93,7 @@ function StatementReviewBody({
   const [view, setView] = useState<'statement' | 'extracted'>('extracted');
   const [selected, setSelected] = useState('');
   const [rowPage, setRowPage] = useState(0);
-  const [filter, setFilter] = useState('expenses');
+  const [filter, setFilter] = useState<RowFilter>('expenses');
   const [rulesOpen, setRulesOpen] = useState(false);
   const [restoreId, setRestoreId] = useState<string | null>(null);
   const restoreOrigin = useRef<HTMLElement | null>(null);
@@ -85,11 +106,8 @@ function StatementReviewBody({
     if (hidden || !canReveal() || save.busy || merchant.stage !== 'ready')
       return;
     const next = applyRulesToStatement(rows, bank, merchant.rules, save.locked);
-    if (next !== rows) {
-      save.invalidateReview();
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- audit 152 §Phase 3 lint suppressions: intentional sync with the privacy or rulebook signal
-      setRows(next);
-    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- audit 152 §Phase 3 lint suppressions: intentional sync with the privacy or rulebook signal
+    if (next !== rows) setRows(next);
   }, [rows, bank, merchant.rules, merchant.stage, hidden, canReveal, save]);
 
   function allowDiscard() {
@@ -130,6 +148,20 @@ function StatementReviewBody({
     [hidden, busy]
   );
 
+  useEffect(() => {
+    const target = focusTarget.current;
+    if (!target) return;
+    focusTarget.current = null;
+    const card = document.getElementById(`${id}-${target.rowId}-card`);
+    const decision = target.decision
+      ? document
+          .getElementById(`${id}-${target.rowId}-resolution`)
+          ?.querySelector('button')
+      : null;
+    card?.scrollIntoView?.({ block: 'center' });
+    (decision ?? card)?.focus();
+  });
+
   function reset() {
     if (!allowDiscard()) return false;
     setRuleDraft(null);
@@ -141,6 +173,7 @@ function StatementReviewBody({
     controller.current?.abort();
     session.current?.destroy();
     session.current = null;
+    setPdf(null);
     setBusy(false);
     setRows([]);
     setError('');
@@ -148,29 +181,8 @@ function StatementReviewBody({
     setPageCount(0);
     setSelected('');
     setRowPage(0);
-    if (canvas.current) {
-      canvas.current.width = 0;
-      canvas.current.height = 0;
-    }
     return true;
   }
-
-  useEffect(() => {
-    const pdf = session.current;
-    const target = canvas.current;
-    if (hidden || !canReveal() || !pdf || !target || !pageCount) return;
-    const hideEpoch = getHideEpoch();
-    let active = true;
-    void pdf.render(page, target).catch(() => {
-      if (active && canReveal() && getHideEpoch() === hideEpoch)
-        setError(
-          'This source page could not be rendered. Choose another file or clear the review.'
-        );
-    });
-    return () => {
-      active = false;
-    };
-  }, [page, pageCount, view, hidden, canReveal, getHideEpoch]);
 
   async function extract() {
     if (!canReveal()) return;
@@ -241,6 +253,7 @@ function StatementReviewBody({
       setSelected(candidates[0]?.id ?? '');
       setPage(candidates[0]?.source[0].page ?? 1);
       setPageCount(opened.pageCount);
+      setPdf(opened);
       setView('extracted');
     } catch {
       discardOpenedPdf();
@@ -261,7 +274,6 @@ function StatementReviewBody({
     value: string
   ) {
     if (!canReveal() || save.locked(rowId) || save.busy) return;
-    save.invalidateReview();
     setRows((current) =>
       current.map((row) =>
         row.id === rowId
@@ -284,7 +296,6 @@ function StatementReviewBody({
     replace: { description: boolean; category: boolean }
   ) {
     if (!canReveal() || save.locked(rowId) || save.busy) return;
-    save.invalidateReview();
     setRows((current) =>
       current.map((row) => {
         if (row.id !== rowId) return row;
@@ -312,8 +323,6 @@ function StatementReviewBody({
   }
   function restoreMerchant(rowId: string) {
     if (!canReveal() || save.locked(rowId) || save.busy) return;
-
-    save.invalidateReview();
     setRows((current) =>
       current.map((row) => {
         if (row.id !== rowId) return row;
@@ -341,7 +350,6 @@ function StatementReviewBody({
       (entry) => entry.value === value
     )?.value;
     if (!classification) return;
-    save.invalidateReview();
     setRows((current) =>
       current.map((row) =>
         row.id === rowId && !row.isSummary ? { ...row, classification } : row
@@ -409,296 +417,397 @@ function StatementReviewBody({
     ...row,
     review: getStatementReview(row, { from, to }),
   }));
-  const filteredRows = reviewedRows.filter((row) => {
-    if (filter === 'all') return true;
-    if (row.isSummary) return false;
-    if (filter === 'refunds') return row.classification === 'refund';
-    if (filter === 'expenses-refunds' && row.classification === 'refund')
-      return true;
-    return row.classification === 'expense' || row.classification === 'unknown';
-  });
-  const currentRowPage = Math.min(
-    rowPage,
-    Math.max(0, Math.ceil(filteredRows.length / 20) - 1)
+  const rowNumbers = new Map(rows.map((row, index) => [row.id, index + 1]));
+  function describeRow(rowId: string) {
+    const row = rows.find((entry) => entry.id === rowId);
+    return {
+      number: rowNumbers.get(rowId) ?? 0,
+      page: row?.source[0].page ?? 0,
+      line: row?.source[0].line ?? 0,
+    };
+  }
+  function rowsFor(view: RowFilter) {
+    return reviewedRows.filter((row) => {
+      if (view === 'all') return true;
+      if (view === 'duplicates') return save.matchFor(row.id) !== null;
+      if (row.isSummary) return false;
+      if (view === 'refunds') return row.classification === 'refund';
+      if (view === 'expenses-refunds' && row.classification === 'refund')
+        return true;
+      return (
+        row.classification === 'expense' || row.classification === 'unknown'
+      );
+    });
+  }
+  const filteredRows = rowsFor(filter);
+  const lastRowPage = Math.max(
+    0,
+    Math.ceil(filteredRows.length / STATEMENT_ROWS_PER_PAGE) - 1
   );
+  const currentRowPage = Math.min(rowPage, lastRowPage);
   const visibleRows = filteredRows.slice(
-    currentRowPage * 20,
-    (currentRowPage + 1) * 20
+    currentRowPage * STATEMENT_ROWS_PER_PAGE,
+    (currentRowPage + 1) * STATEMENT_ROWS_PER_PAGE
   );
-  const eligibleCount = filteredRows.filter(
+  const eligibleRows = filteredRows.filter(
+    (row) =>
+      !save.locked(row.id) &&
+      save.resolutionFor(row.id) !== 'skip' &&
+      save.inputFor(row)
+  );
+  const remaining = rows.filter(
     (row) => !save.locked(row.id) && save.inputFor(row)
   ).length;
   const restoreRow = rows.find((row) => row.id === restoreId);
   const chosen = rows.find((row) => row.id === selected);
+
+  function goToRow(rowId: string, decision: boolean, preferred: RowFilter) {
+    const row = rows.find((entry) => entry.id === rowId);
+    if (!row) return;
+    const nextFilter = rowsFor(preferred).some((entry) => entry.id === rowId)
+      ? preferred
+      : 'all';
+    const index = rowsFor(nextFilter).findIndex((entry) => entry.id === rowId);
+    setFilter(nextFilter);
+    setRowPage(Math.floor(index / STATEMENT_ROWS_PER_PAGE));
+    setView('extracted');
+    focusRow(row);
+    focusTarget.current = { rowId, decision };
+  }
+  function nextDuplicate() {
+    const rowId = rows.find((row) => save.openDuplicates.includes(row.id))?.id;
+    if (rowId && canReveal()) goToRow(rowId, true, 'duplicates');
+  }
+  function changeRowPage(next: number) {
+    if (!canReveal()) return;
+    setRowPage(next);
+    if (list.current) list.current.scrollTop = 0;
+    const first = filteredRows[next * STATEMENT_ROWS_PER_PAGE];
+    if (first) focusTarget.current = { rowId: first.id, decision: false };
+  }
+  function importAnother() {
+    if (!reset()) return;
+    setFile(null);
+  }
+
+  const step = save.complete
+    ? 'done'
+    : rows.length === 0
+      ? 'choose'
+      : save.reviewed ||
+          save.activity === 'save' ||
+          Object.keys(save.attempts).length
+        ? 'save'
+        : save.selection.length
+          ? 'check'
+          : 'review';
+  const stepIndex = IMPORT_STEPS.findIndex((entry) => entry.value === step);
+  const counts = (status: string) =>
+    mask(reviewedRows.filter((row) => row.review.status === status).length);
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <AmountsHiddenNotice />
-      <div className="max-h-[35dvh] shrink-0 overflow-y-auto">
-        <StatementSourceForm
-          controlId={id}
-          hasRows={rows.length > 0}
-          bank={bank}
-          from={from}
-          to={to}
-          manualPeriod={manualPeriod}
-          detectedBasis={detectedBasis}
-          busy={busy}
-          hasFile={!!file}
-          onBankChange={changeBank}
-          onFileChange={changeFile}
-          onPeriodChange={changePeriod}
-          onUsePdfDates={usePdfDates}
-          onClear={clearReview}
-          onExtract={() => void extract()}
-        />
-        {rows.length > 0 && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={hidden}
-            ref={ruleButton}
-            onClick={(event) => {
-              if (!canReveal()) return;
-              ruleOrigin.current = event.currentTarget;
-              setRulesOpen(true);
-            }}
-          >
-            Saved merchant rules
-          </Button>
-        )}
-      </div>
-      {(error || busy) && (
-        <div role="status" aria-live="polite">
-          {error && <p className="text-destructive text-sm">{error}</p>}
-          {busy && (
-            <p className="text-muted-foreground text-sm">
-              Reading locally. You can clear this review to cancel.
-            </p>
-          )}
-        </div>
-      )}
-      {rows.length > 0 && (
-        <>
-          <p className="sr-only" role="status" aria-live="polite">
-            {mask(rows.length)} source rows:{' '}
-            {mask(
-              reviewedRows.filter((row) => row.review.status === 'candidate')
-                .length
-            )}{' '}
-            expense suggestions,{' '}
-            {mask(
-              reviewedRows.filter((row) => row.review.status === 'unresolved')
-                .length
-            )}{' '}
-            unresolved,{' '}
-            {mask(
-              reviewedRows.filter((row) => row.review.status === 'excluded')
-                .length
-            )}{' '}
-            excluded.
-          </p>
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <label className="sr-only" htmlFor={`${id}-filter`}>
-              Show transactions
-            </label>
-            <select
-              id={`${id}-filter`}
-              className="border-input bg-background h-9 rounded-md border px-2 text-sm"
-              value={filter}
-              disabled={hidden || save.busy}
-              onChange={(event) => {
-                if (!canReveal()) return;
-                setFilter(event.target.value);
-                setRowPage(0);
-              }}
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div inert={save.busy} className="flex min-h-0 flex-1 flex-col gap-3">
+        <div className="flex shrink-0 items-start justify-between gap-3">
+          <DialogHeader className="min-w-0 gap-1">
+            <DialogTitle>Review a bank statement</DialogTitle>
+            <DialogDescription>
+              Your PDF stays on this device.
+            </DialogDescription>
+            <ol
+              aria-label="Import steps"
+              className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs"
             >
-              <option value="expenses">Expenses to review</option>
-              <option value="expenses-refunds">Expenses and refunds</option>
-              <option value="refunds">Refunds</option>
-              <option value="all">All statement rows</option>
-            </select>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={hidden || save.busy || eligibleCount === 0}
-              onClick={() => save.selectExpenses(filteredRows)}
-            >
-              {eligibleCount > IMPORT_SAVE_LIMIT
-                ? `Select next ${IMPORT_SAVE_LIMIT} expenses`
-                : 'Select all expenses'}
-            </Button>
-            {save.selection.length > 0 && (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={hidden || save.busy}
-                onClick={save.clearSelection}
-              >
-                Clear selection
-              </Button>
+              {IMPORT_STEPS.map((entry, index) => (
+                <li
+                  key={entry.value}
+                  aria-current={index === stepIndex ? 'step' : undefined}
+                  className={cn(
+                    'flex items-center gap-1.5',
+                    index === stepIndex
+                      ? 'text-foreground font-semibold'
+                      : 'text-muted-foreground'
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'flex size-5 items-center justify-center rounded-full border tabular-nums',
+                      index < stepIndex &&
+                        'border-brand bg-brand text-brand-foreground',
+                      index === stepIndex && 'border-brand text-brand'
+                    )}
+                  >
+                    {index < stepIndex ? (
+                      <Check className="size-3" aria-hidden="true" />
+                    ) : (
+                      index + 1
+                    )}
+                  </span>
+                  {entry.label}
+                  {index < IMPORT_STEPS.length - 1 && (
+                    <span aria-hidden="true" className="text-muted-foreground">
+                      ›
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </DialogHeader>
+          <div className="flex shrink-0 items-center gap-1">
+            {rows.length > 0 && !save.complete && (
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Change statement"
+                  disabled={hidden}
+                  onClick={() => canReveal() && reset()}
+                >
+                  <FileText />
+                  <span className="hidden sm:inline">Change statement</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Merchant rules"
+                  disabled={hidden}
+                  ref={ruleButton}
+                  onClick={(event) => {
+                    if (!canReveal()) return;
+                    ruleOrigin.current = event.currentTarget;
+                    setRulesOpen(true);
+                  }}
+                >
+                  <BookMarked />
+                  <span className="hidden sm:inline">Merchant rules</span>
+                </Button>
+              </>
             )}
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   type="button"
-                  size="icon"
+                  size="icon-sm"
                   variant="ghost"
-                  aria-label="About transaction selection"
+                  aria-label="About statement import"
                 >
-                  <Info className="size-4" />
+                  <Info />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="text-sm">
-                Select purchases, check the details, then save. Repayments are
-                hidden here. Refunds can be reviewed but are not added as
-                expenses. Larger selections are saved in automatic groups.
+                {IMPORT_ABOUT_TEXT}
               </PopoverContent>
             </Popover>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Close"
+                disabled={save.busy}
+              >
+                <X />
+              </Button>
+            </DialogClose>
           </div>
-          <div className="flex shrink-0 gap-2 lg:hidden">
-            <Button
-              type="button"
-              variant={view === 'statement' ? 'default' : 'outline'}
-              aria-pressed={view === 'statement'}
-              disabled={hidden}
-              onClick={() => canReveal() && setView('statement')}
-            >
-              Statement
-            </Button>
-            <Button
-              type="button"
-              variant={view === 'extracted' ? 'default' : 'outline'}
-              aria-pressed={view === 'extracted'}
-              disabled={hidden}
-              onClick={() => canReveal() && setView('extracted')}
-            >
-              Extracted
-            </Button>
+        </div>
+        <AmountsHiddenNotice />
+        {(error || busy) && (
+          <div role="status" aria-live="polite" className="shrink-0">
+            {error && <p className="text-destructive text-sm">{error}</p>}
+            {busy && (
+              <p className="text-muted-foreground text-sm">
+                Reading locally. You can clear this review to cancel.
+              </p>
+            )}
           </div>
-          <div className="grid min-h-0 flex-1 gap-4 overflow-hidden lg:grid-cols-2">
-            <section
-              aria-label="Original statement"
-              className={`${view === 'statement' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-col gap-2 lg:flex`}
-            >
-              <div className="bg-background shrink-0 space-y-2">
-                {pageCount > 1 && (
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+        )}
+        {rows.length === 0 ? (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <StatementSourceForm
+              controlId={id}
+              bank={bank}
+              from={from}
+              to={to}
+              manualPeriod={manualPeriod}
+              detectedBasis={detectedBasis}
+              busy={busy}
+              hasFile={!!file}
+              onBankChange={changeBank}
+              onFileChange={changeFile}
+              onPeriodChange={changePeriod}
+              onUsePdfDates={usePdfDates}
+              onClear={clearReview}
+              onExtract={() => void extract()}
+            />
+          </div>
+        ) : save.complete ? (
+          <ImportComplete
+            save={save}
+            bank={bank}
+            period={{ from, to }}
+            remaining={remaining}
+            onAnother={importAnother}
+          />
+        ) : (
+          <>
+            <p className="sr-only" role="status" aria-live="polite">
+              {mask(rows.length)} source rows: {counts('candidate')} expense
+              suggestions, {counts('unresolved')} unresolved,{' '}
+              {counts('excluded')} excluded.
+            </p>
+            <div className="flex shrink-0 gap-2 lg:hidden">
+              <Button
+                type="button"
+                size="sm"
+                variant={view === 'statement' ? 'default' : 'outline'}
+                aria-pressed={view === 'statement'}
+                disabled={hidden}
+                onClick={() => canReveal() && setView('statement')}
+              >
+                Statement
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={view === 'extracted' ? 'default' : 'outline'}
+                aria-pressed={view === 'extracted'}
+                disabled={hidden}
+                onClick={() => canReveal() && setView('extracted')}
+              >
+                Extracted
+              </Button>
+            </div>
+            <div className="grid min-h-0 flex-1 gap-4 overflow-hidden lg:grid-cols-2">
+              <section
+                aria-label="Original statement"
+                className={`${view === 'statement' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-col gap-2 lg:flex`}
+              >
+                <StatementViewer
+                  pdf={pdf}
+                  page={page}
+                  pageCount={pageCount}
+                  visible={view === 'statement'}
+                  chosen={chosen}
+                  onPageChange={setPage}
+                  onError={setError}
+                />
+              </section>
+              <section
+                ref={list}
+                aria-label="Extracted transaction drafts"
+                className={`${view === 'extracted' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-col overflow-y-auto overscroll-contain lg:flex`}
+              >
+                <div className="bg-background sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b pb-2">
+                  <label className="sr-only" htmlFor={`${id}-filter`}>
+                    Show transactions
+                  </label>
+                  <select
+                    id={`${id}-filter`}
+                    className="border-input bg-background h-9 rounded-md border px-2 text-sm"
+                    value={filter}
+                    disabled={hidden || save.busy}
+                    onChange={(event) => {
+                      if (!canReveal()) return;
+                      setFilter(event.target.value as RowFilter);
+                      setRowPage(0);
+                    }}
+                  >
+                    <option value="expenses">Expenses to review</option>
+                    <option value="expenses-refunds">
+                      Expenses and refunds
+                    </option>
+                    <option value="refunds">Refunds</option>
+                    <option value="all">All statement rows</option>
+                    {(save.duplicateCount > 0 || filter === 'duplicates') && (
+                      <option value="duplicates">
+                        Possible duplicates ({save.duplicateCount})
+                      </option>
+                    )}
+                  </select>
+                  <span className="text-muted-foreground text-sm tabular-nums">
+                    {filteredRows.length} row
+                    {filteredRows.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <div className="flex-1">
+                  {!hidden && filteredRows.length === 0 && (
+                    <p className="text-muted-foreground p-3 text-sm">
+                      No transactions in this view. Choose All statement rows to
+                      inspect excluded items.
+                    </p>
+                  )}
+                  {visibleRows.map((row) => (
+                    <StatementRowCard
+                      key={row.id}
+                      row={row}
+                      number={rowNumbers.get(row.id) ?? 0}
+                      isSelected={selected === row.id}
+                      controlId={id}
+                      bank={bank}
+                      hasRuleDraft={!!ruleDraft}
+                      save={save}
+                      merchant={merchant}
+                      onFocus={focusRow}
+                      onCompare={compareSource}
+                      onRestore={requestRestore}
+                      onCreateRule={createRule}
+                      onEdit={edit}
+                      onClassify={classify}
+                      onApplySuggestion={applySuggestion}
+                      describeRow={describeRow}
+                      onJumpToRow={(rowId) => goToRow(rowId, false, filter)}
+                    />
+                  ))}
+                </div>
+                {filteredRows.length > STATEMENT_ROWS_PER_PAGE && (
+                  <div className="bg-background sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-2 border-t py-2">
                     <Button
                       type="button"
                       variant="outline"
-                      disabled={hidden || page <= 1}
-                      onClick={() => canReveal() && setPage(page - 1)}
+                      size="sm"
+                      disabled={hidden || currentRowPage === 0}
+                      onClick={() => changeRowPage(currentRowPage - 1)}
                     >
-                      Previous page
+                      Previous rows
                     </Button>
-                    <span className="text-sm">
-                      Page {page} of {pageCount}
+                    <span className="text-sm tabular-nums" aria-live="polite">
+                      Rows {currentRowPage * STATEMENT_ROWS_PER_PAGE + 1}–
+                      {Math.min(
+                        filteredRows.length,
+                        (currentRowPage + 1) * STATEMENT_ROWS_PER_PAGE
+                      )}{' '}
+                      of {filteredRows.length}
                     </span>
                     <Button
                       type="button"
                       variant="outline"
-                      disabled={hidden || page >= pageCount}
-                      onClick={() => canReveal() && setPage(page + 1)}
+                      size="sm"
+                      disabled={hidden || currentRowPage >= lastRowPage}
+                      onClick={() => changeRowPage(currentRowPage + 1)}
                     >
-                      Next page
+                      Next rows
                     </Button>
                   </div>
                 )}
-                {!hidden && chosen && chosen.source[0].page === page && (
-                  <details className="text-muted-foreground text-xs">
-                    <summary className="cursor-pointer">Source text</summary>
-                    <p
-                      className="max-h-20 overflow-y-auto py-2 break-words"
-                      aria-live="polite"
-                    >
-                      Source page {chosen.source[0].page}, line{' '}
-                      {chosen.source[0].line}:{' '}
-                      {chosen.source.map((line) => line.text).join(' ')}
-                    </p>
-                  </details>
-                )}
-              </div>
-              {!hidden && (
-                <div className="bg-muted/30 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-md border">
-                  <canvas
-                    ref={canvas}
-                    aria-label={`Original statement page ${page}`}
-                    className="block h-full w-full object-contain"
-                  />
-                </div>
-              )}
-            </section>
-            <section
-              aria-label="Extracted transaction drafts"
-              className={`${view === 'extracted' ? 'block' : 'hidden'} min-h-0 min-w-0 space-y-3 overflow-y-auto overscroll-contain pr-2 lg:block`}
-            >
-              {filteredRows.length > 20 && (
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={hidden || currentRowPage === 0}
-                    onClick={() =>
-                      canReveal() && setRowPage(currentRowPage - 1)
-                    }
-                  >
-                    Previous rows
-                  </Button>
-                  <span className="text-sm">
-                    Rows {currentRowPage * 20 + 1}–
-                    {Math.min(filteredRows.length, (currentRowPage + 1) * 20)}{' '}
-                    of {filteredRows.length}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={
-                      hidden || (currentRowPage + 1) * 20 >= filteredRows.length
-                    }
-                    onClick={() =>
-                      canReveal() && setRowPage(currentRowPage + 1)
-                    }
-                  >
-                    Next rows
-                  </Button>
-                </div>
-              )}
-              {!hidden && filteredRows.length === 0 && (
-                <p className="text-muted-foreground p-3 text-sm">
-                  No transactions in this view. Choose All statement rows to
-                  inspect excluded items.
-                </p>
-              )}
-              {visibleRows.map((row, index) => (
-                <StatementRowCard
-                  key={row.id}
-                  row={row}
-                  number={rowPage * 20 + index + 1}
-                  isSelected={selected === row.id}
-                  controlId={id}
-                  bank={bank}
-                  hasRuleDraft={!!ruleDraft}
-                  save={save}
-                  merchant={merchant}
-                  onFocus={focusRow}
-                  onCompare={compareSource}
-                  onRestore={requestRestore}
-                  onCreateRule={createRule}
-                  onEdit={edit}
-                  onClassify={classify}
-                  onApplySuggestion={applySuggestion}
-                />
-              ))}
-            </section>
-          </div>
-          <div className="max-h-[28dvh] shrink-0 overflow-y-auto">
-            <StatementSaveReview save={save} />
-          </div>
-        </>
-      )}
+              </section>
+            </div>
+            <ImportOutcome
+              save={save}
+              rowNumber={(key) => rowNumbers.get(key) ?? 0}
+            />
+            <ImportActionBar
+              save={save}
+              eligibleCount={Math.min(eligibleRows.length, IMPORT_SAVE_LIMIT)}
+              onSelectAll={() => save.selectExpenses(eligibleRows)}
+              onNextDuplicate={nextDuplicate}
+            />
+          </>
+        )}
+      </div>
+      {save.busy && <ImportProgressOverlay save={save} />}
       <Dialog open={rulesOpen && !hidden} onOpenChange={setRulesOpen}>
         <DialogContent
           className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl"
@@ -762,11 +871,10 @@ export function StatementReview({
           {triggerLabel}
         </Button>
       </DialogTrigger>
-      <DialogContent className="flex h-[92dvh] max-h-[92dvh] flex-col overflow-hidden p-4 sm:max-w-7xl sm:p-6">
-        <DialogHeader className="shrink-0">
-          <DialogTitle>Review a bank statement</DialogTitle>
-          <DialogDescription>Your PDF stays on this device.</DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        showCloseButton={false}
+        className="flex h-[92dvh] max-h-[92dvh] flex-col overflow-hidden p-4 sm:max-w-7xl sm:p-6"
+      >
         <StatementReviewBody
           onGuardChange={(guard) => {
             discardGuard.current = guard;

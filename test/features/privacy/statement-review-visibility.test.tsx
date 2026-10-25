@@ -125,13 +125,11 @@ it('keeps actual editable drafts and labels while removing hidden canvas and sel
   expect(document.querySelector('canvas')).not.toBeInTheDocument();
   expect(document.body.textContent).not.toContain('SYNTHETIC MARKET');
   expect(document.body.textContent).not.toContain('98.76');
-  expect(screen.getByLabelText('Bank statement PDF')).toBeDisabled();
   expect(
-    screen.getByRole('button', { name: 'Extract for review' })
+    screen.getByRole('button', { name: 'Change statement' })
   ).toBeDisabled();
-  const form = screen.getByLabelText('Bank statement PDF').closest('form');
-  if (!form) throw new Error('Expected PDF form');
-  fireEvent.submit(form);
+  expect(screen.getByRole('button', { name: 'Merchant rules' })).toBeDisabled();
+  expect(screen.queryByLabelText('Bank statement PDF')).not.toBeInTheDocument();
   expect(pdf.open).toHaveBeenCalledTimes(1);
   expect(screen.getByText(/Your PDF stays on this device/)).toBeInTheDocument();
   showInsideReview();

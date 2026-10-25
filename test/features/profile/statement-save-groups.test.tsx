@@ -177,3 +177,74 @@ it('automatically reduces group size for escaped source text below the request p
     ).toBeLessThanOrEqual(512 * 1024);
   client.clear();
 });
+
+it('reports group progress while saving and completes without a discard prompt', async () => {
+  let release!: () => void;
+  api.save.mockImplementationOnce(
+    (inputs: ImportedExpenseInput[]) =>
+      new Promise((resolve) => {
+        release = () =>
+          resolve(inputs.map(({ id }) => ({ id, status: 'confirmed' })));
+      })
+  );
+  const { result, client } = fixture();
+  await act(() => result.current.compare());
+  expect(result.current.reviewed).toBe(true);
+  let saving!: Promise<void>;
+  act(() => {
+    saving = result.current.save();
+  });
+  expect(result.current.activity).toBe('save');
+  expect(result.current.progress).toEqual({
+    done: 0,
+    total: 45,
+    group: 1,
+    groups: 3,
+  });
+  expect(result.current.allowDiscard()).toBe(false);
+  await act(async () => {
+    release();
+    await saving;
+  });
+  expect(result.current.complete).toBe(true);
+  expect(result.current.progress).toBeNull();
+  const confirm = vi.spyOn(window, 'confirm');
+  expect(result.current.allowDiscard()).toBe(true);
+  expect(confirm).not.toHaveBeenCalled();
+  client.clear();
+});
+
+it('marks only the edited row stale and rechecks just that row', async () => {
+  const period = { from: '2026-10-01', to: '2026-10-31' };
+  const rows = parseStatementLines(
+    ['UOB SGD billed', '01 OCT ONE 1.00', '01 OCT TWO 2.00'].map(
+      (text, index) => ({ page: 1, line: index + 1, text })
+    ),
+    'uob',
+    period
+  );
+  const client = new QueryClient();
+  const hook = renderHook(
+    ({ current }) => useStatementSave(current, 'uob', period),
+    {
+      initialProps: { current: rows },
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    }
+  );
+  act(() => hook.result.current.selectExpenses(rows));
+  await act(() => hook.result.current.compare());
+  expect(hook.result.current.reviewed).toBe(true);
+  hook.rerender({
+    current: [{ ...rows[0], description: 'Edited' }, rows[1]],
+  });
+  expect(hook.result.current.isStale(rows[0].id)).toBe(true);
+  expect(hook.result.current.isStale(rows[1].id)).toBe(false);
+  expect(hook.result.current.pendingCount).toBe(1);
+  expect(hook.result.current.recheck).toBe(true);
+  await act(() => hook.result.current.compare());
+  expect(hook.result.current.reviewed).toBe(true);
+  expect(api.read).toHaveBeenCalledTimes(2);
+  client.clear();
+});

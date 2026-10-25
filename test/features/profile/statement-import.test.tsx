@@ -22,6 +22,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
@@ -144,88 +145,236 @@ async function setup(client?: QueryClient) {
   fireEvent.click(screen.getByRole('button', { name: 'Extract for review' }));
   await screen.findByLabelText('Select expense from page 1, line 2');
 }
+const saveButton = () =>
+  screen.queryByRole('button', { name: /^Save \d+ expenses?$/ });
 async function selectAndCheck() {
   fireEvent.click(screen.getByLabelText('Select expense from page 1, line 2'));
   fireEvent.click(
-    screen.getByRole('button', { name: 'Check possible duplicates' })
+    screen.getByRole('button', { name: 'Check 1 for duplicates' })
   );
-  await waitFor(() =>
-    expect(
-      screen.getByRole('button', { name: 'Save selected expenses' })
-    ).toBeEnabled()
-  );
+  await screen.findByRole('button', { name: 'Save 1 expense' });
 }
-it('requires selection, fresh duplicate check and explicit save; previews original notes and freezes confirmed row', async () => {
+function deferInsert() {
+  const pending: { finish: (value: unknown) => void } = { finish: () => {} };
+  mocks.insert.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        pending.finish = resolve;
+      })
+  );
+  return pending;
+}
+const savedMatch = {
+  id: 'saved',
+  date: '2026-10-01',
+  type: 'other',
+  item: 'invented market',
+  info: '',
+  amount: 12.3,
+  splitType: 'self',
+  splits: [],
+};
+it('offers one primary action per step and closes on Done after a confirmed save', async () => {
   await setup();
   fireEvent.change(screen.getByLabelText('Item / Brand'), {
     target: { value: 'Corrected market' },
   });
   fireEvent.keyDown(screen.getByLabelText('Item / Brand'), { key: 'Enter' });
   expect(mocks.insert).not.toHaveBeenCalled();
+  expect(saveButton()).not.toBeInTheDocument();
   expect(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  ).toBeDisabled();
+    screen.getByRole('button', { name: 'Select all 1 expense' })
+  ).toBeEnabled();
+  expect(screen.getByText('Select the expenses to import.')).toBeVisible();
   await selectAndCheck();
   expect(screen.getByText(/1 selected · SGD 12.30/)).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: /for duplicates/ })
+  ).not.toBeInTheDocument();
   expect(screen.queryByText('Source note to save')).not.toBeInTheDocument();
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  );
-  await screen.findByText(/Confirmed saved/);
+  fireEvent.click(screen.getByRole('button', { name: 'Save 1 expense' }));
+  expect(await screen.findByText('1 expense saved')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Done' })).toHaveFocus();
   expect(mocks.insert).toHaveBeenCalledTimes(1);
   const input = mocks.insert.mock.calls[0][0] as ImportedExpenseInput;
   expect(input.description).toBe('Corrected market');
   expect(input.source[0].text).toContain('INVENTED MARKET');
-  expect(screen.getByLabelText('Item / Brand')).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(window.confirm).not.toHaveBeenCalled();
 });
-it('requires explicit possible-duplicate acknowledgement and rechecks after editing', async () => {
+it('names the matched saved expense and requires a per-row keep that an edit invalidates', async () => {
   await setup();
-  const match = {
-    id: 'saved',
-    date: '2026-10-01',
-    type: 'other',
-    item: 'invented market',
-    info: '',
-    amount: 12.3,
-    splitType: 'self',
-    splits: [],
-  };
-  mocks.read.mockResolvedValue([match]);
+  mocks.read.mockResolvedValue([savedMatch]);
   fireEvent.click(screen.getByLabelText('Select expense from page 1, line 2'));
   fireEvent.click(
-    screen.getByRole('button', { name: 'Check possible duplicates' })
-  );
-  const acknowledgement = await screen.findByLabelText(
-    /I compared the possible duplicate/
+    screen.getByRole('button', { name: 'Check 1 for duplicates' })
   );
   expect(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  ).toBeDisabled();
-  fireEvent.click(acknowledgement);
-  expect(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  ).toBeEnabled();
+    await screen.findByText(
+      'Possible duplicate of a saved expense: 2026-10-01 · invented market · SGD 12.30'
+    )
+  ).toBeVisible();
+  expect(saveButton()).not.toBeInTheDocument();
+  expect(screen.getByText('0 of 1 possible duplicate resolved.')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Keep both' }));
+  expect(screen.getByRole('button', { name: 'Keep both' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  expect(saveButton()).toBeEnabled();
   fireEvent.change(screen.getByLabelText('SGD billed amount'), {
     target: { value: '12.40' },
   });
-  expect(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  ).toBeDisabled();
+  expect(saveButton()).not.toBeInTheDocument();
+  expect(screen.getByText('Changed · recheck')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Recheck 1 row' })).toBeEnabled();
   expect(mocks.insert).not.toHaveBeenCalled();
+});
+it('skips a duplicate row reversibly and rechecks a row marked needs amend', async () => {
+  await setup();
+  mocks.read.mockResolvedValue([savedMatch]);
+  fireEvent.click(screen.getByLabelText('Select expense from page 1, line 2'));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Check 1 for duplicates' })
+  );
+  fireEvent.click(await screen.findByRole('button', { name: 'Skip' }));
+  expect(screen.getByText(/0 selected/)).toBeVisible();
+  expect(
+    screen.getByText('Skipped. Select the row again to bring it back.')
+  ).toBeVisible();
+  fireEvent.click(screen.getByLabelText('Select expense from page 1, line 2'));
+  expect(screen.getByRole('button', { name: 'Skip' })).toHaveAttribute(
+    'aria-pressed',
+    'false'
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Needs amend' }));
+  expect(screen.getByLabelText('Item / Brand')).toHaveFocus();
+  expect(saveButton()).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Recheck 1 row' }));
+  await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(2));
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Needs amend' })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    )
+  );
+  expect(
+    screen.getByRole('button', { name: 'Go to next duplicate' })
+  ).toBeEnabled();
+  mocks.read.mockResolvedValue([]);
+  fireEvent.change(screen.getByLabelText('Item / Brand'), {
+    target: { value: 'Different market' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Recheck 1 row' }));
+  expect(
+    await screen.findByRole('button', { name: 'Save 1 expense' })
+  ).toBeEnabled();
+  expect(screen.queryByText(/Possible duplicate of/)).not.toBeInTheDocument();
+});
+it('links statement-internal duplicates and clears the partner warning on skip without a read', async () => {
+  mocks.extract.mockResolvedValue(
+    [
+      'UOB SGD billed',
+      '01 OCT INVENTED MARKET 12.30',
+      '01 OCT INVENTED MARKET 12.30',
+    ].map((text, index) => ({ page: 1, line: index + 1, text }))
+  );
+  await setup();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Select all 2 expenses' })
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Check 2 for duplicates' })
+  );
+  const partner = await screen.findByRole('button', {
+    name: '#2 (page 1 · line 3)',
+  });
+  expect(
+    screen.getByRole('button', { name: '#1 (page 1 · line 2)' })
+  ).toBeVisible();
+  fireEvent.click(partner);
+  await waitFor(() => expect(document.activeElement?.tagName).toBe('FIELDSET'));
+  expect(document.activeElement).toHaveTextContent('#2');
+  fireEvent.click(
+    within(
+      screen.getByRole('group', { name: 'Duplicate decision for row 1' })
+    ).getByRole('button', { name: 'Skip' })
+  );
+  expect(
+    screen.queryByRole('group', { name: 'Duplicate decision for row 2' })
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Save 1 expense' })).toBeEnabled();
+  expect(mocks.read).toHaveBeenCalledTimes(1);
+});
+it('goes to the next unresolved duplicate and focuses its decision', async () => {
+  mocks.extract.mockResolvedValue(
+    [
+      'UOB SGD billed',
+      '01 OCT OTHER SHOP 5.00',
+      '01 OCT INVENTED MARKET 12.30',
+    ].map((text, index) => ({ page: 1, line: index + 1, text }))
+  );
+  await setup();
+  mocks.read.mockResolvedValue([savedMatch]);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Select all 2 expenses' })
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Check 2 for duplicates' })
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Go to next duplicate' })
+  );
+  expect(screen.getByLabelText('Show transactions')).toHaveValue('duplicates');
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Keep both' })).toHaveFocus()
+  );
+  expect(screen.getAllByLabelText('Item / Brand')).toHaveLength(1);
 });
 it('failed duplicate read blocks saving and retains editable selected draft', async () => {
   await setup();
   mocks.read.mockRejectedValue(new Error('private details'));
   fireEvent.click(screen.getByLabelText('Select expense from page 1, line 2'));
   fireEvent.click(
-    screen.getByRole('button', { name: 'Check possible duplicates' })
+    screen.getByRole('button', { name: 'Check 1 for duplicates' })
   );
   await screen.findByText(/Expenses could not be checked/);
+  expect(saveButton()).not.toBeInTheDocument();
   expect(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  ).toBeDisabled();
+    screen.getByRole('button', { name: 'Check 1 for duplicates' })
+  ).toBeEnabled();
   expect(screen.getByLabelText('Item / Brand')).toBeEnabled();
   expect(screen.queryByText('private details')).not.toBeInTheDocument();
+});
+it('blocks the dialog behind a progress overlay while checking and lets the check be cancelled', async () => {
+  await setup();
+  let finish!: (value: unknown[]) => void;
+  mocks.read.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  fireEvent.click(screen.getByLabelText('Select expense from page 1, line 2'));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Check 1 for duplicates' })
+  );
+  const overlay = screen.getByRole('alertdialog', {
+    name: 'Checking for duplicates',
+  });
+  expect(overlay).toHaveFocus();
+  expect(overlay).toHaveAttribute('aria-busy', 'true');
+  expect(
+    screen.getByRole('button', { name: 'Close', hidden: true })
+  ).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel check' }));
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  await act(async () => finish([]));
+  expect(saveButton()).not.toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'Check 1 for duplicates' })
+  ).toBeEnabled();
 });
 it('definite rejection permits identical retry without a new ID or changed source', async () => {
   await setup();
@@ -234,22 +383,21 @@ it('definite rejection permits identical retry without a new ID or changed sourc
     status: 'not_saved',
   }));
   await selectAndCheck();
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  );
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Retry same expense' })
-  );
-  await screen.findByText(/Confirmed saved/);
+  fireEvent.click(screen.getByRole('button', { name: 'Save 1 expense' }));
+  expect(
+    await screen.findByText(
+      'Row #1 · page 1, line 2 · INVENTED MARKET · SGD 12.30: Not saved'
+    )
+  ).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Retry same expense' }));
+  await screen.findByText('1 expense saved');
   expect(mocks.insert.mock.calls[1][0]).toEqual(mocks.insert.mock.calls[0][0]);
 });
 it('lost acknowledgement with missing then changed saved row never retries or overwrites', async () => {
   await setup();
   mocks.insert.mockRejectedValue(new Error('lost ack'));
   await selectAndCheck();
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  );
+  fireEvent.click(screen.getByRole('button', { name: 'Save 1 expense' }));
   await screen.findByText(/Save unconfirmed/);
   expect(
     screen.queryByRole('button', { name: 'Retry same expense' })
@@ -263,86 +411,75 @@ it('lost acknowledgement with missing then changed saved row never retries or ov
   ]);
   fireEvent.click(screen.getByRole('button', { name: 'Check saved expenses' }));
   await screen.findByText(/Saved record changed/);
+  expect(screen.getByRole('button', { name: 'Saving paused' })).toBeDisabled();
   expect(mocks.insert).toHaveBeenCalledTimes(1);
 });
 it('an exact authoritative read confirms a lost acknowledgement', async () => {
   await setup();
   mocks.insert.mockResolvedValue(undefined);
   await selectAndCheck();
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  );
+  fireEvent.click(screen.getByRole('button', { name: 'Save 1 expense' }));
   await screen.findByText(/Save unconfirmed/);
   mocks.read.mockResolvedValue([
     importedExpenseValues(mocks.insert.mock.calls[0][0]),
   ]);
   fireEvent.click(screen.getByRole('button', { name: 'Check saved expenses' }));
-  await screen.findByText(/Confirmed saved/);
+  await screen.findByText('1 expense saved');
   expect(mocks.insert).toHaveBeenCalledTimes(1);
 });
 it('hide during pending save rejects its late acknowledgement, masks notes and preserves a checkable frozen identity', async () => {
   await setup();
-  let finish!: (value: unknown) => void;
-  mocks.insert.mockImplementation(
-    () =>
-      new Promise((resolve) => {
-        finish = resolve;
-      })
-  );
+  const pending = deferInsert();
   await selectAndCheck();
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  );
-  await screen.findByText(/Saving expenses:/);
+  fireEvent.click(screen.getByRole('button', { name: 'Save 1 expense' }));
+  expect(await screen.findByText('Saving 0 of 1 · group 1 of 1')).toBeVisible();
   fireEvent.click(
     screen.getByRole('button', { name: 'Hide amounts', hidden: true })
   );
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   expect(screen.queryByText(/Statement source:/)).not.toBeInTheDocument();
   expect(screen.getByLabelText('Item / Brand')).toHaveValue('');
   const input = mocks.insert.mock.calls[0][0] as ImportedExpenseInput;
-  await act(async () => finish({ id: input.id, status: 'confirmed' }));
+  await act(async () => pending.finish({ id: input.id, status: 'confirmed' }));
   fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
   await screen.findByText(/Save unconfirmed/);
-  expect(screen.queryByText(/Confirmed saved/)).not.toBeInTheDocument();
+  expect(screen.queryByText('1 expense saved')).not.toBeInTheDocument();
   expect(mocks.insert).toHaveBeenCalledTimes(1);
 });
-it('keeps review on canceled discard and ignores completion after explicit close', async () => {
+it('keeps review on canceled discard and refuses to close while a save is in flight', async () => {
   await setup();
   await selectAndCheck();
   vi.mocked(window.confirm).mockReturnValue(false);
-  fireEvent.click(screen.getByRole('button', { name: 'Clear review' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Change statement' }));
   expect(screen.getByLabelText('Item / Brand')).toBeInTheDocument();
-  let finish!: (value: unknown) => void;
-  mocks.insert.mockImplementation(
-    () =>
-      new Promise((resolve) => {
-        finish = resolve;
-      })
-  );
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  );
-  vi.mocked(window.confirm).mockReturnValue(true);
-  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  vi.mocked(window.confirm).mockClear();
+  const pending = deferInsert();
+  fireEvent.click(screen.getByRole('button', { name: 'Save 1 expense' }));
+  expect(
+    screen.getByRole('progressbar', { name: 'Save progress' })
+  ).toHaveAttribute('max', '1');
+  expect(
+    screen.getByRole('button', { name: 'Close', hidden: true })
+  ).toBeDisabled();
+  fireEvent.keyDown(screen.getByRole('alertdialog'), { key: 'Escape' });
+  expect(screen.getByRole('dialog', { hidden: true })).toBeInTheDocument();
+  expect(window.confirm).not.toHaveBeenCalled();
   await act(async () =>
-    finish({ id: mocks.insert.mock.calls[0][0].id, status: 'confirmed' })
+    pending.finish({
+      id: mocks.insert.mock.calls[0][0].id,
+      status: 'confirmed',
+    })
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Review bank PDF' }));
-  expect(screen.queryByText(/Confirmed saved/)).not.toBeInTheDocument();
+  expect(await screen.findByText('1 expense saved')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(window.confirm).not.toHaveBeenCalled();
 });
 it('immediate hide/show invalidates pending acknowledgement even without a hidden render', async () => {
   await setup();
-  let finish!: (value: unknown) => void;
-  mocks.insert.mockImplementation(
-    () =>
-      new Promise((resolve) => {
-        finish = resolve;
-      })
-  );
+  const pending = deferInsert();
   await selectAndCheck();
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  );
+  fireEvent.click(screen.getByRole('button', { name: 'Save 1 expense' }));
   fireEvent.click(
     screen.getByRole('button', {
       name: 'Hide then show immediately',
@@ -350,10 +487,13 @@ it('immediate hide/show invalidates pending acknowledgement even without a hidde
     })
   );
   await act(async () =>
-    finish({ id: mocks.insert.mock.calls[0][0].id, status: 'confirmed' })
+    pending.finish({
+      id: mocks.insert.mock.calls[0][0].id,
+      status: 'confirmed',
+    })
   );
   await screen.findByText(/Save unconfirmed/);
-  expect(screen.queryByText(/Confirmed saved/)).not.toBeInTheDocument();
+  expect(screen.queryByText('1 expense saved')).not.toBeInTheDocument();
   expect(
     screen.getByRole('button', { name: 'Check saved expenses' })
   ).toBeEnabled();
@@ -369,7 +509,7 @@ it('immediate hide/show during duplicate read rejects stale readiness and releas
   );
   fireEvent.click(screen.getByLabelText('Select expense from page 1, line 2'));
   fireEvent.click(
-    screen.getByRole('button', { name: 'Check possible duplicates' })
+    screen.getByRole('button', { name: 'Check 1 for duplicates' })
   );
   fireEvent.click(
     screen.getByRole('button', {
@@ -379,11 +519,9 @@ it('immediate hide/show during duplicate read rejects stale readiness and releas
   );
   await act(async () => finish([]));
   expect(
-    screen.getByRole('button', { name: 'Check possible duplicates' })
+    screen.getByRole('button', { name: 'Check 1 for duplicates' })
   ).toBeEnabled();
-  expect(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  ).toBeDisabled();
+  expect(saveButton()).not.toBeInTheDocument();
 });
 it('refreshes a confirmed import after another real mutation finishes without replacing its optimistic row early', async () => {
   const client = new QueryClient({
@@ -400,10 +538,8 @@ it('refreshes a confirmed import after another real mutation finishes without re
   });
   const completion = mutation.execute(undefined);
   await selectAndCheck();
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  );
-  await screen.findByText(/Confirmed saved/);
+  fireEvent.click(screen.getByRole('button', { name: 'Save 1 expense' }));
+  await screen.findByText('1 expense saved');
   expect(client.getQueryData(['expenses'])).toEqual([
     { item: 'Optimistic other expense' },
   ]);
@@ -433,10 +569,8 @@ it('does not recreate a removed private query when a deferred refresh is release
   });
   const completion = mutation.execute(undefined);
   await selectAndCheck();
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  );
-  await screen.findByText(/Confirmed saved/);
+  fireEvent.click(screen.getByRole('button', { name: 'Save 1 expense' }));
+  await screen.findByText('1 expense saved');
   client.removeQueries({ queryKey: ['expenses'], exact: true });
   const invalidation = vi.spyOn(client, 'invalidateQueries');
   await act(async () => {
@@ -456,22 +590,19 @@ it('pauses after an uncertain group and checks all submitted identities without 
     ].map((text, index) => ({ page: 1, line: index + 1, text }))
   );
   await setup();
-  fireEvent.click(screen.getByRole('button', { name: 'Select all expenses' }));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Select all 3 expenses' })
+  );
   mocks.insert.mockImplementationOnce(async (input: ImportedExpenseInput) => ({
     id: input.id,
     status: 'confirmed',
   }));
   mocks.insert.mockRejectedValueOnce(new Error('lost ack'));
   fireEvent.click(
-    screen.getByRole('button', { name: 'Check possible duplicates' })
-  );
-  await waitFor(() =>
-    expect(
-      screen.getByRole('button', { name: 'Save selected expenses' })
-    ).toBeEnabled()
+    screen.getByRole('button', { name: 'Check 3 for duplicates' })
   );
   fireEvent.click(
-    screen.getByRole('button', { name: 'Save selected expenses' })
+    await screen.findByRole('button', { name: 'Save 3 expenses' })
   );
   await screen.findByText(/2 confirmed · 0 not saved · 1 unconfirmed/);
   expect(mocks.insert).toHaveBeenCalledTimes(3);
@@ -479,7 +610,7 @@ it('pauses after an uncertain group and checks all submitted identities without 
     mocks.insert.mock.calls.map(([input]) => importedExpenseValues(input))
   );
   fireEvent.click(screen.getByRole('button', { name: 'Check saved expenses' }));
-  await screen.findByText(/3 confirmed · 0 not saved/);
+  await screen.findByText('3 expenses saved');
   expect(mocks.insert).toHaveBeenCalledTimes(3);
 });
 // Dense native-control fixture exceeded 10s in the parallel V8 coverage run.
@@ -506,37 +637,21 @@ it('selection across pages is included and twenty-one rows save in automatic gro
   expect(screen.getByText(/20 selected/)).toBeVisible();
   fireEvent.click(screen.getByLabelText('Select expense from page 1, line 22'));
   expect(screen.getByText(/21 selected/)).toBeVisible();
-  expect(
-    screen.getByRole('button', { name: 'Check possible duplicates' })
-  ).toBeEnabled();
   fireEvent.click(
-    screen.getByRole('button', { name: 'Check possible duplicates' })
-  );
-  await waitFor(() =>
-    expect(
-      screen.getByRole('button', { name: 'Save selected expenses' })
-    ).toBeEnabled()
+    screen.getByRole('button', { name: 'Check 21 for duplicates' })
   );
   fireEvent.click(
-    screen.getByRole('button', { name: 'Save selected expenses' })
+    await screen.findByRole('button', { name: 'Save 21 expenses' })
   );
-  await screen.findByText(/21 confirmed · 0 not saved/);
+  await screen.findByText('21 expenses saved');
   expect(mocks.insert).toHaveBeenCalledTimes(21);
 }, 20_000);
 
 it('checks a hidden interrupted save before its old acknowledgement returns and ignores that late result', async () => {
   await setup();
-  let finish!: (value: unknown) => void;
-  mocks.insert.mockImplementation(
-    () =>
-      new Promise((resolve) => {
-        finish = resolve;
-      })
-  );
+  const pending = deferInsert();
   await selectAndCheck();
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  );
+  fireEvent.click(screen.getByRole('button', { name: 'Save 1 expense' }));
   const input = mocks.insert.mock.calls[0][0] as ImportedExpenseInput;
   fireEvent.click(
     screen.getByRole('button', { name: 'Hide amounts', hidden: true })
@@ -545,11 +660,11 @@ it('checks a hidden interrupted save before its old acknowledgement returns and 
   mocks.read.mockResolvedValue([importedExpenseValues(input)]);
   fireEvent.click(screen.getByRole('button', { name: 'Check saved expenses' }));
   await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(2));
-  await screen.findByText(/Confirmed saved/);
-  await act(async () => finish({ id: input.id, status: 'unconfirmed' }));
-  expect(
-    screen.getByText(/Source page 1, line 2: Confirmed saved/)
-  ).toBeInTheDocument();
+  await screen.findByText('1 expense saved');
+  await act(async () =>
+    pending.finish({ id: input.id, status: 'unconfirmed' })
+  );
+  expect(screen.getByText('1 expense saved')).toBeInTheDocument();
   expect(mocks.insert).toHaveBeenCalledTimes(1);
 });
 
@@ -581,9 +696,7 @@ it('merchant rules fill drafts automatically and preserve manual edits and expli
   await selectAndCheck();
   expect(screen.getByLabelText('Item / Brand')).toHaveValue('My merchant');
   expect(screen.getByLabelText('Category')).toHaveValue('groceries');
-  expect(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  ).toBeEnabled();
+  expect(saveButton()).toBeEnabled();
   fireEvent.click(screen.getByText('Details'));
   fireEvent.click(
     screen.getByRole('button', { name: 'Review changes / restore' })
@@ -591,9 +704,8 @@ it('merchant rules fill drafts automatically and preserve manual edits and expli
   fireEvent.click(screen.getByRole('button', { name: 'Restore values' }));
   expect(screen.getByLabelText('Item / Brand')).toHaveValue('INVENTED MARKET');
   expect(screen.getByLabelText('Category')).toHaveValue('other');
-  expect(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  ).toBeDisabled();
+  expect(saveButton()).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Recheck 1 row' })).toBeEnabled();
   expect(mocks.insert).not.toHaveBeenCalled();
 });
 
@@ -607,15 +719,13 @@ it('saving a rule fills every matching row and invalidates checked duplicates wi
   );
   mocks.saveRules.mockResolvedValue({ status: 'saved', revision: '1' });
   await setup();
-  fireEvent.click(screen.getByRole('button', { name: 'Select all expenses' }));
   fireEvent.click(
-    screen.getByRole('button', { name: 'Check possible duplicates' })
+    screen.getByRole('button', { name: 'Select all 2 expenses' })
   );
-  await waitFor(() =>
-    expect(
-      screen.getByRole('button', { name: 'Save selected expenses' })
-    ).toBeEnabled()
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Check 2 for duplicates' })
   );
+  await screen.findByRole('button', { name: 'Save 2 expenses' });
   fireEvent.click(screen.getAllByText('Details', { exact: true })[0]);
   fireEvent.click(
     screen.getAllByRole('button', { name: 'Create rule', exact: true })[0]
@@ -648,9 +758,8 @@ it('saving a rule fills every matching row and invalidates checked duplicates wi
       .getAllByLabelText('Category')
       .map((input) => (input as HTMLSelectElement).value)
   ).toEqual(['groceries', 'groceries']);
-  expect(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  ).toBeDisabled();
+  expect(saveButton()).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Recheck 2 rows' })).toBeEnabled();
   expect(screen.queryByText('Source note to save')).not.toBeInTheDocument();
   expect(
     screen.queryByRole('button', { name: 'Apply suggestion' })
@@ -695,7 +804,7 @@ it('keeps an explicit conflict choice after the chosen rule is paused', async ()
   );
   expect(screen.getByLabelText('Item / Brand')).toHaveValue('Merchant B');
   fireEvent.click(
-    screen.getByRole('button', { name: 'Saved merchant rules', exact: true })
+    screen.getByRole('button', { name: 'Merchant rules', exact: true })
   );
   fireEvent.click(
     screen.getByRole('button', { name: 'Edit rule Rule B', exact: true })

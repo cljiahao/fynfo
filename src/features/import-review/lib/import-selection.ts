@@ -4,6 +4,7 @@ import {
   type ImportedExpenseInput,
 } from '@/features/expenses';
 import type {
+  DuplicateMatch,
   StatementBank,
   StatementCandidate,
   StatementPeriod,
@@ -50,30 +51,42 @@ function samePurchase(
   );
 }
 
-export function possibleImportDuplicates(
+export function savedImportMatches(
   inputs: ImportedExpenseInput[],
   saved: ExpenseData[]
-): Set<string> {
-  return new Set(
-    inputs
-      .filter(
-        (input, index) =>
-          inputs.some(
-            (other, otherIndex) =>
-              index !== otherIndex && samePurchase(input, other)
-          ) ||
-          saved.some((other) =>
-            samePurchase(input, {
-              date: other.date,
-              cents: Math.round(other.amount * 100),
-              description: other.item,
-            })
-          )
-      )
-      .map((input) => input.id)
-  );
+): Map<string, Extract<DuplicateMatch, { kind: 'saved' }>> {
+  const matches = new Map<string, Extract<DuplicateMatch, { kind: 'saved' }>>();
+  for (const input of inputs) {
+    const other = saved.find((record) =>
+      samePurchase(input, {
+        date: record.date,
+        cents: Math.round(record.amount * 100),
+        description: record.item,
+      })
+    );
+    if (other)
+      matches.set(input.id, {
+        kind: 'saved',
+        date: other.date.slice(0, 10),
+        item: other.item,
+        amount: other.amount,
+      });
+  }
+  return matches;
 }
 
-export function hasSourceDuplicate(row: StatementCandidate): boolean {
-  return row.issues.includes(DUPLICATE_ISSUE);
+/** Pairs each entry with the first other entry for the same purchase. */
+export function statementImportMatches(
+  entries: Array<{ key: string; input: ImportedExpenseInput }>
+): Map<string, string> {
+  const partners = new Map<string, string>();
+  for (const entry of entries) {
+    const other = entries.find(
+      (candidate) =>
+        candidate.key !== entry.key &&
+        samePurchase(entry.input, candidate.input)
+    );
+    if (other) partners.set(entry.key, other.key);
+  }
+  return partners;
 }

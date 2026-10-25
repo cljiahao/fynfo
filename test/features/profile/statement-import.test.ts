@@ -2,7 +2,8 @@ import { importedExpenseValues } from '@/features/expenses/lib/import-expense';
 import { checkImportOutcome } from '@/features/import-review/lib/import-outcomes';
 import {
   createImportInput,
-  possibleImportDuplicates,
+  savedImportMatches,
+  statementImportMatches,
 } from '@/features/import-review/lib/import-selection';
 import { parseStatementLines } from '@/features/import-review/lib/statement-parser';
 import { describe, expect, it } from 'vitest';
@@ -75,15 +76,32 @@ describe('import eligibility and warnings', () => {
       id: '8e39d71b-59aa-44a0-83a4-1ba1e1347903',
       description: '  market  ',
     };
-    expect(possibleImportDuplicates([input, other], []).size).toBe(2);
     expect(
-      possibleImportDuplicates(
+      statementImportMatches([
+        { key: 'a', input },
+        { key: 'b', input: other },
+      ])
+    ).toEqual(
+      new Map([
+        ['a', 'b'],
+        ['b', 'a'],
+      ])
+    );
+    expect(
+      savedImportMatches(
         [input],
         [{ ...importedExpenseValues(input), id: 'saved', splitType: 'shared' }]
       )
-    ).toEqual(new Set([id]));
+    ).toEqual(
+      new Map([
+        [
+          id,
+          { kind: 'saved', date: '2026-10-01', item: 'MARKET', amount: 12.3 },
+        ],
+      ])
+    );
     expect(
-      possibleImportDuplicates(
+      savedImportMatches(
         [input],
         [{ ...importedExpenseValues(input), date: '2026-10-02' }]
       ).size

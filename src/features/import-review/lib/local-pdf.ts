@@ -4,14 +4,32 @@ import type {
   RenderTask,
 } from 'pdfjs-dist';
 import { STATEMENT_LIMITS } from '../constants';
-import type { StatementLine } from '../types';
-import { positionedStatementLines } from './statement-parser';
+import type { StatementLine, StatementLineBox } from '../types';
+import {
+  positionedStatementLineBoxes,
+  positionedStatementLines,
+} from './statement-parser';
 
 const RESOURCE_ROOT = '/pdfjs/6.4.299/';
+export interface StatementRenderOptions {
+  /** Target canvas width in device pixels; still capped by the render limits. */
+  width?: number;
+  /** Line numbers on this page to mark with a highlight band. */
+  highlight?: number[];
+}
+/** Highlight band position as fractions of the canvas height. */
+export interface StatementHighlightBand {
+  top: number;
+  bottom: number;
+}
 export interface LocalStatementPdf {
   pageCount: number;
   extract(): Promise<StatementLine[]>;
-  render(page: number, canvas: HTMLCanvasElement): Promise<void>;
+  render(
+    page: number,
+    canvas: HTMLCanvasElement,
+    options?: StatementRenderOptions
+  ): Promise<StatementHighlightBand | null>;
   destroy(): void;
 }
 
@@ -67,6 +85,7 @@ export async function openLocalStatementPdf(
     if (!active || document.numPages > STATEMENT_LIMITS.pages)
       throw new Error('Unsupported or oversized PDF');
     const pdf = document;
+    const lineBoxes = new Map<number, StatementLineBox[]>();
     return {
       pageCount: pdf.numPages,
       async extract() {
@@ -87,6 +106,7 @@ export async function openLocalStatementPdf(
                       text: item.str,
                       x: item.transform[4],
                       y: item.transform[5],
+                      height: item.height,
                     },
                   ]
                 : []
@@ -101,6 +121,7 @@ export async function openLocalStatementPdf(
             )
               throw new Error('Statement text limit');
             lines.push(...positionedStatementLines(items, pageNumber));
+            lineBoxes.set(pageNumber, positionedStatementLineBoxes(items));
             page.cleanup();
           }
           if (!active) throw new Error('Cancelled');
@@ -109,7 +130,7 @@ export async function openLocalStatementPdf(
           clearTimeout(deadline);
         }
       },
-      async render(pageNumber, canvas) {
+      async render(pageNumber, canvas, options = {}) {
         if (!active || pageNumber < 1 || pageNumber > pdf.numPages)
           throw new Error('Cancelled');
         const currentRender = ++renderGeneration;
@@ -125,8 +146,12 @@ export async function openLocalStatementPdf(
           base.height <= 0
         )
           throw new Error('Unsupported page dimensions');
+        const requested =
+          options.width && Number.isFinite(options.width) && options.width > 0
+            ? options.width / base.width
+            : 1.5;
         const scale = Math.min(
-          1.5,
+          requested,
           8192 / base.width,
           8192 / base.height,
           Math.sqrt(STATEMENT_LIMITS.pixels / (base.width * base.height))
@@ -145,6 +170,40 @@ export async function openLocalStatementPdf(
         } finally {
           clearTimeout(deadline);
         }
+        const boxes = (options.highlight ?? []).flatMap((line) => {
+          const box = lineBoxes.get(pageNumber)?.[line - 1];
+          return box ? [box] : [];
+        });
+        if (!boxes.length || !canvas.height) return null;
+        // PDF space is y-up; pad below the baseline for descenders.
+        const edges = boxes.flatMap((box) => {
+          const height = Math.max(box.height, 8);
+          return [
+            viewport.convertToViewportPoint(0, box.y - height * 0.3)[1],
+            viewport.convertToViewportPoint(0, box.y + height)[1],
+          ];
+        });
+        const top = Math.max(0, Math.min(...edges) - 2);
+        const bottom = Math.min(canvas.height, Math.max(...edges) + 2);
+        const context = canvas.getContext('2d');
+        const color = getComputedStyle(canvas)
+          .getPropertyValue('--brand')
+          .trim();
+        if (context && color) {
+          context.save();
+          context.fillStyle = color;
+          context.globalAlpha = 0.18;
+          context.fillRect(0, top, canvas.width, bottom - top);
+          context.globalAlpha = 0.9;
+          context.fillRect(
+            0,
+            top,
+            Math.max(3, canvas.width / 200),
+            bottom - top
+          );
+          context.restore();
+        }
+        return { top: top / canvas.height, bottom: bottom / canvas.height };
       },
       destroy,
     };

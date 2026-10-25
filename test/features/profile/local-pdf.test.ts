@@ -190,3 +190,44 @@ it('terminates a stalled open at the operation deadline', async () => {
   await rejected;
   expect(mocks.terminate).toHaveBeenCalledTimes(1);
 });
+it('renders at a requested width within limits and paints a highlight band over source lines', async () => {
+  page.getViewport.mockImplementation(({ scale }) => ({
+    width: 600 * scale,
+    height: 800 * scale,
+    convertToViewportPoint: (x: number, y: number) => [
+      x * scale,
+      (800 - y) * scale,
+    ],
+  }));
+  page.getTextContent.mockResolvedValue({
+    items: [
+      { str: 'HEADER', transform: [1, 0, 0, 1, 10, 700], height: 10 },
+      { str: '01 OCT SHOP 2.00', transform: [1, 0, 0, 1, 10, 400], height: 10 },
+    ],
+  });
+  const session = await openLocalStatementPdf(
+    new ArrayBuffer(4),
+    new AbortController().signal
+  );
+  await session.extract();
+  const fillRect = vi.fn();
+  const canvas = globalThis.document.createElement('canvas');
+  vi.spyOn(canvas, 'getContext').mockReturnValue({
+    save: vi.fn(),
+    restore: vi.fn(),
+    fillRect,
+  } as unknown as CanvasRenderingContext2D);
+  vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+    getPropertyValue: () => 'oklch(0.55 0.13 240)',
+  } as unknown as CSSStyleDeclaration);
+  const band = await session.render(1, canvas, { width: 1200, highlight: [2] });
+  expect(canvas.width).toBe(1200);
+  expect(band).toEqual({ top: 778 / 1600, bottom: 808 / 1600 });
+  expect(fillRect).toHaveBeenCalledWith(0, 778, 1200, 30);
+  expect(await session.render(1, canvas, { highlight: [9] })).toBeNull();
+  await session.render(1, canvas, { width: 1_000_000 });
+  expect(canvas.width * canvas.height).toBeLessThanOrEqual(
+    STATEMENT_LIMITS.pixels
+  );
+  session.destroy();
+});

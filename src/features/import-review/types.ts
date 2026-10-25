@@ -35,4 +35,13 @@ export interface PositionedStatementText {
   text: string;
   x: number;
   y: number;
+  height?: number;
 }
+export interface StatementLineBox {
+  y: number;
+  height: number;
+}
+export type DuplicateMatch =
+  | { kind: 'saved'; date: string; item: string; amount: number }
+  | { kind: 'statement'; rowId: string };
+export type DuplicateResolution = 'keep' | 'skip' | 'amend';

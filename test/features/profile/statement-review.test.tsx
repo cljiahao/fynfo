@@ -97,11 +97,10 @@ it('keeps secondary information closed until requested without hiding editable f
   setup();
   expect(await screen.findByText(/1 expense suggestions/)).toBeInTheDocument();
   expect(
-    screen.getByText('Change statement').closest('details')
-  ).not.toHaveAttribute('open');
-  expect(
-    screen.getByRole('button', { name: 'Saved merchant rules' })
+    screen.getByRole('button', { name: 'Change statement' })
   ).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Merchant rules' })).toBeVisible();
+  expect(screen.queryByLabelText('Bank statement PDF')).not.toBeInTheDocument();
   expect(screen.getAllByRole('dialog')).toHaveLength(1);
   expect(
     screen.getByRole('button', { name: 'About transaction selection' })
@@ -141,16 +140,21 @@ it('reviews editable drafts, keeps provenance, navigates source pages and clears
   ).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
   await waitFor(() =>
-    expect(mocks.render).toHaveBeenCalledWith(2, expect.any(HTMLCanvasElement))
+    expect(mocks.render).toHaveBeenCalledWith(
+      2,
+      expect.any(HTMLCanvasElement),
+      expect.objectContaining({ highlight: [] })
+    )
   );
   fireEvent.click(screen.getByRole('button', { name: 'Extracted' }));
   expect(screen.getByLabelText('Item / Brand')).toHaveValue('Edited draft');
   expect(screen.getByLabelText('Category')).toHaveValue('groceries');
   expect(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  ).toBeDisabled();
+    screen.queryByRole('button', { name: /^Save \d+ expenses?$/ })
+  ).not.toBeInTheDocument();
   expect(mocks.insert).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('button', { name: 'Clear review' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Change statement' }));
+  expect(screen.getByLabelText('Bank statement PDF')).toBeVisible();
   expect(mocks.destroy).toHaveBeenCalled();
   expect(screen.queryByText(/source rows:/)).not.toBeInTheDocument();
 });
@@ -169,7 +173,8 @@ it('follows the focused draft to its source page while keeping secondary details
   await waitFor(() =>
     expect(mocks.render).toHaveBeenLastCalledWith(
       2,
-      expect.any(HTMLCanvasElement)
+      expect.any(HTMLCanvasElement),
+      expect.objectContaining({ highlight: [1] })
     )
   );
   expect(
@@ -202,7 +207,8 @@ it('opens the first transaction page when a statement begins with a cover page',
   await waitFor(() =>
     expect(mocks.render).toHaveBeenLastCalledWith(
       2,
-      expect.any(HTMLCanvasElement)
+      expect.any(HTMLCanvasElement),
+      expect.objectContaining({ highlight: [1] })
     )
   );
   expect(
@@ -300,8 +306,8 @@ it('keeps source credit blockers after expense overrides and prevents summary cl
   });
   expect(summary.getByLabelText('Classification')).toHaveValue('unknown');
   expect(
-    screen.getByRole('button', { name: 'Save selected expenses' })
-  ).toBeDisabled();
+    screen.queryByRole('button', { name: /^Save \d+ expenses?$/ })
+  ).not.toBeInTheDocument();
   expect(mocks.insert).not.toHaveBeenCalled();
 });
 it('shows invalid edited expense fields as needing review and recovers when corrected', async () => {
@@ -416,6 +422,7 @@ it('extracts without manual dates using the printed statement date', async () =>
   expect(screen.getByLabelText('Period start')).not.toBeVisible();
   expect(await screen.findByLabelText('Item / Brand')).toHaveValue('MARKET');
   expect(screen.getByLabelText('Date')).toHaveValue('2025-12-31');
+  fireEvent.click(screen.getByRole('button', { name: 'Change statement' }));
   expect(screen.getByLabelText('Period start')).toHaveValue('2025-12-01');
   expect(screen.getByLabelText('Period end')).toHaveValue('2026-01-14');
   expect(mocks.insert).not.toHaveBeenCalled();
@@ -450,6 +457,7 @@ it('does not reuse inferred dates for a second PDF', async () => {
     { page: 1, line: 2, text: 'Statement Date: 14 JAN 2027' },
     { page: 1, line: 3, text: '31 DEC MARKET SGD 12.30' },
   ]);
+  fireEvent.click(screen.getByRole('button', { name: 'Change statement' }));
   const file = new File(['fake'], 'second.pdf', { type: 'application/pdf' });
   Object.defineProperty(file, 'arrayBuffer', {
     value: async () => new ArrayBuffer(4),
@@ -470,7 +478,7 @@ it('re-extracts a corrected automatic period without reselecting the PDF and rel
   ]);
   setup(undefined, 4, false);
   await screen.findByLabelText('Date');
-  fireEvent.click(screen.getByText('Change statement'));
+  fireEvent.click(screen.getByRole('button', { name: 'Change statement' }));
   fireEvent.click(screen.getByText('Dates (optional)'));
   fireEvent.change(screen.getByLabelText('Period start'), {
     target: { value: '2025-12-15' },
@@ -480,8 +488,9 @@ it('re-extracts a corrected automatic period without reselecting the PDF and rel
   ).toBeEnabled();
   fireEvent.click(screen.getByRole('button', { name: 'Extract for review' }));
   expect(await screen.findByLabelText('Date')).toHaveValue('2025-12-31');
-  expect(screen.getByLabelText('Period start')).toHaveValue('2025-12-15');
   expect(mocks.open).toHaveBeenCalledTimes(2);
+  fireEvent.click(screen.getByRole('button', { name: 'Change statement' }));
+  expect(screen.getByLabelText('Period start')).toHaveValue('2025-12-15');
   fireEvent.click(screen.getByRole('button', { name: 'Clear review' }));
   expect(
     screen.getByRole('button', { name: 'Extract for review' })
@@ -500,18 +509,26 @@ it('hides repayments, filters refunds and bulk-selects all eligible expenses acr
   setup();
   await screen.findAllByLabelText('Item / Brand');
   expect(screen.queryByDisplayValue('CARD PAYMENT')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Select all expenses' }));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Select all 22 expenses' })
+  );
   expect(screen.getByText('22 selected · SGD 270.60')).toBeVisible();
+  expect(
+    screen.getByRole('button', { name: 'Check 22 for duplicates' })
+  ).toBeEnabled();
   expect(mocks.insert).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText('Show transactions'), {
     target: { value: 'refunds' },
   });
   expect(screen.getByLabelText('Item / Brand')).toHaveValue('REFUND SHOP');
-  expect(
-    screen.getByRole('button', { name: 'Select all expenses' })
-  ).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Clear selection' }));
   expect(screen.getByText('0 selected · SGD 0.00')).toBeVisible();
+  expect(
+    screen.getByRole('button', { name: 'Select all 0 expenses' })
+  ).toBeDisabled();
+  expect(
+    screen.getByText('No expenses left to select in this view.')
+  ).toBeVisible();
 }, 15000);
 it('previews both original values before restoring and opens row rules in a dialog', async () => {
   setup();
@@ -548,3 +565,29 @@ it('previews both original values before restoring and opens row rules in a dial
   );
   expect(mocks.insert).not.toHaveBeenCalled();
 });
+it('pins the row pager, numbers rows across pages and focuses the first card after paging', async () => {
+  mocks.extract.mockResolvedValue(
+    [
+      'UOB SGD billed',
+      ...Array.from({ length: 22 }, (_, i) => `31 DEC MARKET ${i} SGD 12.30`),
+    ].map((text, index) => ({ page: 1, line: index + 1, text }))
+  );
+  setup();
+  await screen.findAllByLabelText('Item / Brand');
+  expect(screen.getByRole('listitem', { current: 'step' })).toHaveTextContent(
+    'Review'
+  );
+  const next = screen.getByRole('button', { name: 'Next rows' });
+  expect(next.parentElement).toHaveClass('sticky', 'bottom-0');
+  fireEvent.click(next);
+  expect(screen.getByText('Rows 21–22 of 22')).toBeInTheDocument();
+  await waitFor(() => expect(document.activeElement?.tagName).toBe('FIELDSET'));
+  expect(document.activeElement).toHaveTextContent('#21');
+  expect(
+    screen.getAllByText(/^#\d+$/).map((element) => element.textContent)
+  ).toEqual(['#21', '#22']);
+  for (const name of ['Original statement', 'Extracted transaction drafts'])
+    expect(
+      screen.getByRole('region', { name }).querySelector('[style]')
+    ).toBeNull();
+}, 15000);

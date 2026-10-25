@@ -10,6 +10,7 @@ import type {
   StatementCandidate,
   StatementClassification,
   StatementLine,
+  StatementLineBox,
   StatementPeriod,
 } from '../types';
 
@@ -19,10 +20,7 @@ const DATE_PREFIX =
 const MONEY =
   /(?:SGD|S\$|USD|US\$|\$)?\s*[+-]?\(?\d[\d,.]*\.\d+\)?(?:\s*(?:CR|DR))?/gi;
 
-export function positionedStatementLines(
-  items: PositionedStatementText[],
-  page: number
-): StatementLine[] {
+function groupPositionedText(items: PositionedStatementText[]) {
   if (items.length > STATEMENT_LIMITS.textItems)
     throw new Error('Statement text limit');
   const ordered = items
@@ -34,7 +32,14 @@ export function positionedStatementLines(
     if (line && Math.abs(line.y - item.y) <= 2) line.items.push(item);
     else lines.push({ y: item.y, items: [item] });
   }
-  return lines.map((line, index) => ({
+  return lines;
+}
+
+export function positionedStatementLines(
+  items: PositionedStatementText[],
+  page: number
+): StatementLine[] {
+  return groupPositionedText(items).map((line, index) => ({
     page,
     line: index + 1,
     text: line.items
@@ -42,6 +47,21 @@ export function positionedStatementLines(
       .map((item) => item.text)
       .join(' ')
       .trim(),
+  }));
+}
+
+/** Baseline and text height per line, indexed like positionedStatementLines. */
+export function positionedStatementLineBoxes(
+  items: PositionedStatementText[]
+): StatementLineBox[] {
+  return groupPositionedText(items).map((line) => ({
+    y: line.y,
+    height: Math.max(
+      0,
+      ...line.items.map((item) =>
+        Number.isFinite(item.height) ? (item.height as number) : 0
+      )
+    ),
   }));
 }
 

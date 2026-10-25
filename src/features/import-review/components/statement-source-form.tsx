@@ -10,7 +10,6 @@ import type { StatementBank } from '../types';
 
 interface StatementSourceFormProps {
   controlId: string;
-  hasRows: boolean;
   bank: StatementBank;
   from: string;
   to: string;
@@ -28,7 +27,6 @@ interface StatementSourceFormProps {
 
 export function StatementSourceForm({
   controlId,
-  hasRows,
   bank,
   from,
   to,
@@ -45,10 +43,10 @@ export function StatementSourceForm({
 }: StatementSourceFormProps) {
   const { hidden, canReveal } = useAmountVisibility();
   return (
-    <details open={!hasRows} className="space-y-3 open:w-full">
-      <summary className="cursor-pointer text-sm font-medium">
-        {hasRows ? 'Change statement' : 'Choose a statement'}
-      </summary>
+    <section
+      aria-label="Choose a statement"
+      className="mx-auto w-full max-w-2xl space-y-3"
+    >
       <form
         className="grid gap-3 sm:grid-cols-2"
         onSubmit={(event) => {
@@ -162,6 +160,6 @@ export function StatementSourceForm({
         Text PDFs up to 10 MiB and 100 pages. Use an unprotected PDF. Scans and
         some bank layouts need manual entry.
       </p>
-    </details>
+    </section>
   );
 }
