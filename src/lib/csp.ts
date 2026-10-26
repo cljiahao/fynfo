@@ -1,6 +1,6 @@
 const STATIC_DIRECTIVES = [
   "default-src 'self'",
-  "img-src 'self' blob: data:",
+  "img-src 'self' blob: data: https://lh3.googleusercontent.com",
   "font-src 'self'",
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",

@@ -841,3 +841,11 @@ production SQL first). On 2026-10-25 the owner re-ranked the roadmap and B9
 moved to roadmap item S4a in phase 9 (P3); its approval stands. Residual risks
 moved to roadmap items HR6–HR11 and the owner actions in
 `docs/audit/2026-10-24-roadmap.md`. This record stays open until B9 ships.
+
+## Follow-up: Google avatar under the CSP (2026-10-26)
+
+Owner request in chat (2026-10-26): allow the Google profile picture. The
+production console showed the avatar from `lh3.googleusercontent.com` blocked
+by `img-src`. Change: `src/lib/csp.ts` adds `https://lh3.googleusercontent.com`
+to `img-src`, with a test in `test/lib/csp.test.ts`. Only images from that host
+are allowed; scripts and connections are unchanged. Rollback: remove the host.

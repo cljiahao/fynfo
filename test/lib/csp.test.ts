@@ -17,6 +17,12 @@ describe('buildCsp', () => {
     expect(csp).toContain("frame-ancestors 'none'");
   });
 
+  it('allows images from self and the Google avatar host only', () => {
+    expect(csp).toContain(
+      "img-src 'self' blob: data: https://lh3.googleusercontent.com"
+    );
+  });
+
   it('allows eval and websockets only in development', () => {
     const dev = buildCsp('abc', 'http://127.0.0.1:54321', true);
     expect(dev).toContain("'unsafe-eval'");
