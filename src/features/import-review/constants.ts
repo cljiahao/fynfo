@@ -56,9 +56,9 @@ export const IMPORT_STEPS = [
   { value: 'done', label: 'Done' },
 ] as const;
 export const DUPLICATE_RESOLUTIONS = [
-  { value: 'keep', label: 'Keep both' },
-  { value: 'skip', label: 'Skip' },
-  { value: 'amend', label: 'Needs amend' },
+  { value: 'keep', label: 'Save both' },
+  { value: 'skip', label: "Don't save this row" },
+  { value: 'amend', label: 'Edit this row' },
 ] as const;
 // Full class strings so Tailwind can see them; above Fit the canvas keeps its
 // aspect ratio and the container scrolls.

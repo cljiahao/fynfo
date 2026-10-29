@@ -27,6 +27,10 @@ vi.mock('@/features/import-review/lib/local-pdf', () => ({
 }));
 vi.mock('@/features/expenses', async () => ({
   ...(await import('@/features/expenses/lib/import-expense')),
+  ...(await import('@/features/expenses/lib/split-amounts')),
+  ...(await import('@/features/expenses/components/split-dialog')),
+  useDistinctPeople: () => ({ data: [] }),
+  getExpensesInRange: vi.fn().mockResolvedValue([]),
   EXPENSE_TYPE_LABELS: { other: 'Other', groceries: 'Groceries' },
   EXPENSE_KEY: ['expenses'],
   IMPORT_SAVE_LIMIT: 500,

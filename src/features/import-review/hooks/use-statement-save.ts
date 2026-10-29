@@ -2,7 +2,7 @@
 
 import {
   EXPENSE_KEY,
-  getExpenses,
+  getExpensesInRange,
   IMPORT_SAVE_GROUP_SIZE,
   IMPORT_SAVE_LIMIT,
   IMPORT_SAVE_MAX_BYTES,
@@ -37,9 +37,21 @@ type SavedMatch = Extract<DuplicateMatch, { kind: 'saved' }>;
 export type ImportActivity = 'check' | 'save' | 'verify';
 type SaveRun = { keys: string[]; group: number; groups: number };
 
-// The description is not compared for duplicates, so editing it needs no recheck.
-const signatureOf = ({ note: _note, ...input }: ImportedExpenseInput) =>
-  JSON.stringify(input);
+// Description and splits are not compared for duplicates, so editing them
+// needs no recheck.
+const signatureOf = ({
+  note: _note,
+  splits: _splits,
+  ...input
+}: ImportedExpenseInput) => JSON.stringify(input);
+
+/** Reads only the saved expenses dated within these inputs' dates. */
+function readSavedAround(inputs: ImportedExpenseInput[]) {
+  const dates = inputs.map((input) => input.date).sort();
+  return withImportDeadline(
+    getExpensesInRange(dates[0], dates[dates.length - 1])
+  );
+}
 
 export function useStatementSave(
   rows: StatementCandidate[],
@@ -284,7 +296,7 @@ export function useStatementSave(
     setChecking(targets.length);
     const { op, epoch } = begin('check');
     try {
-      const saved = await withImportDeadline(getExpenses());
+      const saved = await readSavedAround(targets.map(({ input }) => input));
       if (!valid(op, epoch)) return;
       const found = savedImportMatches(
         targets.map(({ input }) => input),
@@ -441,9 +453,13 @@ export function useStatementSave(
   }
   async function check() {
     if (running.current || !privacy.canReveal()) return;
+    const unconfirmed = Object.values(attemptsRef.current)
+      .filter((attempt) => attempt.status === 'unconfirmed')
+      .map((attempt) => attempt.input);
+    if (!unconfirmed.length) return;
     const { op, epoch } = begin('verify');
     try {
-      const saved = await withImportDeadline(getExpenses());
+      const saved = await readSavedAround(unconfirmed);
       if (!valid(op, epoch)) return;
       const next = { ...attemptsRef.current };
       for (const key of Object.keys(next)) {
@@ -482,14 +498,16 @@ export function useStatementSave(
   }
   function allowDiscard() {
     if (running.current) return false;
+    // Only unresolved saves risk a duplicate or lost outcome; selections do not.
     const values = Object.values(attemptsRef.current);
     if (
-      !selection.length &&
-      values.every((attempt) => attempt.status === 'confirmed')
+      values.every((attempt) =>
+        ['confirmed', 'not_saved', 'not_started'].includes(attempt.status)
+      )
     )
       return true;
     return window.confirm(
-      'Discard this review? Dispatched saves may still complete. Unsaved drafts and retained retry identities will be lost.'
+      'Close the import? Some saves are unconfirmed and may still complete. Their retry identities will be lost.'
     );
   }
   function reset() {

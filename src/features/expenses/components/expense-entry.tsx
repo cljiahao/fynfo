@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { PageViews } from '@/components/widgets';
 import { StatementReview } from '@/features/import-review';
+import { MerchantRulesButton } from '@/features/merchant-rules';
 import { useAmountVisibility } from '@/features/privacy';
 import { useIsMutating, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
@@ -115,7 +116,10 @@ export function ExpenseEntry({
         <p className="text-sm">
           Upload a bank PDF, check the extracted expenses, then save.
         </p>
-        <StatementReview triggerLabel="Choose bank PDF" />
+        <div className="flex flex-wrap gap-2">
+          <StatementReview triggerLabel="Choose bank PDF" />
+          <MerchantRulesButton />
+        </div>
       </div>
     </div>
   );

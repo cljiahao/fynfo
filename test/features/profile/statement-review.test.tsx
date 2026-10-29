@@ -33,6 +33,9 @@ vi.mock('@/features/merchant-rules/actions/rulebook-actions', () => ({
 }));
 vi.mock('@/features/expenses', async () => ({
   ...(await import('@/features/expenses/lib/import-expense')),
+  ...(await import('@/features/expenses/lib/split-amounts')),
+  ...(await import('@/features/expenses/components/split-dialog')),
+  useDistinctPeople: () => ({ data: ['Alex'] }),
   EXPENSE_TYPE_LABELS: { other: 'Other', groceries: 'Groceries' },
   EXPENSE_KEY: ['expenses'],
   IMPORT_SAVE_LIMIT: 500,
@@ -40,6 +43,7 @@ vi.mock('@/features/expenses', async () => ({
   IMPORT_SAVE_MAX_BYTES: 512 * 1024,
   IMPORT_REQUEST_TIMEOUT_MS: 30_000,
   getExpenses: mocks.read,
+  getExpensesInRange: (from: string, to: string) => mocks.read(from, to),
   insertImportedExpense: mocks.insert,
   insertImportedExpenses: async (inputs: unknown[]) =>
     Promise.all(

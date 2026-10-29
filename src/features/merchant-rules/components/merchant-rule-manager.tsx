@@ -6,7 +6,11 @@ import { Label } from '@/components/ui/label';
 import { EXPENSE_TYPE_LABELS } from '@/features/expenses';
 import { useAmountVisibility } from '@/features/privacy';
 import { useId, useState } from 'react';
-import { MERCHANT_BANKS, MERCHANT_RULE_LIMITS } from '../constants';
+import {
+  MERCHANT_BANKS,
+  MERCHANT_RULE_LIMITS,
+  MERCHANT_RULES_PER_PAGE,
+} from '../constants';
 import type { useMerchantRulebook } from '../hooks/use-merchant-rulebook';
 import { matchMerchantRules } from '../lib/matching';
 import { merchantRuleSchema } from '../schemas';
@@ -31,7 +35,23 @@ export function MerchantRuleManager({
   const id = useId();
   const [expanded, setExpanded] = useState(embedded);
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(0);
   const rules = rulebook.book?.payload.rules ?? [];
+  const needle = query.trim().toLowerCase();
+  const found = needle
+    ? rules.filter((rule) =>
+        [rule.label, rule.matchText, rule.displayName ?? ''].some((text) =>
+          text.toLowerCase().includes(needle)
+        )
+      )
+    : rules;
+  const pages = Math.max(1, Math.ceil(found.length / MERCHANT_RULES_PER_PAGE));
+  const currentPage = Math.min(page, pages - 1);
+  const shown = found.slice(
+    currentPage * MERCHANT_RULES_PER_PAGE,
+    (currentPage + 1) * MERCHANT_RULES_PER_PAGE
+  );
   function change(value: Partial<MerchantRule>) {
     if (draft && rulebook.canEdit && canReveal()) {
       onDraft({ ...draft, ...value });
@@ -166,12 +186,30 @@ export function MerchantRuleManager({
               </Button>
               {rules.length === 0 && rulebook.stage === 'ready' && (
                 <p className="text-sm">
-                  No saved rules yet. Create one from a reviewed row or enter a
-                  merchant below.
+                  No saved rules yet. Create one here or from a reviewed
+                  statement row.
                 </p>
               )}
+              {rules.length > 0 && (
+                <div className="space-y-1">
+                  <Label htmlFor={`${id}-search`}>Search rules</Label>
+                  <Input
+                    id={`${id}-search`}
+                    type="search"
+                    value={query}
+                    placeholder="Rule name, matching words or Item / Brand"
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      setPage(0);
+                    }}
+                  />
+                </div>
+              )}
+              {needle && found.length === 0 && (
+                <p className="text-sm">No rules match “{query.trim()}”.</p>
+              )}
               <ul className="divide-y">
-                {rules.map((rule) => (
+                {shown.map((rule) => (
                   <li
                     key={rule.id}
                     className="flex flex-wrap items-center justify-between gap-2 py-3"
@@ -185,7 +223,7 @@ export function MerchantRuleManager({
                         {rule.enabled ? 'Active' : 'Paused'}
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex shrink-0 gap-2">
                       <Button
                         type="button"
                         variant="outline"
@@ -223,6 +261,34 @@ export function MerchantRuleManager({
                   </li>
                 ))}
               </ul>
+              {pages > 1 && (
+                <nav
+                  aria-label="Rule pages"
+                  className="flex items-center justify-between gap-2"
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 0}
+                    onClick={() => setPage(currentPage - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-muted-foreground text-sm tabular-nums">
+                    Page {currentPage + 1} of {pages} · {found.length} rules
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage >= pages - 1}
+                    onClick={() => setPage(currentPage + 1)}
+                  >
+                    Next
+                  </Button>
+                </nav>
+              )}
             </>
           )}
           {draft && (
@@ -344,28 +410,32 @@ export function MerchantRuleManager({
                 expense; leave it blank to keep the extracted name. Matching
                 ignores case and repeated spaces.
               </p>
-              <div className="space-y-1 text-sm">
-                <p>{matches.length} matching source rows in this statement:</p>
-                <ul className="list-inside list-disc">
-                  {matches.slice(0, 5).map((match, index) => (
-                    <li key={index} className="break-words">
-                      {match.description}
-                    </li>
-                  ))}
-                </ul>
-                {matches.length > 5 && (
+              {examples.length > 0 && (
+                <div className="space-y-1 text-sm">
                   <p>
-                    More matches are present. Review the source rows before
-                    saving a broad rule.
+                    {matches.length} matching source rows in this statement:
                   </p>
-                )}
-              </div>
+                  <ul className="list-inside list-disc">
+                    {matches.slice(0, 5).map((match, index) => (
+                      <li key={index} className="break-words">
+                        {match.description}
+                      </li>
+                    ))}
+                  </ul>
+                  {matches.length > 5 && (
+                    <p>
+                      More matches are present. Review the source rows before
+                      saving a broad rule.
+                    </p>
+                  )}
+                </div>
+              )}
               {error && (
                 <p role="alert" className="text-destructive text-sm">
                   {error}
                 </p>
               )}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button type="button" onClick={() => void saveDraft()}>
                   Save rule
                 </Button>

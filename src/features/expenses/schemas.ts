@@ -13,6 +13,10 @@ export const expenseSplitSchema = z.object({
   settled: z.boolean(),
 });
 
+export const expenseRangeSchema = z
+  .strictObject({ from: CALENDAR_DATE, to: CALENDAR_DATE })
+  .refine(({ from, to }) => from <= to, 'from must not be after to');
+
 export const MAX_SETTLE_EXPENSE_IDS = 2000;
 
 export const settleSplitSchema = z.object({

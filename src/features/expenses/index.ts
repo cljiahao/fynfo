@@ -1,4 +1,4 @@
-export { getExpenses } from './actions/expense-actions';
+export { getExpenses, getExpensesInRange } from './actions/expense-actions';
 export {
   insertImportedExpense,
   insertImportedExpenses,
@@ -17,6 +17,7 @@ export {
   buildImportNote,
   importedExpenseSchema,
   importedExpenseValues,
+  sameImportedValues,
 } from './lib/import-expense';
 export type {
   ImportExpenseOutcome,
@@ -24,4 +25,4 @@ export type {
 } from './lib/import-expense';
 export { getSplitAllocationError } from './lib/split-amounts';
 export { isCountedInExpenseTotals } from './lib/utils';
-export type { ExpenseData, ExpenseType } from './types';
+export type { ExpenseData, ExpenseSplitData, ExpenseType } from './types';

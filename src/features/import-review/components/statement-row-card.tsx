@@ -8,14 +8,20 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { EXPENSE_TYPE_LABELS } from '@/features/expenses';
+import {
+  EXPENSE_TYPE_LABELS,
+  getSplitAllocationError,
+  SplitDialog,
+  type ExpenseSplitData,
+} from '@/features/expenses';
 import {
   MerchantSuggestionReview,
   type MerchantSuggestion,
   type useMerchantRulebook,
 } from '@/features/merchant-rules';
 import { useAmountVisibility } from '@/features/privacy';
-import { Info } from 'lucide-react';
+import { Info, Users } from 'lucide-react';
+import { useState } from 'react';
 import {
   DUPLICATE_RESOLUTIONS,
   STATEMENT_CLASSIFICATIONS,
@@ -48,6 +54,8 @@ interface StatementRowCardProps {
     value: string
   ) => void;
   onClassify: (rowId: string, value: string) => void;
+  onSplit: (rowId: string, splits: ExpenseSplitData[]) => void;
+  peopleSuggestions: string[];
   onApplySuggestion: (
     rowId: string,
     suggestion: MerchantSuggestion,
@@ -57,6 +65,9 @@ interface StatementRowCardProps {
     number: number;
     page: number;
     line: number;
+    date: string;
+    description: string;
+    amount: string;
   };
   onJumpToRow: (rowId: string) => void;
 }
@@ -76,11 +87,20 @@ export function StatementRowCard({
   onCreateRule,
   onEdit,
   onClassify,
+  onSplit,
+  peopleSuggestions,
   onApplySuggestion,
   describeRow,
   onJumpToRow,
 }: StatementRowCardProps) {
-  const { hidden, canReveal } = useAmountVisibility();
+  const { hidden, canReveal, mask } = useAmountVisibility();
+  const [splitOpen, setSplitOpen] = useState(false);
+  const total = Number(row.amount.replaceAll(',', ''));
+  const splits = row.splits ?? [];
+  const splitError = splits.length
+    ? getSplitAllocationError(total, splits)
+    : null;
+  const editLocked = hidden || save.locked(row.id) || save.busy;
   const match = save.matchFor(row.id);
   const resolution = save.resolutionFor(row.id);
   const partner =
@@ -101,24 +121,42 @@ export function StatementRowCard({
       {!hidden && match && (
         <div className="border-warning bg-warning-subtle space-y-2 rounded-md border p-3 text-sm">
           <p className="text-warning-strong font-medium">
-            {match.kind === 'saved' ? (
-              `Possible duplicate of a saved expense: ${match.date} · ${match.item} · SGD ${match.amount.toFixed(2)}`
-            ) : (
-              <>
-                Possible duplicate of{' '}
-                <Button
-                  type="button"
-                  variant="link"
-                  className="text-warning-strong h-auto p-0 font-medium underline"
-                  onClick={() => canReveal() && onJumpToRow(match.rowId)}
-                >
-                  #{partner?.number} (page {partner?.page} · line{' '}
-                  {partner?.line})
-                </Button>{' '}
-                in this statement
-              </>
-            )}
+            {match.kind === 'saved'
+              ? 'Possible duplicate: this purchase may already be in your expenses.'
+              : 'Possible duplicate: this purchase appears twice in this statement.'}
           </p>
+          <dl className="grid gap-2 sm:grid-cols-2">
+            <div className="bg-background min-w-0 rounded-md border p-2">
+              <dt className="text-muted-foreground text-xs font-medium">
+                This row (#{number})
+              </dt>
+              <dd className="break-words">
+                {row.date} · {row.description} · SGD {row.amount}
+              </dd>
+            </div>
+            <div className="bg-background min-w-0 rounded-md border p-2">
+              <dt className="text-muted-foreground text-xs font-medium">
+                {match.kind === 'saved' ? (
+                  'Already saved'
+                ) : (
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="h-auto p-0 text-xs font-medium underline"
+                    onClick={() => canReveal() && onJumpToRow(match.rowId)}
+                  >
+                    Row #{partner?.number} (page {partner?.page} · line{' '}
+                    {partner?.line})
+                  </Button>
+                )}
+              </dt>
+              <dd className="break-words">
+                {match.kind === 'saved'
+                  ? `${match.date} · ${match.item} · SGD ${match.amount.toFixed(2)}`
+                  : `${partner?.date} · ${partner?.description} · SGD ${partner?.amount}`}
+              </dd>
+            </div>
+          </dl>
           <div
             id={`${controlId}-${row.id}-resolution`}
             role="group"
@@ -290,18 +328,65 @@ export function StatementRowCard({
         <summary className="text-muted-foreground cursor-pointer text-sm">
           Description and details
         </summary>
-        <div className="space-y-1">
-          <Label htmlFor={`${controlId}-${row.id}-note`}>
-            Description (optional)
-          </Label>
-          <Input
-            id={`${controlId}-${row.id}-note`}
-            value={hidden ? '' : (row.note ?? '')}
-            maxLength={1024}
-            disabled={hidden || save.locked(row.id) || save.busy}
-            onChange={(event) => onEdit(row.id, 'note', event.target.value)}
-          />
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-48 flex-1 space-y-1">
+            <Label htmlFor={`${controlId}-${row.id}-note`}>
+              Description (optional)
+            </Label>
+            <Input
+              id={`${controlId}-${row.id}-note`}
+              value={hidden ? '' : (row.note ?? '')}
+              maxLength={1024}
+              disabled={editLocked}
+              onChange={(event) => onEdit(row.id, 'note', event.target.value)}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="max-w-full"
+              disabled={editLocked || !(total > 0)}
+              onClick={() => canReveal() && setSplitOpen(true)}
+            >
+              <Users />
+              <span className="truncate">
+                {splits.length
+                  ? mask(`Split with ${splits.map((s) => s.person).join(', ')}`)
+                  : 'Split'}
+              </span>
+            </Button>
+            {splits.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={editLocked}
+                onClick={() => canReveal() && onSplit(row.id, [])}
+              >
+                Remove split
+              </Button>
+            )}
+          </div>
         </div>
+        {!hidden && splitError && (
+          <p role="alert" className="text-destructive text-sm">
+            {splitError} Update the split before saving.
+          </p>
+        )}
+        {splitOpen && (
+          <SplitDialog
+            open={!editLocked}
+            onOpenChange={(open) => {
+              if (!open || canReveal()) setSplitOpen(open);
+            }}
+            totalAmount={total}
+            initialSplits={splits}
+            peopleSuggestions={peopleSuggestions}
+            onConfirm={(next) => {
+              if (canReveal()) onSplit(row.id, next);
+            }}
+          />
+        )}
         <div className="flex flex-wrap items-end gap-2">
           <div className="min-w-32 flex-1 space-y-1">
             <Label htmlFor={`${controlId}-${row.id}-classification`}>

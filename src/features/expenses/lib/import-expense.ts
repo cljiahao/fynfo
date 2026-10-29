@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { EXPENSE_TYPES } from '../constants';
-import type { ExpenseData } from '../types';
+import type { ExpenseData, ExpenseSplitData } from '../types';
+import { getSplitAllocationError } from './split-amounts';
 
 const kindSchema = z.enum([
   'expense',
@@ -21,6 +22,19 @@ const importedExpenseBaseSchema = z.strictObject({
     .refine((value) => value.trim().length > 0),
   cents: z.number().int().positive().max(1_000_000_000_000),
   note: z.string().max(1024).optional(),
+  splits: z
+    .array(
+      z.strictObject({
+        person: z
+          .string()
+          .max(256)
+          .refine((value) => value.trim().length > 0),
+        amount: z.number().min(0).finite(),
+        settled: z.boolean(),
+      })
+    )
+    .max(50)
+    .optional(),
   bank: z.enum(['uob', 'dbs', 'hsbc', 'citibank']),
   period: z.strictObject({ from: z.iso.date(), to: z.iso.date() }),
   suggestedClassification: kindSchema,
@@ -48,6 +62,14 @@ export const importedExpenseSchema = importedExpenseBaseSchema
       value.date <= value.period.to
     );
   }, 'Invalid statement date range')
+  .refine(
+    (value) =>
+      !value.splits?.length ||
+      (getSplitAllocationError(value.cents / 100, value.splits) === null &&
+        new Set(value.splits.map((split) => split.person.trim())).size ===
+          value.splits.length),
+    'Invalid split'
+  )
   .refine(
     (value) =>
       new TextEncoder().encode(buildImportNote(value)).length <= 16 * 1024,
@@ -94,7 +116,34 @@ export function importedExpenseValues(
     item: value.description,
     info: value.note?.trim() ?? '',
     amount: value.cents / 100,
-    splitType: 'self',
-    splits: [],
+    splitType: value.splits?.length ? 'shared' : 'self',
+    splits: (value.splits ?? []).map((split) => ({
+      ...split,
+      person: split.person.trim(),
+    })),
   };
+}
+
+export function sameImportedValues(saved: ExpenseData, expected: ExpenseData) {
+  return (
+    saved.id === expected.id &&
+    saved.date.slice(0, 10) === expected.date.slice(0, 10) &&
+    saved.type === expected.type &&
+    saved.item === expected.item &&
+    saved.info === expected.info &&
+    saved.amount === expected.amount &&
+    saved.splitType === expected.splitType &&
+    sameSplits(saved.splits, expected.splits)
+  );
+}
+
+/** Saved splits come back in storage order, so compare them by person. */
+export function sameSplits(a: ExpenseSplitData[], b: ExpenseSplitData[]) {
+  const key = (splits: ExpenseSplitData[]) =>
+    JSON.stringify(
+      [...splits]
+        .sort((x, y) => x.person.localeCompare(y.person))
+        .map(({ person, amount, settled }) => [person, amount, settled])
+    );
+  return a.length === b.length && key(a) === key(b);
 }

@@ -1,5 +1,9 @@
 export { getMerchantRulebook } from './actions/rulebook-actions';
 export { MerchantRuleManager } from './components/merchant-rule-manager';
+export {
+  MerchantRulesButton,
+  MerchantRulesDialog,
+} from './components/merchant-rules-dialog';
 export { MerchantSuggestion as MerchantSuggestionReview } from './components/merchant-suggestion';
 export {
   MERCHANT_BANKS,

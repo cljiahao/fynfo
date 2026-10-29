@@ -3,6 +3,7 @@
 import { requireActionContext } from '@/lib/action-guard';
 import { encryptPayload } from '@/lib/crypto';
 import { withDeadline } from '@/lib/with-deadline';
+import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import {
   IMPORT_SAVE_GROUP_SIZE,
@@ -12,6 +13,7 @@ import {
 import {
   importedExpenseSchema,
   importedExpenseValues,
+  sameImportedValues,
   type ImportExpenseOutcome,
 } from '../lib/import-expense';
 import { sameExpenseValues } from '../lib/reuse-draft';
@@ -24,6 +26,7 @@ export async function insertImportedExpense(
   const parsed = importedExpenseSchema.safeParse(input);
   if (!parsed.success) return { id: '', status: 'not_saved' };
   const value = importedExpenseValues(parsed.data);
+  if (value.splitType !== 'self') return { id: value.id, status: 'not_saved' };
   let sent = false;
   try {
     const { userId, dek, supabase } = await requireActionContext();
@@ -106,13 +109,28 @@ export async function insertImportedExpenses(
           item,
           info,
           amount,
-          split_type: 'self',
+          split_type: value.splitType,
         };
       })
     );
+    const splits = values.flatMap((value) =>
+      value.splits.map((split) => ({
+        id: randomUUID(),
+        expense_id: value.id,
+        person: split.person,
+        amount: encryptPayload(String(split.amount), dek),
+        settled: split.settled,
+      }))
+    );
     sent = true;
+    // Splits need the insert-only RPC so a record never lands without them.
     const { error } = await withDeadline(
-      supabase.from('expense_records').insert(records),
+      splits.length
+        ? supabase.rpc('insert_imported_expenses', {
+            p_records: records.map(({ user_id: _owner, ...record }) => record),
+            p_splits: splits,
+          })
+        : supabase.from('expense_records').insert(records),
       IMPORT_SERVER_STEP_TIMEOUT_MS
     );
     if (!error) return values.map(({ id }) => ({ id, status: 'confirmed' }));
@@ -128,15 +146,21 @@ export async function insertImportedExpenses(
           id: value.id,
           status: !record
             ? 'not_saved'
-            : sameExpenseValues(record, value)
+            : sameImportedValues(record, value)
               ? 'confirmed'
               : 'conflict',
         };
       });
     }
-    const rejected = ['23502', '23503', '23514', '42501'].includes(
-      error.code ?? ''
-    );
+    // PGRST202: the RPC is not deployed yet, so nothing was written.
+    const rejected = [
+      '23502',
+      '23503',
+      '23514',
+      '42501',
+      '22023',
+      'PGRST202',
+    ].includes(error.code ?? '');
     return values.map(({ id }) =>
       rejected
         ? { id, status: 'not_saved', reason: 'rejected' }

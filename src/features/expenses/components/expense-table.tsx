@@ -156,9 +156,9 @@ export function ExpenseTable({
         onAddRow={addRow}
       />
 
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[1040px] table-fixed">
-          <colgroup>
+      <div className="md:overflow-x-auto md:rounded-lg md:border">
+        <table className="w-full table-fixed max-md:block md:min-w-[1040px]">
+          <colgroup className="max-md:hidden">
             <col className="w-[155px]" />
             <col className="w-[140px]" />
             <col className="w-[165px]" />
@@ -168,7 +168,7 @@ export function ExpenseTable({
             <col className="w-[100px]" />
             <col className="w-[145px]" />
           </colgroup>
-          <thead>
+          <thead className="max-md:hidden">
             <tr className="bg-muted/50 border-b text-xs font-semibold tracking-wide">
               <SortableHeader
                 label="Date"
@@ -210,7 +210,7 @@ export function ExpenseTable({
               <th className="px-2 py-3 text-center">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="max-md:block max-md:space-y-3">
             {newRows.map((row) => (
               <EditableRow
                 key={`new-${row.id}`}
@@ -237,8 +237,8 @@ export function ExpenseTable({
               />
             ))}
             {filtered.length === 0 && newRows.length === 0 && (
-              <tr>
-                <td colSpan={8} className="px-3 py-10">
+              <tr className="max-md:block">
+                <td colSpan={8} className="px-3 py-10 max-md:block">
                   {(expenses ?? []).length === 0 ? (
                     <EmptyState
                       icon={Receipt}

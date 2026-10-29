@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAmountVisibility } from '@/features/privacy';
@@ -16,7 +16,7 @@ interface StatementSourceFormProps {
   manualPeriod: boolean;
   detectedBasis: DetectedStatementPeriod['basis'] | null;
   busy: boolean;
-  hasFile: boolean;
+  fileName: string | null;
   onBankChange: (bank: StatementBank) => void;
   onFileChange: (file: File | null) => void;
   onPeriodChange: (edge: 'from' | 'to', value: string) => void;
@@ -33,7 +33,7 @@ export function StatementSourceForm({
   manualPeriod,
   detectedBasis,
   busy,
-  hasFile,
+  fileName,
   onBankChange,
   onFileChange,
   onPeriodChange,
@@ -75,17 +75,38 @@ export function StatementSourceForm({
         </div>
         <div className="space-y-2">
           <Label htmlFor={`${controlId}-file`}>Bank statement PDF</Label>
-          <Input
-            disabled={hidden}
-            id={`${controlId}-file`}
-            type="file"
-            accept=".pdf,application/pdf"
-            onChange={(event) => {
-              if (!canReveal()) return;
-              onFileChange(event.currentTarget.files?.[0] ?? null);
-              event.currentTarget.value = '';
-            }}
-          />
+          <div className="flex min-w-0 items-center gap-2">
+            <input
+              disabled={hidden}
+              id={`${controlId}-file`}
+              type="file"
+              accept=".pdf,application/pdf"
+              className="peer sr-only"
+              aria-describedby={`${controlId}-file-name`}
+              onChange={(event) => {
+                if (!canReveal()) return;
+                onFileChange(event.currentTarget.files?.[0] ?? null);
+                event.currentTarget.value = '';
+              }}
+            />
+            <label
+              htmlFor={`${controlId}-file`}
+              aria-hidden="true"
+              className={buttonVariants({
+                variant: 'outline',
+                className:
+                  'peer-focus-visible:ring-ring/50 shrink-0 cursor-pointer peer-focus-visible:ring-[3px] peer-disabled:pointer-events-none peer-disabled:opacity-50',
+              })}
+            >
+              {fileName ? 'Change PDF' : 'Choose PDF'}
+            </label>
+            <span
+              id={`${controlId}-file-name`}
+              className={`min-w-0 truncate text-sm ${fileName ? '' : 'text-muted-foreground'}`}
+            >
+              {fileName ?? 'No file chosen'}
+            </span>
+          </div>
         </div>
         <details open={manualPeriod} className="space-y-3 sm:col-span-2">
           <summary className="text-muted-foreground cursor-pointer text-sm">
@@ -141,7 +162,7 @@ export function StatementSourceForm({
           )}
         </details>
         <div className="flex flex-wrap gap-2 sm:col-span-2">
-          <Button type="submit" disabled={hidden || busy || !hasFile}>
+          <Button type="submit" disabled={hidden || busy || !fileName}>
             {busy ? 'Extracting locally…' : 'Extract for review'}
           </Button>
           <Button

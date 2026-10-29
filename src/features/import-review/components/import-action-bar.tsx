@@ -78,7 +78,7 @@ export function ImportActionBar({
     status = !save.recheck
       ? 'Not checked for duplicates yet.'
       : save.awaitingAmend === save.pendingCount
-        ? `Correct the ${plural(save.awaitingAmend, 'row')} marked Needs amend, then recheck.`
+        ? `Edit the ${plural(save.awaitingAmend, 'row')} you marked for editing, then recheck.`
         : `${plural(save.pendingCount, 'row')} ${need} a recheck.`;
     action = {
       label: save.recheck

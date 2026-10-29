@@ -9,8 +9,13 @@ import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { withDeadline } from '@/lib/with-deadline';
 import { RECORD_ID } from '@/lib/zod-utils';
 import { randomUUID } from 'crypto';
+import type { z } from 'zod';
 import { EXPENSE_READ_TIMEOUT_MS } from '../constants';
-import { expenseDataSchema, settleSplitSchema } from '../schemas';
+import {
+  expenseDataSchema,
+  expenseRangeSchema,
+  settleSplitSchema,
+} from '../schemas';
 import type { ExpenseData } from '../types';
 
 type ExpenseSplitRow = {
@@ -29,42 +34,62 @@ type ExpenseRow = {
   split_type: string;
 };
 
+type DateRange = z.infer<typeof expenseRangeSchema>;
+
 export async function getExpenses(): Promise<ExpenseData[]> {
   return withDeadline(readExpenses(), EXPENSE_READ_TIMEOUT_MS);
 }
 
+/** Expenses dated within an inclusive calendar range, for import checks. */
+export async function getExpensesInRange(
+  from: string,
+  to: string
+): Promise<ExpenseData[]> {
+  const range = parseOrThrow(expenseRangeSchema, { from, to }, 'expense.range');
+  return withDeadline(readExpenses(range), EXPENSE_READ_TIMEOUT_MS);
+}
+
 // Bound the action response as well as client waiting, so later actions can run.
-async function readExpenses(): Promise<ExpenseData[]> {
+async function readExpenses(range?: DateRange): Promise<ExpenseData[]> {
   const { userId, dek, supabase } = await requireActionContext();
 
-  const records = await readAllRows<ExpenseRow>(
-    (from, to) =>
-      supabase
-        .from('expense_records')
-        .select('id, date, type, item, info, amount, split_type', {
-          count: 'exact',
-        })
-        .eq('user_id', userId)
-        .order('date', { ascending: false })
-        .order('id', { ascending: true })
-        .range(from, to),
-    'expense read'
-  );
+  const records = await readAllRows<ExpenseRow>((from, to) => {
+    let query = supabase
+      .from('expense_records')
+      .select('id, date, type, item, info, amount, split_type', {
+        count: 'exact',
+      })
+      .eq('user_id', userId);
+    if (range)
+      query = query
+        .gte('date', `${range.from}T00:00:00.000Z`)
+        .lte('date', `${range.to}T23:59:59.999Z`);
+    return query
+      .order('date', { ascending: false })
+      .order('id', { ascending: true })
+      .range(from, to);
+  }, 'expense read');
   if (records.length === 0) return [];
-  const splits = await readAllRows<ExpenseSplitRow>(
-    (from, to) =>
-      supabase
-        .from('expense_splits')
-        .select(
-          'expense_id, person, amount, settled, parent:expense_records!inner(user_id)',
-          { count: 'exact' }
-        )
-        .eq('parent.user_id', userId)
-        .order('expense_id', { ascending: true })
-        .order('id', { ascending: true })
-        .range(from, to),
-    'expense splits read'
-  );
+  const splits = range
+    ? await readSplitsFor(
+        records.filter((r) => r.split_type === 'shared').map((r) => r.id),
+        userId,
+        supabase
+      )
+    : await readAllRows<ExpenseSplitRow>(
+        (from, to) =>
+          supabase
+            .from('expense_splits')
+            .select(
+              'expense_id, person, amount, settled, parent:expense_records!inner(user_id)',
+              { count: 'exact' }
+            )
+            .eq('parent.user_id', userId)
+            .order('expense_id', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, to),
+        'expense splits read'
+      );
   const splitsByExpense = new Map<string, ExpenseSplitRow[]>();
   for (const split of splits) {
     const group = splitsByExpense.get(split.expense_id) ?? [];
@@ -94,6 +119,38 @@ async function readExpenses(): Promise<ExpenseData[]> {
       };
     })
   );
+}
+
+// Bound the id filter so request URLs stay short.
+const SPLIT_ID_CHUNK = 100;
+
+async function readSplitsFor(
+  expenseIds: string[],
+  userId: string,
+  supabase: Awaited<ReturnType<typeof requireActionContext>>['supabase']
+): Promise<ExpenseSplitRow[]> {
+  const splits: ExpenseSplitRow[] = [];
+  for (let offset = 0; offset < expenseIds.length; offset += SPLIT_ID_CHUNK) {
+    const ids = expenseIds.slice(offset, offset + SPLIT_ID_CHUNK);
+    splits.push(
+      ...(await readAllRows<ExpenseSplitRow>(
+        (from, to) =>
+          supabase
+            .from('expense_splits')
+            .select(
+              'expense_id, person, amount, settled, parent:expense_records!inner(user_id)',
+              { count: 'exact' }
+            )
+            .eq('parent.user_id', userId)
+            .in('expense_id', ids)
+            .order('expense_id', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, to),
+        'expense splits read'
+      ))
+    );
+  }
+  return splits;
 }
 
 export async function upsertExpense(data: ExpenseData): Promise<void> {

@@ -1,3 +1,4 @@
+import { getExpensesInRange } from '@/features/expenses/actions/expense-actions';
 import {
   insertImportedExpense,
   insertImportedExpenses,
@@ -350,4 +351,150 @@ it('bounds hung expense-history reads on the server so later reads can proceed',
   await result;
   setup({ selectData: [] });
   expect(await getExpenses()).toEqual([]);
+});
+
+describe('import splits', () => {
+  const shared = {
+    ...input,
+    splits: [
+      { person: ' Alex ', amount: 4.1, settled: false },
+      { person: 'Sam', amount: 4.1, settled: true },
+    ],
+  };
+  it('saves records with splits through the insert-only RPC', async () => {
+    const fake = setup();
+    expect(await insertImportedExpenses([shared])).toEqual([
+      { id: input.id, status: 'confirmed' },
+    ]);
+    expect(fake.calls.insert).toHaveLength(0);
+    expect(fake.calls.rpc).toHaveLength(1);
+    const { name, args } = fake.calls.rpc[0] as {
+      name: string;
+      args: {
+        p_records: Record<string, string>[];
+        p_splits: Record<string, string | boolean>[];
+      };
+    };
+    expect(name).toBe('insert_imported_expenses');
+    expect(args.p_records[0]).not.toHaveProperty('user_id');
+    expect(args.p_records[0].split_type).toBe('shared');
+    expect(
+      args.p_splits.map((split) => [
+        split.expense_id,
+        split.person,
+        decryptPayload(split.amount as string, key),
+        split.settled,
+      ])
+    ).toEqual([
+      [input.id, 'Alex', '4.1', false],
+      [input.id, 'Sam', '4.1', true],
+    ]);
+  });
+  it('keeps the plain insert for groups without splits', async () => {
+    const fake = setup();
+    await insertImportedExpenses([input]);
+    expect(fake.calls.rpc).toHaveLength(0);
+    expect(fake.calls.insert).toHaveLength(1);
+  });
+  it('treats a missing RPC as not saved', async () => {
+    setup({
+      rpcError: {
+        insert_imported_expenses: { code: 'PGRST202', message: 'private' },
+      },
+    });
+    expect(await insertImportedExpenses([shared])).toEqual([
+      { id: input.id, status: 'not_saved', reason: 'rejected' },
+    ]);
+  });
+  it('rejects splits that exceed the amount or repeat a person', () => {
+    expect(
+      importedExpenseSchema.safeParse({
+        ...input,
+        splits: [{ person: 'Alex', amount: 12.31, settled: false }],
+      }).success
+    ).toBe(false);
+    expect(
+      importedExpenseSchema.safeParse({
+        ...input,
+        splits: [
+          { person: 'Alex', amount: 1, settled: false },
+          { person: 'Alex ', amount: 1, settled: false },
+        ],
+      }).success
+    ).toBe(false);
+  });
+  it('confirms a saved shared row whatever order its splits come back in', async () => {
+    const value = importedExpenseValues(shared);
+    setup({
+      insertError: null,
+      rpcError: {
+        insert_imported_expenses: { code: '23505', message: 'private' },
+      },
+      selectDataByTable: {
+        expense_records: [
+          {
+            id: value.id,
+            date: `${value.date}T00:00:00.000Z`,
+            type: value.type,
+            item: encryptPayload(value.item, key),
+            info: encryptPayload(value.info, key),
+            amount: encryptPayload(String(value.amount), key),
+            split_type: 'shared',
+          },
+        ],
+        expense_splits: [...value.splits].reverse().map((split) => ({
+          expense_id: value.id,
+          person: split.person,
+          amount: encryptPayload(String(split.amount), key),
+          settled: split.settled,
+        })),
+      },
+    });
+    expect(await insertImportedExpenses([shared])).toEqual([
+      { id: input.id, status: 'confirmed' },
+    ]);
+  });
+});
+
+describe('ranged expense read', () => {
+  it('bounds records by calendar date and reads splits only for shared ids', async () => {
+    const fake = setup({
+      selectDataByTable: {
+        ...(await savedRows({ split_type: 'shared' })),
+        expense_splits: [
+          {
+            expense_id: input.id,
+            person: 'Alex',
+            amount: encryptPayload('2', key),
+            settled: false,
+          },
+        ],
+      },
+    });
+    const rows = await getExpensesInRange('2026-10-01', '2026-10-31');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].splits).toEqual([
+      { person: 'Alex', amount: 2, settled: false },
+    ]);
+    const records = fake.calls.queries.find(
+      (query) => query.table === 'expense_records'
+    );
+    expect(records?.bounds).toEqual([
+      { op: 'gte', column: 'date', value: '2026-10-01T00:00:00.000Z' },
+      { op: 'lte', column: 'date', value: '2026-10-31T23:59:59.999Z' },
+    ]);
+    const splits = fake.calls.queries.find(
+      (query) => query.table === 'expense_splits'
+    );
+    expect(splits?.in).toEqual([{ column: 'expense_id', values: [input.id] }]);
+  });
+  it('rejects an inverted or malformed range', async () => {
+    setup();
+    await expect(
+      getExpensesInRange('2026-10-31', '2026-10-01')
+    ).rejects.toThrow();
+    await expect(
+      getExpensesInRange('not-a-date', '2026-10-01')
+    ).rejects.toThrow();
+  });
 });

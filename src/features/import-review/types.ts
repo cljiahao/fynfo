@@ -1,3 +1,5 @@
+import type { ExpenseSplitData } from '@/features/expenses';
+
 export type StatementBank = 'uob' | 'dbs' | 'hsbc' | 'citibank';
 export interface StatementPeriod {
   from: string;
@@ -22,6 +24,7 @@ export interface StatementCandidate {
   description: string;
   originalDescription: string;
   note?: string;
+  splits?: ExpenseSplitData[];
   manualMerchant: { description: boolean; category: boolean };
   amount: string;
   category: string;

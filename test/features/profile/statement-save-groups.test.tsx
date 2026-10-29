@@ -15,6 +15,7 @@ vi.mock('@/features/expenses', async () => ({
   ...(await import('@/features/expenses/lib/import-expense')),
   ...(await import('@/features/expenses/constants')),
   getExpenses: api.read,
+  getExpensesInRange: api.read,
   insertImportedExpenses: api.save,
 }));
 const period = { from: '2026-10-01', to: '2026-10-31' };

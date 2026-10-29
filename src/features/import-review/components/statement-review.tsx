@@ -15,9 +15,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { IMPORT_SAVE_LIMIT, type ExpenseType } from '@/features/expenses';
 import {
-  MerchantRuleManager,
+  IMPORT_SAVE_LIMIT,
+  useDistinctPeople,
+  type ExpenseSplitData,
+  type ExpenseType,
+} from '@/features/expenses';
+import {
+  MerchantRulesDialog,
   applyMerchantSuggestion,
   restoreMerchantSource,
   useMerchantRulebook,
@@ -108,6 +113,7 @@ function StatementReviewBody({
   const ruleOrigin = useRef<HTMLElement | null>(null);
   const ruleButton = useRef<HTMLButtonElement | null>(null);
   const merchant = useMerchantRulebook();
+  const { data: people } = useDistinctPeople();
   const [ruleDraft, setRuleDraft] = useState<MerchantRule | null>(null);
   const save = useStatementSave(rows, bank, { from, to });
   useEffect(() => {
@@ -121,9 +127,9 @@ function StatementReviewBody({
   function allowDiscard() {
     if (!save.allowDiscard()) return false;
     return (
-      (!ruleDraft && !['saving', 'unconfirmed'].includes(merchant.stage)) ||
+      !['saving', 'unconfirmed'].includes(merchant.stage) ||
       window.confirm(
-        'Discard this merchant rule review? Unsaved edits will be lost. A dispatched rule save may still complete.'
+        'Close the import? A merchant rule save is still unconfirmed and may still complete.'
       )
     );
   }
@@ -298,6 +304,12 @@ function StatementReviewBody({
       )
     );
   }
+  function split(rowId: string, splits: ExpenseSplitData[]) {
+    if (!canReveal() || save.locked(rowId) || save.busy) return;
+    setRows((current) =>
+      current.map((row) => (row.id === rowId ? { ...row, splits } : row))
+    );
+  }
   function applySuggestion(
     rowId: string,
     suggestion: MerchantSuggestion,
@@ -432,6 +444,9 @@ function StatementReviewBody({
       number: rowNumbers.get(rowId) ?? 0,
       page: row?.source[0].page ?? 0,
       line: row?.source[0].line ?? 0,
+      date: row?.date ?? '',
+      description: row?.description ?? '',
+      amount: row?.amount ?? '',
     };
   }
   function rowsFor(view: RowFilter) {
@@ -654,7 +669,7 @@ function StatementReviewBody({
               manualPeriod={manualPeriod}
               detectedBasis={detectedBasis}
               busy={busy}
-              hasFile={!!file}
+              fileName={file?.name ?? null}
               onBankChange={changeBank}
               onFileChange={changeFile}
               onPeriodChange={changePeriod}
@@ -776,6 +791,8 @@ function StatementReviewBody({
                       onCreateRule={createRule}
                       onEdit={edit}
                       onClassify={classify}
+                      onSplit={split}
+                      peopleSuggestions={people ?? []}
                       onApplySuggestion={applySuggestion}
                       describeRow={describeRow}
                       onJumpToRow={(rowId) =>
@@ -834,39 +851,23 @@ function StatementReviewBody({
         )}
       </div>
       {save.busy && <ImportProgressOverlay save={save} />}
-      <Dialog open={rulesOpen && !hidden} onOpenChange={setRulesOpen}>
-        <DialogContent
-          className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl"
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            (ruleOrigin.current?.isConnected
-              ? ruleOrigin.current
-              : ruleButton.current
-            )?.focus();
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>
-              {ruleDraft ? 'Review rule' : 'Saved merchant rules'}
-            </DialogTitle>
-            <DialogDescription>
-              Saved rules fill matching draft rows automatically. Your manual
-              edits are kept.
-            </DialogDescription>
-          </DialogHeader>
-          {!hidden && (
-            <MerchantRuleManager
-              embedded
-              rulebook={merchant}
-              draft={ruleDraft}
-              onDraft={setRuleDraft}
-              examples={rows
-                .filter((row) => !row.isSummary)
-                .map((row) => ({ description: row.originalDescription, bank }))}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      <MerchantRulesDialog
+        open={rulesOpen}
+        onOpenChange={setRulesOpen}
+        rulebook={merchant}
+        draft={ruleDraft}
+        onDraft={setRuleDraft}
+        examples={rows
+          .filter((row) => !row.isSummary)
+          .map((row) => ({ description: row.originalDescription, bank }))}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          (ruleOrigin.current?.isConnected
+            ? ruleOrigin.current
+            : ruleButton.current
+          )?.focus();
+        }}
+      />
       <RestoreMerchantDialog
         restoreRow={restoreRow}
         origin={restoreOrigin}

@@ -214,14 +214,14 @@ export function EditableRow({
     <>
       <tr
         className={cn(
-          'hover:bg-muted/40 border-b transition-colors',
+          'hover:bg-muted/40 border-b transition-colors max-md:grid max-md:grid-cols-2 max-md:gap-2 max-md:rounded-lg max-md:border max-md:p-3',
           isNew && 'bg-accent/30'
         )}
         aria-busy={saving || undefined}
         onKeyDown={handleRowKeyDown}
         onBlur={handleRowBlur}
       >
-        <td className="px-2 py-2">
+        <td className="px-2 py-2 max-md:p-0">
           <Popover
             open={dateOpen && !saving && !hidden}
             onOpenChange={(open) => {
@@ -273,7 +273,7 @@ export function EditableRow({
             </PopoverContent>
           </Popover>
         </td>
-        <td className="px-2 py-2">
+        <td className="px-2 py-2 max-md:p-0">
           <ExpenseTypeSelect
             value={data.type}
             disabled={hidden || saving}
@@ -286,25 +286,27 @@ export function EditableRow({
             inputClassName="text-xs"
           />
         </td>
-        <td className="px-2 py-2">
+        <td className="px-2 py-2 max-md:col-span-2 max-md:p-0">
           <Input
             value={hidden ? '' : data.item}
             disabled={hidden || saving}
             onChange={(e) => update({ item: e.target.value })}
+            aria-label="Edit item / brand"
             placeholder="Brand"
             className="h-9 w-full text-xs"
           />
         </td>
-        <td className="px-2 py-2">
+        <td className="px-2 py-2 max-md:col-span-2 max-md:p-0">
           <Input
             value={hidden ? '' : data.info}
             disabled={hidden || saving}
             onChange={(e) => update({ info: e.target.value })}
+            aria-label="Edit description"
             placeholder="Description"
             className="h-9 w-full text-xs"
           />
         </td>
-        <td className="px-2 py-2">
+        <td className="px-2 py-2 max-md:p-0">
           <Input
             type="number"
             aria-label="Amount (SGD)"
@@ -317,7 +319,7 @@ export function EditableRow({
             className="h-9 w-full text-right text-xs tabular-nums"
           />
         </td>
-        <td className="px-2 py-2">
+        <td className="px-2 py-2 max-md:p-0">
           <Select
             open={splitSelectOpen && !saving && !hidden}
             value={data.splitType}
@@ -338,7 +340,12 @@ export function EditableRow({
             </SelectContent>
           </Select>
         </td>
-        <td className="px-2 py-2">
+        <td
+          className={cn(
+            'px-2 py-2 max-md:col-span-2 max-md:p-0',
+            data.splitType !== 'shared' && 'max-md:hidden'
+          )}
+        >
           {data.splitType === 'shared' ? (
             <button
               type="button"
@@ -357,8 +364,8 @@ export function EditableRow({
             </span>
           )}
         </td>
-        <td className="px-2 py-2">
-          <div className="flex items-center justify-center">
+        <td className="px-2 py-2 max-md:col-span-2 max-md:p-0">
+          <div className="flex items-center justify-center max-md:justify-end">
             {!isNew && onReuse && data.splitType === 'self' && (
               <Button
                 variant="outline"

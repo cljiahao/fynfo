@@ -35,6 +35,8 @@ export interface FakeSupabaseQuery {
   operation: 'read' | 'upsert' | 'insert' | 'update' | 'delete';
   eq: Array<{ column: string; value: unknown }>;
   in: Array<{ column: string; values: unknown }>;
+  // Range filters are recorded only; they do not filter the returned rows.
+  bounds?: Array<{ op: 'gte' | 'lte'; column: string; value: unknown }>;
   order: Array<{ column: string; options: unknown }>;
   range?: { from: number; to: number };
   select?: string;
@@ -116,6 +118,14 @@ export function makeFakeSupabase(opts: FakeSupabaseOptions = {}) {
       },
       in: (column: string, values: unknown) => {
         query.in.push({ column, values });
+        return builder;
+      },
+      gte: (column: string, value: unknown) => {
+        (query.bounds ??= []).push({ op: 'gte', column, value });
+        return builder;
+      },
+      lte: (column: string, value: unknown) => {
+        (query.bounds ??= []).push({ op: 'lte', column, value });
         return builder;
       },
       order: (column: string, options?: unknown) => {
