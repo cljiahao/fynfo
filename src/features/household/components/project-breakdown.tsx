@@ -4,7 +4,9 @@ import { ProgressBar } from '@/components/widgets';
 import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
+import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { formatSGD } from '@/lib/utils/currency';
 import { format } from 'date-fns';
@@ -17,26 +19,66 @@ import {
   useDeleteGoalItem,
   useDeleteItemPayment,
 } from '../hooks/use-household';
+import { useUndoableDelete } from '../hooks/use-undoable-delete';
 import type { GoalItem, HouseholdGoal } from '../types';
 
 const today = () => format(new Date(), 'yyyy-MM-dd');
 
+/** Invisible 44px touch target that leaves row height untouched. */
+const TOUCH_TARGET =
+  'relative after:absolute after:-inset-2.5 after:content-[""]';
+
+type ItemField = 'name' | 'budget';
+type PaymentField = 'amount' | 'date';
+
+/** Returns the same object when the field has no error so React skips the re-render. */
+function omitError<K extends string>(
+  errors: Partial<Record<K, string>>,
+  field: K
+): Partial<Record<K, string>> {
+  if (!errors[field]) return errors;
+  const next = { ...errors };
+  delete next[field];
+  return next;
+}
+
+function invalidProps(id: string, message: string | undefined) {
+  return message
+    ? { 'aria-invalid': true as const, 'aria-describedby': `${id}-error` }
+    : {};
+}
+
 export function ProjectBreakdown({ goal }: { goal: HouseholdGoal }) {
   const { hidden, mask, canReveal } = useAmountVisibility();
+  const { pendingIds } = useUndoableDelete();
   const regionId = useId();
+  const fieldId = useId();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [budget, setBudget] = useState('');
+  const [errors, setErrors] = useState<Partial<Record<ItemField, string>>>({});
   const addItem = useAddGoalItem();
+  const nameId = `${fieldId}-item-name`;
+  const budgetId = `${fieldId}-item-budget`;
+  const items = goal.items.filter((item) => !pendingIds.has(item.id));
+
+  function clearError(field: ItemField) {
+    setErrors((current) => omitError(current, field));
+  }
 
   function submitItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canReveal()) return;
     const value = parseFloat(budget);
-    if (!name.trim() || !value || value <= 0) {
-      toast.error('A name and budget are required');
+    const found: Partial<Record<ItemField, string>> = {};
+    if (!name.trim()) found.name = 'Enter a name';
+    if (!value || value <= 0) found.budget = 'Enter an amount above 0';
+    if (found.name || found.budget) {
+      setErrors(found);
+      document.getElementById(found.name ? nameId : budgetId)?.focus();
       return;
     }
+    setErrors({});
     addItem.mutate(
       { goalId: goal.id, name: name.trim(), budget: value },
       {
@@ -49,25 +91,28 @@ export function ProjectBreakdown({ goal }: { goal: HouseholdGoal }) {
     );
   }
 
-  const summary =
-    goal.items.length === 0
-      ? 'Split into budget items'
-      : `${goal.items.length} item${goal.items.length === 1 ? '' : 's'} · ${mask(
-          formatSGD(goal.paid)
-        )} paid of ${mask(formatSGD(goal.budgeted))}`;
-
   return (
     <div className="border-t pt-3">
       <button
         type="button"
-        className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between gap-2 text-left text-sm"
+        className="text-muted-foreground hover:text-foreground flex min-h-11 w-full items-center justify-between gap-2 text-left text-sm"
         aria-expanded={open}
         aria-controls={regionId}
         onClick={() => setOpen((value) => !value)}
       >
-        <span>
-          <span className="text-foreground font-medium">Breakdown</span>{' '}
-          {summary}
+        <span className="flex flex-col">
+          <span className="text-foreground font-medium">
+            Breakdown
+            {items.length > 0 &&
+              ` · ${items.length} item${items.length === 1 ? '' : 's'}`}
+          </span>
+          <span className="text-xs">
+            {items.length === 0
+              ? 'Split into budget items'
+              : `${mask(formatSGD(goal.paid))} paid of ${mask(
+                  formatSGD(goal.budgeted)
+                )}`}
+          </span>
         </span>
         <ChevronDown
           className={cn('size-4 transition-transform', open && 'rotate-180')}
@@ -83,46 +128,67 @@ export function ProjectBreakdown({ goal }: { goal: HouseholdGoal }) {
             </p>
           )}
           <ul className="space-y-3">
-            {goal.items.map((item) => (
+            {items.map((item) => (
               <ItemRow key={item.id} item={item} />
             ))}
           </ul>
           <form
             onSubmit={submitItem}
+            noValidate
             className="grid grid-cols-[minmax(0,1fr)_7rem_auto] gap-2"
           >
-            <Input
-              aria-label="New item name"
-              placeholder="e.g. Venue"
-              maxLength={80}
-              disabled={hidden}
-              value={hidden ? '' : name}
-              onChange={(event) => {
-                if (canReveal()) setName(event.target.value);
-              }}
-            />
-            <Input
-              aria-label="New item budget"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="Budget"
-              className="text-right tabular-nums"
-              disabled={hidden}
-              value={hidden ? '' : budget}
-              onChange={(event) => {
-                if (canReveal()) setBudget(event.target.value);
-              }}
-            />
-            <Button
-              type="submit"
-              size="sm"
-              variant="outline"
-              disabled={hidden || addItem.isPending}
-            >
-              <Plus className="mr-1 size-3.5" />
-              Add item
-            </Button>
+            <div className="space-y-1">
+              <Label htmlFor={nameId} className="text-xs">
+                Item
+              </Label>
+              <Input
+                id={nameId}
+                placeholder="e.g. Venue"
+                maxLength={80}
+                disabled={hidden}
+                value={hidden ? '' : name}
+                {...invalidProps(nameId, errors.name)}
+                onChange={(event) => {
+                  if (!canReveal()) return;
+                  setName(event.target.value);
+                  clearError('name');
+                }}
+              />
+              <FieldError id={`${nameId}-error`}>{errors.name}</FieldError>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={budgetId} className="text-xs">
+                Budget
+              </Label>
+              <Input
+                id={budgetId}
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                className="text-right tabular-nums"
+                disabled={hidden}
+                value={hidden ? '' : budget}
+                {...invalidProps(budgetId, errors.budget)}
+                onChange={(event) => {
+                  if (!canReveal()) return;
+                  setBudget(event.target.value);
+                  clearError('budget');
+                }}
+              />
+              <FieldError id={`${budgetId}-error`}>{errors.budget}</FieldError>
+            </div>
+            <div className="flex items-start pt-[1.375rem]">
+              <Button
+                type="submit"
+                size="sm"
+                variant="outline"
+                disabled={hidden || addItem.isPending}
+              >
+                <Plus className="mr-1 size-3.5" />
+                Add item
+              </Button>
+            </div>
           </form>
         </div>
       )}
@@ -132,23 +198,42 @@ export function ProjectBreakdown({ goal }: { goal: HouseholdGoal }) {
 
 function ItemRow({ item }: { item: GoalItem }) {
   const { hidden, mask, canReveal } = useAmountVisibility();
+  const { pendingIds, request } = useUndoableDelete();
+  const fieldId = useId();
   const [paying, setPaying] = useState(false);
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(today);
+  const [errors, setErrors] = useState<Partial<Record<PaymentField, string>>>(
+    {}
+  );
   const addPayment = useAddItemPayment();
-  const deleteItem = useDeleteGoalItem();
-  const deletePayment = useDeleteItemPayment();
+  const removeItem = useDeleteGoalItem();
+  const removePayment = useDeleteItemPayment();
+  const amountId = `${fieldId}-pay-amount`;
+  const dateId = `${fieldId}-pay-date`;
+  const payments = item.payments.filter(
+    (payment) => !pendingIds.has(payment.id)
+  );
   const pct =
     item.budget > 0 ? Math.min(100, (item.paid / item.budget) * 100) : 0;
+
+  function clearError(field: PaymentField) {
+    setErrors((current) => omitError(current, field));
+  }
 
   function submitPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canReveal()) return;
     const value = parseFloat(amount);
-    if (!value || value <= 0 || !date) {
-      toast.error('An amount and date are required');
+    const found: Partial<Record<PaymentField, string>> = {};
+    if (!value || value <= 0) found.amount = 'Enter an amount above 0';
+    if (!date) found.date = 'Pick a date';
+    if (found.amount || found.date) {
+      setErrors(found);
+      document.getElementById(found.amount ? amountId : dateId)?.focus();
       return;
     }
+    setErrors({});
     addPayment.mutate(
       { itemId: item.id, amount: value, date },
       {
@@ -178,29 +263,34 @@ function ItemRow({ item }: { item: GoalItem }) {
             type="button"
             size="sm"
             variant="ghost"
-            className="text-muted-foreground hover:text-destructive h-7 px-2"
-            disabled={hidden || deleteItem.isPending}
+            className="text-muted-foreground hover:text-destructive h-7 px-2 pointer-coarse:size-11"
+            disabled={hidden}
             aria-label={`Delete item ${mask(item.name)}`}
             onClick={() => {
-              if (canReveal())
-                deleteItem.mutate(item.id, {
-                  onError: () => toast.error('Could not delete the item'),
-                });
+              if (!canReveal()) return;
+              request({
+                id: item.id,
+                label: `${mask(item.name)} item deleted`,
+                commit: () => removeItem.mutateAsync(item.id),
+                errorMessage: 'Could not delete the item',
+              });
             }}
           >
             <Trash2 className="size-3.5" />
           </Button>
         </span>
       </div>
-      {!hidden && (
-        <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
+      {/* The track stays when amounts are hidden so the row keeps its height;
+          a fill would leak the masked percentage. */}
+      <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
+        {!hidden && (
           <ProgressBar
             segments={[
               { pct, className: item.over > 0 ? 'fill-loss' : 'fill-primary' },
             ]}
           />
-        </div>
-      )}
+        )}
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
         {!hidden && item.over > 0 ? (
           <span className="text-loss-strong">
@@ -216,7 +306,7 @@ function ItemRow({ item }: { item: GoalItem }) {
             type="button"
             size="sm"
             variant="link"
-            className="h-auto p-0 text-xs"
+            className="h-auto p-0 text-xs pointer-coarse:min-h-11"
             disabled={hidden}
             onClick={() => {
               if (canReveal()) setPaying(true);
@@ -229,29 +319,45 @@ function ItemRow({ item }: { item: GoalItem }) {
       {paying && (
         <form
           onSubmit={submitPayment}
+          noValidate
           className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] gap-2"
         >
-          <Input
-            aria-label={`Payment amount for ${mask(item.name)}`}
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0.00"
-            className="text-right tabular-nums"
-            autoFocus
-            disabled={hidden}
-            value={hidden ? '' : amount}
-            onChange={(event) => {
-              if (canReveal()) setAmount(event.target.value);
-            }}
-          />
-          <Input
-            aria-label={`Payment date for ${mask(item.name)}`}
-            type="date"
-            disabled={hidden}
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
-          />
+          <div className="space-y-1">
+            <Input
+              id={amountId}
+              aria-label={`Payment amount for ${mask(item.name)}`}
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              className="text-right tabular-nums"
+              autoFocus
+              disabled={hidden}
+              value={hidden ? '' : amount}
+              {...invalidProps(amountId, errors.amount)}
+              onChange={(event) => {
+                if (!canReveal()) return;
+                setAmount(event.target.value);
+                clearError('amount');
+              }}
+            />
+            <FieldError id={`${amountId}-error`}>{errors.amount}</FieldError>
+          </div>
+          <div className="space-y-1">
+            <Input
+              id={dateId}
+              aria-label={`Payment date for ${mask(item.name)}`}
+              type="date"
+              disabled={hidden}
+              value={date}
+              {...invalidProps(dateId, errors.date)}
+              onChange={(event) => {
+                setDate(event.target.value);
+                clearError('date');
+              }}
+            />
+            <FieldError id={`${dateId}-error`}>{errors.date}</FieldError>
+          </div>
           <Button
             type="submit"
             size="sm"
@@ -269,9 +375,9 @@ function ItemRow({ item }: { item: GoalItem }) {
           </Button>
         </form>
       )}
-      {item.payments.length > 0 && (
+      {payments.length > 0 && (
         <ul className="text-muted-foreground space-y-0.5 text-xs">
-          {item.payments.map((payment) => (
+          {payments.map((payment) => (
             <li
               key={payment.id}
               className="flex items-center justify-between gap-2"
@@ -282,21 +388,28 @@ function ItemRow({ item }: { item: GoalItem }) {
               </span>
               <span className="flex items-center gap-1 tabular-nums">
                 {mask(formatSGD(payment.amount))}
-                <button
+                <Button
                   type="button"
-                  className="hover:text-destructive disabled:opacity-50"
-                  disabled={hidden || deletePayment.isPending}
-                  aria-label={`Delete payment on ${payment.date}`}
+                  variant="ghost"
+                  size="icon-xs"
+                  className={`hover:text-destructive ${TOUCH_TARGET}`}
+                  disabled={hidden}
+                  aria-label={`Delete ${mask(formatSGD(payment.amount))} payment on ${format(
+                    new Date(payment.date),
+                    'dd MMM yyyy'
+                  )} by ${payment.isSelf ? 'You' : 'Partner'}`}
                   onClick={() => {
-                    if (canReveal())
-                      deletePayment.mutate(payment.id, {
-                        onError: () =>
-                          toast.error('Could not delete the payment'),
-                      });
+                    if (!canReveal()) return;
+                    request({
+                      id: payment.id,
+                      label: 'Payment deleted',
+                      commit: () => removePayment.mutateAsync(payment.id),
+                      errorMessage: 'Could not delete the payment',
+                    });
                   }}
                 >
                   <X className="size-3" />
-                </button>
+                </Button>
               </span>
             </li>
           ))}

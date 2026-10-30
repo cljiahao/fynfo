@@ -3,6 +3,7 @@
 import { useAmountVisibility } from '@/features/privacy';
 
 import { formatSGD } from '@/lib/utils/currency';
+import { PERSON_COLORS } from '../constants';
 import { summarizeSpending } from '../lib/shared-spending';
 import type { SharedSpendingEntry } from '../types';
 
@@ -27,22 +28,34 @@ export function SpendingSummary({
         </span>
         <span className="text-muted-foreground flex gap-3 text-xs">
           <span className="flex items-center gap-1.5">
-            <span className="bg-primary size-2 rounded-full" />
+            <span
+              className={`${PERSON_COLORS.you.dot} size-2 rounded-full`}
+              aria-hidden="true"
+            />
             You {mask(formatSGD(summary.youPaid))}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="bg-gain size-2 rounded-full" />
+            <span
+              className={`${PERSON_COLORS.partner.dot} size-2 rounded-full`}
+              aria-hidden="true"
+            />
             Partner {mask(formatSGD(summary.partnerPaid))}
           </span>
         </span>
       </div>
-      <p className="text-sm">
-        {summary.settle === null
-          ? 'Split evenly — nothing to settle.'
-          : summary.settle.owedBy === 'partner'
-            ? `Partner owes you ${mask(formatSGD(summary.settle.amount))} to split evenly.`
-            : `You owe partner ${mask(formatSGD(summary.settle.amount))} to split evenly.`}
-      </p>
+      <div className="space-y-0.5">
+        <p className="text-sm font-medium">
+          {summary.settle === null
+            ? 'Nothing to settle'
+            : summary.settle.owedBy === 'partner'
+              ? `Partner owes you ${mask(formatSGD(summary.settle.amount))}`
+              : `You owe partner ${mask(formatSGD(summary.settle.amount))}`}
+        </p>
+        <p className="text-muted-foreground text-xs">
+          Everything shared is split 50/50. Whoever paid more is owed the
+          difference.
+        </p>
+      </div>
       <ul className="space-y-1 text-sm">
         {summary.byCategory.slice(0, 5).map((row) => (
           <li key={row.category} className="flex justify-between gap-2">
