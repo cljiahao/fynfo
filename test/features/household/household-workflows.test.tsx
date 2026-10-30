@@ -78,6 +78,7 @@ describe('household overview read and unlock boundaries', () => {
     name: 'Home',
     role: 'owner',
     createdAt: '2026-10-01',
+    memberCount: 1,
     locked: false,
   };
   it('shows setup when there is no household and an error instead of setup on failed read', async () => {

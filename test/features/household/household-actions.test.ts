@@ -94,6 +94,7 @@ describe('household-actions — getHousehold', () => {
       name: 'Home',
       role: 'owner',
       createdAt: '2026-06-26',
+      memberCount: 1,
       locked: true,
     });
   });
@@ -113,6 +114,19 @@ describe('household-actions — getHousehold', () => {
     const summary = await getHousehold();
     expect(summary?.locked).toBe(false);
     expect(summary?.role).toBe('member');
+  });
+
+  it('counts the roster for one- and two-member households', async () => {
+    const row = {
+      role: 'owner',
+      households: { id: 'h1', name: 'Home', created_at: '2026-06-26' },
+    };
+    const { getHousehold } =
+      await import('@/features/household/actions/household-actions');
+    setSupabase({ selectData: [row] });
+    expect((await getHousehold())?.memberCount).toBe(1);
+    setSupabase({ selectData: [row, { ...row, role: 'member' }] });
+    expect((await getHousehold())?.memberCount).toBe(2);
   });
 
   it('returns null when the caller is in no household', async () => {

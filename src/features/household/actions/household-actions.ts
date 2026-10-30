@@ -94,6 +94,12 @@ export async function getHousehold(): Promise<HouseholdSummary | null> {
     | undefined;
   if (!row?.households) return null;
 
+  const { data: roster, error: rosterError } = await supabase
+    .from('household_members')
+    .select('user_id')
+    .eq('household_id', row.households.id);
+  throwIfSupabaseError(rosterError, 'household roster read');
+
   // Lock state from the session key (cookie check, no DEK needed) — so the page
   // distinguishes "locked" from a genuine read error instead of inferring it.
   const kh = await getHouseholdKhSession(userId);
@@ -103,6 +109,7 @@ export async function getHousehold(): Promise<HouseholdSummary | null> {
     name: row.households.name,
     role: row.role,
     createdAt: row.households.created_at,
+    memberCount: (roster ?? []).length,
     locked: kh === null,
   };
 }

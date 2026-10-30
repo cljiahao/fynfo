@@ -6,6 +6,8 @@ export interface HouseholdSummary {
   name: string;
   role: HouseholdRole;
   createdAt: string;
+  /** Roster size; lets the UI hide the invite once the household is full. */
+  memberCount: number;
   /** True when the household key is not in the session (needs unlock). */
   locked: boolean;
 }
