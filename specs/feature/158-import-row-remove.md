@@ -2,10 +2,10 @@
 id: '158'
 slug: import-row-remove
 area: feature
-status: draft
+status: approved
 author: Claude Code
 created: 2026-10-30
-approved:
+approved: 2026-10-30
 shipped:
 impl_pr: direct commit to main (no PR)
 supersedes:
@@ -128,4 +128,4 @@ without the hook.
 
 - [ ] Q: Should removed rows in the "all" view stay visible as stubs (proposed),
       or vanish with only a footer "N removed · Restore all"? — Owner: Clarence
-      — A:
+      — A: One-line stub "Row #N removed · Restore" in place (proposed).

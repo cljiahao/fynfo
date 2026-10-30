@@ -2,10 +2,10 @@
 id: '159'
 slug: overview-dividend-summary
 area: feature
-status: draft
+status: approved
 author: Claude Code
 created: 2026-10-30
-approved:
+approved: 2026-10-30
 shipped:
 impl_pr: direct commit to main (no PR)
 supersedes:
@@ -191,6 +191,6 @@ Do not add dividends to `OverviewPrefetch` or to `OverviewReadData`.
 
 - [ ] Q: Is the first dividend year acceptable as a full year in the per-annum
       average, even when recording started mid year? Proposed: yes, documented
-      on the card hint. — Owner: Clarence — A:
+      on the card hint. — Owner: Clarence — A: Yes, counts as a full year; card hint explains the rule.
 - [ ] Q: Placement: under `LatestRecords` in the Overview view (proposed), or
-      above it? — Owner: Clarence — A:
+      above it? — Owner: Clarence — A: Below LatestRecords.

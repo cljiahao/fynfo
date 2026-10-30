@@ -2,10 +2,10 @@
 id: '156'
 slug: import-period-required-focus
 area: fix
-status: draft
+status: approved
 author: Claude Code
 created: 2026-10-30
-approved:
+approved: 2026-10-30
 shipped:
 impl_pr: direct commit to main (no PR)
 supersedes:

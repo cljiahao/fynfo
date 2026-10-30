@@ -2,10 +2,10 @@
 id: '157'
 slug: merchant-rule-starts-with
 area: feature
-status: draft
+status: approved
 author: Claude Code
 created: 2026-10-30
-approved:
+approved: 2026-10-30
 shipped:
 impl_pr: direct commit to main (no PR)
 supersedes:
@@ -138,4 +138,4 @@ rule per spelling. The "Exact text" mode is no help either.
 
 - [ ] Q: Should "Starts with word" also join hyphenated or dotted tokens (so
       "E-GRAB" matches "egrab")? Proposed answer: no, treat them as spaces, same
-      as other punctuation. — Owner: Clarence — A:
+      as other punctuation. — Owner: Clarence — A: No. Hyphens and dots split words like other punctuation ("grab" matches "E-GRAB").
