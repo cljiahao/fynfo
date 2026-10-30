@@ -18,6 +18,7 @@ import {
   createImportInput,
   savedImportMatches,
   statementImportMatches,
+  withoutRemoved,
 } from '../lib/import-selection';
 import { withImportDeadline } from '../lib/request-deadline';
 import type {
@@ -69,6 +70,7 @@ export function useStatementSave(
   const deferredRefresh = useRef<{ query: object } | null>(null);
   const [attempts, setAttempts] = useState<Record<string, Attempt>>({});
   const [selection, setSelection] = useState<string[]>([]);
+  const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
   // Input JSON per row at its last successful duplicate check.
   const [checks, setChecks] = useState<Record<string, string>>({});
   const [savedMatches, setSavedMatches] = useState<Record<string, SavedMatch>>(
@@ -153,12 +155,13 @@ export function useStatementSave(
     }
     return createImportInput(row, bank, period, id);
   }
+  const liveRows = withoutRemoved(rows, removed);
   const inputById = new Map(
     // eslint-disable-next-line react-hooks/refs -- audit 152 §Phase 3 lint suppressions: row ids are allocated lazily and stay stable
-    rows.map((row) => [row.id, inputFor(row)] as const)
+    liveRows.map((row) => [row.id, inputFor(row)] as const)
   );
   const entries = selection
-    .map((key) => rows.find((row) => row.id === key))
+    .map((key) => liveRows.find((row) => row.id === key))
     .filter((row): row is StatementCandidate => !!row)
     .map((row) => ({ row, input: inputById.get(row.id) ?? null }));
   const ready =
@@ -168,7 +171,7 @@ export function useStatementSave(
   const isChecked = (key: string, input: ImportedExpenseInput | null) =>
     !!input && checks[key] === signatureOf(input);
   const partners = statementImportMatches(
-    rows.flatMap((row) => {
+    liveRows.flatMap((row) => {
       if (resolutions[row.id] === 'skip') return [];
       const input = inputById.get(row.id);
       return input ? [{ key: row.id, input }] : [];
@@ -219,11 +222,32 @@ export function useStatementSave(
     if (!privacy.canReveal() || running.current) return;
     const eligible = candidates.filter(
       (row) =>
+        !removed.has(row.id) &&
         !attemptsRef.current[row.id] &&
         resolutions[row.id] !== 'skip' &&
         inputFor(row) !== null
     );
     setSelection(eligible.slice(0, IMPORT_SAVE_LIMIT).map((row) => row.id));
+  }
+  function remove(row: StatementCandidate) {
+    if (!privacy.canReveal() || running.current || attemptsRef.current[row.id])
+      return;
+    setRemoved(new Set(removed).add(row.id));
+    setSelection(selection.filter((key) => key !== row.id));
+    // A restored row must start clean, not with stale decisions.
+    const drop = <T>(record: Record<string, T>) => {
+      const { [row.id]: _dropped, ...rest } = record;
+      return rest;
+    };
+    setResolutions(drop(resolutions));
+    setChecks(drop(checks));
+    setSavedMatches(drop(savedMatches));
+  }
+  function restore(row: StatementCandidate) {
+    if (!privacy.canReveal() || running.current) return;
+    const next = new Set(removed);
+    next.delete(row.id);
+    setRemoved(next);
   }
   function clearSelection() {
     if (!privacy.canReveal() || running.current) return;
@@ -516,6 +540,7 @@ export function useStatementSave(
     ids.current.clear();
     updateAttempts({});
     setSelection([]);
+    setRemoved(new Set());
     setChecks({});
     setSavedMatches({});
     setResolutions({});
@@ -574,6 +599,10 @@ export function useStatementSave(
       return !!entry && key in checks && !isChecked(key, entry.input);
     },
     toggle,
+    remove,
+    restore,
+    isRemoved: (key: string) => removed.has(key),
+    removedCount: removed.size,
     selectExpenses,
     clearSelection,
     resolve,

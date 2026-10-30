@@ -20,7 +20,7 @@ import {
   type useMerchantRulebook,
 } from '@/features/merchant-rules';
 import { useAmountVisibility } from '@/features/privacy';
-import { Info, Users } from 'lucide-react';
+import { Info, Users, X } from 'lucide-react';
 import { useState } from 'react';
 import {
   DUPLICATE_RESOLUTIONS,
@@ -105,6 +105,30 @@ export function StatementRowCard({
   const resolution = save.resolutionFor(row.id);
   const partner =
     match?.kind === 'statement' ? describeRow(match.rowId) : undefined;
+  if (save.isRemoved(row.id))
+    return (
+      <div
+        id={`${controlId}-${row.id}-card`}
+        tabIndex={-1}
+        className="text-muted-foreground flex min-h-9 scroll-mt-14 items-center gap-2 border-b px-3 py-1 text-xs outline-none"
+      >
+        <span>
+          Row #{number} removed
+          {hidden ? '' : ' ·'}
+        </span>
+        {!hidden && (
+          <Button
+            type="button"
+            variant="link"
+            className="h-auto p-0 text-xs"
+            aria-label={`Restore row #${number}`}
+            onClick={() => save.restore(row)}
+          >
+            Restore
+          </Button>
+        )}
+      </div>
+    );
   return (
     <fieldset
       id={`${controlId}-${row.id}-card`}
@@ -222,6 +246,17 @@ export function StatementRowCard({
             const input = save.inputFor(row);
             return (
               <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="order-1 ml-auto size-9"
+                  aria-label={`Remove row #${number}`}
+                  disabled={save.busy}
+                  onClick={() => save.remove(row)}
+                >
+                  <X aria-hidden="true" className="size-4" />
+                </Button>
                 <label className="flex min-h-9 min-w-9 cursor-pointer items-center gap-2 text-sm">
                   <input
                     type="checkbox"
