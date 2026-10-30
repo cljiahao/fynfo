@@ -92,3 +92,10 @@ export function statementImportMatches(
   }
   return partners;
 }
+
+export function withoutRemoved<T extends { id: string }>(
+  rows: T[],
+  removed: ReadonlySet<string>
+): T[] {
+  return removed.size === 0 ? rows : rows.filter((row) => !removed.has(row.id));
+}

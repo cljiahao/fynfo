@@ -452,6 +452,7 @@ function StatementReviewBody({
   function rowsFor(view: RowFilter) {
     return reviewedRows.filter((row) => {
       if (view === 'all') return true;
+      if (save.isRemoved(row.id)) return false;
       if (view === 'duplicates') return save.matchFor(row.id) !== null;
       if (row.isSummary) return false;
       if (view === 'refunds') return row.classification === 'refund';
@@ -477,12 +478,14 @@ function StatementReviewBody({
   );
   const eligibleRows = filteredRows.filter(
     (row) =>
+      !save.isRemoved(row.id) &&
       !save.locked(row.id) &&
       save.resolutionFor(row.id) !== 'skip' &&
       save.inputFor(row)
   );
   const remaining = rows.filter(
     (row) =>
+      !save.isRemoved(row.id) &&
       !save.locked(row.id) &&
       save.resolutionFor(row.id) !== 'skip' &&
       save.inputFor(row)
@@ -691,7 +694,8 @@ function StatementReviewBody({
             <p className="sr-only" role="status" aria-live="polite">
               {mask(rows.length)} source rows: {counts('candidate')} expense
               suggestions, {counts('unresolved')} unresolved,{' '}
-              {counts('excluded')} excluded.
+              {counts('excluded')} excluded
+              {save.removedCount > 0 && `, ${mask(save.removedCount)} removed`}.
             </p>
             <div className="flex shrink-0 gap-2 lg:hidden">
               <Button
