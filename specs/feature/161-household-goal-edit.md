@@ -2,12 +2,12 @@
 id: '161'
 slug: household-goal-edit
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-10-30
 approved: 2026-10-30
-shipped:
-impl_pr:
+shipped: 2026-10-30
+impl_pr: d0bb026
 supersedes:
 constitution_satisfies:
   - '§1.1'
