@@ -108,6 +108,9 @@ describe('household goal editing', () => {
     expect(dialog).toHaveTextContent('Edit goal');
     expect(screen.getByLabelText('Name')).toHaveValue('Synthetic sofa');
     expect(screen.getByLabelText('Target amount (SGD)')).toHaveValue(1000);
+    expect(screen.getByLabelText('Target amount (SGD)')).toHaveDisplayValue(
+      '1000.00'
+    );
     expect(screen.getByLabelText('Target date (optional)')).toHaveValue(
       '2026-12-01'
     );

@@ -11,9 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useCreateGoal, useUpdateGoal } from '../hooks/use-household';
 import type { HouseholdGoal } from '../types';
@@ -35,11 +36,14 @@ export function CreateGoalDialog({
   const updateGoal = useUpdateGoal();
   const [name, setName] = useState(goal?.name ?? '');
   const [targetAmount, setTargetAmount] = useState(
-    goal ? String(goal.targetAmount) : ''
+    goal ? goal.targetAmount.toFixed(2) : ''
   );
   const [targetDate, setTargetDate] = useState(
     goal?.targetDate?.slice(0, 10) ?? ''
   );
+  const [errors, setErrors] = useState<{ name?: string; amount?: string }>({});
+  const nameRef = useRef<HTMLInputElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
   const isEdit = Boolean(goal);
   const pending = createGoal.isPending || updateGoal.isPending;
 
@@ -47,13 +51,18 @@ export function CreateGoalDialog({
     setName('');
     setTargetAmount('');
     setTargetDate('');
+    setErrors({});
   };
 
   const submit = () => {
     if (!canReveal()) return;
     const amount = parseFloat(targetAmount);
-    if (!name.trim() || !amount || amount <= 0) {
-      toast.error('Name and a target amount are required');
+    const next: { name?: string; amount?: string } = {};
+    if (!name.trim()) next.name = 'Enter a name';
+    if (!amount || amount <= 0) next.amount = 'Enter an amount above 0';
+    if (next.name || next.amount) {
+      setErrors(next);
+      (next.name ? nameRef : amountRef).current?.focus();
       return;
     }
     const values = {
@@ -103,29 +112,41 @@ export function CreateGoalDialog({
             <Input
               disabled={hidden}
               id="goal-name"
+              ref={nameRef}
+              aria-invalid={errors.name ? true : undefined}
+              aria-describedby={errors.name ? 'goal-name-error' : undefined}
               value={hidden ? '' : name}
               onChange={(e) => {
-                if (canReveal()) setName(e.target.value);
+                if (!canReveal()) return;
+                setName(e.target.value);
+                setErrors((prev) => ({ ...prev, name: undefined }));
               }}
               placeholder="e.g. New sofa"
               maxLength={80}
             />
+            <FieldError id="goal-name-error">{errors.name}</FieldError>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="goal-target">Target amount (SGD)</Label>
             <Input
               disabled={hidden}
               id="goal-target"
+              ref={amountRef}
+              aria-invalid={errors.amount ? true : undefined}
+              aria-describedby={errors.amount ? 'goal-target-error' : undefined}
               type="number"
               min="0"
               step="0.01"
               value={hidden ? '' : targetAmount}
               onChange={(e) => {
-                if (canReveal()) setTargetAmount(e.target.value);
+                if (!canReveal()) return;
+                setTargetAmount(e.target.value);
+                setErrors((prev) => ({ ...prev, amount: undefined }));
               }}
               placeholder="0.00"
               className="text-right tabular-nums"
             />
+            <FieldError id="goal-target-error">{errors.amount}</FieldError>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="goal-date">Target date (optional)</Label>

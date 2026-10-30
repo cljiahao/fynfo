@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 import { formatSGD } from '@/lib/utils/currency';
 import { format } from 'date-fns';
 import { Check, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { PERSON_COLORS } from '../constants';
 import type { HouseholdGoal } from '../types';
 import { ProjectBreakdown } from './project-breakdown';
 
@@ -17,6 +19,7 @@ interface GoalCardProps {
   onContribute: (goal: HouseholdGoal) => void;
   onEdit: (goal: HouseholdGoal) => void;
   onDelete: (goal: HouseholdGoal) => void;
+  className?: string;
 }
 
 export function GoalCard({
@@ -24,6 +27,7 @@ export function GoalCard({
   onContribute,
   onEdit,
   onDelete,
+  className,
 }: GoalCardProps) {
   const { hidden, mask, canReveal } = useAmountVisibility();
   const self = goal.contributions
@@ -43,12 +47,23 @@ export function GoalCard({
     Number.isFinite(goal.contributed) &&
     goal.contributed >= goal.targetAmount;
 
+  // Derive-state-from-props keeps the one-shot celebration free of refs and
+  // effects, so a goal that is already funded on mount never animates.
+  const [prevFunded, setPrevFunded] = useState(funded);
+  const [celebrate, setCelebrate] = useState(false);
+  if (funded !== prevFunded) {
+    setPrevFunded(funded);
+    setCelebrate(funded);
+  }
+
   return (
-    <Card className={cn(!hidden && funded && 'border-gain/50')}>
+    <Card
+      className={cn('py-0', !hidden && funded && 'border-gain/50', className)}
+    >
       <CardContent className="space-y-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate font-semibold">{mask(goal.name)}</h3>
+            <h2 className="truncate font-semibold">{mask(goal.name)}</h2>
             {goal.targetDate && (
               <p className="text-muted-foreground text-xs">
                 by {format(new Date(goal.targetDate), 'dd MMM yyyy')}
@@ -56,7 +71,13 @@ export function GoalCard({
             )}
           </div>
           {!hidden && funded ? (
-            <span className="bg-gain-subtle text-gain-strong flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium">
+            <span
+              className={cn(
+                'bg-gain-subtle text-gain-strong flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
+                celebrate && 'animate-in zoom-in-50 fade-in duration-500'
+              )}
+              onAnimationEnd={() => setCelebrate(false)}
+            >
               <Check className="size-3" />
               Funded
             </span>
@@ -67,17 +88,17 @@ export function GoalCard({
           )}
         </div>
 
-        {/* Two-tone joint progress: primary = you, gain = partner */}
-        {!hidden && (
-          <div className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
+        {/* The track stays while amounts are hidden so the card height is stable; the fill would reveal the masked percentage. */}
+        <div className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
+          {!hidden && (
             <ProgressBar
               segments={[
-                { pct: selfPct, className: 'fill-primary' },
-                { pct: partnerPct, className: 'fill-gain' },
+                { pct: selfPct, className: PERSON_COLORS.you.fill },
+                { pct: partnerPct, className: PERSON_COLORS.partner.fill },
               ]}
             />
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
           <span className="font-medium tabular-nums">
@@ -95,11 +116,15 @@ export function GoalCard({
 
         <div className="text-muted-foreground flex items-center gap-4 text-xs">
           <span className="flex items-center gap-1.5">
-            <span className="bg-primary size-2 rounded-full" />
+            <span
+              className={cn(PERSON_COLORS.you.dot, 'size-2 rounded-full')}
+            />
             You {mask(formatSGD(self))}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="bg-gain size-2 rounded-full" />
+            <span
+              className={cn(PERSON_COLORS.partner.dot, 'size-2 rounded-full')}
+            />
             Partner {mask(formatSGD(partner))}
           </span>
         </div>
@@ -121,7 +146,7 @@ export function GoalCard({
             <Button
               size="sm"
               variant="ghost"
-              className="text-muted-foreground"
+              className="text-muted-foreground pointer-coarse:size-11"
               disabled={hidden}
               onClick={() => {
                 if (canReveal()) onEdit(goal);
@@ -133,7 +158,7 @@ export function GoalCard({
             <Button
               size="sm"
               variant="ghost"
-              className="text-muted-foreground hover:text-destructive"
+              className="text-muted-foreground hover:text-destructive pointer-coarse:size-11"
               disabled={hidden}
               onClick={() => {
                 if (canReveal()) onDelete(goal);

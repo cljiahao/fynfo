@@ -11,10 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useAddContribution } from '../hooks/use-household';
 import type { HouseholdGoal } from '../types';
@@ -34,7 +35,12 @@ export function AddContributionDialog({
   const [note, setNote] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
+  const [errors, setErrors] = useState<{ amount?: string; date?: string }>({});
+  const amountRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+
   const reset = () => {
+    setErrors({});
     setAmount('');
     setNote('');
     setDate(format(new Date(), 'yyyy-MM-dd'));
@@ -44,8 +50,12 @@ export function AddContributionDialog({
     if (!canReveal()) return;
     if (!goal) return;
     const value = parseFloat(amount);
-    if (!value || value <= 0 || !date) {
-      toast.error('An amount and date are required');
+    const next: { amount?: string; date?: string } = {};
+    if (!value || value <= 0) next.amount = 'Enter an amount above 0';
+    if (!date) next.date = 'Pick a date';
+    if (next.amount || next.date) {
+      setErrors(next);
+      (next.amount ? amountRef : dateRef).current?.focus();
       return;
     }
     addContribution.mutate(
@@ -78,27 +88,42 @@ export function AddContributionDialog({
             <Input
               disabled={hidden}
               id="contrib-amount"
+              ref={amountRef}
+              aria-invalid={errors.amount ? true : undefined}
+              aria-describedby={
+                errors.amount ? 'contrib-amount-error' : undefined
+              }
               type="number"
               min="0"
               step="0.01"
               value={hidden ? '' : amount}
               onChange={(e) => {
-                if (canReveal()) setAmount(e.target.value);
+                if (!canReveal()) return;
+                setAmount(e.target.value);
+                setErrors((prev) => ({ ...prev, amount: undefined }));
               }}
               placeholder="0.00"
               className="text-right tabular-nums"
               autoFocus
             />
+            <FieldError id="contrib-amount-error">{errors.amount}</FieldError>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="contrib-date">Date</Label>
             <Input
               disabled={hidden}
               id="contrib-date"
+              ref={dateRef}
+              aria-invalid={errors.date ? true : undefined}
+              aria-describedby={errors.date ? 'contrib-date-error' : undefined}
               type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => {
+                setDate(e.target.value);
+                setErrors((prev) => ({ ...prev, date: undefined }));
+              }}
             />
+            <FieldError id="contrib-date-error">{errors.date}</FieldError>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="contrib-note">Note (optional)</Label>
