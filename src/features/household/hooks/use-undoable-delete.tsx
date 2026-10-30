@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -48,8 +49,11 @@ export function UndoableDeleteProvider({
     () => new Set()
   );
   const [entries] = useState(() => new Map<string, PendingEntry>());
+  const [inFlight] = useState(() => new Set<string>());
+  const unmounting = useRef(false);
 
   const release = useCallback((id: string) => {
+    if (unmounting.current) return;
     setPendingIds((current) => {
       if (!current.has(id)) return current;
       const next = new Set(current);
@@ -62,24 +66,31 @@ export function UndoableDeleteProvider({
   // between the server write and the refetch.
   const settle = useCallback(
     (id: string, entry: PendingEntry) => {
+      inFlight.add(id);
       entry
         .commit()
         .catch(() => {
           toast.error(entry.errorMessage);
         })
-        .finally(() => release(id));
+        .finally(() => {
+          inFlight.delete(id);
+          release(id);
+        });
     },
-    [release]
+    [inFlight, release]
   );
 
   const request = useCallback(
     ({ id, label, commit, errorMessage }: UndoRequest) => {
-      if (entries.has(id)) return;
+      if (entries.has(id) || inFlight.has(id)) return;
       const toastId = `undo-delete-${id}`;
       const timeout = setTimeout(() => {
         const entry = entries.get(id);
         if (!entry) return;
         entries.delete(id);
+        // Sonner pauses its own timer on hover or a hidden tab, so the toast
+        // can outlive this one; an Undo shown after the commit would lie.
+        toast.dismiss(entry.toastId);
         settle(id, entry);
       }, delayMs);
       entries.set(id, { timeout, toastId, commit, errorMessage });
@@ -99,11 +110,14 @@ export function UndoableDeleteProvider({
         },
       });
     },
-    [delayMs, entries, release, settle]
+    [delayMs, entries, inFlight, release, settle]
   );
 
   useEffect(() => {
+    // Strict Mode re-runs effects; re-arm after its simulated unmount.
+    unmounting.current = false;
     return () => {
+      unmounting.current = true;
       entries.forEach((entry, id) => {
         clearTimeout(entry.timeout);
         toast.dismiss(entry.toastId);

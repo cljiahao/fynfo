@@ -213,3 +213,86 @@ describe('useUndoableDelete', () => {
     expect(commit).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('useUndoableDelete commit edge cases', () => {
+  it('dismisses the toast when the window ends and a late Undo cannot stop the commit', async () => {
+    const commit = vi.fn().mockResolvedValue(undefined);
+    const { request } = setup(commit);
+    act(request);
+    const undo = undoAction();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DELAY);
+    });
+    expect(toasts.dismiss).toHaveBeenCalledWith('undo-delete-row-1');
+    act(() => undo());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DELAY);
+    });
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('honours a non-default delayMs', async () => {
+    const commit = vi.fn().mockResolvedValue(undefined);
+    const hook = renderHook(() => useUndoableDelete(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <UndoableDeleteProvider delayMs={1000}>
+          {children}
+        </UndoableDeleteProvider>
+      ),
+    });
+    act(() =>
+      hook.result.current.request({
+        id: 'row-1',
+        label: 'Entry',
+        commit,
+        errorMessage: 'Could not delete',
+      })
+    );
+    expect(toasts.toast).toHaveBeenCalledWith(
+      'Entry',
+      expect.objectContaining({ duration: 1000 })
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(999);
+    });
+    expect(commit).not.toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not commit twice when an in-flight id is requested again', async () => {
+    let resolve: () => void = () => undefined;
+    const commit = vi.fn(
+      () =>
+        new Promise<void>((r) => {
+          resolve = r;
+        })
+    );
+    const { request } = setup(commit);
+    act(request);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DELAY);
+    });
+    act(request);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(DELAY * 2);
+    });
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(toasts.toast).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolve();
+    });
+  });
+
+  it('toasts the error and does not throw when the unmount flush rejects', async () => {
+    const commit = vi.fn().mockRejectedValue(new Error('boom'));
+    const { hook, request } = setup(commit);
+    act(request);
+    expect(() => hook.unmount()).not.toThrow();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(toasts.error).toHaveBeenCalledWith('Could not delete');
+  });
+});
