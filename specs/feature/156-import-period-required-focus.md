@@ -2,11 +2,11 @@
 id: '156'
 slug: import-period-required-focus
 area: fix
-status: approved
+status: shipped
 author: Claude Code
 created: 2026-10-30
 approved: 2026-10-30
-shipped:
+shipped: 2026-10-30
 impl_pr: direct commit to main (no PR)
 supersedes:
 constitution_satisfies:
@@ -114,4 +114,4 @@ setOpen(e.currentTarget.open)}>`. An effect re-syncs `open` to true when
 ## Open questions
 
 - [ ] Q: Is the console error really from this form, not another page element?
-      — Owner: implementer, confirm in the browser before editing — A:
+      — Owner: implementer, confirm in the browser before editing — A: Not reproduced in-app (no local Supabase available to the implementer). Mechanism is standard browser behavior for a required empty input inside a collapsed details; the only required controls under a collapsible were these two inputs. Owner browser check deferred.

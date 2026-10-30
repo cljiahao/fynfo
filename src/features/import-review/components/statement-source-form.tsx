@@ -4,9 +4,12 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAmountVisibility } from '@/features/privacy';
+import { useRef, useState } from 'react';
 import { STATEMENT_BANKS } from '../constants';
 import type { DetectedStatementPeriod } from '../lib/statement-period';
 import type { StatementBank } from '../types';
+
+const PERIOD_ERROR = 'Enter both period dates, or use the dates from the PDF.';
 
 interface StatementSourceFormProps {
   controlId: string;
@@ -42,6 +45,31 @@ export function StatementSourceForm({
   onExtract,
 }: StatementSourceFormProps) {
   const { hidden, canReveal } = useAmountVisibility();
+  const [open, setOpen] = useState(manualPeriod);
+  const [prevManualPeriod, setPrevManualPeriod] = useState(manualPeriod);
+  const [periodError, setPeriodError] = useState<string | null>(null);
+  const fromRef = useRef<HTMLInputElement>(null);
+  const toRef = useRef<HTMLInputElement>(null);
+  const errorId = `${controlId}-period-error`;
+
+  // Adjust state during render so a manual edit elsewhere still reveals the block.
+  if (manualPeriod !== prevManualPeriod) {
+    setPrevManualPeriod(manualPeriod);
+    if (manualPeriod) setOpen(true);
+  }
+
+  function handleSubmit() {
+    if (!canReveal()) return;
+    if (manualPeriod && (!from || !to)) {
+      setPeriodError(PERIOD_ERROR);
+      setOpen(true);
+      // A collapsed details cannot take focus, so wait for it to expand.
+      requestAnimationFrame(() => (!from ? fromRef : toRef).current?.focus());
+      return;
+    }
+    setPeriodError(null);
+    onExtract();
+  }
   return (
     <section
       aria-label="Choose a statement"
@@ -51,7 +79,7 @@ export function StatementSourceForm({
         className="grid gap-3 sm:grid-cols-2"
         onSubmit={(event) => {
           event.preventDefault();
-          if (canReveal()) onExtract();
+          handleSubmit();
         }}
       >
         <div className="space-y-2">
@@ -108,7 +136,11 @@ export function StatementSourceForm({
             </span>
           </div>
         </div>
-        <details open={manualPeriod} className="space-y-3 sm:col-span-2">
+        <details
+          open={open}
+          onToggle={(event) => setOpen(event.currentTarget.open)}
+          className="space-y-3 sm:col-span-2"
+        >
           <summary className="text-muted-foreground cursor-pointer text-sm">
             Dates (optional)
           </summary>
@@ -126,10 +158,14 @@ export function StatementSourceForm({
                 disabled={hidden}
                 id={`${controlId}-from`}
                 type="date"
+                ref={fromRef}
                 value={hidden ? '' : from}
-                required={manualPeriod}
+                aria-invalid={periodError && !from ? true : undefined}
+                aria-describedby={periodError ? errorId : undefined}
                 onChange={(event) => {
-                  if (canReveal()) onPeriodChange('from', event.target.value);
+                  if (!canReveal()) return;
+                  setPeriodError(null);
+                  onPeriodChange('from', event.target.value);
                 }}
               />
             </div>
@@ -139,14 +175,23 @@ export function StatementSourceForm({
                 disabled={hidden}
                 id={`${controlId}-to`}
                 type="date"
+                ref={toRef}
                 value={hidden ? '' : to}
-                required={manualPeriod}
+                aria-invalid={periodError && !to ? true : undefined}
+                aria-describedby={periodError ? errorId : undefined}
                 onChange={(event) => {
-                  if (canReveal()) onPeriodChange('to', event.target.value);
+                  if (!canReveal()) return;
+                  setPeriodError(null);
+                  onPeriodChange('to', event.target.value);
                 }}
               />
             </div>
           </div>
+          {periodError && (
+            <p id={errorId} role="alert" className="text-destructive text-sm">
+              {periodError}
+            </p>
+          )}
           {manualPeriod && (
             <Button
               type="button"
@@ -154,7 +199,9 @@ export function StatementSourceForm({
               className="h-auto p-0"
               disabled={hidden}
               onClick={() => {
-                if (canReveal()) onUsePdfDates();
+                if (!canReveal()) return;
+                setPeriodError(null);
+                onUsePdfDates();
               }}
             >
               Use dates from PDF
