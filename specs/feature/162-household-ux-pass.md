@@ -2,10 +2,10 @@
 id: '162'
 slug: household-ux-pass
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-10-30
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-10-30
 shipped:
 impl_pr:
 supersedes:
@@ -505,25 +505,25 @@ jsdom per-file opt-in (`// @vitest-environment jsdom`, Testing Library), as in
 
 ## Open questions
 
-- [ ] Q1: Partner colour. `--chart-4` purple (recommended; clearly not the
+- [x] Q1: Partner colour. `--chart-4` purple (recommended; clearly not the
       profit green or warning amber) or `--chart-3` amber (best blue/amber colour-vision
       contrast, but reads as a warning)? The brief's `--chart-2` is the same
-      green as `gain` and is not an option. — Owner: Clarence — A:
-- [ ] Q2: Currency shows "$" because `formatSGD` is `en-SG` and used in
+      green as `gain` and is not an option. — Owner: Clarence — A: `--chart-4` purple.
+- [x] Q2: Currency shows "$" because `formatSGD` is `en-SG` and used in
       about 30 non-test files
       places. Leave as is (recommended; Fynfo is single-currency SGD), change
       app-wide to "S$", or household-only "S$" (creates inconsistency)? —
-      Owner: Clarence — A:
-- [ ] Q3: Dialog close button is 16px in the shared
+      Owner: Clarence — A: Keep "$".
+- [x] Q3: Dialog close button is 16px in the shared
       `src/components/ui/dialog.tsx`. Approve an invisible hit-area expansion
       there (app-wide, no visual change, recommended), or leave it? — Owner:
-      Clarence — A:
-- [ ] Q4: Undo window 6 seconds, and a closed tab inside the window drops the
+      Clarence — A: Approved; invisible hit-area expansion in `dialog.tsx`.
+- [x] Q4: Undo window 6 seconds, and a closed tab inside the window drops the
       delete. Acceptable, or commit immediately and offer re-add instead? —
-      Owner: Clarence — A:
-- [ ] Q5: Spending-tab header action "Add spending" (focus the amount field).
+      Owner: Clarence — A: 6 s window is acceptable; a closed tab inside it drops the delete.
+- [x] Q5: Spending-tab header action "Add spending" (focus the amount field).
       Prefer "New trip" or no action (reserve the space only)? — Owner:
-      Clarence — A:
-- [ ] Q6: Confirm only goal and trip deletes (cascading, large) and use Undo for
+      Clarence — A: "Add spending".
+- [x] Q6: Confirm only goal and trip deletes (cascading, large) and use Undo for
       entry / item / payment. Item delete also removes its payments; keep it on
-      Undo or move it to Confirm? — Owner: Clarence — A:
+      Undo or move it to Confirm? — Owner: Clarence — A: Keep item delete on Undo.
