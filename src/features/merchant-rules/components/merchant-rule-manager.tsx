@@ -8,6 +8,9 @@ import { useAmountVisibility } from '@/features/privacy';
 import { useId, useState } from 'react';
 import {
   MERCHANT_BANKS,
+  MERCHANT_MATCH_MODE_LABELS,
+  MERCHANT_MATCH_MODE_SHORT_LABELS,
+  MERCHANT_MATCH_MODES,
   MERCHANT_RULE_LIMITS,
   MERCHANT_RULES_PER_PAGE,
 } from '../constants';
@@ -217,7 +220,7 @@ export function MerchantRuleManager({
                     <div className="min-w-0">
                       <p className="font-medium break-words">{rule.label}</p>
                       <p className="text-muted-foreground text-sm break-words">
-                        {rule.matchMode === 'exact' ? 'Exact' : 'Phrase'}:{' '}
+                        {MERCHANT_MATCH_MODE_SHORT_LABELS[rule.matchMode]}:{' '}
                         {rule.matchText} ·{' '}
                         {rule.bank?.toUpperCase() ?? 'All banks'} ·{' '}
                         {rule.enabled ? 'Active' : 'Paused'}
@@ -351,16 +354,23 @@ export function MerchantRuleManager({
                     id={`${id}-mode`}
                     className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
                     value={draft.matchMode}
-                    onChange={(e) =>
-                      change({
-                        matchMode:
-                          e.target.value === 'exact' ? 'exact' : 'phrase',
-                      })
-                    }
+                    onChange={(e) => {
+                      const mode = MERCHANT_MATCH_MODES.find(
+                        (m) => m === e.target.value
+                      );
+                      if (mode) change({ matchMode: mode });
+                    }}
                   >
-                    <option value="exact">Exact text</option>
-                    <option value="phrase">Contains these words</option>
+                    {MERCHANT_MATCH_MODES.map((mode) => (
+                      <option key={mode} value={mode}>
+                        {MERCHANT_MATCH_MODE_LABELS[mode]}
+                      </option>
+                    ))}
                   </select>
+                  <p className="text-muted-foreground text-xs">
+                    &quot;Starts with word&quot; matches &quot;mcdonald&quot; in
+                    MCDONALDS and McDonald&apos;s.
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor={`${id}-display`}>Item / Brand</Label>

@@ -26,6 +26,35 @@ function phraseMatches(source: string, phrase: string): boolean {
   return false;
 }
 
+// Apostrophes vanish (not split) so "McDonald's" reads as "mcdonalds";
+// all other punctuation separates words.
+function wordsForPrefix(value: string): string[] {
+  return normalizeMerchant(value)
+    .replace(/['’‘ʼ]/gu, '')
+    .replace(/[^\p{L}\p{M}\p{N}]+/gu, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean);
+}
+
+function startsWithWordMatches(source: string, pattern: string): boolean {
+  const patternWords = wordsForPrefix(pattern);
+  if (!patternWords.length) return false;
+  const sourceWords = wordsForPrefix(source);
+  const head = patternWords.slice(0, -1);
+  const last = patternWords[patternWords.length - 1];
+  for (let i = 0; i + patternWords.length <= sourceWords.length; i++) {
+    if (
+      head.every((word, offset) => sourceWords[i + offset] === word) &&
+      sourceWords[i + head.length].startsWith(last)
+    )
+      return true;
+  }
+  return false;
+}
+
+const TIER_ORDER = ['exact', 'phrase', 'starts'] as const;
+
 export function matchMerchantRules(
   originalDescription: string,
   bank: MerchantBank,
@@ -37,14 +66,15 @@ export function matchMerchantRules(
       return false;
     const pattern = normalizeMerchant(rule.matchText);
     if (!pattern || !/[\p{L}\p{N}]/u.test(pattern)) return false;
-    return rule.matchMode === 'exact'
-      ? source === pattern
-      : phraseMatches(source, pattern);
+    if (rule.matchMode === 'exact') return source === pattern;
+    if (rule.matchMode === 'phrase') return phraseMatches(source, pattern);
+    return startsWithWordMatches(source, pattern);
   });
-  const exact = matches.filter((rule) => rule.matchMode === 'exact');
-  const winners = exact.length ? exact : matches;
-  if (!winners.length) return { status: 'none' };
-  const tier = exact.length ? 'exact' : 'phrase';
+  const tier = TIER_ORDER.find((mode) =>
+    matches.some((rule) => rule.matchMode === mode)
+  );
+  if (!tier) return { status: 'none' };
+  const winners = matches.filter((rule) => rule.matchMode === tier);
   const first = winners[0];
   if (
     winners.some(

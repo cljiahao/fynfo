@@ -98,6 +98,21 @@ it('previews source matches and saves only on explicit activation', async () => 
     'groceries'
   );
 });
+it('offers the starts mode, saves it and lists it with a short label', async () => {
+  await fill();
+  expect(
+    screen.getByRole('option', { name: 'Starts with word' })
+  ).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Match type'), {
+    target: { value: 'starts' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save rule' }));
+  await screen.findByText(
+    'Merchant rules saved. Existing expenses are unchanged.'
+  );
+  expect(mocks.save.mock.calls[0][0].payload.rules[0].matchMode).toBe('starts');
+  expect(screen.getByText(/Starts with: INVENTED MARKET/)).toBeInTheDocument();
+});
 it('preserves draft fields and masks native values through Hide/Show', async () => {
   await fill();
   fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
