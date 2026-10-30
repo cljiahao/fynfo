@@ -21,6 +21,8 @@ export const createGoalSchema = z.object({
   targetDate: z.string().regex(ISO_DATE, 'date must be ISO-8601').optional(),
 });
 
+export const updateGoalSchema = createGoalSchema.extend({ goalId: z.uuid() });
+
 export const addContributionSchema = z.object({
   goalId: z.uuid(),
   amount: z.number().positive().finite(),
@@ -67,6 +69,7 @@ export const addSpendingSchema = z.object({
 export type CreateHouseholdInput = z.infer<typeof createHouseholdSchema>;
 export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>;
 export type CreateGoalInput = z.infer<typeof createGoalSchema>;
+export type UpdateGoalInput = z.infer<typeof updateGoalSchema>;
 export type AddContributionInput = z.infer<typeof addContributionSchema>;
 export type AddGoalItemInput = z.infer<typeof addGoalItemSchema>;
 export type AddItemPaymentInput = z.infer<typeof addItemPaymentSchema>;

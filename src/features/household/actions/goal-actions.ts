@@ -2,7 +2,7 @@
 
 import { requireHouseholdContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
-import { throwIfSupabaseError } from '@/lib/errors';
+import { AppError, throwIfSupabaseError } from '@/lib/errors';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { ROW_UUID } from '@/lib/zod-utils';
@@ -14,6 +14,7 @@ import {
   addGoalItemSchema,
   addItemPaymentSchema,
   createGoalSchema,
+  updateGoalSchema,
 } from '../schemas';
 import type {
   GoalContribution,
@@ -236,6 +237,31 @@ export async function createGoal(input: unknown): Promise<void> {
     created_by: userId,
   });
   throwIfSupabaseError(error, 'household goal create');
+}
+
+/** Re-seals a goal's name and target under K_h; an omitted date clears it. */
+export async function updateGoal(input: unknown): Promise<void> {
+  const data = parseOrThrow(
+    updateGoalSchema,
+    input,
+    'household.goal.update.input'
+  );
+  const { kh, supabase } = await requireHouseholdContext();
+
+  const { data: rows, error } = await supabase
+    .from('household_goals')
+    .update({
+      name: encryptPayload(data.name, kh),
+      target_amount: encryptPayload(data.targetAmount.toString(), kh),
+      target_date: data.targetDate ?? null,
+    })
+    .eq('id', data.goalId)
+    .select('id');
+  throwIfSupabaseError(error, 'household goal update');
+  // RLS hides rows from non-members without an error, so zero rows is not a save.
+  if (!rows || rows.length === 0) {
+    throw new AppError('NOT_FOUND', 'Goal not found');
+  }
 }
 
 /** Logs a contribution toward a goal, sealing amount + note under K_h. */

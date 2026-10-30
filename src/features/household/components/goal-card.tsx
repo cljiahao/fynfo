@@ -8,17 +8,23 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { formatSGD } from '@/lib/utils/currency';
 import { format } from 'date-fns';
-import { Check, Plus, Trash2 } from 'lucide-react';
+import { Check, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { HouseholdGoal } from '../types';
 import { ProjectBreakdown } from './project-breakdown';
 
 interface GoalCardProps {
   goal: HouseholdGoal;
   onContribute: (goal: HouseholdGoal) => void;
+  onEdit: (goal: HouseholdGoal) => void;
   onDelete: (goal: HouseholdGoal) => void;
 }
 
-export function GoalCard({ goal, onContribute, onDelete }: GoalCardProps) {
+export function GoalCard({
+  goal,
+  onContribute,
+  onEdit,
+  onDelete,
+}: GoalCardProps) {
   const { hidden, mask, canReveal } = useAmountVisibility();
   const self = goal.contributions
     .filter((c) => c.isSelf)
@@ -111,18 +117,32 @@ export function GoalCard({ goal, onContribute, onDelete }: GoalCardProps) {
             <Plus className="mr-1 size-3.5" />
             Add to goal
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-muted-foreground hover:text-destructive"
-            disabled={hidden}
-            onClick={() => {
-              if (canReveal()) onDelete(goal);
-            }}
-            aria-label={`Delete goal ${mask(goal.name)}`}
-          >
-            <Trash2 className="size-4" />
-          </Button>
+          <div className="flex items-center">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-muted-foreground"
+              disabled={hidden}
+              onClick={() => {
+                if (canReveal()) onEdit(goal);
+              }}
+              aria-label={`Edit goal ${mask(goal.name)}`}
+            >
+              <Pencil className="size-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-muted-foreground hover:text-destructive"
+              disabled={hidden}
+              onClick={() => {
+                if (canReveal()) onDelete(goal);
+              }}
+              aria-label={`Delete goal ${mask(goal.name)}`}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

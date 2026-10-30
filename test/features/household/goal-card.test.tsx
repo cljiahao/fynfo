@@ -35,7 +35,12 @@ function mountGoal(target: number, contributed: number) {
   };
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <GoalCard goal={goal} onContribute={vi.fn()} onDelete={vi.fn()} />
+      <GoalCard
+        goal={goal}
+        onContribute={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />
     </QueryClientProvider>
   );
   return progress;

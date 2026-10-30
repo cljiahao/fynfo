@@ -30,6 +30,7 @@ const actions = vi.hoisted(() => ({
   deleteGoalItem: vi.fn(),
   deleteItemPayment: vi.fn(),
   deleteGoal: vi.fn(),
+  updateGoal: vi.fn(),
   getGoals: vi.fn(),
 }));
 const notices = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));

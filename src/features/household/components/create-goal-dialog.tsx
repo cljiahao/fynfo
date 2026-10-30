@@ -15,22 +15,33 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useCreateGoal } from '../hooks/use-household';
+import { useCreateGoal, useUpdateGoal } from '../hooks/use-household';
+import type { HouseholdGoal } from '../types';
 
 interface CreateGoalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** When set, the dialog edits this goal; mount with key={goal.id} to re-seed. */
+  goal?: HouseholdGoal | null;
 }
 
 export function CreateGoalDialog({
   open,
   onOpenChange,
+  goal,
 }: CreateGoalDialogProps) {
   const { hidden, canReveal } = useAmountVisibility();
   const createGoal = useCreateGoal();
-  const [name, setName] = useState('');
-  const [targetAmount, setTargetAmount] = useState('');
-  const [targetDate, setTargetDate] = useState('');
+  const updateGoal = useUpdateGoal();
+  const [name, setName] = useState(goal?.name ?? '');
+  const [targetAmount, setTargetAmount] = useState(
+    goal ? String(goal.targetAmount) : ''
+  );
+  const [targetDate, setTargetDate] = useState(
+    goal?.targetDate?.slice(0, 10) ?? ''
+  );
+  const isEdit = Boolean(goal);
+  const pending = createGoal.isPending || updateGoal.isPending;
 
   const reset = () => {
     setName('');
@@ -45,30 +56,43 @@ export function CreateGoalDialog({
       toast.error('Name and a target amount are required');
       return;
     }
-    createGoal.mutate(
-      {
-        name: name.trim(),
-        targetAmount: amount,
-        targetDate: targetDate || undefined,
+    const values = {
+      name: name.trim(),
+      targetAmount: amount,
+      targetDate: targetDate || undefined,
+    };
+    if (goal) {
+      updateGoal.mutate(
+        { ...values, goalId: goal.id },
+        {
+          onSuccess: () => {
+            toast.success('Goal updated');
+            onOpenChange(false);
+          },
+          onError: () => toast.error('Could not update the goal'),
+        }
+      );
+      return;
+    }
+    createGoal.mutate(values, {
+      onSuccess: () => {
+        toast.success('Goal created');
+        reset();
+        onOpenChange(false);
       },
-      {
-        onSuccess: () => {
-          toast.success('Goal created');
-          reset();
-          onOpenChange(false);
-        },
-        onError: () => toast.error('Could not create the goal'),
-      }
-    );
+      onError: () => toast.error('Could not create the goal'),
+    });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New goal</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit goal' : 'New goal'}</DialogTitle>
           <DialogDescription>
-            A big-item you and your partner are saving toward.
+            {isEdit
+              ? 'Change the name, target amount or date.'
+              : 'A big-item you and your partner are saving toward.'}
           </DialogDescription>
         </DialogHeader>
         <AmountsHiddenNotice />
@@ -119,12 +143,12 @@ export function CreateGoalDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={hidden || createGoal.isPending}
+            disabled={hidden || pending}
           >
             Cancel
           </Button>
-          <Button onClick={submit} disabled={createGoal.isPending}>
-            Create goal
+          <Button onClick={submit} disabled={pending}>
+            {isEdit ? 'Save changes' : 'Create goal'}
           </Button>
         </DialogFooter>
       </DialogContent>

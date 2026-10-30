@@ -193,3 +193,76 @@ describe('goal-actions — deleteGoal', () => {
     ).rejects.toThrow('household goal delete failed');
   });
 });
+
+describe('goal-actions — updateGoal', () => {
+  const GOAL_ID = '3f2b8c1e-5d4a-4b6f-9a7e-1c2d3e4f5a6b';
+  const VALID = {
+    goalId: GOAL_ID,
+    name: 'Sofa',
+    targetAmount: 1200,
+    targetDate: '2026-12-01',
+  };
+  const UPDATED = { selectDataByTable: { household_goals: [{ id: GOAL_ID }] } };
+
+  it('seals name + target amount and filters on the goal id', async () => {
+    const fake = setSupabase(UPDATED);
+    const { updateGoal } =
+      await import('@/features/household/actions/goal-actions');
+    await updateGoal(VALID);
+
+    const row = fake.calls.update[0] as Record<string, string>;
+    expect(row.name).not.toBe('Sofa');
+    expect(row.target_amount).not.toBe('1200');
+    expect(decryptPayload(row.name, KH)).toBe('Sofa');
+    expect(decryptPayload(row.target_amount, KH)).toBe('1200');
+    expect(row.target_date).toBe('2026-12-01');
+    expect(
+      fake.calls.queries.find((q) => q.operation === 'update')?.eq
+    ).toEqual([{ column: 'id', value: GOAL_ID }]);
+  });
+
+  it('writes null when the target date is omitted', async () => {
+    const fake = setSupabase(UPDATED);
+    const { updateGoal } =
+      await import('@/features/household/actions/goal-actions');
+    await updateGoal({ ...VALID, targetDate: undefined });
+    expect((fake.calls.update[0] as Record<string, unknown>).target_date).toBe(
+      null
+    );
+  });
+
+  it.each([
+    ['bad uuid', { goalId: 'nope' }],
+    ['zero amount', { targetAmount: 0 }],
+    ['negative amount', { targetAmount: -5 }],
+    ['non-finite amount', { targetAmount: Number.POSITIVE_INFINITY }],
+    ['empty name', { name: '   ' }],
+    ['bad date', { targetDate: '01/12/2026' }],
+  ])('rejects %s before any DB call', async (_label, patch) => {
+    const fake = setSupabase(UPDATED);
+    const { updateGoal } =
+      await import('@/features/household/actions/goal-actions');
+    await expect(updateGoal({ ...VALID, ...patch })).rejects.toThrow();
+    expect(fake.calls.from).toHaveLength(0);
+    expect(fake.calls.update).toHaveLength(0);
+  });
+
+  it('throws NOT_FOUND when no row was updated', async () => {
+    setSupabase({ selectDataByTable: { household_goals: [] } });
+    const { updateGoal } =
+      await import('@/features/household/actions/goal-actions');
+    await expect(updateGoal(VALID)).rejects.toMatchObject({
+      name: 'AppError',
+      code: 'NOT_FOUND',
+    });
+  });
+
+  it('surfaces an opaque error on an update failure', async () => {
+    setSupabase({ selectError: { message: 'permission denied' } });
+    const { updateGoal } =
+      await import('@/features/household/actions/goal-actions');
+    await expect(updateGoal(VALID)).rejects.toThrow(
+      'household goal update failed'
+    );
+  });
+});

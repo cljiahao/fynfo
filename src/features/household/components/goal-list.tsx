@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useDeleteGoal } from '../hooks/use-household';
 import type { HouseholdGoal } from '../types';
 import { AddContributionDialog } from './add-contribution-dialog';
+import { CreateGoalDialog } from './create-goal-dialog';
 import { GoalCard } from './goal-card';
 
 export function GoalList({ goals }: { goals: HouseholdGoal[] }) {
@@ -16,6 +17,8 @@ export function GoalList({ goals }: { goals: HouseholdGoal[] }) {
   const [contributingTo, setContributingTo] = useState<HouseholdGoal | null>(
     null
   );
+
+  const [editing, setEditing] = useState<HouseholdGoal | null>(null);
 
   const remove = (goal: HouseholdGoal) => {
     if (!canReveal()) return;
@@ -45,10 +48,17 @@ export function GoalList({ goals }: { goals: HouseholdGoal[] }) {
             key={goal.id}
             goal={goal}
             onContribute={setContributingTo}
+            onEdit={setEditing}
             onDelete={remove}
           />
         ))}
       </div>
+      <CreateGoalDialog
+        key={editing?.id}
+        goal={editing}
+        open={editing !== null}
+        onOpenChange={(open) => !open && setEditing(null)}
+      />
       <AddContributionDialog
         goal={contributingTo}
         onOpenChange={(open) => !open && setContributingTo(null)}

@@ -11,6 +11,7 @@ import {
   deleteGoalItem,
   deleteItemPayment,
   getGoals,
+  updateGoal,
 } from '../actions/goal-actions';
 import {
   acceptInvite,
@@ -119,6 +120,10 @@ function useGoalsMutation<T>(mutationFn: (input: T) => Promise<void>) {
     mutationFn,
     onSuccess: () => refreshQueriesAfterMutation(qc, GOALS_KEY),
   });
+}
+
+export function useUpdateGoal() {
+  return useGoalsMutation(updateGoal);
 }
 
 export function useAddGoalItem() {

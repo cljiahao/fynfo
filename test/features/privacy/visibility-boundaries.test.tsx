@@ -175,6 +175,7 @@ it('keeps an already-open split draft and blocks hidden confirmation', () => {
 it('conceals household values and progress geometry and prevents hidden goal actions', () => {
   const contribute = vi.fn();
   const remove = vi.fn();
+  const edit = vi.fn();
   render(
     <QueryClientProvider client={new QueryClient()}>
       <AmountVisibilityProvider>
@@ -195,6 +196,7 @@ it('conceals household values and progress geometry and prevents hidden goal act
             contributions: [],
           }}
           onContribute={contribute}
+          onEdit={edit}
           onDelete={remove}
         />
       </AmountVisibilityProvider>
@@ -207,7 +209,9 @@ it('conceals household values and progress geometry and prevents hidden goal act
   expect(document.querySelector('[style*="width"]')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Add to goal' }));
   fireEvent.click(screen.getByRole('button', { name: 'Delete goal Hidden' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Edit goal Hidden' }));
   expect(contribute).not.toHaveBeenCalled();
+  expect(edit).not.toHaveBeenCalled();
   expect(remove).not.toHaveBeenCalled();
 });
 
