@@ -124,6 +124,83 @@ describe('merchant comparison contract', () => {
     });
     expect(JSON.stringify(rules)).toBe(before);
   });
+  describe('starts-with-word mode', () => {
+    const starts = (matchText: string): MerchantRule => ({
+      ...base,
+      matchMode: 'starts',
+      matchText,
+    });
+    const status = (description: string, rule: MerchantRule) =>
+      matchMerchantRules(description, 'uob', [rule]).status;
+    it.each([
+      'MCDONALDS',
+      "MCDONALD'S",
+      "McDonald's Orchard",
+      'MCDONALD’S',
+      'SG MCDONALDS 123',
+    ])('matches a word prefix: %s', (description) => {
+      expect(status(description, starts('mcdonald'))).toBe('suggestion');
+    });
+    it('does not match inside a word', () => {
+      expect(status('XMCDONALD', starts('mcdonald'))).toBe('none');
+    });
+    it('splits hyphens and dots into words', () => {
+      expect(status('E-GRAB RIDE', starts('grab'))).toBe('suggestion');
+      expect(status('E.GRAB RIDE', starts('grab'))).toBe('suggestion');
+      expect(status('EGRAB', starts('grab'))).toBe('none');
+    });
+    it('matches multi-word patterns in sequence with a prefix last word', () => {
+      const rule = starts('grab food');
+      expect(status('GRAB FOODS SG', rule)).toBe('suggestion');
+      expect(status('GRAB TAXI FOOD', rule)).toBe('none');
+      expect(status('GRABFOOD', rule)).toBe('none');
+      expect(status('GRABS FOOD', rule)).toBe('none');
+    });
+    it('ignores empty and punctuation-only patterns', () => {
+      for (const matchText of ['', '---', "'"])
+        expect(status('MCDONALDS', starts(matchText))).toBe('none');
+    });
+    it('ranks exact over phrase over starts in either rule order', () => {
+      const exact = {
+        ...base,
+        id: otherId,
+        matchMode: 'exact' as const,
+        matchText: 'mcdonalds',
+        displayName: 'Exact',
+      };
+      const phrase = {
+        ...base,
+        id: otherId,
+        matchText: 'mcdonalds',
+        displayName: 'Phrase',
+      };
+      const prefix = starts('mcdonald');
+      for (const rules of [
+        [exact, prefix],
+        [prefix, exact],
+      ])
+        expect(matchMerchantRules('MCDONALDS', 'uob', rules)).toMatchObject({
+          status: 'suggestion',
+          tier: 'exact',
+        });
+      for (const rules of [
+        [phrase, prefix],
+        [prefix, phrase],
+      ])
+        expect(matchMerchantRules('MCDONALDS', 'uob', rules)).toMatchObject({
+          status: 'suggestion',
+          tier: 'phrase',
+        });
+    });
+    it('reports conflict within the starts tier', () => {
+      expect(
+        matchMerchantRules('MCDONALDS', 'uob', [
+          starts('mcdonald'),
+          { ...starts('mcdon'), id: otherId, displayName: 'Other' },
+        ])
+      ).toMatchObject({ status: 'conflict', tier: 'starts' });
+    });
+  });
   it('does not treat empty or punctuation-only patterns as catch-all matches', () => {
     for (const matchText of ['', ' ', '---'])
       expect(

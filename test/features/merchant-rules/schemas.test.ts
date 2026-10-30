@@ -87,6 +87,19 @@ describe('merchant rule boundaries', () => {
       merchantRulebookPayloadSchema.safeParse({ ...payload, rules }).success
     ).toBe(false);
   });
+  it('parses v1 payloads with and without the starts mode and rejects unknown modes', () => {
+    const withMode = (matchMode: string) => ({
+      ...payload,
+      rules: [{ ...rule, matchMode }],
+    });
+    for (const mode of ['exact', 'phrase', 'starts'])
+      expect(
+        merchantRulebookPayloadSchema.safeParse(withMode(mode)).success
+      ).toBe(true);
+    expect(
+      merchantRulebookPayloadSchema.safeParse(withMode('regex')).success
+    ).toBe(false);
+  });
   it('accepts an empty retained rulebook and rejects unknown envelope versions/fields', () => {
     expect(
       merchantRulebookPayloadSchema.safeParse({ ...payload, rules: [] }).success
