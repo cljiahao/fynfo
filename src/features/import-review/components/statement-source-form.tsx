@@ -56,6 +56,7 @@ export function StatementSourceForm({
   if (manualPeriod !== prevManualPeriod) {
     setPrevManualPeriod(manualPeriod);
     if (manualPeriod) setOpen(true);
+    else setPeriodError(null);
   }
 
   function handleSubmit() {
@@ -161,7 +162,7 @@ export function StatementSourceForm({
                 ref={fromRef}
                 value={hidden ? '' : from}
                 aria-invalid={periodError && !from ? true : undefined}
-                aria-describedby={periodError ? errorId : undefined}
+                aria-describedby={periodError && !from ? errorId : undefined}
                 onChange={(event) => {
                   if (!canReveal()) return;
                   setPeriodError(null);
@@ -178,7 +179,7 @@ export function StatementSourceForm({
                 ref={toRef}
                 value={hidden ? '' : to}
                 aria-invalid={periodError && !to ? true : undefined}
-                aria-describedby={periodError ? errorId : undefined}
+                aria-describedby={periodError && !to ? errorId : undefined}
                 onChange={(event) => {
                   if (!canReveal()) return;
                   setPeriodError(null);
