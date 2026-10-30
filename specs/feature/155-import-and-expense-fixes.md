@@ -2,11 +2,11 @@
 id: '155'
 slug: import-and-expense-fixes
 area: feature
-status: approved
+status: shipped
 author: Claude Code
 created: 2026-10-29
 approved: 2026-10-29
-shipped:
+shipped: 2026-10-29
 impl_pr: direct commit to main (no PR)
 supersedes:
 constitution_satisfies:
