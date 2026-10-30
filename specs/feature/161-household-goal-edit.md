@@ -2,10 +2,10 @@
 id: '161'
 slug: household-goal-edit
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-10-30
-approved:
+approved: 2026-10-30
 shipped:
 impl_pr:
 supersedes:
@@ -165,10 +165,10 @@ marks the goal funded. Failure mode is closed: validation, auth, `K_h` and
 zero-row checks all throw opaque errors, and nothing reports success on a
 no-op.
 
-## Open questions
+## Decisions
 
-1. Should clearing the target date be supported? This spec says yes: an
-   omitted date writes `null`. The alternative keeps the old date unless a new
-   one is supplied.
-2. Allow a target below the already-contributed total? This spec says yes (the
-   goal shows Funded); the alternative rejects it.
+Owner approved on 2026-10-30 with both open questions answered yes:
+
+1. Clearing the target date is supported: an omitted date writes `null`.
+2. A target below the already-contributed total is allowed; the goal shows
+   Funded.
