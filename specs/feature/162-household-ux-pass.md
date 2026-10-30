@@ -173,24 +173,41 @@ onConfirm, pending })`. The confirm button uses `variant="destructive"`.
   a re-insert would mint a new id, change `created_at` and, for payments,
   re-run encryption of the amount. Deferring leaves the row untouched until the
   user can no longer undo.
-- New hook `src/features/household/hooks/use-undoable-delete.ts`:
-  `useUndoableDelete({ commit, label, delayMs = 6000 })` returns
-  `{ pendingIds: ReadonlySet<string>, request(id): void }`.
-  - `request(id)` adds `id` to `pendingIds` (the consumer filters those rows
-    out of the list), shows `toast(label, { duration: delayMs, action: { label:
-'Undo', onClick } })`, and starts its own `setTimeout(delayMs)`.
-  - Undo clears the timer and removes `id` from `pendingIds`; nothing is sent.
-  - On timeout it calls `commit(id)` (the existing mutation). On error the id
-    leaves `pendingIds` so the row reappears, and the existing error toast
-    fires.
-  - The hook's timer, not Sonner's `onAutoClose`, is authoritative, so a
+- New provider and hook `src/features/household/hooks/use-undoable-delete.tsx`:
+  `UndoableDeleteProvider` plus `useUndoableDelete()` returning
+  `{ pendingIds: ReadonlySet<string>, request({ id, label, commit, errorMessage }): void }`,
+  where `commit(): Promise<void>` is the existing mutation called as
+  `mutateAsync` (so the result survives the caller unmounting).
+  - **Lifted above the tabs.** Radix `TabsContent` unmounts its panel on a tab
+    switch, and `ProjectBreakdown` / `EntryList` live inside those panels. A
+    hook owned by those components would unmount mid-window, flush the delete
+    early and leave a dead Undo toast. So the provider is mounted once in
+    `HouseholdOverview` (outside `Tabs`), owns all timers, and the 6s window
+    survives tab switches. Consumers only call `request` and filter their
+    rows with `pendingIds`.
+  - Timers live in a `Map<id, timeout>`. `request` is a no-op while `id` is in
+    the map (guards double-click and double-fire). Undo and the timeout both
+    delete the map entry first, so a commit cannot run twice.
+  - `request` shows `toast(label, { id: toastId, duration: delayMs, action: { label: 'Undo', onClick } })`
+    and starts `setTimeout(delayMs)` (`delayMs = 6000`). Undo clears the timer
+    and the map entry and removes the id from `pendingIds`; nothing is sent.
+  - On timeout it calls `commit()`. The id stays in `pendingIds` until the
+    commit has resolved and the goals / spaces query has refetched (the
+    existing mutation `onSuccess` returns `refreshQueriesAfterMutation`; the
+    implementer verifies it is awaited, otherwise the provider awaits the
+    refetch), so the row cannot flash back. On error the id leaves
+    `pendingIds` (row reappears) and `errorMessage` is toasted.
+  - The timer, not Sonner's `onAutoClose`, is authoritative, so a
     swipe-dismissed toast does not commit early and tests can use fake timers.
-  - Pending deletes are flushed (committed) on unmount so navigating to the
-    other tab inside the window does not silently cancel the user's intent.
-    Closing the browser tab inside the window loses the delete and the row
-    reappears; accepted (Open question 4).
-  - The toast text uses `mask()` for any name; with amounts hidden the buttons
-    are disabled so a masked delete is not reachable.
+  - **Flush only when the provider itself unmounts** (leaving the page): each
+    pending timer is cleared, its `commit()` is called, and
+    `toast.dismiss(toastId)` removes the now-useless Undo toast. Closing the
+    browser tab inside the window loses the delete and the row reappears;
+    accepted (Open question 4).
+  - **Toast label uses non-amount fields only** (category, item name, "Payment",
+    "Entry"), each through `mask()`; it never contains a figure. With amounts
+    hidden the delete buttons are disabled, so a masked delete is not
+    reachable.
 - Delete buttons: `variant="ghost"` with `text-muted-foreground
 hover:text-destructive` stays for the resting state (icon-only buttons stay
   quiet), and the confirm button in the dialog is the `destructive` variant.
@@ -252,13 +269,13 @@ ${format(date, 'dd MMM yyyy')} by ${You|Partner}`.
   (`actions/household-actions.ts:80-108`) also counts the roster:
   `household_members` rows where `household_id` equals the caller's, selected
   with `{ count: 'exact', head: true }`; the two-member cap trigger
-  (`20260626000000_add_household.sql:70-88`) bounds it at 2. `HouseholdSummary`
+  (`20260626000000_add_household.sql:70-88`) bounds it at 2; the UI compares against `HOUSEHOLD_MEMBER_CAP` (`constants.ts:5`), never a literal 2. `HouseholdSummary`
   gains `memberCount: number`. The overview renders `InvitePanel` only when
-  `isOwner && memberCount < 2`. After the partner joins nothing replaces it;
+  `isOwner && memberCount < HOUSEHOLD_MEMBER_CAP`. After the partner joins nothing replaces it;
   the header stays clean. No encrypted data is read.
 - **Stable header.** `PageHeader` action slot always holds a primary action of
   the same size: Goals tab "New goal"; Spending tab "Add spending", which
-  scrolls to and focuses the quick-add Amount field (stable id from a new
+  scrolls to and focuses the quick-add Amount field (stable id from
   `constants.ts`). The slot gets a fixed `min-h-9` wrapper so the header height
   never changes, including while goals load or when the Spending tab has no space
   yet (button absent, height reserved).
@@ -275,21 +292,30 @@ ${format(date, 'dd MMM yyyy')} by ${You|Partner}`.
   Classes: `fill-brand` / `bg-brand` and `fill-chart-4` / `bg-chart-4` (both
   tokens already map to Tailwind colours: `--color-brand`,
   `--color-chart-4` in `globals.css:50,69`). No new tokens.
-- Single source: `src/features/household/constants.ts` (new) exports
+- Single source: `src/features/household/constants.ts` (existing: already holds `INVITE_TTL_HOURS` and `HOUSEHOLD_MEMBER_CAP`) gains
   `PERSON_COLORS = { you: { fill: 'fill-brand', dot: 'bg-brand' }, partner: {
 fill: 'fill-chart-4', dot: 'bg-chart-4' } }` and `QUICK_ADD_AMOUNT_ID`. Class
   strings are literal so Tailwind sees them. Used by `goal-card.tsx` and
   `spending-summary.tsx`.
 - **Funded moment.** When `funded` flips from false to true while the card is
   mounted (contribution added, or target edited down), the Funded pill and the
-  border play a one-shot entrance: a CSS `@keyframes` scale/fade defined with
-  the pill, class applied once via a `useRef` of the previous `funded` value (no
-  effect-driven setState; the repo lint forbids it). Initial render of an
-  already-funded goal does not animate. Respects the existing global
-  `prefers-reduced-motion` guard (`globals.css:259-268`, which flattens animation
-  duration), so no extra media query. No animation library. Funded colour stays
-  `gain` because funded is a good outcome, which is the intended meaning of that
-  token.
+  border play a one-shot entrance (CSS `@keyframes` scale/fade, defined with the
+  pill). The repo uses `eslint-config-next` (`eslint.config.mjs:2-3`), whose
+  React hooks rules (refs during render, set-state-in-effect) run under
+  `--max-warnings=0`, so no ref is read or written in render and no effect sets
+  state. Render-safe mechanism: a `useState` previous-value pair,
+  `const [prevFunded, setPrevFunded] = useState(funded)` and
+  `const [celebrate, setCelebrate] = useState(false)`; during render,
+  `if (funded !== prevFunded) { setPrevFunded(funded); setCelebrate(funded); }`
+  (React's documented derive-state-from-props pattern). The animation class is
+  applied while `celebrate` is true and cleared by
+  `onAnimationEnd={() => setCelebrate(false)}`. Initial render of an
+  already-funded goal does not animate because `prevFunded` starts equal to
+  `funded`. The implementer runs `pnpm lint` to confirm. Respects the existing
+  global `prefers-reduced-motion` guard (`globals.css:259-268`, which flattens
+  animation duration to 0.01ms, so `animationend` still fires and the class
+  clears). No animation library. Funded colour stays `gain` because funded is
+  a good outcome, which is the intended meaning of that token.
 
 ### 5. Layout and polish
 
@@ -323,17 +349,17 @@ fill: 'fill-chart-4', dot: 'bg-chart-4' } }` and `QUICK_ADD_AMOUNT_ID`. Class
   paid more is owed the difference." Shown always (it is one line); no
   per-user dismiss state.
 - **Currency "S$" vs "$"**: `formatSGD` (`src/lib/utils/currency.ts:21`) uses
-  `Intl.NumberFormat('en-SG', { currency: 'SGD' })`, which prints "$". It has 22
-  consumers across the app. **Not changed in this spec**; household-only "S$"
+  `Intl.NumberFormat('en-SG', { currency: 'SGD' })`, which prints "$". It is
+  used in 30 non-test files outside `currency.ts` (`formatSGD` or
+  `formatSGDWhole`; 37 counting `formatCurrency`). **Not changed in this spec**; household-only "S$"
   would make household and personal pages disagree. See Open question 2.
 
 ### Files and ownership
 
 New: `src/components/ui/alert-dialog.tsx`, `src/components/ui/tabs.tsx` (CLI),
-`src/features/household/constants.ts`,
 `src/features/household/components/confirm-delete-dialog.tsx`,
-`src/features/household/hooks/use-undoable-delete.ts`.
-Edited: `goal-card.tsx`, `goal-list.tsx`, `create-goal-dialog.tsx`,
+`src/features/household/hooks/use-undoable-delete.tsx`.
+Edited: `src/features/household/constants.ts`, `goal-card.tsx`, `goal-list.tsx`, `create-goal-dialog.tsx`,
 `add-contribution-dialog.tsx`, `shared-spending.tsx`, `project-breakdown.tsx`,
 `spending-summary.tsx`, `household-overview.tsx`, `types.ts`,
 `actions/household-actions.ts`, and (if Open question 3 is approved)
@@ -348,14 +374,14 @@ includes its own tests.
 - **Slice 0: foundation.** Owns: `src/components/ui/alert-dialog.tsx`,
   `src/components/ui/tabs.tsx` (shadcn CLI, confirm `package.json` unchanged),
   `src/components/ui/dialog.tsx` (only if approved),
-  `constants.ts`, `components/confirm-delete-dialog.tsx`,
-  `hooks/use-undoable-delete.ts`, and their tests
+  `constants.ts` (edit: add `PERSON_COLORS`, `QUICK_ADD_AMOUNT_ID`),
+  `components/confirm-delete-dialog.tsx`,
+  `hooks/use-undoable-delete.tsx`, and their tests
   (`test/features/household/confirm-delete-dialog.test.tsx`,
   `use-undoable-delete.test.tsx`).
 - **Slice A: goals.** Owns: `goal-card.tsx`, `goal-list.tsx`,
   `create-goal-dialog.tsx`, `add-contribution-dialog.tsx`, and
-  `goal-card.test.tsx`, `goal-edit.test.tsx`, `household-workflows.test.tsx`
-  (goal parts). Covers: confirm on goal delete, colours, Funded moment, sole
+  `goal-card.test.tsx`, `goal-edit.test.tsx`. Covers: confirm on goal delete, colours, Funded moment, sole
   span, masked track, 44px targets, h2, inline errors in both dialogs, edit
   prefill, empty-state CTA, `className` and `onCreate` props.
 - **Slice B: spending and breakdown.** Owns: `shared-spending.tsx`,
@@ -367,13 +393,16 @@ includes its own tests.
   h2 / h3, 44px targets.
 - **Slice C: overview and household data.** Owns: `household-overview.tsx`,
   `types.ts`, `actions/household-actions.ts`, and
-  `household-overview.test.tsx`, `household-actions.test.ts`. Covers: Tabs,
+  `household-overview.test.tsx`, `household-actions.test.ts`, and the whole of
+  `household-workflows.test.tsx` (Slices A and B do not touch it; C updates its
+  goal and spending flows for the new markup). Covers: mounting
+  `UndoableDeleteProvider` above `Tabs`, Tabs,
   stable header action and focus-to-amount, invite shown only while
-  `memberCount < 2`, `memberCount` in `getHousehold`.
+  `memberCount < HOUSEHOLD_MEMBER_CAP`, `memberCount` in `getHousehold`.
 
 Cross-slice contracts fixed up front by Slice 0 so A, B, C do not edit each
 other's files: `PERSON_COLORS`, `QUICK_ADD_AMOUNT_ID`, `ConfirmDeleteDialog`
-props, and `useUndoableDelete` signature (all in the Solution shape above).
+props, and `UndoableDeleteProvider` / `useUndoableDelete` signature (all in the Solution shape above).
 `GoalList` gets `onCreate` from the overview (Slice C passes it, Slice A
 declares it as an optional prop so either can merge first).
 
@@ -388,10 +417,16 @@ jsdom per-file opt-in (`// @vitest-environment jsdom`, Testing Library), as in
 - Confirm dialog gates delete: clicking Delete on a goal or trip opens the
   dialog and does not call the mutation; Cancel closes without calling it;
   Confirm calls it once; the confirm button is the destructive variant.
+- Undo window survives a tab switch: request an entry delete on Spending,
+  switch to Goals and back inside 6s; the mutation has not been called, the
+  Undo toast is still live and still works; after 6s it is called once. Leaving
+  the page (provider unmount) calls the commit once and `toast.dismiss` for the
+  toast. A second `request` for a pending id does nothing; Undo then timeout
+  never commits.
 - Undo cancels a deferred delete: entry / item / payment click hides the row
   and shows an "Undo" toast action; clicking Undo restores the row and the
   mutation is never called; letting `delayMs` elapse calls it once; a mutation
-  error restores the row; unmount inside the window flushes the commit.
+  error restores the row; provider unmount inside the window flushes the commit.
 - Tablist: `role=tablist` with two `role=tab`; `aria-selected` follows the
   selection; ArrowRight / ArrowLeft / Home / End move and select; the active
   `role=tabpanel` is labelled by its tab; the Spending query stays disabled
@@ -474,7 +509,8 @@ jsdom per-file opt-in (`// @vitest-environment jsdom`, Testing Library), as in
       profit green or warning amber) or `--chart-3` amber (best blue/amber colour-vision
       contrast, but reads as a warning)? The brief's `--chart-2` is the same
       green as `gain` and is not an option. — Owner: Clarence — A:
-- [ ] Q2: Currency shows "$" because `formatSGD` is `en-SG` and used in 22
+- [ ] Q2: Currency shows "$" because `formatSGD` is `en-SG` and used in
+      about 30 non-test files
       places. Leave as is (recommended; Fynfo is single-currency SGD), change
       app-wide to "S$", or household-only "S$" (creates inconsistency)? —
       Owner: Clarence — A:
