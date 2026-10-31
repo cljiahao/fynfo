@@ -3,7 +3,10 @@ import { GoalList } from '@/features/household/components/goal-list';
 import { UndoableDeleteProvider } from '@/features/household/hooks/use-undoable-delete';
 import { computeGoalProgress } from '@/features/household/lib/goal-progress';
 import type { HouseholdGoal } from '@/features/household/types';
-import { AmountVisibilityProvider } from '@/features/privacy';
+import {
+  AmountVisibilityProvider,
+  AmountVisibilityToggle,
+} from '@/features/privacy';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import {
@@ -145,6 +148,22 @@ describe('goal list', () => {
     mount([]);
     fireEvent.click(screen.getByRole('button', { name: 'New goal' }));
     expect(await screen.findByRole('dialog')).toHaveTextContent('New goal');
+  });
+
+  it('does not open the create dialog from the empty state while amounts are hidden', () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <AmountVisibilityProvider>
+          <AmountVisibilityToggle />
+          <UndoableDeleteProvider>
+            <GoalList goals={[]} />
+          </UndoableDeleteProvider>
+        </AmountVisibilityProvider>
+      </QueryClientProvider>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    fireEvent.click(screen.getByRole('button', { name: 'New goal' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('delegates the empty-state button to onCreate when given', () => {

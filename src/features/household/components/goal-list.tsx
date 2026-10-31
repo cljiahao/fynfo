@@ -80,7 +80,12 @@ export function GoalList({ goals, className, onCreate }: GoalListProps) {
           </p>
           <Button
             className="mt-4"
-            onClick={onCreate ?? (() => setCreateOpen(true))}
+            onClick={
+              onCreate ??
+              (() => {
+                if (canReveal()) setCreateOpen(true);
+              })
+            }
           >
             <Plus className="mr-1 size-4" />
             New goal
