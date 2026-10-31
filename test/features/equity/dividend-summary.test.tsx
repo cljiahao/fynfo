@@ -117,6 +117,23 @@ it('shows Unavailable and a status note when USD rows lack a valid rate', async 
   expect(screen.queryByText('Distribution chart hidden')).toBeNull();
 });
 
+it('notes the exchange-rate estimate when USD rows convert with a valid rate', async () => {
+  api.getDividends.mockResolvedValue([usdRow]);
+  mount();
+  expect(
+    await screen.findByText(/SGD totals use a current exchange-rate estimate/)
+  ).toBeTruthy();
+});
+
+it('omits the exchange-rate estimate note for SGD-only rows', async () => {
+  api.getDividends.mockResolvedValue(rows);
+  mount();
+  await screen.findByText('Dividends earned');
+  expect(
+    screen.queryByText(/SGD totals use a current exchange-rate estimate/)
+  ).toBeNull();
+});
+
 it('renders nothing when there are no dividends', async () => {
   api.getDividends.mockResolvedValue([]);
   const { container } = mount();
