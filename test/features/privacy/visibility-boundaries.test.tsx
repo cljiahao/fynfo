@@ -3,6 +3,7 @@ import { EditableRow } from '@/features/expenses/components/editable-expense-row
 import { SplitDialog } from '@/features/expenses/components/split-dialog';
 import type { ExpenseData } from '@/features/expenses/types';
 import { GoalCard } from '@/features/household/components/goal-card';
+import { UndoableDeleteProvider } from '@/features/household/hooks/use-undoable-delete';
 import {
   AmountVisibilityProvider,
   AmountVisibilityToggle,
@@ -180,25 +181,27 @@ it('conceals household values and progress geometry and prevents hidden goal act
     <QueryClientProvider client={new QueryClient()}>
       <AmountVisibilityProvider>
         <Controls />
-        <GoalCard
-          goal={{
-            id: 'synthetic-goal',
-            name: 'Synthetic 9876.54',
-            createdAt: '2026-10-11',
-            items: [],
-            budgeted: 0,
-            paid: 0,
-            targetDate: null,
-            targetAmount: 9876.54,
-            contributed: 1234.56,
-            remaining: 8641.98,
-            pct: 13,
-            contributions: [],
-          }}
-          onContribute={contribute}
-          onEdit={edit}
-          onDelete={remove}
-        />
+        <UndoableDeleteProvider>
+          <GoalCard
+            goal={{
+              id: 'synthetic-goal',
+              name: 'Synthetic 9876.54',
+              createdAt: '2026-10-11',
+              items: [],
+              budgeted: 0,
+              paid: 0,
+              targetDate: null,
+              targetAmount: 9876.54,
+              contributed: 1234.56,
+              remaining: 8641.98,
+              pct: 13,
+              contributions: [],
+            }}
+            onContribute={contribute}
+            onEdit={edit}
+            onDelete={remove}
+          />
+        </UndoableDeleteProvider>
       </AmountVisibilityProvider>
     </QueryClientProvider>
   );
