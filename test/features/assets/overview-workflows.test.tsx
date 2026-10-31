@@ -21,6 +21,7 @@ const api = vi.hoisted(() => ({
   getExpenses: vi.fn(),
   getProfile: vi.fn(),
   getTrades: vi.fn(),
+  getDividends: vi.fn(),
   fetchStockPrices: vi.fn(),
   fetchExchangeRate: vi.fn(),
 }));
@@ -30,6 +31,7 @@ vi.mock('@/features/salary/actions/salary-actions', () => api);
 vi.mock('@/features/expenses/actions/expense-actions', () => api);
 vi.mock('@/features/profile/actions/profile-actions', () => api);
 vi.mock('@/features/equity/actions/equity-actions', () => api);
+vi.mock('@/features/equity/actions/dividend-actions', () => api);
 vi.mock('@/features/equity/actions/price-actions', () => api);
 // UI fixtures use the actual cohort action; boundary security is tested separately.
 vi.mock('@/lib/action-guard', () => ({ requireActionContext: vi.fn() }));
@@ -53,6 +55,7 @@ beforeEach(() => {
   api.getExpenses.mockResolvedValue([]);
   api.getProfile.mockResolvedValue(null);
   api.getTrades.mockResolvedValue([]);
+  api.getDividends.mockResolvedValue([]);
   api.fetchExchangeRate.mockResolvedValue(1.3);
   api.fetchStockPrices.mockResolvedValue({});
   api.upsertPlannerSettings.mockResolvedValue(undefined);

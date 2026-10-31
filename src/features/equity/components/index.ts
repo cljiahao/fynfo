@@ -1,4 +1,5 @@
 export { DistributionsSection } from './distributions-section';
+export { DividendSummary } from './dividend-summary';
 export { HoldingsTable } from './holdings-table';
 export { PortfolioSummary } from './portfolio-summary';
 export { TradeFormDialog } from './trade-form';

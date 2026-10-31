@@ -11,7 +11,7 @@ import {
   usePlannerSettings,
   useSnapshots,
 } from '@/features/assets';
-import { useTrades } from '@/features/equity';
+import { DividendSummary, useTrades } from '@/features/equity';
 import { useExpenses } from '@/features/expenses';
 import { LatestRecords, OverviewReadProvider } from '@/features/overview';
 import { MonthlyReview } from '@/features/review';
@@ -133,6 +133,8 @@ function DashboardOverviewContent() {
                   retrySalary={() => void retrySalary()}
                   retryExpenses={() => void retryExpenses()}
                 />
+
+                <DividendSummary />
               </>
             ),
           },

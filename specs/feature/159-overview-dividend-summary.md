@@ -2,11 +2,11 @@
 id: '159'
 slug: overview-dividend-summary
 area: feature
-status: approved
+status: shipped
 author: Claude Code
 created: 2026-10-30
 approved: 2026-10-30
-shipped:
+shipped: 2026-11-01
 impl_pr: direct commit to main (no PR)
 supersedes:
 constitution_satisfies:

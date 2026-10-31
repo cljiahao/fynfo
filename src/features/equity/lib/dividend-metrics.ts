@@ -40,6 +40,84 @@ export function incomeByYear(
 }
 
 /**
+ * SGD distributions for the `count` calendar years ending at `endYear`,
+ * ascending, with 0 for years without payments so the chart keeps a stable
+ * x-axis.
+ */
+export function incomeForRecentYears(
+  dividends: DividendData[],
+  usdSgdRate: number,
+  endYear: number,
+  count = 5
+): Array<{ year: string; total: number }> {
+  const byYear = new Map(
+    incomeByYear(dividends, usdSgdRate).map((row) => [row.year, row.total])
+  );
+  return Array.from({ length: count }, (_, i) => {
+    const year = String(endYear - count + 1 + i);
+    return { year, total: byYear.get(year) ?? 0 };
+  });
+}
+
+/** Window start for (asOf - 1 year, asOf]; 29 Feb falls back to 28 Feb. */
+function oneYearBefore(asOf: string): string {
+  const year = String(Number(asOf.slice(0, 4)) - 1).padStart(4, '0');
+  const monthDay = asOf.slice(5);
+  return `${year}-${monthDay === '02-29' ? '02-28' : monthDay}`;
+}
+
+/** Trailing-12-month SGD distributions across all tickers, window (asOf - 1 year, asOf]. */
+export function trailing12MonthSGD(
+  dividends: DividendData[],
+  usdSgdRate: number,
+  asOf: string
+): number {
+  const start = oneYearBefore(asOf);
+  return totalSGD(
+    dividends.filter((d) => d.date > start && d.date <= asOf),
+    usdSgdRate
+  );
+}
+
+export interface DividendSummaryMetrics {
+  totalToDate: number;
+  trailing12m: number;
+  averagePerYear: number | null;
+  fullYears: number;
+}
+
+/**
+ * Overview figures. The average counts completed calendar years only, from
+ * the year of the first dividend (treated as a full year) to the year before
+ * `asOf`; years without payments count as zero.
+ */
+export function dividendSummary(
+  dividends: DividendData[],
+  usdSgdRate: number,
+  asOf: string
+): DividendSummaryMetrics {
+  const past = dividends.filter((d) => d.date <= asOf);
+  const totalToDate = totalSGD(past, usdSgdRate);
+  const trailing12m = trailing12MonthSGD(dividends, usdSgdRate, asOf);
+  const currentYear = Number(asOf.slice(0, 4));
+  const firstYear = Math.min(...past.map((d) => Number(d.date.slice(0, 4))));
+  const fullYears =
+    past.length === 0 ? 0 : Math.max(currentYear - firstYear, 0);
+  if (fullYears === 0) {
+    return { totalToDate, trailing12m, averagePerYear: null, fullYears };
+  }
+  const completed = past.filter(
+    (d) => Number(d.date.slice(0, 4)) < currentYear
+  );
+  return {
+    totalToDate,
+    trailing12m,
+    averagePerYear: totalSGD(completed, usdSgdRate) / fullYears,
+    fullYears,
+  };
+}
+
+/**
  * Trailing-12-month SGD distributions for one ticker, relative to `asOf`
  * (inclusive window of (asOf − 1 year, asOf]).
  */

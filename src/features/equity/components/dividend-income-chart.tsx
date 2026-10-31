@@ -13,24 +13,35 @@ import {
   YAxis,
 } from '@/lib/recharts';
 import { formatSGDWhole } from '@/lib/utils/currency';
-import { incomeByYear } from '../lib/dividend-metrics';
+import { incomeByYear, incomeForRecentYears } from '../lib/dividend-metrics';
 import type { DividendData } from '../types';
 
 interface DividendIncomeChartProps {
   dividends: DividendData[];
   usdSgdRate: number;
+  /** Zero-filled window of this many calendar years ending this year. */
+  years?: number;
 }
 
 export function DividendIncomeChart({
   dividends,
   usdSgdRate,
+  years,
 }: DividendIncomeChartProps) {
   const { hidden } = useAmountVisibility();
   if (hidden)
     return (
       <p className="text-muted-foreground text-sm">Distribution chart hidden</p>
     );
-  const data = incomeByYear(dividends, usdSgdRate);
+  const data =
+    years === undefined
+      ? incomeByYear(dividends, usdSgdRate)
+      : incomeForRecentYears(
+          dividends,
+          usdSgdRate,
+          new Date().getFullYear(),
+          years
+        );
 
   return (
     <div className="h-[260px] w-full">
