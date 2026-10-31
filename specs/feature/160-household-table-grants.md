@@ -10,7 +10,6 @@ shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # link to impl PR, set on shipped
 supersedes:
 constitution_satisfies:
-  - '§1.1'
   - '§5.2'
   - '§6.2'
   - '§6.3'
@@ -34,7 +33,7 @@ The owner hotfixed prod on 2026-10-30 by running the four GRANTs by hand. The re
 
 ## Constitution check
 
-- Satisfies: `§5.2` (RLS stays on and the policies stay the access gate; grants are scoped to exact privileges, no `GRANT ALL`), `§1.1` (household data stays membership-gated through the existing RLS policies; this spec does not widen who can reach it), `§6.2` (migration is applied to prod only after spec approval, and replayed on a fresh local DB first), `§6.3` (additive and forward-only; no drop, no data change).
+- Satisfies: `§5.2` (RLS and policies already ship in the same migrations and stay the access gate; the new grants are exact privileges, no `GRANT ALL`), `§6.2` (migration is applied to prod only after spec approval, and replayed on a fresh local DB first), `§6.3` (additive and forward-only; no drop, no data change).
 - Overrides: none.
 - No `HARD` rule is touched.
 
@@ -52,16 +51,18 @@ One new migration, no app code, no new dependency.
   GRANT SELECT, INSERT, DELETE ON TABLE public.household_spending TO authenticated;
   ```
 
-- Privilege choice: exactly `SELECT, INSERT, DELETE`, no `UPDATE`. Verified against the policies: each of the four tables has only SELECT, INSERT and DELETE policies (`20261023000149_household_project_items.sql:40-86`, `20261023000150_household_shared_spending.sql:43-73`) and no UPDATE policy. An UPDATE grant would be unused privilege (least privilege, `§5.2`).
+- Privilege choice: exactly `SELECT, INSERT, DELETE`, no `UPDATE`. Verified against the policies: each of the four tables has only SELECT, INSERT and DELETE policies (all policies in `20261023000149_household_project_items.sql` and `20261023000150_household_shared_spending.sql`) and no UPDATE policy. An UPDATE grant would be unused privilege (least privilege, `§5.2`).
 - `GRANT` is idempotent in Postgres, so applying it after the 2026-10-30 hand hotfix is a no-op. The file header states it is additive and idempotent, matching the 149 and 150 headers.
 - Encryption-touching code paths: none. Ciphertext columns and RLS policies are unchanged.
 - Owner applies the migration to prod. Agents never run prod SQL.
 
 ### Test plan
 
-New vitest migration-text test, `test/security/migration-grants.test.ts`, node environment. It reads every `supabase/migrations/*.sql` file as text, collects table names from `create table [if not exists] [public.]"?household_*"?`, and asserts each name has a matching `grant ... on [table] public.<name> ... to authenticated` in some migration (case-insensitive, quotes tolerated).
+New vitest migration-text test, `test/security/migration-grants.test.ts`, node environment. It reads every `supabase/migrations/*.sql` file as text, collects table names with the pattern `household_[a-z_]+` on the `CREATE TABLE` side. The plain `households` table is out of scope because it already has a grant (`20260626000000_add_household.sql:137`) and the pattern requires an underscore after `household`.
 
-Scope is `household_%` only, not all public tables, because an all-tables rule would fail today on tables that deliberately or historically have no table grant to `authenticated`: the ten `init.sql` tables (`users_profile` and others, `20260411150000_init.sql`), `marketing_events`, `vault_unlock_attempts` and `vault_unlock_reservations` (service-role only, `20261008000000_security_rpc_boundaries.sql`). `personal_merchant_rulebooks` and `personal_recurring_rulebooks` grant `select` only, by design. Household tables are the one family where every table needs a direct grant, so the rule fits without an exception list. The rule is a floor: it checks that some grant exists, not that the privilege set is minimal.
+Parsing rules: match case-insensitively; split each file on `;` into statements; accept an optional `public.` qualifier and double-quoted names on both sides; for a `GRANT` statement, take every table named between `ON [TABLE]` and `TO` (so a multi-table list is matched per table) and require `authenticated` in the `TO` clause.
+
+Scope is `household_%` only, not all public tables, because an all-tables rule would fail today on tables that deliberately or historically have no table grant to `authenticated`: the nine `init.sql` tables (`users_profile` and others, `20260411150000_init.sql`), `marketing_events`, `vault_unlock_attempts` and `vault_unlock_reservations` (service-role only, `20261008000000_security_rpc_boundaries.sql`). `personal_merchant_rulebooks` and `personal_recurring_rulebooks` grant `select` only, by design. Household tables are the one family where every table needs a direct grant, so the rule fits without an exception list. The rule is a floor: it checks that some grant exists, not that the privilege set is minimal.
 
 Precedent for reading migration SQL as text in tests: `test/security/household-concurrency.mjs:3` reads `supabase/migrations/20261008000001_household_authorization.sql`. No existing vitest `.ts` test parses migrations, so this is a new pattern, not a copy.
 
@@ -72,11 +73,11 @@ Before the new migration exists the test must fail on exactly the four tables ab
 ```sql
 SELECT table_name, privilege_type
 FROM information_schema.role_table_grants
-WHERE grantee = 'authenticated' AND table_name LIKE 'household_%'
+WHERE grantee = 'authenticated' AND table_name LIKE 'household\_%'
 ORDER BY 1, 2;
 ```
 
-Expected for the four target tables: `DELETE`, `INSERT`, `SELECT`, with no `UPDATE`. Rows for `households`, `household_members`, `household_invites`, `household_goals` and `household_goal_contributions` also appear and keep their own privileges.
+Expected for the four target tables: `DELETE`, `INSERT`, `SELECT`, with no `UPDATE`. The escaped pattern `'household\_%'` matches only names with a literal underscore, so `households` is not listed (an unescaped `_` is a wildcard and would list it). Rows for `household_members`, `household_invites`, `household_goals` and `household_goal_contributions` also appear and keep their own privileges.
 
 ## Out of scope
 
