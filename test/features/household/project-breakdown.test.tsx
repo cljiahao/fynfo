@@ -287,6 +287,46 @@ describe('undoable removals', () => {
       screen.getAllByRole('button', { name: /payment on 02 Oct 2026/ })
     ).toHaveLength(2);
   });
+  it('keeps totals and the over-target warning consistent while an item delete is pending', () => {
+    mount();
+    open();
+    const toggle = screen.getByRole('button', { name: /Breakdown/ });
+    expect(toggle).toHaveTextContent(/9,000\.00 paid of .*11,000\.00/);
+    expect(screen.getByRole('status')).toHaveTextContent(/11,000\.00/);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete item Venue' }));
+    expect(toggle).toHaveTextContent(/0\.00 paid of .*3,000\.00/);
+    expect(toggle).not.toHaveTextContent('11,000.00');
+    expect(screen.queryByRole('status')).toBeNull();
+    act(() => undoAction()());
+    expect(toggle).toHaveTextContent(/9,000\.00 paid of .*11,000\.00/);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
+
+  it('subtracts a pending payment from the paid total', () => {
+    mount();
+    open();
+    fireEvent.click(
+      screen.getByRole('button', { name: /payment on 02 Oct 2026 by Partner/ })
+    );
+    expect(screen.getByRole('button', { name: /Breakdown/ })).toHaveTextContent(
+      /4,500\.00 paid of .*11,000\.00/
+    );
+  });
+
+  it('skips the payment commit when its parent item is also pending deletion', async () => {
+    mount();
+    open();
+    fireEvent.click(
+      screen.getByRole('button', { name: /payment on 02 Oct 2026 by Partner/ })
+    );
+    await tick(1000);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete item Venue' }));
+    await tick(DELAY);
+    expect(actions.deleteItemPayment).not.toHaveBeenCalled();
+    expect(toasts.error).not.toHaveBeenCalled();
+    await tick(1000);
+    expect(actions.deleteGoalItem).toHaveBeenCalledTimes(1);
+  });
 });
 
 it('keeps two same-day payments distinct by who paid', async () => {

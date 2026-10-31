@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { formatSGD } from '@/lib/utils/currency';
 import { format } from 'date-fns';
 import { ChevronDown, Plus, Trash2, X } from 'lucide-react';
-import { useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import {
   useAddGoalItem,
@@ -61,6 +61,24 @@ export function ProjectBreakdown({ goal }: { goal: HouseholdGoal }) {
   const nameId = `${fieldId}-item-name`;
   const budgetId = `${fieldId}-item-budget`;
   const items = goal.items.filter((item) => !pendingIds.has(item.id));
+  // Totals follow the rows still shown so they stay consistent while a
+  // deletion is in its undo window.
+  const budgeted = items.reduce((sum, item) => sum + item.budget, 0);
+  const paid = items.reduce(
+    (sum, item) =>
+      sum +
+      item.paid -
+      item.payments.reduce(
+        (gone, payment) =>
+          pendingIds.has(payment.id) ? gone + payment.amount : gone,
+        0
+      ),
+    0
+  );
+  const pendingRef = useRef(pendingIds);
+  useEffect(() => {
+    pendingRef.current = pendingIds;
+  }, [pendingIds]);
 
   function clearError(field: ItemField) {
     setErrors((current) => omitError(current, field));
@@ -109,9 +127,7 @@ export function ProjectBreakdown({ goal }: { goal: HouseholdGoal }) {
           <span className="text-xs">
             {items.length === 0
               ? 'Split into budget items'
-              : `${mask(formatSGD(goal.paid))} paid of ${mask(
-                  formatSGD(goal.budgeted)
-                )}`}
+              : `${mask(formatSGD(paid))} paid of ${mask(formatSGD(budgeted))}`}
           </span>
         </span>
         <ChevronDown
@@ -121,15 +137,19 @@ export function ProjectBreakdown({ goal }: { goal: HouseholdGoal }) {
 
       {open && (
         <div id={regionId} className="mt-3 space-y-3">
-          {!hidden && goal.budgeted > goal.targetAmount && (
+          {!hidden && budgeted > goal.targetAmount && (
             <p role="status" className="text-warning text-xs">
-              Items total {formatSGD(goal.budgeted)}, above the{' '}
+              Items total {formatSGD(budgeted)}, above the{' '}
               {formatSGD(goal.targetAmount)} target.
             </p>
           )}
           <ul className="space-y-3">
             {items.map((item) => (
-              <ItemRow key={item.id} item={item} />
+              <ItemRow
+                key={item.id}
+                item={item}
+                isItemPending={() => pendingRef.current.has(item.id)}
+              />
             ))}
           </ul>
           <form
@@ -196,7 +216,13 @@ export function ProjectBreakdown({ goal }: { goal: HouseholdGoal }) {
   );
 }
 
-function ItemRow({ item }: { item: GoalItem }) {
+function ItemRow({
+  item,
+  isItemPending,
+}: {
+  item: GoalItem;
+  isItemPending: () => boolean;
+}) {
   const { hidden, mask, canReveal } = useAmountVisibility();
   const { pendingIds, request } = useUndoableDelete();
   const fieldId = useId();
@@ -403,7 +429,12 @@ function ItemRow({ item }: { item: GoalItem }) {
                     request({
                       id: payment.id,
                       label: 'Payment deleted',
-                      commit: () => removePayment.mutateAsync(payment.id),
+                      // Deleting the item cascades to its payments, so a payment
+                      // commit after that would only fail.
+                      commit: async () => {
+                        if (isItemPending()) return;
+                        await removePayment.mutateAsync(payment.id);
+                      },
                       errorMessage: 'Could not delete the payment',
                     });
                   }}
