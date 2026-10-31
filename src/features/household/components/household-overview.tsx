@@ -138,7 +138,12 @@ export function HouseholdOverview() {
               {goals.data && (
                 <>
                   {showInvite && <InvitePanel />}
-                  <GoalList goals={goals.data} />
+                  <GoalList
+                    goals={goals.data}
+                    onCreate={() => {
+                      if (canReveal()) setCreateOpen(true);
+                    }}
+                  />
                   <CreateGoalDialog
                     open={createOpen}
                     onOpenChange={setCreateOpen}

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { GoalCard } from '@/features/household/components/goal-card';
+import { UndoableDeleteProvider } from '@/features/household/hooks/use-undoable-delete';
 import { computeGoalProgress } from '@/features/household/lib/goal-progress';
 import type { HouseholdGoal } from '@/features/household/types';
 import {
@@ -44,12 +45,14 @@ function mountGoal(target: number, contributed: number) {
   const goal = buildGoal(target, contributed);
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <GoalCard
-        goal={goal}
-        onContribute={vi.fn()}
-        onEdit={vi.fn()}
-        onDelete={vi.fn()}
-      />
+      <UndoableDeleteProvider>
+        <GoalCard
+          goal={goal}
+          onContribute={vi.fn()}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      </UndoableDeleteProvider>
     </QueryClientProvider>
   );
   return progress;
@@ -106,13 +109,15 @@ function Card({
     <QueryClientProvider client={new QueryClient()}>
       <AmountVisibilityProvider>
         <AmountVisibilityToggle />
-        <GoalCard
-          goal={goal}
-          className={className}
-          onContribute={vi.fn()}
-          onEdit={vi.fn()}
-          onDelete={vi.fn()}
-        />
+        <UndoableDeleteProvider>
+          <GoalCard
+            goal={goal}
+            className={className}
+            onContribute={vi.fn()}
+            onEdit={vi.fn()}
+            onDelete={vi.fn()}
+          />
+        </UndoableDeleteProvider>
       </AmountVisibilityProvider>
     </QueryClientProvider>
   );

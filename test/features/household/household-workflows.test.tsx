@@ -4,6 +4,7 @@ import { GoalList } from '@/features/household/components/goal-list';
 import { HouseholdOverview } from '@/features/household/components/household-overview';
 import { HouseholdSetup } from '@/features/household/components/household-setup';
 import { InvitePanel } from '@/features/household/components/invite-panel';
+import { UndoableDeleteProvider } from '@/features/household/hooks/use-undoable-delete';
 import type { HouseholdGoal } from '@/features/household/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
@@ -59,7 +60,11 @@ function mount(node: React.ReactNode) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  render(<QueryClientProvider client={client}>{node}</QueryClientProvider>);
+  render(
+    <QueryClientProvider client={client}>
+      <UndoableDeleteProvider>{node}</UndoableDeleteProvider>
+    </QueryClientProvider>
+  );
   return client;
 }
 beforeEach(() => {
@@ -307,26 +312,30 @@ describe('household workflows with real mutation hooks', () => {
   it('shows empty goals and renders each partners contribution and remaining amount', async () => {
     const { rerender } = render(
       <QueryClientProvider client={new QueryClient()}>
-        <GoalList goals={[]} />
+        <UndoableDeleteProvider>
+          <GoalList goals={[]} />
+        </UndoableDeleteProvider>
       </QueryClientProvider>
     );
     expect(screen.getByText('No goals yet')).toBeInTheDocument();
     rerender(
       <QueryClientProvider client={new QueryClient()}>
-        <GoalList
-          goals={[
-            goal,
-            {
-              ...goal,
-              id: 'g2',
-              name: 'Trip',
-              targetAmount: 300,
-              targetDate: null,
-              remaining: 0,
-              pct: 100,
-            },
-          ]}
-        />
+        <UndoableDeleteProvider>
+          <GoalList
+            goals={[
+              goal,
+              {
+                ...goal,
+                id: 'g2',
+                name: 'Trip',
+                targetAmount: 300,
+                targetDate: null,
+                remaining: 0,
+                pct: 100,
+              },
+            ]}
+          />
+        </UndoableDeleteProvider>
       </QueryClientProvider>
     );
     expect(screen.getAllByText(/You.*100/)).toHaveLength(2);
@@ -368,10 +377,16 @@ describe('household workflows with real mutation hooks', () => {
       .mockResolvedValue(undefined);
     mount(<GoalList goals={[goal]} />);
     await userEvent.click(screen.getByLabelText('Delete goal Sofa'));
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Delete goal' })
+    );
     await waitFor(() =>
       expect(notices.error).toHaveBeenCalledWith('Could not delete the goal')
     );
     await userEvent.click(screen.getByLabelText('Delete goal Sofa'));
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Delete goal' })
+    );
     await waitFor(() =>
       expect(notices.success).toHaveBeenCalledWith('Goal deleted')
     );

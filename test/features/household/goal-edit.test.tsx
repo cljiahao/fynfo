@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { GoalList } from '@/features/household/components/goal-list';
 import { useGoals } from '@/features/household/hooks/use-household';
+import { UndoableDeleteProvider } from '@/features/household/hooks/use-undoable-delete';
 import { computeGoalProgress } from '@/features/household/lib/goal-progress';
 import type { HouseholdGoal } from '@/features/household/types';
 import { AmountVisibilityProvider } from '@/features/privacy';
@@ -78,7 +79,9 @@ function mount() {
       }
     >
       <AmountVisibilityProvider>
-        <Harness />
+        <UndoableDeleteProvider>
+          <Harness />
+        </UndoableDeleteProvider>
       </AmountVisibilityProvider>
     </QueryClientProvider>
   );
