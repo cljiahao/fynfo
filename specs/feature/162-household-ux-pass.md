@@ -2,12 +2,12 @@
 id: '162'
 slug: household-ux-pass
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-10-30
 approved: 2026-10-30
-shipped:
-impl_pr:
+shipped: 2026-10-31
+impl_pr: direct to main, 44abdb2 (impl/162-household-ux-pass)
 supersedes:
 constitution_satisfies:
   - '§1.1'
