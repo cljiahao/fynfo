@@ -47,6 +47,7 @@ interface StatementRowCardProps {
   onFocus: (row: ReviewedRow) => void;
   onCompare: (row: ReviewedRow) => void;
   onRestore: (rowId: string) => void;
+  onRemove: (row: ReviewedRow, hadFocus: boolean) => void;
   onCreateRule: (row: ReviewedRow, origin: HTMLElement) => void;
   onEdit: (
     rowId: string,
@@ -84,6 +85,7 @@ export function StatementRowCard({
   onFocus,
   onCompare,
   onRestore,
+  onRemove,
   onCreateRule,
   onEdit,
   onClassify,
@@ -120,6 +122,7 @@ export function StatementRowCard({
           <Button
             type="button"
             variant="link"
+            id={`${controlId}-${row.id}-restore`}
             className="h-auto p-0 text-xs"
             aria-label={`Restore row #${number}`}
             onClick={() => save.restore(row)}
@@ -250,10 +253,16 @@ export function StatementRowCard({
                   type="button"
                   variant="ghost"
                   size="icon"
+                  id={`${controlId}-${row.id}-remove`}
                   className="order-1 ml-auto size-9"
                   aria-label={`Remove row #${number}`}
                   disabled={save.busy}
-                  onClick={() => save.remove(row)}
+                  onClick={(event) =>
+                    onRemove(
+                      row,
+                      document.activeElement === event.currentTarget
+                    )
+                  }
                 >
                   <X aria-hidden="true" className="size-4" />
                 </Button>

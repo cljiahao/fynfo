@@ -66,7 +66,7 @@ import { ImportComplete } from './import-complete';
 import { ImportOutcome } from './import-outcome';
 import { ImportProgressOverlay } from './import-progress-overlay';
 import { RestoreMerchantDialog } from './restore-merchant-dialog';
-import { StatementRowCard } from './statement-row-card';
+import { StatementRowCard, type ReviewedRow } from './statement-row-card';
 import { StatementSourceForm } from './statement-source-form';
 import { StatementViewer } from './statement-viewer';
 
@@ -88,7 +88,9 @@ function StatementReviewBody({
   const controller = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const list = useRef<HTMLElement>(null);
-  const focusTarget = useRef<{ rowId: string; decision: boolean } | null>(null);
+  const focusTarget = useRef<
+    { rowId: string; decision: boolean } | { ids: string[] } | null
+  >(null);
   const [pdf, setPdf] = useState<LocalStatementPdf | null>(null);
   const [bank, setBank] = useState<StatementBank>('uob');
   const [from, setFrom] = useState('');
@@ -166,6 +168,17 @@ function StatementReviewBody({
     const target = focusTarget.current;
     if (!target) return;
     focusTarget.current = null;
+    if ('ids' in target) {
+      // First id that is actually rendered wins; later ids are fallbacks.
+      for (const targetId of target.ids) {
+        const element = document.getElementById(targetId);
+        if (element) {
+          element.focus();
+          return;
+        }
+      }
+      return;
+    }
     const card = document.getElementById(`${id}-${target.rowId}-card`);
     const decision = target.decision
       ? document
@@ -506,6 +519,26 @@ function StatementReviewBody({
     focusRow(row);
     focusTarget.current = { rowId, decision };
   }
+  function removeRow(row: ReviewedRow, hadFocus: boolean) {
+    const index = visibleRows.findIndex((entry) => entry.id === row.id);
+    const canRemove = (entry: ReviewedRow) =>
+      entry.id !== row.id &&
+      !save.isRemoved(entry.id) &&
+      !save.locked(entry.id);
+    const neighbour =
+      visibleRows.slice(index + 1).find(canRemove) ??
+      visibleRows.slice(0, Math.max(index, 0)).reverse().find(canRemove);
+    if (!save.remove(row) || !hadFocus) return;
+    // Fallbacks cover state that changes between the click and the render.
+    focusTarget.current = {
+      ids: [
+        ...(neighbour ? [`${id}-${neighbour.id}-remove`] : []),
+        `${id}-${row.id}-restore`,
+        `${id}-${row.id}-card`,
+        `${id}-list`,
+      ],
+    };
+  }
   function nextDuplicate() {
     const rowId = rows.find((row) => save.openDuplicates.includes(row.id))?.id;
     if (rowId && canReveal()) goToRow(rowId, true, 'duplicates');
@@ -534,8 +567,22 @@ function StatementReviewBody({
           ? 'check'
           : 'review';
   const stepIndex = IMPORT_STEPS.findIndex((entry) => entry.value === step);
+  const liveReviewedRows = reviewedRows.filter(
+    (row) => !save.isRemoved(row.id)
+  );
   const counts = (status: string) =>
-    mask(reviewedRows.filter((row) => row.review.status === status).length);
+    mask(liveReviewedRows.filter((row) => row.review.status === status).length);
+  // Removed stubs stay visible in the "all" view but are not rows to review.
+  const liveFilteredCount = filteredRows.filter(
+    (row) => !save.isRemoved(row.id)
+  ).length;
+  const pageStart = currentRowPage * STATEMENT_ROWS_PER_PAGE;
+  const liveBeforePage = filteredRows
+    .slice(0, pageStart)
+    .filter((row) => !save.isRemoved(row.id)).length;
+  const livePageCount = visibleRows.filter(
+    (row) => !save.isRemoved(row.id)
+  ).length;
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -692,8 +739,8 @@ function StatementReviewBody({
         ) : (
           <>
             <p className="sr-only" role="status" aria-live="polite">
-              {mask(rows.length)} source rows: {counts('candidate')} expense
-              suggestions, {counts('unresolved')} unresolved,{' '}
+              {mask(liveReviewedRows.length)} source rows: {counts('candidate')}{' '}
+              expense suggestions, {counts('unresolved')} unresolved,{' '}
               {counts('excluded')} excluded
               {save.removedCount > 0 && `, ${mask(save.removedCount)} removed`}.
             </p>
@@ -736,8 +783,10 @@ function StatementReviewBody({
               </section>
               <section
                 ref={list}
+                id={`${id}-list`}
+                tabIndex={-1}
                 aria-label="Extracted transaction drafts"
-                className={`${view === 'extracted' ? 'flex' : 'hidden'} relative min-h-0 min-w-0 flex-col overflow-y-auto overscroll-contain lg:flex`}
+                className={`${view === 'extracted' ? 'flex' : 'hidden'} relative min-h-0 min-w-0 flex-col overflow-y-auto overscroll-contain outline-none lg:flex`}
               >
                 <div className="bg-background sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b pb-2">
                   <label className="sr-only" htmlFor={`${id}-filter`}>
@@ -767,8 +816,8 @@ function StatementReviewBody({
                     )}
                   </select>
                   <span className="text-muted-foreground text-sm tabular-nums">
-                    {filteredRows.length} row
-                    {filteredRows.length === 1 ? '' : 's'}
+                    {liveFilteredCount} row
+                    {liveFilteredCount === 1 ? '' : 's'}
                   </span>
                 </div>
                 <div className="flex-1">
@@ -792,6 +841,7 @@ function StatementReviewBody({
                       onFocus={focusRow}
                       onCompare={compareSource}
                       onRestore={requestRestore}
+                      onRemove={removeRow}
                       onCreateRule={createRule}
                       onEdit={edit}
                       onClassify={classify}
@@ -820,12 +870,8 @@ function StatementReviewBody({
                       </span>
                     </Button>
                     <span className="text-sm tabular-nums" aria-live="polite">
-                      Rows {currentRowPage * STATEMENT_ROWS_PER_PAGE + 1}–
-                      {Math.min(
-                        filteredRows.length,
-                        (currentRowPage + 1) * STATEMENT_ROWS_PER_PAGE
-                      )}{' '}
-                      of {filteredRows.length}
+                      Rows {liveBeforePage + (livePageCount > 0 ? 1 : 0)}–
+                      {liveBeforePage + livePageCount} of {liveFilteredCount}
                     </span>
                     <Button
                       type="button"
