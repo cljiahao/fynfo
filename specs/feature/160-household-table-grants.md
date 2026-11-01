@@ -2,10 +2,10 @@
 id: '160'
 slug: household-table-grants
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-01
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-01 # Clarence
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # link to impl PR, set on shipped
 supersedes:
@@ -108,5 +108,5 @@ Expected for the four target tables: `DELETE`, `INSERT`, `SELECT`, with no `UPDA
 
 ## Open questions
 
-- [ ] Q: Should the test cover all public tables with an allow-list for service-role-only and historical tables, instead of `household_%` only? Spec chooses `household_%` for a rule with no exceptions. â€” Owner: Clarence â€” A:
-- [ ] Q: Does the owner's hotfix match exactly `SELECT, INSERT, DELETE`, or did it also grant `UPDATE`? The verification query above answers it; if prod holds `UPDATE`, decide whether to revoke it in this migration. â€” Owner: Clarence â€” A:
+- [x] Q: Should the test cover all public tables with an allow-list for service-role-only and historical tables, instead of `household_%` only? Spec chooses `household_%` for a rule with no exceptions. — Owner: Clarence — A: `household_%` only (pattern `household_[a-z_]+`), resolved 2026-11-01.
+- [x] Q: Does the owner's hotfix match exactly `SELECT, INSERT, DELETE`, or did it also grant `UPDATE`? — Owner: Clarence — A: Owner ran the four GRANTs in prod and checked `role_table_grants` on 2026-11-01: the four tables hold exactly `SELECT, INSERT, DELETE`, no `UPDATE`. No revoke. `UPDATE` on `household_goals` and `household_goal_contributions` comes from earlier migrations and is out of scope. Prod already has the grants.
