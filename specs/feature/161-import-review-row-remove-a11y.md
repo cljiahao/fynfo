@@ -89,14 +89,18 @@ Current behavior:
 
 Change:
 
-- Give each Remove button a stable id, `${controlId}-${row.id}-remove`.
+- Give each Remove button a stable id, `${controlId}-${row.id}-remove`, and the
+  stub's Restore button (`statement-row-card.tsx:~124`, aria-label
+  `Restore row #${number}`) a stable id, `${controlId}-${row.id}-restore`.
 - In the review component, wrap removal in a handler that, before calling
   `save.remove(row)`, computes the focus target from the current `visibleRows`
   (the page and filter the user sees): the next row that will still render a
   Remove button (not removed, not locked, amounts not hidden), else the previous
-  such row, else the removed row's own stub when it stays on screen (the "all"
-  view), else the `list` section (`statement-review.tsx:738`, made focusable
-  with `tabIndex={-1}`).
+  such row, else the removed row's stub Restore button when the stub stays on screen
+  (the "all" view), else the stub card itself when amounts are hidden and no
+  Restore button is rendered, else the `list` section
+  (`statement-review.tsx:738`, made focusable with `tabIndex={-1}`) as the
+  last resort when no stub is rendered.
 - Store the target as an element id in a ref and focus it in the existing
   post-render effect. Extend `focusTarget` (or add a sibling ref) to carry an
   id, so the single effect stays the only place that focuses.
@@ -154,8 +158,8 @@ Change:
     removed stubs; with amounts hidden the figures stay masked
   - B: with the Remove button focused, removing a middle row focuses the next
     row's Remove button; removing the last row focuses the previous row's;
-    removing the only remaining row focuses the removed row's stub in the "all"
-    view and the list section in the "expenses" view; locked or already removed
+    removing the only remaining row focuses the removed row's Restore button
+    (`Restore row #N`) in the "all" view and the list section in the "expenses" view; locked or already removed
     neighbours are skipped; `document.activeElement` is never `body`; focus is
     not moved when the removal was not triggered from keyboard focus on that
     button
@@ -175,10 +179,16 @@ Change:
 - **Reversibility**: single `git revert`.
 - **Backout plan**: revert the implementation commit on `main`.
 
+## Resolved decisions
+
+Owner: Clarence, 2026-11-01.
+
+- The announced source-row total excludes removed rows
+  (`mask(liveReviewedRows.length)`); the `, N removed` suffix stays.
+- In the "all" view, when no row can take focus, focus goes to the removed
+  row's stub Restore button, not the list section. The list section is only the
+  last resort when no stub is rendered.
+
 ## Open questions
 
-- [ ] Q: Should the announced source-row total drop removed rows (proposed, so
-      the number matches what is left to review), or keep the full extracted
-      count and rely on the "N removed" suffix alone? — Owner: Clarence — A:
-- [ ] Q: When no row can take focus in the "all" view, is the removed row's own
-      stub (proposed) preferable to the list section? — Owner: Clarence — A:
+None.
