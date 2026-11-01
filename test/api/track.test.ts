@@ -62,6 +62,43 @@ describe('anonymous telemetry boundary', () => {
     expect(boundary.create).not.toHaveBeenCalled();
   });
 
+  it('returns 429 without persisting once the per-client budget is spent', async () => {
+    boundary.insert.mockImplementation(async (name: string) =>
+      name === 'consume_rate_limit'
+        ? { data: false, error: null }
+        : { error: null }
+    );
+    const response = await POST(
+      new Request('http://localhost/api/track', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-forwarded-for': '203.0.113.9, 10.0.0.1',
+        },
+        body: '{"eventType":"page_view","path":"/"}',
+      })
+    );
+    expect(response.status).toBe(429);
+    expect(boundary.insert).toHaveBeenCalledTimes(1);
+    const [name, params] = boundary.insert.mock.calls[0];
+    expect(name).toBe('consume_rate_limit');
+    expect(params.p_key).toMatch(/^track:[0-9a-f]{32}$/);
+    expect(JSON.stringify(params)).not.toContain('203.0.113.9');
+  });
+
+  it('fails open when the limiter errors', async () => {
+    boundary.insert.mockImplementation(async (name: string) =>
+      name === 'consume_rate_limit'
+        ? { data: null, error: { message: 'down' } }
+        : { error: null }
+    );
+    const response = await POST(
+      request('{"eventType":"page_view","path":"/"}')
+    );
+    expect(response.status).toBe(202);
+    expect(await response.json()).toEqual({ ok: true });
+  });
+
   it('persists only event type and path, omitting supplied identity', async () => {
     const response = await POST(
       request(
