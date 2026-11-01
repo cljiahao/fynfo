@@ -82,25 +82,33 @@ Current behavior:
   (`statement-row-card.tsx:108-131`), unmounting the button that had focus. In
   the other views the card disappears from `rowsFor` entirely
   (`statement-review.tsx:455`). Either way focus falls to `body`.
-- `statement-review.tsx:91` and `:165-177` already implement a post-render
-  focus hand-off (`focusTarget` ref plus an effect that focuses
+- `statement-review.tsx` already implements a post-render focus hand-off (the
+  `focusTarget` ref and the effect that reads it, which focuses
   `${id}-${rowId}-card` or its decision button). It is only used for
   duplicate-compare focus, not for removal.
 
 Change:
 
 - Give each Remove button a stable id, `${controlId}-${row.id}-remove`, and the
-  stub's Restore button (`statement-row-card.tsx:~124`, aria-label
+  stub's Restore button (in `statement-row-card.tsx`, aria-label
   `Restore row #${number}`) a stable id, `${controlId}-${row.id}-restore`.
 - In the review component, wrap removal in a handler that, before calling
   `save.remove(row)`, computes the focus target from the current `visibleRows`
   (the page and filter the user sees): the next row that will still render a
   Remove button (not removed, not locked, amounts not hidden), else the previous
-  such row, else the removed row's stub Restore button when the stub stays on screen
-  (the "all" view), else the stub card itself when amounts are hidden and no
-  Restore button is rendered, else the `list` section
-  (`statement-review.tsx:738`, made focusable with `tabIndex={-1}`) as the
-  last resort when no stub is rendered.
+  such row, else the removed row's stub Restore button when the stub stays on
+  screen (the "all" view), else the stub card itself when no Restore button is
+  rendered, else the `list` section (`statement-review.tsx`, made focusable
+  with `tabIndex={-1}`) as the last resort when no stub is rendered.
+- The stub card fallback needs no new code: the stub already has
+  `tabIndex={-1}` and id `${controlId}-${row.id}-card`
+  (`statement-row-card.tsx`), and the focus effect already resolves `-card`
+  ids. It is a defensive branch: `remove` returns early when
+  `!privacy.canReveal()`, so it only fires if amounts become hidden between the
+  click and the render.
+- Focusing the `list` section is best-effort: on small screens the section is
+  `hidden` when `view !== 'extracted'`, so it cannot take focus there. Tests use
+  the default jsdom viewport.
 - Store the target as an element id in a ref and focus it in the existing
   post-render effect. Extend `focusTarget` (or add a sibling ref) to carry an
   id, so the single effect stays the only place that focuses.
@@ -113,7 +121,7 @@ Change:
 
 Current behavior:
 
-- `hooks/use-statement-save.ts:232-244`: `remove` calls
+- `remove` in `hooks/use-statement-save.ts` calls
   `setRemoved(new Set(removed).add(row.id))`,
   `setSelection(selection.filter(...))`, `setResolutions(drop(resolutions))`,
   `setChecks(drop(checks))` and `setSavedMatches(drop(savedMatches))`. All five
@@ -121,7 +129,7 @@ Current behavior:
   fired before React commits between them (rapid clicks, or key repeat) each
   start from the same old snapshot, so the second write overwrites the first
   and the first row reappears and may stay selected.
-- `hooks/use-statement-save.ts:246-250`: `restore` has the same pattern with
+- `restore` in the same hook has the same pattern with
   `new Set(removed)`.
 
 Change:
@@ -135,7 +143,7 @@ Change:
 - The guards (`canReveal`, `running`, `attemptsRef`) are refs or non-state reads
   and stay as they are.
 - Not in this spec: the same closure pattern in `toggle`, `resolve` and
-  `clearSelection` (`toggle`, `resolve`, `clearSelection`). They are not part of the remove flow; record a
+  `clearSelection`. They are not part of the remove flow; record a
   follow-up if the owner wants them converted.
 
 ## Out of scope
@@ -162,7 +170,8 @@ Change:
     (`Restore row #N`) in the "all" view and the list section in the "expenses" view; locked or already removed
     neighbours are skipped; `document.activeElement` is never `body`; focus is
     not moved when the removal was not triggered from keyboard focus on that
-    button
+    button; with amounts hidden after the remove and no focusable neighbour,
+    focus lands on the stub card (`${controlId}-${row.id}-card`)
   - C: hook-level test with `renderHook` that calls `remove` for two rows inside
     a single `act` and asserts both ids are in `removed` and neither is in
     `selection`; same for two `restore` calls; the dropped
