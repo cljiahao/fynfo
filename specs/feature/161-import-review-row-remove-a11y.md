@@ -2,10 +2,10 @@
 id: '161'
 slug: import-review-row-remove-a11y
 area: feature
-status: draft
+status: approved
 author: Claude Code
 created: 2026-11-01
-approved:
+approved: 2026-11-02 # Clarence
 shipped:
 impl_pr:
 supersedes:
