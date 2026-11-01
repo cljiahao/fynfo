@@ -18,7 +18,7 @@ import {
   deleteSalaryRecord,
   getSalaryRecord,
 } from '@/features/salary/actions/salary-actions';
-import { SalaryChart } from '@/features/salary/components/salary-chart';
+import { SalaryChart } from '@/features/salary/components/salary-chart-content';
 import { salaryDataSchema } from '@/features/salary/schemas';
 import { formatRecordedMonth } from '@/lib/utils/month';
 import { cleanup, render, renderHook, screen } from '@testing-library/react';
