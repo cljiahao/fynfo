@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { EditableRow } from '@/features/expenses/components/editable-expense-row';
-import { ExpenseChart } from '@/features/expenses/components/expense-chart';
+import { ExpenseChart } from '@/features/expenses/components/expense-chart-content';
 import { ExpenseTypeSelect } from '@/features/expenses/components/expense-type-select';
 import { SplitDialog } from '@/features/expenses/components/split-dialog';
 import type { ExpenseData } from '@/features/expenses/types';

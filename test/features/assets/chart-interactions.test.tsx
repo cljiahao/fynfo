@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { AssetLineChart } from '@/features/assets/components/asset-bar-chart';
-import { CategoryBreakdown } from '@/features/assets/components/category-breakdown';
-import { SalaryChart } from '@/features/salary/components/salary-chart';
+import { AssetLineChart } from '@/features/assets/components/asset-bar-chart-content';
+import { CategoryBreakdown } from '@/features/assets/components/category-breakdown-content';
+import { SalaryChart } from '@/features/salary/components/salary-chart-content';
 import {
   cleanup,
   fireEvent,

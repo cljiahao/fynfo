@@ -5,7 +5,7 @@ import {
   useAmountVisibility,
 } from '@/features/privacy';
 import { ReliefRow } from '@/features/salary/components/relief-row';
-import { SalaryChart } from '@/features/salary/components/salary-chart';
+import { SalaryChart } from '@/features/salary/components/salary-chart-content';
 import { SalaryFormDialog } from '@/features/salary/components/salary-form';
 import { SalaryTable } from '@/features/salary/components/salary-table';
 import { RELIEF_CATALOG } from '@/features/salary/constants';
