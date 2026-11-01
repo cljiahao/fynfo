@@ -1,76 +1,12 @@
 'use client';
 
-import { useAmountVisibility } from '@/features/privacy';
+import dynamic from 'next/dynamic';
 
-import {
-  Bar,
-  BarChart,
-  CHART_AXIS_TICK_PROPS,
-  CHART_TOOLTIP_PROPS,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from '@/lib/recharts';
-import { formatSGDWhole } from '@/lib/utils/currency';
-import { incomeByYear, incomeForRecentYears } from '../lib/dividend-metrics';
-import type { DividendData } from '../types';
-
-interface DividendIncomeChartProps {
-  dividends: DividendData[];
-  usdSgdRate: number;
-  /** Zero-filled window of this many calendar years ending this year. */
-  years?: number;
-}
-
-export function DividendIncomeChart({
-  dividends,
-  usdSgdRate,
-  years,
-}: DividendIncomeChartProps) {
-  const { hidden } = useAmountVisibility();
-  if (hidden)
-    return (
-      <p className="text-muted-foreground text-sm">Distribution chart hidden</p>
-    );
-  const data =
-    years === undefined
-      ? incomeByYear(dividends, usdSgdRate)
-      : incomeForRecentYears(
-          dividends,
-          usdSgdRate,
-          new Date().getFullYear(),
-          years
-        );
-
-  return (
-    <div className="h-[260px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data}>
-          <XAxis
-            dataKey="year"
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-            {...CHART_AXIS_TICK_PROPS}
-          />
-          <YAxis
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(v: number) => formatSGDWhole(v)}
-            {...CHART_AXIS_TICK_PROPS}
-          />
-          <Tooltip
-            formatter={(value: unknown) => [
-              formatSGDWhole(Number(value)),
-              'Distributions',
-            ]}
-            {...CHART_TOOLTIP_PROPS}
-          />
-          <Bar dataKey="total" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
+// Lazy boundary for the whole chart so recharts loads in one chunk, client-side only.
+export const DividendIncomeChart = dynamic(
+  () =>
+    import('./dividend-income-chart-content').then(
+      (m) => m.DividendIncomeChart
+    ),
+  { ssr: false }
+);

@@ -1,11 +1,45 @@
-import dynamic from 'next/dynamic';
+import { createElement } from 'react';
+import {
+  ResponsiveContainer as RechartsResponsiveContainer,
+  type ResponsiveContainerProps,
+} from 'recharts';
 
-// Cell is a pure config marker (renders nothing on its own, no browser APIs) and
-// only mounts inside the ssr:false Bar/Pie. It MUST be a static re-export, not a
-// next/dynamic wrapper: recharts matches Cell children by displayName via
-// findAllByType, and a dynamic wrapper's displayName ('LoadableComponent') never
-// matches 'Cell', silently dropping per-bar colors.
-export { Cell } from 'recharts';
+// Primitives are re-exported statically. The recharts bundle stays out of the
+// initial JS by lazy-loading each whole chart component (see the *-chart.tsx
+// wrappers), not the individual primitives: per-primitive next/dynamic made each
+// piece resolve on its own, so ResponsiveContainer measured before its children
+// existed and the chart re-rendered once per resolved child. It also breaks
+// recharts' displayName matching (findAllByType), e.g. Cell children inside Bar
+// would be silently dropped because a dynamic wrapper's displayName is
+// 'LoadableComponent'.
+export {
+  Bar,
+  BarChart,
+  Cell,
+  LabelList,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ReferenceLine,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+
+// recharts' default initialDimension is -1x-1, and ResponsiveContainer warns
+// ("width(-1) and height(-1) of chart should be greater than 0") on that first
+// render before its effect measures the real size. A positive placeholder
+// silences it; the measured size replaces it immediately after mount.
+const CHART_INITIAL_DIMENSION = { width: 1, height: 1 } as const;
+
+export function ResponsiveContainer(props: ResponsiveContainerProps) {
+  return createElement(RechartsResponsiveContainer, {
+    initialDimension: CHART_INITIAL_DIMENSION,
+    ...props,
+  });
+}
 
 // Theme-aware axis tick text. Spread onto XAxis/YAxis so tick labels use the
 // Tailwind --foreground token (fill is an inherited SVG property) instead of
@@ -29,50 +63,3 @@ export const CHART_TOOLTIP_PROPS = {
   },
   labelStyle: { color: 'var(--foreground)', fontWeight: 600 },
 } as const;
-
-export const Bar = dynamic(() => import('recharts').then((m) => m.Bar), {
-  ssr: false,
-});
-export const BarChart = dynamic(
-  () => import('recharts').then((m) => m.BarChart),
-  { ssr: false }
-);
-export const LabelList = dynamic(
-  () => import('recharts').then((m) => m.LabelList),
-  { ssr: false }
-);
-export const Legend = dynamic(() => import('recharts').then((m) => m.Legend), {
-  ssr: false,
-});
-export const Line = dynamic(() => import('recharts').then((m) => m.Line), {
-  ssr: false,
-});
-export const LineChart = dynamic(
-  () => import('recharts').then((m) => m.LineChart),
-  { ssr: false }
-);
-export const Pie = dynamic(() => import('recharts').then((m) => m.Pie), {
-  ssr: false,
-});
-export const PieChart = dynamic(
-  () => import('recharts').then((m) => m.PieChart),
-  { ssr: false }
-);
-export const ReferenceLine = dynamic(
-  () => import('recharts').then((m) => m.ReferenceLine),
-  { ssr: false }
-);
-export const ResponsiveContainer = dynamic(
-  () => import('recharts').then((m) => m.ResponsiveContainer),
-  { ssr: false }
-);
-export const Tooltip = dynamic(
-  () => import('recharts').then((m) => m.Tooltip),
-  { ssr: false }
-);
-export const XAxis = dynamic(() => import('recharts').then((m) => m.XAxis), {
-  ssr: false,
-});
-export const YAxis = dynamic(() => import('recharts').then((m) => m.YAxis), {
-  ssr: false,
-});
