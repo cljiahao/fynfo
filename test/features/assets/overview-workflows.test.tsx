@@ -168,11 +168,14 @@ it('keeps a failed salary summary unavailable while loaded assets remain visible
 it('hydrates all four server datasets into the real overview without fetching them again on mount', async () => {
   const page = await getPrefetchedOverview();
   render(<Providers>{page}</Providers>);
-  expect(await screen.findByText('Net (after CPF)')).toBeTruthy();
+  expect(await screen.findByText('Current Salary')).toBeTruthy();
   expect(screen.getAllByText('$15,000')).toHaveLength(1);
   expect(
     screen.getByRole('link', { name: 'Add Snapshot' }).getAttribute('href')
   ).toBe('/dashboard/entry');
+  expect(screen.queryByText('Investment Breakdown')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
+  expect(await screen.findByText('Net (after CPF)')).toBeTruthy();
   expect(screen.getByText('Investment Breakdown')).toBeTruthy();
   for (const read of [
     api.getSnapshots,
@@ -181,7 +184,6 @@ it('hydrates all four server datasets into the real overview without fetching th
     api.getExpenses,
   ])
     expect(read).toHaveBeenCalledOnce();
-  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
   fireEvent.change(screen.getAllByRole('spinbutton')[1], {
     target: { value: '1000' },
   });
@@ -219,13 +221,14 @@ it('shows zero-state salary/planner values when all prefetched datasets are empt
   api.getSalaryRecords.mockResolvedValue([]);
   render(<Providers>{await getPrefetchedOverview()}</Providers>);
   expect(
+    await screen.findByRole('link', { name: 'Add your first snapshot' })
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
+  expect(
     await screen.findByText('Enter salary to see allocation')
   ).toBeTruthy();
   expect(screen.queryByText('Investment Breakdown')).toBeNull();
   expect(screen.getByRole('link', { name: 'Add Snapshot' })).toBeTruthy();
-  expect(
-    await screen.findByRole('link', { name: 'Add your first snapshot' })
-  ).toBeTruthy();
 });
 
 it('reviews a selected month using existing records and hides failed review totals', async () => {
@@ -237,7 +240,7 @@ it('reviews a selected month using existing records and hides failed review tota
       <DashboardOverview />
     </QueryClientProvider>
   );
-  await screen.findByText('Net (after CPF)');
+  await screen.findByText('Current Salary');
   fireEvent.click(screen.getByRole('button', { name: 'Review month' }));
   fireEvent.change(screen.getByLabelText('Month'), {
     target: { value: '2026-01' },
