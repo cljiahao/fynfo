@@ -2,12 +2,12 @@
 id: '160'
 slug: household-table-grants
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-01
 approved: 2026-11-01 # Clarence
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # link to impl PR, set on shipped
+shipped: 2026-11-01
+impl_pr: direct-to-main 50eb98e
 supersedes:
 constitution_satisfies:
   - '§5.2'
