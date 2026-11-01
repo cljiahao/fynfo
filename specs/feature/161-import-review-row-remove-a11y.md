@@ -10,8 +10,6 @@ shipped:
 impl_pr:
 supersedes:
 constitution_satisfies:
-  - '§2.3'
-  - '§2.5'
   - '§2.6'
   - '§2.7'
   - '§3.2'
@@ -35,9 +33,10 @@ selection, because `remove` writes state computed from an old render.
 
 ## Constitution check
 
-- Satisfies: `§2.3` (no action, API or encryption path touched), `§2.5` (no new
-  `'use client'` file; the review is already client), `§2.6` and `§2.7`, `§3.2`,
-  `§3.4`, `§4.1`, `§4.4`, `§4.2` (regression tests for each fix).
+- Satisfies: `§2.6` and `§2.7`, `§3.2`, `§3.4`, `§4.1`, `§4.4`, `§4.2`
+  (regression tests for each fix).
+- Not affected: `§2.3` (no server action/API/encryption path), `§2.5` (no new
+  'use client' file).
 - Overrides: none. No stored data, migration or new dependency.
 
 ## Solution shape
@@ -83,7 +82,7 @@ Current behavior:
   (`statement-row-card.tsx:108-131`), unmounting the button that had focus. In
   the other views the card disappears from `rowsFor` entirely
   (`statement-review.tsx:455`). Either way focus falls to `body`.
-- `statement-review.tsx:91` and `:160-177` already implement a post-render
+- `statement-review.tsx:91` and `:165-177` already implement a post-render
   focus hand-off (`focusTarget` ref plus an effect that focuses
   `${id}-${rowId}-card` or its decision button). It is only used for
   duplicate-compare focus, not for removal.
@@ -110,7 +109,7 @@ Change:
 
 Current behavior:
 
-- `hooks/use-statement-save.ts:234-246`: `remove` calls
+- `hooks/use-statement-save.ts:232-244`: `remove` calls
   `setRemoved(new Set(removed).add(row.id))`,
   `setSelection(selection.filter(...))`, `setResolutions(drop(resolutions))`,
   `setChecks(drop(checks))` and `setSavedMatches(drop(savedMatches))`. All five
@@ -118,7 +117,7 @@ Current behavior:
   fired before React commits between them (rapid clicks, or key repeat) each
   start from the same old snapshot, so the second write overwrites the first
   and the first row reappears and may stay selected.
-- `hooks/use-statement-save.ts:247-251`: `restore` has the same pattern with
+- `hooks/use-statement-save.ts:246-250`: `restore` has the same pattern with
   `new Set(removed)`.
 
 Change:
@@ -132,7 +131,7 @@ Change:
 - The guards (`canReveal`, `running`, `attemptsRef`) are refs or non-state reads
   and stay as they are.
 - Not in this spec: the same closure pattern in `toggle`, `resolve` and
-  `clearSelection` (L207-L263). They are not part of the remove flow; record a
+  `clearSelection` (`toggle`, `resolve`, `clearSelection`). They are not part of the remove flow; record a
   follow-up if the owner wants them converted.
 
 ## Out of scope
