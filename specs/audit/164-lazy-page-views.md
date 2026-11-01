@@ -27,7 +27,7 @@ Reads that no longer fire on initial load of the default tab:
   - `useStockPrices` via `InvestmentBreakdown` (`investment-breakdown.tsx:65`) and `InvestmentAllocation` (`investment-allocation.tsx:38`), Plan tab. Both share one query key.
   - `useSnapshots`, `useSalaryRecords`, `useExpenses`, `useTrades`, `useExchangeRate` in the Plan and Review tabs (`salary-planner.tsx:61,73`, `monthly-review.tsx:32-34`, `investment-breakdown.tsx:59,66`) are already issued by the visible tab or the page, so they were de-duplicated by key and are unchanged.
   - Net: 2 distinct server-action reads (planner settings, stock prices) plus the Plan-tab and Review-tab render work.
-- Equity (`src/app/dashboard/equity/page.tsx`): `useDividends` and `useExchangeRate` via `DistributionsSection` (`distributions-section.tsx:42,44`), Dividends tab. Holdings tab keeps `useStockPrices` (`portfolio-summary.tsx:29`, `holdings-table.tsx:184`).
+- Equity (`src/app/dashboard/equity/page.tsx`): only `useDividends` via `DistributionsSection` (`distributions-section.tsx:42`), Dividends tab, is deferred (1 read). `useExchangeRate` in that tab (`distributions-section.tsx:44`) shares its key with the default Holdings tab (`holdings-table.tsx:185`), so it is de-duplicated. Holdings tab keeps `useStockPrices` (`portfolio-summary.tsx:29`, `holdings-table.tsx:184`).
 - Expenses (`src/app/dashboard/expenses/page.tsx`): `useRecurringRulebook` and `useRecurringExpenseLinks` via `RecurringReview` (`recurring-review.tsx:81-82`), Recurring tab.
 - Assets and salary: hidden tabs reuse page-level queries; the saving is chart and table render work.
 
