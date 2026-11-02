@@ -2,13 +2,13 @@
 id: '166'
 slug: context-diet
 area: governance
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude (Sonnet 5.5)
 approved_by: Clarence
 created: 2026-11-02
 approved: 2026-11-02 # Clarence
-shipped:
-impl_pr:
+shipped: 2026-11-02
+impl_pr: direct-to-main (no PR)
 supersedes:
 constitution_satisfies:
   - '§7.1'
