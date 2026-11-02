@@ -33,6 +33,28 @@ vi.mock('@/features/profile/actions/profile-actions', () => api);
 vi.mock('@/features/equity/actions/equity-actions', () => api);
 vi.mock('@/features/equity/actions/dividend-actions', () => api);
 vi.mock('@/features/equity/actions/price-actions', () => api);
+// No test here asserts chart output; rendering real recharts dominates runtime under coverage.
+vi.mock('@/lib/recharts', () => {
+  const Empty = () => null;
+  return {
+    CHART_AXIS_TICK_PROPS: {},
+    CHART_TOOLTIP_PROPS: {},
+    Cell: Empty,
+    Bar: Empty,
+    BarChart: Empty,
+    LabelList: Empty,
+    Legend: Empty,
+    Line: Empty,
+    LineChart: Empty,
+    Pie: Empty,
+    PieChart: Empty,
+    ReferenceLine: Empty,
+    ResponsiveContainer: Empty,
+    Tooltip: Empty,
+    XAxis: Empty,
+    YAxis: Empty,
+  };
+});
 // UI fixtures use the actual cohort action; boundary security is tested separately.
 vi.mock('@/lib/action-guard', () => ({ requireActionContext: vi.fn() }));
 beforeEach(() => {
@@ -71,7 +93,7 @@ async function getPrefetchedOverview() {
   return OverviewPrefetch(page.props);
 }
 function getAllocationInput(ticker: string, market: string) {
-  const trigger = screen.getByRole('button', { name: market });
+  const trigger = screen.getByText(market).closest('button')!;
   if (trigger.getAttribute('aria-expanded') === 'false')
     fireEvent.click(trigger);
   return screen
@@ -259,34 +281,35 @@ it('reviews a selected month using existing records and hides failed review tota
   expect(screen.queryByText('private expense details')).toBeNull();
 });
 
-it('connects calculated market budgets to real ticker allocation edits without persisting sensitive targets', async () => {
-  api.getTrades.mockResolvedValue([
-    {
-      id: 'sg',
-      date: '2026-01-01',
-      broker: 'Broker',
-      ticker: 'DBS',
-      action: 'buy',
-      shares: 100,
-      price: 10,
-      fees: 0,
-    },
-    {
-      id: 'us',
-      date: '2026-01-01',
-      broker: 'Broker',
-      ticker: 'AAPL',
-      action: 'buy',
-      shares: 10,
-      price: 100,
-      fees: 0,
-    },
-  ]);
+const holdings = [
+  {
+    id: 'sg',
+    date: '2026-01-01',
+    broker: 'Broker',
+    ticker: 'DBS',
+    action: 'buy',
+    shares: 100,
+    price: 10,
+    fees: 0,
+  },
+  {
+    id: 'us',
+    date: '2026-01-01',
+    broker: 'Broker',
+    ticker: 'AAPL',
+    action: 'buy',
+    shares: 10,
+    price: 100,
+    fees: 0,
+  },
+];
+
+async function renderPlannerWithHoldings() {
+  api.getTrades.mockResolvedValue(holdings);
   api.fetchStockPrices.mockResolvedValue({
     DBS: { price: 12, currency: 'SGD' },
     AAPL: { price: 110, currency: 'USD' },
   });
-  localStorage.setItem('fynfo-allocations', JSON.stringify({ DBS: 90 }));
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: 300000 } },
   });
@@ -295,8 +318,28 @@ it('connects calculated market budgets to real ticker allocation edits without p
       {await getPrefetchedOverview()}
     </QueryClientProvider>
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
-  await screen.findByRole('button', { name: 'SG Stocks' });
+  fireEvent.click(screen.getByText('Plan income'));
+  await screen.findByText('SG Stocks');
+  return client;
+}
+
+async function enterPlannerEdits() {
+  const client = await renderPlannerWithHoldings();
+  fireEvent.change(getAllocationInput('DBS', 'SG Stocks'), {
+    target: { value: '100' },
+  });
+  fireEvent.change(getAllocationInput('AAPL', 'US Stocks'), {
+    target: { value: '50' },
+  });
+  fireEvent.change(screen.getAllByRole('spinbutton')[0], {
+    target: { value: '8000' },
+  });
+  return client;
+}
+
+it('connects calculated market budgets to real ticker allocation edits without persisting sensitive targets', async () => {
+  localStorage.setItem('fynfo-allocations', JSON.stringify({ DBS: 90 }));
+  await renderPlannerWithHoldings();
   const sgInput = getAllocationInput('DBS', 'SG Stocks');
   expect(sgInput.value).toBe('');
   fireEvent.change(sgInput, { target: { value: '100' } });
@@ -306,32 +349,31 @@ it('connects calculated market budgets to real ticker allocation edits without p
   expect(screen.getByText('50%')).toBeTruthy();
   expect(localStorage.getItem('fynfo-allocations')).toBeNull();
   expect(api.fetchStockPrices).toHaveBeenCalledWith(['DBS', 'AAPL']);
+});
 
-  fireEvent.change(screen.getAllByRole('spinbutton')[0], {
-    target: { value: '8000' },
-  });
+it('keeps planner salary and allocation edits after a snapshot read is retried', async () => {
+  const client = await enterPlannerEdits();
   api.getSnapshots.mockRejectedValueOnce(new Error('offline'));
   await client.invalidateQueries({ queryKey: ['snapshots'] });
-  fireEvent.click(screen.getByRole('button', { name: 'Overview' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
-  await waitFor(() =>
-    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
-  );
-  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
+  fireEvent.click(screen.getByText('Overview'));
+  fireEvent.click(await screen.findByText('Try again'));
+  await waitFor(() => expect(screen.queryByText('Try again')).toBeNull());
+  fireEvent.click(screen.getByText('Plan income'));
   expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe(
     '8000'
   );
   expect(getAllocationInput('AAPL', 'US Stocks').value).toBe('50');
   expect(getAllocationInput('DBS', 'SG Stocks').value).toBe('100');
+});
 
+it('keeps planner salary and allocation edits after an expense read is retried', async () => {
+  const client = await enterPlannerEdits();
   api.getExpenses.mockRejectedValueOnce(new Error('offline'));
   await client.invalidateQueries({ queryKey: ['expenses'] });
-  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
-  await waitFor(() =>
-    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
-  );
-  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
+  fireEvent.click(screen.getByText('Plan income'));
+  fireEvent.click(await screen.findByText('Retry'));
+  await waitFor(() => expect(screen.queryByText('Retry')).toBeNull());
+  fireEvent.click(screen.getByText('Plan income'));
   expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe(
     '8000'
   );
