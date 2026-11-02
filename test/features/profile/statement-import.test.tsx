@@ -657,7 +657,7 @@ const twentyOneRows = [
   ),
 ].map((text, index) => ({ page: 1, line: index + 1, text }));
 
-it('selection across pages is included in the duplicate check', async () => {
+it('selection across pages is included and twenty-one rows save in automatic groups', async () => {
   mocks.extract.mockResolvedValue(twentyOneRows);
   await setup();
   for (let page = 0; page < 4; page += 1) {
@@ -670,14 +670,8 @@ it('selection across pages is included in the duplicate check', async () => {
   }
   expect(screen.getByText(/20 selected/)).toBeInTheDocument();
   fireEvent.click(screen.getByLabelText('Select expense from page 1, line 22'));
-  expect(screen.getByText(/21 selected/)).toBeInTheDocument();
-  expect(screen.getByText('Check 21 for duplicates')).toBeInTheDocument();
-});
-
-it('twenty-one selected rows save in automatic groups', async () => {
-  mocks.extract.mockResolvedValue(twentyOneRows);
-  await setup();
-  fireEvent.click(screen.getByText('Select all 21 expenses'));
+  expect(screen.getByText(/21 selected/)).toBeVisible();
+  expect(screen.getByText('Check 21 for duplicates')).toBeVisible();
   fireEvent.click(screen.getByText('Check 21 for duplicates'));
   fireEvent.click(await screen.findByText('Save 21 expenses'));
   await screen.findByText('21 expenses saved');

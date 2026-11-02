@@ -356,8 +356,10 @@ it('keeps planner salary and allocation edits after a snapshot read is retried',
   api.getSnapshots.mockRejectedValueOnce(new Error('offline'));
   await client.invalidateQueries({ queryKey: ['snapshots'] });
   fireEvent.click(screen.getByText('Overview'));
-  fireEvent.click(await screen.findByText('Try again'));
-  await waitFor(() => expect(screen.queryByText('Try again')).toBeNull());
+  fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
+  );
   fireEvent.click(screen.getByText('Plan income'));
   expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe(
     '8000'
@@ -371,8 +373,10 @@ it('keeps planner salary and allocation edits after an expense read is retried',
   api.getExpenses.mockRejectedValueOnce(new Error('offline'));
   await client.invalidateQueries({ queryKey: ['expenses'] });
   fireEvent.click(screen.getByText('Plan income'));
-  fireEvent.click(await screen.findByText('Retry'));
-  await waitFor(() => expect(screen.queryByText('Retry')).toBeNull());
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+  );
   fireEvent.click(screen.getByText('Plan income'));
   expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe(
     '8000'

@@ -34,12 +34,11 @@ Mapping, overview (old -> new):
 
 Mapping, statement import (old -> new):
 
-- 20 selected after paging, 21 selected after line 22, "Check 21 for duplicates" offered -> "selection across pages is included in the duplicate check"
-- Check, "Save 21 expenses", "21 expenses saved", 21 inserts in automatic groups -> "twenty-one selected rows save in automatic groups" (rows are selected with the action bar's "Select all 21 expenses" instead of page-by-page clicks)
+- 20 selected after paging, 21 selected after line 22, check, "Save 21 expenses", "21 expenses saved", 21 inserts in automatic groups -> "selection across pages is included and twenty-one rows save in automatic groups". The test is one flow but now carries only the paging loop with plain DOM selection and cheaper text queries, so it stays well under the default timeout.
 
 ## Acceptance
 
-Full `pnpm exec vitest run --coverage` passes; `format:check`, `lint` and `typecheck` pass. Per-test durations are reported in the delivery notes, not asserted here. Residual risk: the save test no longer proves page-by-page selection feeds the save, only that the same 21 rows save; the cross-page test covers the selection half.
+Full `pnpm exec vitest run --coverage` passes; `format:check`, `lint` and `typecheck` pass. Per-test durations are reported in the delivery notes, not asserted here.
 
 ## Rollback
 
