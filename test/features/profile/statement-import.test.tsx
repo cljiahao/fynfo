@@ -680,7 +680,9 @@ it('selection across pages is included and twenty-one rows save in automatic gro
   );
   await screen.findByText('21 expenses saved');
   expect(mocks.insert).toHaveBeenCalledTimes(21);
-});
+  // Twenty-one checked rows and two save groups exceed the 5s default when
+  // the full suite runs in parallel with V8 coverage.
+}, 20_000);
 
 it('checks a hidden interrupted save before its old acknowledgement returns and ignores that late result', async () => {
   await setup();
