@@ -2,11 +2,11 @@
 id: '166'
 slug: context-diet
 area: governance
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude (Sonnet 5.5)
-approved_by:
+approved_by: Clarence
 created: 2026-11-02
-approved:
+approved: 2026-11-02 # Clarence
 shipped:
 impl_pr:
 supersedes:
@@ -32,13 +32,13 @@ every turn without improving results.
 
 ## Sources
 
-Both retrieved 2026-11-02 and summarized from the builder's brief; the owner is
-asked to confirm them (Open questions).
+Both cited from the brief on 2026-11-02, not re-fetched; the owner confirmed
+them by approving as written (Open questions).
 
 1. Thariq Shihipar, "The new rules of context engineering for Claude 5
    generation models", claude.com blog, 2026-07-24,
    https://claude.com/blog/the-new-rules-of-context-engineering-for-claude-5-generation-models
-   . Reported: Anthropic removed most of Claude Code's own system prompt
+   Reported: Anthropic removed most of Claude Code's own system prompt
    (over 80 percent) with no measurable loss on coding evals, and attributed
    earlier problems to over-constraint from overlapping or conflicting
    instructions. Suggested `CLAUDE.md` practice: keep it lightweight, say what
@@ -46,7 +46,7 @@ asked to confirm them (Open questions).
    verification skill, and use `/doctor` to rightsize.
 2. "Steering Claude Code: skills, hooks, rules, subagents and more",
    https://claude.com/resources/articles/steering-claude-code-skills-hooks-rules-subagents-and-more
-   . Reported: keep `CLAUDE.md` under about 200 lines; "always do Y" belongs in
+   Reported: keep `CLAUDE.md` under about 200 lines; "always do Y" belongs in
    hooks and "never do X" needs hooks or permissions; area conventions suit
    path-scoped `.claude/rules/`; skills cost only name and description until
    invoked.
@@ -212,18 +212,18 @@ and the hook is the mechanism.
 
 ## Open questions
 
-- [ ] Q1: Is the Hermes fleet (atlas, heph, argus) still in use? Default is to
+- [x] Q1: Is the Hermes fleet (atlas, heph, argus) still in use? Default is to
       keep §6 at about 4 lines; it is deleted only if the answer is "fleet
-      retired". — Owner: Clarence — A:
-- [ ] Q2: Is the §0 exemption paragraph correct to keep verbatim (this spec
-      assumes yes, with §0 unchanged at 16 lines)? — Owner: Clarence — A:
-- [ ] Q3: Should the LF-versus-raw-bytes hashing note and the `harness.json`
+      retired". — Owner: Clarence — A: Keep §6 at about 4 lines. (owner approved as written 2026-11-02; defaults apply)
+- [x] Q2: Is the §0 exemption paragraph correct to keep verbatim (this spec
+      assumes yes, with §0 unchanged at 16 lines)? — Owner: Clarence — A: Yes, §0 stays verbatim. (owner approved as written 2026-11-02; defaults apply)
+- [x] Q3: Should the LF-versus-raw-bytes hashing note and the `harness.json`
       `templatecentral_version` 5.0.0 note stay in `AGENTS.md` §11, or move to
       a spec or issue now that they matter only to the owner? — Owner:
-      Clarence — A:
-- [ ] Q4: Should a path-scoped `.claude/rules/` file for crypto code be created
+      Clarence — A: Keep both §11 notes. (owner approved as written 2026-11-02; defaults apply)
+- [x] Q4: Should a path-scoped `.claude/rules/` file for crypto code be created
       as a separate owner-applied step, or are the retained rules enough? —
-      Owner: Clarence — A:
-- [ ] Q5: Please confirm the two cited sources and the paraphrased claims, which
+      Owner: Clarence — A: No `.claude/rules/` file; the retained rules suffice. (owner approved as written 2026-11-02; defaults apply)
+- [x] Q5: Please confirm the two cited sources and the paraphrased claims, which
       were taken from the brief and not independently re-fetched by the author.
-      — Owner: Clarence — A:
+      — Owner: Clarence — A: Sources accepted. (owner approved as written 2026-11-02; defaults apply)
