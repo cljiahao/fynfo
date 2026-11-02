@@ -12,6 +12,6 @@ export const DividendIncomeChart = dynamic(
     ),
   {
     ssr: false,
-    loading: () => <Skeleton className="h-[260px] w-full" />,
+    loading: () => <Skeleton className="h-[356px] w-full" />,
   }
 );

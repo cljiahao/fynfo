@@ -12,6 +12,6 @@ export const MarketingTrendChart = dynamic(
     ),
   {
     ssr: false,
-    loading: () => <Skeleton className="h-[320px] w-full" />,
+    loading: () => <Skeleton className="h-[416px] w-full" />,
   }
 );

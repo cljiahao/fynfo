@@ -9,6 +9,6 @@ export const CategoryBreakdown = dynamic(
   () => import('./category-breakdown-content').then((m) => m.CategoryBreakdown),
   {
     ssr: false,
-    loading: () => <Skeleton className="h-[120px] w-full" />,
+    loading: () => <Skeleton className="h-[216px] w-full" />,
   }
 );

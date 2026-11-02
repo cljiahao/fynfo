@@ -175,7 +175,7 @@ export function AssetLineChart({ data }: AssetLineChartProps) {
         </div>
       </CardHeader>
       <CardContent className="flex-1">
-        <div className="h-full min-h-[400px] w-full">
+        <div className="h-[400px] w-full">
           {hidden ? (
             <p role="status">Amounts hidden</p>
           ) : (

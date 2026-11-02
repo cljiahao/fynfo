@@ -1,3 +1,5 @@
+'use client';
+
 import { useLayoutEffect, useState } from 'react';
 import {
   ResponsiveContainer as RechartsResponsiveContainer,
@@ -35,7 +37,8 @@ export {
 // mounted while the wrapper itself measures > 0 on both axes. minWidth/minHeight
 // cannot cover the second case because a display:none ancestor (e.g. a hidden
 // tab) always measures 0x0. The wrapper fills its parent, so callers keep
-// putting the height on the parent.
+// putting a definite height on the parent (an auto-height parent would leave
+// this wrapper at 0 and the chart unmounted).
 const CHART_INITIAL_DIMENSION = { width: 1, height: 1 } as const;
 
 export function ResponsiveContainer({

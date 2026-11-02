@@ -16,12 +16,14 @@ const DATA = [
 ];
 
 let size = { width: 0, height: 0 };
+const disconnectSpy = vi.fn();
 let observers: Array<(entries: unknown[]) => void> = [];
 
 // jsdom has no layout, so measurements and ResizeObserver are driven by hand.
 beforeEach(() => {
   size = { width: 0, height: 0 };
   observers = [];
+  disconnectSpy.mockClear();
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
     () =>
       ({ ...size, x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0 }) as DOMRect
@@ -33,7 +35,9 @@ beforeEach(() => {
         observers.push(cb);
       }
       observe() {}
-      disconnect() {}
+      disconnect() {
+        disconnectSpy();
+      }
     }
   );
 });
@@ -138,6 +142,14 @@ describe('chart ResponsiveContainer', () => {
       null
     );
     expect(sizeWarnings(spy)).toHaveLength(0);
+  });
+
+  it('disconnects its ResizeObserver on unmount', () => {
+    size = { width: 400, height: 300 };
+    const { unmount } = render(<Chart />);
+    expect(disconnectSpy).not.toHaveBeenCalled();
+    unmount();
+    expect(disconnectSpy).toHaveBeenCalled();
   });
 
   it('lets a caller override initialDimension', () => {

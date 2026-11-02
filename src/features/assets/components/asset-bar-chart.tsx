@@ -9,6 +9,6 @@ export const AssetLineChart = dynamic(
   () => import('./asset-bar-chart-content').then((m) => m.AssetLineChart),
   {
     ssr: false,
-    loading: () => <Skeleton className="h-[400px] w-full" />,
+    loading: () => <Skeleton className="h-[496px] w-full" />,
   }
 );
