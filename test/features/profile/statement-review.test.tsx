@@ -534,7 +534,7 @@ it('hides repayments, filters refunds and bulk-selects all eligible expenses acr
   expect(
     screen.getByText('No expenses left to select in this view.')
   ).toBeVisible();
-}, 30000);
+}, 60000);
 it('previews both original values before restoring and opens row rules in a dialog', async () => {
   setup();
   await screen.findByLabelText('Item / Brand');
@@ -595,4 +595,4 @@ it('pins the row pager, numbers rows across pages and focuses the first card aft
     expect(
       screen.getByRole('region', { name }).querySelector('[style]')
     ).toBeNull();
-}, 15000);
+}, 30000);

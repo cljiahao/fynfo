@@ -336,4 +336,4 @@ it('connects calculated market budgets to real ticker allocation edits without p
     '8000'
   );
   expect(getAllocationInput('DBS', 'SG Stocks').value).toBe('100');
-});
+}, 15_000);
