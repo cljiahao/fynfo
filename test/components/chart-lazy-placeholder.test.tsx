@@ -63,6 +63,24 @@ const CASES: Case[] = [
 
 // planner-results stacks into two cells below sm, so its mobile skeleton is
 // the stacked height (chart 250 + gap 24 + ~200 summary), not body + allowance.
+// A static map keeps Vite from warning about an unanalyzable dynamic import.
+const LOADERS: Record<string, () => Promise<unknown>> = {
+  'admin/components/marketing-trend-chart': () =>
+    import('@/features/admin/components/marketing-trend-chart'),
+  'assets/components/asset-bar-chart': () =>
+    import('@/features/assets/components/asset-bar-chart'),
+  'assets/components/category-breakdown': () =>
+    import('@/features/assets/components/category-breakdown'),
+  'assets/components/planner-results': () =>
+    import('@/features/assets/components/planner-results'),
+  'equity/components/dividend-income-chart': () =>
+    import('@/features/equity/components/dividend-income-chart'),
+  'expenses/components/expense-chart': () =>
+    import('@/features/expenses/components/expense-chart'),
+  'salary/components/salary-chart': () =>
+    import('@/features/salary/components/salary-chart'),
+};
+
 const MOBILE_OVERRIDE: Record<string, number> = {
   'assets/components/planner-results': 474,
 };
@@ -72,7 +90,7 @@ describe('lazy chart wrappers', () => {
     '$path skeleton height is body + card allowance',
     async (c) => {
       captured.length = 0;
-      await import(`@/features/${c.path}`);
+      await LOADERS[c.path]();
       expect(captured).toHaveLength(1);
       const [options] = captured;
       expect(options.ssr).toBe(false);

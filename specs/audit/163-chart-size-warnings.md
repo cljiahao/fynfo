@@ -61,3 +61,4 @@ Revert the implementing commit; no data, schema or dependency change is involved
 
 - Charts no longer render their surrounding card on the server; the whole card appears after the chart chunk loads, behind a skeleton whose height is an estimate (see Change).
 - A caller that gives the wrapper's parent an auto height gets no chart, because the wrapper stays at 0. Call sites are checked above; new ones must follow the same rule.
+- The placeholder test loads each wrapper through a static loader map so Vite prints no dynamic-import-vars warning.
