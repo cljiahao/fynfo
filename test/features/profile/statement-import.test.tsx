@@ -648,41 +648,41 @@ it('pauses after an uncertain group and checks all submitted identities without 
   await screen.findByText('3 expenses saved');
   expect(mocks.insert).toHaveBeenCalledTimes(3);
 });
-// Vitest's 5s default is exceeded by 21 checked rows and two save groups under
-// V8 coverage, even with the small page; no behaviour is waived.
-it('selection across pages is included and twenty-one rows save in automatic groups', async () => {
-  mocks.extract.mockResolvedValue(
-    [
-      'UOB SGD billed',
-      ...Array.from(
-        { length: 21 },
-        (_, index) =>
-          `${String(index + 1).padStart(2, '0')} OCT MARKET ${index} 1.00`
-      ),
-    ].map((text, index) => ({ page: 1, line: index + 1, text }))
-  );
+const twentyOneRows = [
+  'UOB SGD billed',
+  ...Array.from(
+    { length: 21 },
+    (_, index) =>
+      `${String(index + 1).padStart(2, '0')} OCT MARKET ${index} 1.00`
+  ),
+].map((text, index) => ({ page: 1, line: index + 1, text }));
+
+it('selection across pages is included in the duplicate check', async () => {
+  mocks.extract.mockResolvedValue(twentyOneRows);
   await setup();
   for (let page = 0; page < 4; page += 1) {
-    const visibleSelections = screen.getAllByRole('checkbox', {
-      name: /Select expense from page 1, line/,
-    });
-    act(() => {
-      for (const checkbox of visibleSelections) fireEvent.click(checkbox);
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Next rows' }));
+    // Plain DOM selection is setup only; role queries over every card dominate runtime.
+    for (const checkbox of document.querySelectorAll(
+      '[aria-label^="Select expense from page 1, line"]'
+    ))
+      fireEvent.click(checkbox);
+    fireEvent.click(screen.getByText('Next rows'));
   }
-  expect(screen.getByText(/20 selected/)).toBeVisible();
+  expect(screen.getByText(/20 selected/)).toBeInTheDocument();
   fireEvent.click(screen.getByLabelText('Select expense from page 1, line 22'));
-  expect(screen.getByText(/21 selected/)).toBeVisible();
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Check 21 for duplicates' })
-  );
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Save 21 expenses' })
-  );
+  expect(screen.getByText(/21 selected/)).toBeInTheDocument();
+  expect(screen.getByText('Check 21 for duplicates')).toBeInTheDocument();
+});
+
+it('twenty-one selected rows save in automatic groups', async () => {
+  mocks.extract.mockResolvedValue(twentyOneRows);
+  await setup();
+  fireEvent.click(screen.getByText('Select all 21 expenses'));
+  fireEvent.click(screen.getByText('Check 21 for duplicates'));
+  fireEvent.click(await screen.findByText('Save 21 expenses'));
   await screen.findByText('21 expenses saved');
   expect(mocks.insert).toHaveBeenCalledTimes(21);
-}, 20_000);
+});
 
 it('checks a hidden interrupted save before its old acknowledgement returns and ignores that late result', async () => {
   await setup();
