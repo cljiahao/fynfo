@@ -20,34 +20,59 @@ vi.mock('next/dynamic', () => ({
   },
 }));
 
-// Skeleton height = the chart body's height class in the content module plus
-// a 96px allowance for the card header the dynamic boundary also swaps in.
-const WRAPPERS: Array<[string, string]> = [
-  ['admin/components/marketing-trend-chart', 'h-[416px]'],
-  ['assets/components/asset-bar-chart', 'h-[496px]'],
-  ['assets/components/category-breakdown', 'h-[216px]'],
-  ['assets/components/planner-results', 'h-[346px]'],
-  ['equity/components/dividend-income-chart', 'h-[356px]'],
-  ['expenses/components/expense-chart', 'h-[336px] sm:h-[446px]'],
-  ['salary/components/salary-chart', 'h-[446px]'],
+// Expected skeleton height = the chart div's height class in the content
+// module + the card chrome the dynamic boundary also swaps in. The two
+// headerless modules render inside callers' cards, so their allowance is 0.
+const CARD = 116;
+
+interface Case {
+  path: string;
+  body: string;
+  allowance: number;
+  desktopBody?: string;
+  desktopAllowance?: number;
+}
+
+const CASES: Case[] = [
+  {
+    path: 'admin/components/marketing-trend-chart',
+    body: '320',
+    allowance: CARD,
+  },
+  { path: 'assets/components/asset-bar-chart', body: '400', allowance: CARD },
+  {
+    path: 'assets/components/category-breakdown',
+    body: '120',
+    allowance: CARD,
+  },
+  { path: 'assets/components/planner-results', body: '250', allowance: 0 },
+  {
+    path: 'equity/components/dividend-income-chart',
+    body: '260',
+    allowance: 0,
+  },
+  {
+    path: 'expenses/components/expense-chart',
+    body: '240',
+    allowance: 256,
+    desktopBody: '350',
+    desktopAllowance: 164,
+  },
+  { path: 'salary/components/salary-chart', body: '350', allowance: CARD },
 ];
 
-const BODY_HEIGHT: Record<string, string> = {
-  'admin/components/marketing-trend-chart': 'h-[320px]',
-  'assets/components/asset-bar-chart': 'h-[400px]',
-  'assets/components/category-breakdown': 'h-[120px]',
-  'assets/components/planner-results': 'h-[250px]',
-  'equity/components/dividend-income-chart': 'h-[260px]',
-  'expenses/components/expense-chart': 'h-[240px] sm:h-[350px]',
-  'salary/components/salary-chart': 'h-[350px]',
+// planner-results stacks into two cells below sm, so its mobile skeleton is
+// the stacked height (chart 250 + gap 24 + ~200 summary), not body + allowance.
+const MOBILE_OVERRIDE: Record<string, number> = {
+  'assets/components/planner-results': 474,
 };
 
 describe('lazy chart wrappers', () => {
-  it.each(WRAPPERS)(
-    '%s is client-only and renders a card-height placeholder while loading',
-    async (path, height) => {
+  it.each(CASES)(
+    '$path skeleton height is body + card allowance',
+    async (c) => {
       captured.length = 0;
-      await import(`@/features/${path}`);
+      await import(`@/features/${c.path}`);
       expect(captured).toHaveLength(1);
       const [options] = captured;
       expect(options.ssr).toBe(false);
@@ -55,20 +80,25 @@ describe('lazy chart wrappers', () => {
       const placeholder = container.querySelector('[data-slot="skeleton"]');
       expect(placeholder).not.toBe(null);
       const classes = (placeholder?.className ?? '').split(/\s+/);
-      for (const cls of height.split(' ')) expect(classes).toContain(cls);
-    }
-  );
-
-  it.each(WRAPPERS)(
-    '%s content module still uses the body height this skeleton was sized from',
-    (path) => {
-      const content = readFileSync(
-        resolve(`src/features/${path}-content.tsx`),
-        'utf8'
-      );
-      for (const cls of BODY_HEIGHT[path].split(' ')) {
-        expect(content).toContain(cls);
+      const mobile = MOBILE_OVERRIDE[c.path] ?? Number(c.body) + c.allowance;
+      expect(classes).toContain(`h-[${mobile}px]`);
+      if (c.desktopBody) {
+        const desktop = Number(c.desktopBody) + (c.desktopAllowance ?? 0);
+        expect(classes).toContain(`sm:h-[${desktop}px]`);
+      } else if (MOBILE_OVERRIDE[c.path]) {
+        expect(classes).toContain(`sm:h-[${Number(c.body) + c.allowance}px]`);
       }
     }
   );
+
+  it.each(CASES)('$path chart div uses the body height class', (c) => {
+    const content = readFileSync(
+      resolve(`src/features/${c.path}-content.tsx`),
+      'utf8'
+    );
+    const chartDiv = new RegExp(
+      String.raw`<div className="[^"]*\bh-\[${c.body}px\][^"]*">[\s\S]{0,160}?<ResponsiveContainer`
+    );
+    expect(content).toMatch(chartDiv);
+  });
 });

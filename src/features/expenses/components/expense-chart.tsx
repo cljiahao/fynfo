@@ -9,6 +9,6 @@ export const ExpenseChart = dynamic(
   () => import('./expense-chart-content').then((m) => m.ExpenseChart),
   {
     ssr: false,
-    loading: () => <Skeleton className="h-[336px] w-full sm:h-[446px]" />,
+    loading: () => <Skeleton className="h-[496px] w-full sm:h-[514px]" />,
   }
 );

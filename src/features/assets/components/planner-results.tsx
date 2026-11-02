@@ -9,6 +9,6 @@ export const PlannerResults = dynamic(
   () => import('./planner-results-content').then((m) => m.PlannerResults),
   {
     ssr: false,
-    loading: () => <Skeleton className="h-[346px] w-full" />,
+    loading: () => <Skeleton className="h-[474px] w-full sm:h-[250px]" />,
   }
 );

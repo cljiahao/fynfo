@@ -9,6 +9,6 @@ export const SalaryChart = dynamic(
   () => import('./salary-chart-content').then((m) => m.SalaryChart),
   {
     ssr: false,
-    loading: () => <Skeleton className="h-[446px] w-full" />,
+    loading: () => <Skeleton className="h-[466px] w-full" />,
   }
 );
