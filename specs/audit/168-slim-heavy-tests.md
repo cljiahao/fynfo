@@ -24,7 +24,7 @@ A quiet full `vitest run --coverage` measured only two tests above 2s: the overv
 
 ## Change
 
-Each long workflow is split into focused tests that arrange their own starting state. Setup queries use cheaper lookups (text and attribute selectors instead of accessible-name role queries, which scan the whole DOM per call); assertions keep their text and values, except that `toBeVisible` becomes `toBeInTheDocument` in the cross-page selection test because visibility checks walk computed styles. The overview file stubs `@/lib/recharts`, because no test there asserts chart output. The import 20s override is removed.
+Each long workflow is split into focused tests that arrange their own starting state. Setup queries use cheaper lookups (text and attribute selectors instead of accessible-name role queries, which scan the whole DOM per call); assertions keep their text and values, except that the in-loop "20 selected" check in the cross-page selection test uses `toBeInTheDocument` instead of `toBeVisible`, because visibility checks walk computed styles; "21 selected" and "Check 21 for duplicates" stay `toBeVisible`. The overview file stubs `@/lib/recharts`, because no test there asserts chart output. The import 20s override is removed.
 
 Mapping, overview (old -> new):
 
