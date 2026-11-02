@@ -25,13 +25,13 @@ Owner-authorized remediation under AGENTS.md section 1.5 and constitution sectio
 Every chart page logged "The width(-1) and height(-1) of chart should be greater than 0". Two causes, both confirmed in recharts 3.8.1 source (`node_modules/recharts/es6/component/ResponsiveContainer.js`, `responsiveContainerUtils.js`):
 
 1. `ResponsiveContainer` defaults `initialDimension` to `-1 x -1` and calls `warn()` during the first render, before its effect measures the container. With `width="100%"` the calculated size is the container size, so the first render always warns, however correct the CSS.
-2. `src/lib/recharts.ts` wrapped every primitive in its own `next/dynamic({ ssr: false })`. Each piece resolved separately, so the container mounted before its children and the chart re-rendered once per child.
+2. `src/lib/recharts.tsx` wrapped every primitive in its own `next/dynamic({ ssr: false })`. Each piece resolved separately, so the container mounted before its children and the chart re-rendered once per child.
 
 Evidence: reasoning from recharts source plus a jsdom test (`test/components/chart-size-warning.test.tsx`) whose control case shows the stock container warns and whose fixed case does not. The live dashboard was not driven, since it needs real credentials.
 
 ## Affected paths
 
-- `src/lib/recharts.ts`
+- `src/lib/recharts.tsx`
 - Chart components, each split into a lazy wrapper (original path) and a `*-content.tsx` holding the implementation: `marketing-trend-chart`, `asset-bar-chart`, `category-breakdown`, `planner-results`, `dividend-income-chart`, `expense-chart`, `salary-chart`.
 - `test/components/chart-size-warning.test.tsx`
 

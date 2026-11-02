@@ -6,14 +6,43 @@ import {
   ResponsiveContainer,
   XAxis,
 } from '@/lib/recharts';
-import { cleanup, render } from '@testing-library/react';
+import { act, cleanup, render } from '@testing-library/react';
 import { ResponsiveContainer as RawResponsiveContainer } from 'recharts';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const DATA = [
   { name: 'a', value: 1 },
   { name: 'b', value: 2 },
 ];
+
+let size = { width: 0, height: 0 };
+let observers: Array<(entries: unknown[]) => void> = [];
+
+// jsdom has no layout, so measurements and ResizeObserver are driven by hand.
+beforeEach(() => {
+  size = { width: 0, height: 0 };
+  observers = [];
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+    () =>
+      ({ ...size, x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0 }) as DOMRect
+  );
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor(cb: (entries: unknown[]) => void) {
+        observers.push(cb);
+      }
+      observe() {}
+      disconnect() {}
+    }
+  );
+});
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function sizeWarnings(spy: { mock: { calls: unknown[][] } }) {
   return spy.mock.calls.filter((args) =>
@@ -21,10 +50,27 @@ function sizeWarnings(spy: { mock: { calls: unknown[][] } }) {
   );
 }
 
-afterEach(() => {
-  cleanup();
-  vi.restoreAllMocks();
-});
+function resizeTo(width: number, height: number) {
+  size = { width, height };
+  act(() => {
+    observers.forEach((cb) => cb([{ contentRect: size }]));
+  });
+}
+
+function Chart() {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={DATA}>
+        <XAxis dataKey="name" />
+        <Bar dataKey="value">
+          {DATA.map((d) => (
+            <Cell key={d.name} fill="red" />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
 
 describe('chart ResponsiveContainer', () => {
   it('control: recharts default container warns on first render', () => {
@@ -39,26 +85,63 @@ describe('chart ResponsiveContainer', () => {
     expect(sizeWarnings(spy).length).toBeGreaterThan(0);
   });
 
-  it('lib wrapper mounts without a width/height warning', () => {
+  it('mounts the chart without a warning when the parent has a size', () => {
+    size = { width: 400, height: 300 };
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    render(
+    const { container } = render(
       <div className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={DATA}>
-            <XAxis dataKey="name" />
-            <Bar dataKey="value">
-              {DATA.map((d) => (
-                <Cell key={d.name} fill="red" />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <Chart />
       </div>
+    );
+    expect(container.querySelector('.recharts-responsive-container')).not.toBe(
+      null
+    );
+    expect(sizeWarnings(spy)).toHaveLength(0);
+  });
+
+  it('does not mount or warn while a hidden parent measures 0x0, then mounts on reveal', () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { container } = render(
+      <div className="hidden">
+        <Chart />
+      </div>
+    );
+    expect(container.querySelector('.recharts-responsive-container')).toBe(
+      null
+    );
+    expect(sizeWarnings(spy)).toHaveLength(0);
+
+    resizeTo(400, 300);
+    expect(container.querySelector('.recharts-responsive-container')).not.toBe(
+      null
+    );
+    expect(sizeWarnings(spy)).toHaveLength(0);
+  });
+
+  it('stays warning-free across resize and re-hide after mount', () => {
+    size = { width: 400, height: 300 };
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { container } = render(<Chart />);
+
+    resizeTo(640, 300);
+    expect(container.querySelector('.recharts-responsive-container')).not.toBe(
+      null
+    );
+
+    resizeTo(0, 0);
+    expect(container.querySelector('.recharts-responsive-container')).toBe(
+      null
+    );
+
+    resizeTo(500, 280);
+    expect(container.querySelector('.recharts-responsive-container')).not.toBe(
+      null
     );
     expect(sizeWarnings(spy)).toHaveLength(0);
   });
 
   it('lets a caller override initialDimension', () => {
+    size = { width: 400, height: 300 };
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     render(
       <ResponsiveContainer

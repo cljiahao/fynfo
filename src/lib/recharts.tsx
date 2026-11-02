@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import {
   ResponsiveContainer as RechartsResponsiveContainer,
   type ResponsiveContainerProps,
@@ -28,17 +28,48 @@ export {
   YAxis,
 } from 'recharts';
 
-// recharts' default initialDimension is -1x-1, and ResponsiveContainer warns
-// ("width(-1) and height(-1) of chart should be greater than 0") on that first
-// render before its effect measures the real size. A positive placeholder
-// silences it; the measured size replaces it immediately after mount.
+// recharts warns ("width(..) and height(..) of chart should be greater than 0")
+// whenever its container measures <= 0, and its default initialDimension is
+// -1x-1, so even a correctly styled container warns on first render. Two guards:
+// a positive initialDimension covers the first render, and the chart is only
+// mounted while the wrapper itself measures > 0 on both axes. minWidth/minHeight
+// cannot cover the second case because a display:none ancestor (e.g. a hidden
+// tab) always measures 0x0. The wrapper fills its parent, so callers keep
+// putting the height on the parent.
 const CHART_INITIAL_DIMENSION = { width: 1, height: 1 } as const;
 
-export function ResponsiveContainer(props: ResponsiveContainerProps) {
-  return createElement(RechartsResponsiveContainer, {
-    initialDimension: CHART_INITIAL_DIMENSION,
-    ...props,
-  });
+export function ResponsiveContainer({
+  children,
+  ...props
+}: ResponsiveContainerProps) {
+  const [node, setNode] = useState<HTMLDivElement | null>(null);
+  const [measurable, setMeasurable] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!node) return;
+    const update = () => {
+      const { width, height } = node.getBoundingClientRect();
+      setMeasurable(width > 0 && height > 0);
+    };
+    update();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [node]);
+
+  return (
+    <div ref={setNode} className="h-full w-full min-w-0">
+      {measurable ? (
+        <RechartsResponsiveContainer
+          initialDimension={CHART_INITIAL_DIMENSION}
+          {...props}
+        >
+          {children}
+        </RechartsResponsiveContainer>
+      ) : null}
+    </div>
+  );
 }
 
 // Theme-aware axis tick text. Spread onto XAxis/YAxis so tick labels use the
