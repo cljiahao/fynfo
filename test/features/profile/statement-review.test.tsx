@@ -24,6 +24,14 @@ const mocks = vi.hoisted(() => ({
   read: vi.fn(),
   insert: vi.fn(),
 }));
+// Paging behaviour is page-size agnostic; a small page keeps the DOM small, as
+// jsdom queries on twenty dense cards time out under V8 coverage instrumentation.
+vi.mock('@/features/import-review/constants', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/features/import-review/constants')
+  >()),
+  STATEMENT_ROWS_PER_PAGE: 5,
+}));
 vi.mock('@/features/import-review/lib/local-pdf', () => ({
   openLocalStatementPdf: mocks.open,
 }));
@@ -506,7 +514,7 @@ it('hides repayments, filters refunds and bulk-selects all eligible expenses acr
   mocks.extract.mockResolvedValue(
     [
       'UOB SGD billed',
-      ...Array.from({ length: 22 }, (_, i) => `31 DEC MARKET ${i} SGD 12.30`),
+      ...Array.from({ length: 7 }, (_, i) => `31 DEC MARKET ${i} SGD 12.30`),
       '31 DEC CARD PAYMENT SGD 50.00 CR',
       '31 DEC REFUND SHOP SGD 10.00 CR',
     ].map((text, index) => ({ page: 1, line: index + 1, text }))
@@ -515,11 +523,11 @@ it('hides repayments, filters refunds and bulk-selects all eligible expenses acr
   await screen.findAllByLabelText('Item / Brand');
   expect(screen.queryByDisplayValue('CARD PAYMENT')).not.toBeInTheDocument();
   fireEvent.click(
-    screen.getByRole('button', { name: 'Select all 22 expenses' })
+    screen.getByRole('button', { name: 'Select all 7 expenses' })
   );
-  expect(screen.getByText('22 selected · SGD 270.60')).toBeVisible();
+  expect(screen.getByText('7 selected · SGD 86.10')).toBeVisible();
   expect(
-    screen.getByRole('button', { name: 'Check 22 for duplicates' })
+    screen.getByRole('button', { name: 'Check 7 for duplicates' })
   ).toBeEnabled();
   expect(mocks.insert).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText('Show transactions'), {
@@ -534,7 +542,7 @@ it('hides repayments, filters refunds and bulk-selects all eligible expenses acr
   expect(
     screen.getByText('No expenses left to select in this view.')
   ).toBeVisible();
-}, 30000);
+});
 it('previews both original values before restoring and opens row rules in a dialog', async () => {
   setup();
   await screen.findByLabelText('Item / Brand');
@@ -574,7 +582,7 @@ it('pins the row pager, numbers rows across pages and focuses the first card aft
   mocks.extract.mockResolvedValue(
     [
       'UOB SGD billed',
-      ...Array.from({ length: 22 }, (_, i) => `31 DEC MARKET ${i} SGD 12.30`),
+      ...Array.from({ length: 7 }, (_, i) => `31 DEC MARKET ${i} SGD 12.30`),
     ].map((text, index) => ({ page: 1, line: index + 1, text }))
   );
   setup();
@@ -585,14 +593,14 @@ it('pins the row pager, numbers rows across pages and focuses the first card aft
   const next = screen.getByRole('button', { name: 'Next rows' });
   expect(next.parentElement).toHaveClass('sticky', 'bottom-0');
   fireEvent.click(next);
-  expect(screen.getByText('Rows 21–22 of 22')).toBeInTheDocument();
+  expect(screen.getByText('Rows 6–7 of 7')).toBeInTheDocument();
   await waitFor(() => expect(document.activeElement?.tagName).toBe('FIELDSET'));
-  expect(document.activeElement).toHaveTextContent('#21');
+  expect(document.activeElement).toHaveTextContent('#6');
   expect(
     screen.getAllByText(/^#\d+$/).map((element) => element.textContent)
-  ).toEqual(['#21', '#22']);
+  ).toEqual(['#6', '#7']);
   for (const name of ['Original statement', 'Extracted transaction drafts'])
     expect(
       screen.getByRole('region', { name }).querySelector('[style]')
     ).toBeNull();
-}, 15000);
+});

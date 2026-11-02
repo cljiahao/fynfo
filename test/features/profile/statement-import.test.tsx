@@ -33,6 +33,14 @@ const mocks = vi.hoisted(() => ({
   rulebook: vi.fn(),
   saveRules: vi.fn(),
 }));
+// A small page keeps the DOM small; twenty dense cards time out under V8
+// coverage instrumentation. Save grouping is driven by IMPORT_SAVE_GROUP_SIZE.
+vi.mock('@/features/import-review/constants', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/features/import-review/constants')
+  >()),
+  STATEMENT_ROWS_PER_PAGE: 5,
+}));
 vi.mock('@/features/import-review/lib/local-pdf', () => ({
   openLocalStatementPdf: async () => ({
     pageCount: 1,
@@ -640,8 +648,6 @@ it('pauses after an uncertain group and checks all submitted identities without 
   await screen.findByText('3 expenses saved');
   expect(mocks.insert).toHaveBeenCalledTimes(3);
 });
-// Dense native-control fixture exceeded 10s in the parallel V8 coverage run.
-// Keep all 21 selections/assertions; only this test gets a 20s harness allowance.
 it('selection across pages is included and twenty-one rows save in automatic groups', async () => {
   mocks.extract.mockResolvedValue(
     [
@@ -654,13 +660,15 @@ it('selection across pages is included and twenty-one rows save in automatic gro
     ].map((text, index) => ({ page: 1, line: index + 1, text }))
   );
   await setup();
-  const visibleSelections = screen.getAllByRole('checkbox', {
-    name: /Select expense from page 1, line/,
-  });
-  act(() => {
-    for (const checkbox of visibleSelections) fireEvent.click(checkbox);
-  });
-  fireEvent.click(screen.getByRole('button', { name: 'Next rows' }));
+  for (let page = 0; page < 4; page += 1) {
+    const visibleSelections = screen.getAllByRole('checkbox', {
+      name: /Select expense from page 1, line/,
+    });
+    act(() => {
+      for (const checkbox of visibleSelections) fireEvent.click(checkbox);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Next rows' }));
+  }
   expect(screen.getByText(/20 selected/)).toBeVisible();
   fireEvent.click(screen.getByLabelText('Select expense from page 1, line 22'));
   expect(screen.getByText(/21 selected/)).toBeVisible();
@@ -672,7 +680,7 @@ it('selection across pages is included and twenty-one rows save in automatic gro
   );
   await screen.findByText('21 expenses saved');
   expect(mocks.insert).toHaveBeenCalledTimes(21);
-}, 20_000);
+});
 
 it('checks a hidden interrupted save before its old acknowledgement returns and ignores that late result', async () => {
   await setup();
