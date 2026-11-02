@@ -648,6 +648,8 @@ it('pauses after an uncertain group and checks all submitted identities without 
   await screen.findByText('3 expenses saved');
   expect(mocks.insert).toHaveBeenCalledTimes(3);
 });
+// Vitest's 5s default is exceeded by 21 checked rows and two save groups under
+// V8 coverage, even with the small page; no behaviour is waived.
 it('selection across pages is included and twenty-one rows save in automatic groups', async () => {
   mocks.extract.mockResolvedValue(
     [
@@ -680,8 +682,6 @@ it('selection across pages is included and twenty-one rows save in automatic gro
   );
   await screen.findByText('21 expenses saved');
   expect(mocks.insert).toHaveBeenCalledTimes(21);
-  // Twenty-one checked rows and two save groups exceed the 5s default when
-  // the full suite runs in parallel with V8 coverage.
 }, 20_000);
 
 it('checks a hidden interrupted save before its old acknowledgement returns and ignores that late result', async () => {

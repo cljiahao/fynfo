@@ -2,17 +2,17 @@
 id: 167
 slug: statement-test-timeouts
 area: fix
-status: shipped
+status: draft # owner-authorized audit record (CONSTITUTION §7.4); not merged
 author: Claude
 created: 2026-11-02
 approved:
-shipped: 2026-11-02
+shipped:
 impl_pr:
 constitution_satisfies: ['§4.1', '§7.4']
 constitution_overrides: []
 ---
 
-# Audit167: Statement review tests time out under the pre-push coverage run
+# Statement review tests time out under the pre-push coverage run
 
 ## Request and scope
 
@@ -24,11 +24,11 @@ The pre-push hook runs `vitest run --coverage`. Three tests exceeded their timeo
 
 ## Change
 
-Both files mock `STATEMENT_ROWS_PER_PAGE` to 5 so multi-page behaviour is exercised with a small DOM. Review fixtures shrink from 22 to 7 expenses with matching totals and page labels. The import test keeps 21 rows (the save group size of 20 is separate and unchanged), selecting page by page before paging. Per-test timeout overrides are removed; all assertions are retained.
+Both files mock `STATEMENT_ROWS_PER_PAGE` to 5 so multi-page behaviour is exercised with a small DOM. Review fixtures shrink from 22 to 7 expenses with matching totals and page labels. The import test keeps 21 rows (the save group size of 20 is separate and unchanged), selecting page by page before paging. The two review tests lose their timeout overrides. The import 21-row test keeps one 20s override: without it, it still exceeds vitest's 5s default under coverage (5.5s measured) even with the small page. All assertions are retained. `test/features/import-review/constants.test.ts` pins `STATEMENT_ROWS_PER_PAGE` at 20 because these files now mock it.
 
 ## Acceptance
 
-Full `pnpm exec vitest run --coverage` passes twice; `format:check`, `lint` and `typecheck` pass. The real page size of 20 is no longer exercised in these two files.
+Full `pnpm exec vitest run --coverage` passes; `format:check`, `lint` and `typecheck` pass. Results are reported in the delivery notes, not asserted here. The real page size of 20 is no longer exercised in these two files; the constant test covers its value only.
 
 ## Rollback
 
