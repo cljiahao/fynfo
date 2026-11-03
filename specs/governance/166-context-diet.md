@@ -227,3 +227,5 @@ and the hook is the mechanism.
 - [x] Q5: Please confirm the two cited sources and the paraphrased claims, which
       were taken from the brief and not independently re-fetched by the author.
       — Owner: Clarence — A: Sources accepted. (owner approved as written 2026-11-02; defaults apply)
+
+Owner permission (2026-11-03, Clarence, in chat: "Yes, fix §11"): scoped to correcting the stale `templatecentral_version` sentence in AGENTS.md §11 and the resulting `.claude/harness.json` AGENTS.md hash refresh.

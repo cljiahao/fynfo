@@ -159,6 +159,6 @@ Hooks are Node `.mjs` (cross-platform); what each does is in `.claude/settings.j
 
 Permission policy and mechanical enforcement are separate. These rulebooks do not themselves change hooks or grant a bypass. Propose specific permission-gated changes for harness files. After an approved tracked-file edit, report manifest drift (`.claude/harness.json`) and request a scoped baseline update; do not rehash unrelated drift into acceptance.
 
-The existing verifier normalizes LF while the regen skill hashes raw bytes (spec 065); reconcile that through a separately authorized harness change before claiming integrity is green. `harness.json` still records `templatecentral_version` 5.0.0 because the `regen-harness` skill hardcodes it; changing that needs an owner-applied skill edit.
+The existing verifier normalizes LF while the regen skill hashes raw bytes (spec 065); reconcile that through a separately authorized harness change before claiming integrity is green. The `regen-harness` skill hardcodes `templatecentral_version` (6.0.4); bumping it needs an owner-applied skill edit.
 
 <!-- [[post-harness]] — reserved for trace capture and meta-harness integration (v5.0+) -->
