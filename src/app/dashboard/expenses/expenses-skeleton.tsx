@@ -1,10 +1,20 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { SlowLoadingNote } from './slow-loading-note';
 
 // Shared loading skeleton for the expenses page — rendered by both loading.tsx
 // (RSC nav suspense) and the page's client `isLoading` branch.
 export function ExpensesSkeleton() {
   return (
     <div className="max-w-site mx-auto w-full space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+      <p
+        role="status"
+        aria-live="polite"
+        className="text-muted-foreground text-sm"
+      >
+        Loading expenses…
+        <SlowLoadingNote />
+      </p>
+
       <div className="flex-between">
         <div>
           <Skeleton className="h-9 w-36" />

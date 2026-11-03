@@ -130,7 +130,7 @@ it('keeps assets pending without zero cards while the salary row is ready', asyn
     })
   );
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    defaultOptions: { queries: { retry: false, retryDelay: 0 } },
   });
   render(
     <QueryClientProvider client={client}>
@@ -152,7 +152,7 @@ it('retries a failed snapshot read without displaying an empty asset summary', a
     .mockRejectedValueOnce(new Error('private database detail'))
     .mockResolvedValue([]);
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+    defaultOptions: { queries: { retry: false, retryDelay: 0 } },
   });
   render(
     <QueryClientProvider client={client}>
@@ -170,7 +170,9 @@ it('keeps a failed salary summary unavailable while loaded assets remain visible
     .mockRejectedValueOnce(new Error('private salary detail'))
     .mockResolvedValue([]);
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, staleTime: 300000 } },
+    defaultOptions: {
+      queries: { retry: false, retryDelay: 0, staleTime: 300000 },
+    },
   });
   render(
     <QueryClientProvider client={client}>
@@ -214,11 +216,12 @@ it('hydrates all four server datasets into the real overview without fetching th
 });
 
 it('keeps planner inputs unavailable after an upstream error and restores calculated amounts on retry', async () => {
-  api.getExpenses
-    .mockRejectedValueOnce(new Error('offline'))
-    .mockResolvedValue([]);
+  api.getExpenses.mockRejectedValue(new Error('offline'));
+
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, staleTime: 300000 } },
+    defaultOptions: {
+      queries: { retry: false, retryDelay: 0, staleTime: 300000 },
+    },
   });
   render(
     <QueryClientProvider client={client}>
@@ -226,13 +229,15 @@ it('keeps planner inputs unavailable after an upstream error and restores calcul
     </QueryClientProvider>
   );
   fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+  const retryButton = await screen.findByRole('button', { name: 'Retry' });
+  api.getExpenses.mockResolvedValue([]);
+  fireEvent.click(retryButton);
   expect(await screen.findByText('Net (after CPF)')).toBeTruthy();
   expect(screen.getByText('$4,000.00')).toBeTruthy();
   expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe(
     '5000'
   );
-  expect(api.getExpenses).toHaveBeenCalledTimes(2);
+  expect(api.getExpenses).toHaveBeenCalledTimes(3);
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
   );
@@ -255,7 +260,9 @@ it('shows zero-state salary/planner values when all prefetched datasets are empt
 
 it('reviews a selected month using existing records and hides failed review totals', async () => {
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, staleTime: 300000 } },
+    defaultOptions: {
+      queries: { retry: false, retryDelay: 0, staleTime: 300000 },
+    },
   });
   render(
     <QueryClientProvider client={client}>
@@ -314,7 +321,9 @@ async function renderPlannerWithHoldings() {
     AAPL: { price: 110, currency: 'USD' },
   });
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, staleTime: 300000 } },
+    defaultOptions: {
+      queries: { retry: false, retryDelay: 0, staleTime: 300000 },
+    },
   });
   render(
     <QueryClientProvider client={client}>
@@ -373,10 +382,12 @@ it('keeps planner salary and allocation edits after a snapshot read is retried',
 
 it('keeps planner salary and allocation edits after an expense read is retried', async () => {
   const client = await enterPlannerEdits();
-  api.getExpenses.mockRejectedValueOnce(new Error('offline'));
+  api.getExpenses.mockRejectedValue(new Error('offline'));
   await client.invalidateQueries({ queryKey: ['expenses'] });
   fireEvent.click(screen.getByText('Plan income'));
-  fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+  const retryButton = await screen.findByRole('button', { name: 'Retry' });
+  api.getExpenses.mockResolvedValue([]);
+  fireEvent.click(retryButton);
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
   );

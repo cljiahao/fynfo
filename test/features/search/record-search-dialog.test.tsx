@@ -109,7 +109,12 @@ function CaptureClient() {
 function mountSearch() {
   client = new QueryClient({
     defaultOptions: {
-      queries: { retry: false, staleTime: Infinity, gcTime: Infinity },
+      queries: {
+        retry: false,
+        retryDelay: 0,
+        staleTime: Infinity,
+        gcTime: Infinity,
+      },
     },
   });
   return render(
@@ -139,7 +144,12 @@ function CaptureVisibility() {
 function mountPrivateSearch() {
   client = new QueryClient({
     defaultOptions: {
-      queries: { retry: false, staleTime: Infinity, gcTime: Infinity },
+      queries: {
+        retry: false,
+        retryDelay: 0,
+        staleTime: Infinity,
+        gcTime: Infinity,
+      },
     },
   });
   render(

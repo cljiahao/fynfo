@@ -156,6 +156,11 @@ export const useExpenses = () => {
     queryFn: transport
       ? ({ signal }) => transport.read('expenses', signal)
       : () => getExpenses(),
+    // Server actions throw plain Errors whose messages Next.js redacts in
+    // production, so a deadline timeout cannot be told from a transient
+    // failure on the client. One retry bounds the skeleton to roughly two
+    // deadlines instead of the default three retries with backoff.
+    retry: 1,
   });
 };
 
