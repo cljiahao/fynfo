@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { DividendIncomeChart } from '@/features/equity/components/dividend-income-chart';
+import { DividendIncomeChart } from '@/features/equity/components/dividend-income-chart-content';
 import type { DividendData } from '@/features/equity/types';
 import { cleanup, render } from '@testing-library/react';
 import type { ReactNode } from 'react';

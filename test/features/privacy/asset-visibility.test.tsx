@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { CategoryBreakdown } from '@/features/assets/components/category-breakdown';
+import { CategoryBreakdown } from '@/features/assets/components/category-breakdown-content';
 import { PlannerInputs } from '@/features/assets/components/planner-inputs';
-import { PlannerResults } from '@/features/assets/components/planner-results';
+import { PlannerResults } from '@/features/assets/components/planner-results-content';
 import { SummaryCards } from '@/features/assets/components/summary-cards';
 import { computeSalaryPlan } from '@/features/assets/lib/salary-plan';
 import {

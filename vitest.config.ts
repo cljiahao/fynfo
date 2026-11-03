@@ -11,6 +11,7 @@ export default defineConfig({
       // server-only throws at runtime in non-RSC contexts (jsdom/vitest).
       // Stub it so server-only modules can be imported in unit tests.
       'server-only': path.resolve(rootDir, 'test/stubs/server-only.ts'),
+      'next/dynamic': path.resolve(rootDir, 'test/stubs/next-dynamic.tsx'),
     },
   },
   test: {

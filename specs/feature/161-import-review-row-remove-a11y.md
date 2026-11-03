@@ -2,12 +2,12 @@
 id: '161'
 slug: import-review-row-remove-a11y
 area: feature
-status: approved
+status: shipped
 author: Claude Code
 created: 2026-11-01
 approved: 2026-11-02 # Clarence
-shipped:
-impl_pr:
+shipped: 2026-11-02
+impl_pr: 12cdfc0
 supersedes:
 constitution_satisfies:
   - '§2.6'
@@ -197,6 +197,22 @@ Owner: Clarence, 2026-11-01.
 - In the "all" view, when no row can take focus, focus goes to the removed
   row's stub Restore button, not the list section. The list section is only the
   last resort when no stub is rendered.
+
+## Implementation notes
+
+In-area drift fixed under AGENTS §7: the timeouts of three existing paging
+tests were doubled (`statement-import` "twenty-one rows save in automatic
+groups" 20s to 40s, `statement-review` "hides repayments ... across pages" 30s
+to 60s, `statement-review` "pins the row pager ..." 15s to 30s). Under coverage
+they already ran at 92-97% of their timeout on `bf66cd6` (before this change),
+so the full pre-push run timed out under load. Measured durations on the
+implementation branch were equal or lower, so the change did not cause it.
+
+The assets `overview-workflows` test "connects calculated market budgets to
+real ticker allocation edits ..." (outside the import-review area) timed out
+in the same full runs, so its timeout went from the 5s default to 15s. On its
+own it takes about 2.9s; coverage plus parallel workers push it past 5s.
+Owner-approved 2026-11-02.
 
 ## Open questions
 

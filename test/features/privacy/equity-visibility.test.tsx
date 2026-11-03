@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { DividendFormDialog } from '@/features/equity/components/dividend-form';
-import { DividendIncomeChart } from '@/features/equity/components/dividend-income-chart';
+import { DividendIncomeChart } from '@/features/equity/components/dividend-income-chart-content';
 import { DividendScanDialog } from '@/features/equity/components/dividend-scan-dialog';
 import { DividendTable } from '@/features/equity/components/dividend-table';
 import { TradeFormDialog } from '@/features/equity/components/trade-form';

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { CategoryBreakdown } from '@/features/assets/components/category-breakdown';
+import { CategoryBreakdown } from '@/features/assets/components/category-breakdown-content';
 import { SnapshotForm } from '@/features/assets/components/snapshot-form';
 import { SnapshotTable } from '@/features/assets/components/snapshot-table';
 import { useChartData } from '@/features/assets/hooks/use-chart-data';

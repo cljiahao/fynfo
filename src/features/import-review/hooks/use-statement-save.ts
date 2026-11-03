@@ -231,23 +231,27 @@ export function useStatementSave(
   }
   function remove(row: StatementCandidate) {
     if (!privacy.canReveal() || running.current || attemptsRef.current[row.id])
-      return;
-    setRemoved(new Set(removed).add(row.id));
-    setSelection(selection.filter((key) => key !== row.id));
+      return false;
+    // Updaters, not captured values: two removes before a commit must both land.
+    setRemoved((current) => new Set(current).add(row.id));
+    setSelection((current) => current.filter((key) => key !== row.id));
     // A restored row must start clean, not with stale decisions.
     const drop = <T>(record: Record<string, T>) => {
       const { [row.id]: _dropped, ...rest } = record;
       return rest;
     };
-    setResolutions(drop(resolutions));
-    setChecks(drop(checks));
-    setSavedMatches(drop(savedMatches));
+    setResolutions(drop);
+    setChecks(drop);
+    setSavedMatches(drop);
+    return true;
   }
   function restore(row: StatementCandidate) {
     if (!privacy.canReveal() || running.current) return;
-    const next = new Set(removed);
-    next.delete(row.id);
-    setRemoved(next);
+    setRemoved((current) => {
+      const next = new Set(current);
+      next.delete(row.id);
+      return next;
+    });
   }
   function clearSelection() {
     if (!privacy.canReveal() || running.current) return;
