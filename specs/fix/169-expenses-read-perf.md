@@ -99,15 +99,17 @@ Local benchmark: `node scripts/bench-expenses-read.mjs [scales]` (Docker + `pnpm
 
 Local results (Docker Desktop, local Supabase, tables `ANALYZE`d after seeding, ~40% of records shared with 1-2 splits, two runs per scale; reads go through supabase-js as the seeded user so RLS applies, with `count: 'exact'` on every page as in `readAllRows`). Per-page ms lists are in the order the pages were read.
 
-| Source              | Records (pages) | Splits (pages) | Records ms total (per page) | Splits ms total (per page) | Decrypt ms   | Sequential total ms |
-| ------------------- | --------------- | -------------- | --------------------------- | -------------------------- | ------------ | ------------------- |
-| Local 2,500, run 1  | 2,500 (5)       | 1,419 (3)      | 168 (46,27,33,33,29)        | 187 (65,61,61)             | not measured | 355                 |
-| Local 2,500, run 2  | 2,500 (5)       | 1,508 (4)      | 140 (35,32,27,16,30)        | 473 (96,151,124,101)       | not measured | 613                 |
-| Local 10,000, run 1 | 10,000 (20)     | 6,034 (13)     | 810 (about 26-81 each)      | 2,747 (174-254 each)       | not measured | 3,557               |
-| Local 10,000, run 2 | 10,000 (20)     | 5,920 (12)     | 597 (16-41 each)            | 2,269 (147-216 each)       | not measured | 2,866               |
-| Prod (Vercel logs)  | pending         | pending        | pending                     | pending                    | pending      | pending             |
+| Source              | Records (pages) | Splits (pages) | Records ms total (per page) | Splits ms total (per page) | Decrypt ms   | Sequential total ms        |
+| ------------------- | --------------- | -------------- | --------------------------- | -------------------------- | ------------ | -------------------------- |
+| Local 2,500, run 1  | 2,500 (5)       | 1,419 (3)      | 168 (46,27,33,33,29)        | 187 (65,61,61)             | not measured | 355                        |
+| Local 2,500, run 2  | 2,500 (5)       | 1,508 (4)      | 140 (35,32,27,16,30)        | 473 (96,151,124,101)       | not measured | 613                        |
+| Local 10,000, run 1 | 10,000 (20)     | 6,034 (13)     | 810 (about 26-81 each)      | 2,747 (174-254 each)       | not measured | 3,557                      |
+| Local 10,000, run 2 | 10,000 (20)     | 5,920 (12)     | 597 (16-41 each)            | 2,269 (147-216 each)       | not measured | 2,866                      |
+| Prod (Vercel logs)  | 4,410 (9)       | 703 (2)        | 10,572 (about 1,175 avg)    | 2,088 (about 1,044 avg)    | 232          | 13,718 (incl. 827 context) |
 
 Reading: at 10,000 records the splits read costs about 4x the records read (about 2.3-2.7 s vs 0.6-0.8 s) and each splits page costs about 150-250 ms against about 30 ms for a records page. Local figures are well under the 15 s deadline, so the prod overrun is not explained by local query cost alone; the remaining candidates are Vercel-to-Supabase latency multiplied by the page count (sequential round trips) and a larger prod dataset. The count-exact overhead per page was not separated (the script does not time a no-count variant); this is open. Decrypt time is only measured by the instrumentation in `readExpenses`, not by the script.
+
+Prod reading: the prod capture (2026-11-03, unranged `getExpenses`, vault unlocked) has fewer rows than the local 10,000 run yet is about 4-5x slower. Each page costs about 1.0-1.2 s on prod against 16-250 ms locally, so per-request latency (the Vercel-to-Supabase round trip plus per-page `count: 'exact'`) multiplied by sequential pages dominates, not row volume or decrypt (232 ms). Records, not splits, are the larger stage on prod (9 pages vs 2). A single read at 13.7 s leaves little headroom under the 15 s deadline, matching the observed 15.3 s overrun. Two earlier log lines at 15:42:52-53 with no stage fields (totalMs 840 and 945) were reads that failed in `requireActionContext` while the vault was locked, so they are not measurements.
 
 Caveat: a first pair of runs on unanalyzed freshly seeded tables showed the planner estimating one row per table, and one run of splits reads took 44 s at 10,000 (per page 0.5 s growing to 6 s) while table bloat from earlier delete cycles was present. After `VACUUM FULL ANALYZE` and an `ANALYZE` step in the script the results above were stable. Prod tables are autovacuumed, but stale statistics or bloat on prod `expense_splits` / `expense_records` is a cheap hypothesis to check.
 
