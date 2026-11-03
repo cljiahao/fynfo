@@ -4,6 +4,7 @@ import { requireActionContext } from '@/lib/action-guard';
 import { encryptPayload } from '@/lib/crypto';
 import { decryptNumber, decryptOptionalString } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
+import { logger } from '@/lib/logger';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { withDeadline } from '@/lib/with-deadline';
@@ -49,10 +50,52 @@ export async function getExpensesInRange(
   return withDeadline(readExpenses(range), EXPENSE_READ_TIMEOUT_MS);
 }
 
-// Bound the action response as well as client waiting, so later actions can run.
-async function readExpenses(range?: DateRange): Promise<ExpenseData[]> {
-  const { userId, dek, supabase } = await requireActionContext();
+const READ_TIMING_PAGE_SIZE = 500;
 
+interface ReadTiming {
+  contextMs?: number;
+  recordsMs?: number;
+  recordRows?: number;
+  splitsMs?: number;
+  splitRows?: number;
+  decryptMs?: number;
+}
+
+const elapsed = (since: number) => Math.round(performance.now() - since);
+const pageCount = (rows: number) => Math.ceil(rows / READ_TIMING_PAGE_SIZE);
+
+// Bound the action response as well as client waiting, so later actions can run.
+// Logs in finally so a read that outlives its deadline still reports how far
+// it got; withDeadline rejects the caller but does not cancel this work.
+async function readExpenses(range?: DateRange): Promise<ExpenseData[]> {
+  const startedAt = performance.now();
+  const timing: ReadTiming = {};
+  try {
+    return await readExpensesTimed(timing, range);
+  } finally {
+    logger.info(
+      {
+        event: 'expenses.read.timing',
+        ranged: range !== undefined,
+        ...timing,
+        recordPages: pageCount(timing.recordRows ?? 0),
+        splitPages: pageCount(timing.splitRows ?? 0),
+        totalMs: elapsed(startedAt),
+      },
+      'expenses read timing'
+    );
+  }
+}
+
+async function readExpensesTimed(
+  timing: ReadTiming,
+  range?: DateRange
+): Promise<ExpenseData[]> {
+  let stageStart = performance.now();
+  const { userId, dek, supabase } = await requireActionContext();
+  timing.contextMs = elapsed(stageStart);
+
+  stageStart = performance.now();
   const records = await readAllRows<ExpenseRow>((from, to) => {
     let query = supabase
       .from('expense_records')
@@ -69,7 +112,11 @@ async function readExpenses(range?: DateRange): Promise<ExpenseData[]> {
       .order('id', { ascending: true })
       .range(from, to);
   }, 'expense read');
+  timing.recordsMs = elapsed(stageStart);
+  timing.recordRows = records.length;
   if (records.length === 0) return [];
+
+  stageStart = performance.now();
   const splits = range
     ? await readSplitsFor(
         records.filter((r) => r.split_type === 'shared').map((r) => r.id),
@@ -90,6 +137,10 @@ async function readExpenses(range?: DateRange): Promise<ExpenseData[]> {
             .range(from, to),
         'expense splits read'
       );
+  timing.splitsMs = elapsed(stageStart);
+  timing.splitRows = splits.length;
+
+  stageStart = performance.now();
   const splitsByExpense = new Map<string, ExpenseSplitRow[]>();
   for (const split of splits) {
     const group = splitsByExpense.get(split.expense_id) ?? [];
@@ -97,7 +148,7 @@ async function readExpenses(range?: DateRange): Promise<ExpenseData[]> {
     splitsByExpense.set(split.expense_id, group);
   }
 
-  return Promise.all(
+  const result = await Promise.all(
     records.map(async (r) => {
       const decryptedSplits = await Promise.all(
         (splitsByExpense.get(r.id) ?? []).map(async (s) => ({
@@ -119,6 +170,8 @@ async function readExpenses(range?: DateRange): Promise<ExpenseData[]> {
       };
     })
   );
+  timing.decryptMs = elapsed(stageStart);
+  return result;
 }
 
 // Bound the id filter so request URLs stay short.

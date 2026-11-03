@@ -8,6 +8,13 @@ import {
 } from '../../helpers/fake-supabase';
 
 const USER_ID = 'user-1';
+const logged = vi.hoisted(() => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+}));
+
+vi.mock('@/lib/logger', () => ({ logger: logged }));
 const DEK = Buffer.alloc(32, 3);
 
 let supabase: ReturnType<typeof makeFakeSupabase>['client'];
@@ -116,6 +123,79 @@ describe('expense-actions — getExpenses', () => {
         splits: [{ person: 'Alice', amount: 20, settled: false }],
       },
     ]);
+  });
+
+  it('logs one timing event with numeric durations and counts only', async () => {
+    setSupabase({
+      selectDataByTable: {
+        expense_records: [
+          {
+            id: 'exp1',
+            date: '2026-06-01',
+            type: 'food_drink',
+            item: await encryptPayload('SecretDinner', DEK),
+            info: await encryptPayload('SecretInfo', DEK),
+            amount: await encryptPayload('4242', DEK),
+            split_type: 'shared',
+          },
+        ],
+        expense_splits: [
+          {
+            expense_id: 'exp1',
+            person: 'Alice',
+            amount: await encryptPayload('2121', DEK),
+            settled: false,
+          },
+        ],
+      },
+    });
+    logged.info.mockClear();
+    const { getExpenses } =
+      await import('@/features/expenses/actions/expense-actions');
+    const result = await getExpenses();
+
+    expect(result[0]).toMatchObject({ item: 'SecretDinner', amount: 4242 });
+    expect(logged.info).toHaveBeenCalledTimes(1);
+    const [fields] = logged.info.mock.calls[0];
+    expect(fields).toMatchObject({
+      event: 'expenses.read.timing',
+      ranged: false,
+      recordRows: 1,
+      recordPages: 1,
+      splitRows: 1,
+      splitPages: 1,
+    });
+    for (const key of [
+      'contextMs',
+      'recordsMs',
+      'splitsMs',
+      'decryptMs',
+      'totalMs',
+    ]) {
+      expect(typeof fields[key]).toBe('number');
+    }
+    const serialized = JSON.stringify(logged.info.mock.calls);
+    for (const secret of [
+      'SecretDinner',
+      'SecretInfo',
+      '4242',
+      '2121',
+      'Alice',
+    ])
+      expect(serialized).not.toContain(secret);
+  });
+
+  it('still logs timing when the read fails', async () => {
+    setSupabase({ selectError: { message: 'boom' } });
+    logged.info.mockClear();
+    const { getExpenses } =
+      await import('@/features/expenses/actions/expense-actions');
+    await expect(getExpenses()).rejects.toThrow('expense read failed');
+    expect(logged.info).toHaveBeenCalledTimes(1);
+    expect(logged.info.mock.calls[0][0]).toMatchObject({
+      event: 'expenses.read.timing',
+      ranged: false,
+    });
   });
 
   it('throws an opaque AppError on a DB error (no DB text leaked)', async () => {
