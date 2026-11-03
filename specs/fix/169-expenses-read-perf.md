@@ -126,4 +126,14 @@ Findings: the records page uses `idx_expense_records_date` and filters on `user_
 
 ### Phase 2: parallel page reads
 
-The expenses read now uses an opt-in `readAllRows(..., { concurrency })` mode (`PARALLEL_READ_CONCURRENCY` = 4). It reads page 1 alone to learn the exact count, then fetches the remaining pages with bounded concurrency, assembles rows in offset order, and keeps the same count-consistency guard (every page must repeat the first count; non-final pages must be exactly 500 rows and the final page exactly the remainder). Default callers are unchanged. In `readExpensesTimed` the unranged records and splits reads now run concurrently; the ranged path still needs record ids first. Expected round trips for the prod capture: records 1 + ceil(8/4) = 3 waves instead of 9 serial pages, and splits (2 pages) overlap with them, so roughly 3 round trips of about 1.1 s plus context instead of about 13.7 s. The `expenses.read.timing` fields are unchanged; `recordsMs` and `splitsMs` now overlap, so `totalMs` is no longer their sum. Prod re-measure pending.
+The expenses read now uses an opt-in `readAllRows(..., { concurrency })` mode (`PARALLEL_READ_CONCURRENCY` = 4). It reads page 1 alone to learn the exact count, then fetches the remaining pages with bounded concurrency, assembles rows in offset order, and keeps the same count-consistency guard (every page must repeat the first count; non-final pages must be exactly 500 rows and the final page exactly the remainder). Default callers are unchanged. In `readExpensesTimed` the unranged records and splits reads now run concurrently; the ranged path still needs record ids first. Expected round trips for the prod capture: records 1 + ceil(8/4) = 3 waves instead of 9 serial pages, and splits (2 pages) overlap with them, so roughly 3 round trips of about 1.1 s plus context instead of about 13.7 s. The `expenses.read.timing` fields are unchanged; `recordsMs` and `splitsMs` now overlap, so `totalMs` is no longer their sum. Prod re-measure (2026-11-03 17:57 SGT, deploy fcc1c09): two `getExpenses` reads ran concurrently, one from `/dashboard` and one from `/dashboard/expenses`, each unranged with 4,410 records (9 pages) and 703 splits (2 pages).
+
+| Source (phase 2, prod) | context ms | recordsMs | splitsMs | decrypt ms | totalMs |
+| ---------------------- | ---------- | --------- | -------- | ---------- | ------- |
+| Baseline (phase 1)     | 827        | 10,572    | 2,088    | 232        | 13,718  |
+| `/dashboard/expenses`  | 828        | 4,443     | 1,642    | 138        | 5,409   |
+| `/dashboard`           | 858        | 4,517     | 2,605    | 231        | 5,606   |
+
+`recordsMs` and `splitsMs` overlap, so they do not sum to `totalMs`. Records still take about 4.4 s (page 1 plus two waves of 4 at about 1.1-1.5 s per round trip). The overview and expenses pages each fire their own full read on the same load.
+
+Conclusion: `totalMs` fell about 2.5x (13.7 s to about 5.5 s), well under the 15 s `EXPENSE_READ_TIMEOUT_MS` deadline.
