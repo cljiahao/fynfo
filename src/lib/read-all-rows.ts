@@ -13,6 +13,8 @@ interface ReadPage<T> {
 // without flooding the connection pool from a single user's request.
 export const PARALLEL_READ_CONCURRENCY = 4;
 
+class ShortPage extends Error {}
+
 export interface ReadAllRowsOptions {
   /** Fetch pages after the first with up to this many requests in flight. */
   concurrency?: number;
@@ -25,7 +27,14 @@ export async function readAllRows<T>(
   options?: ReadAllRowsOptions
 ): Promise<T[]> {
   if (options?.concurrency !== undefined) {
-    return readAllRowsParallel(loadPage, context, options.concurrency);
+    try {
+      return await readAllRowsParallel(loadPage, context, options.concurrency);
+    } catch (error) {
+      if (!(error instanceof ShortPage)) throw error;
+      // A server row cap below the page size returns short pages with a stable
+      // count; the sequential mode advances by returned rows and handles it.
+      return readAllRows(loadPage, context);
+    }
   }
   const rows: T[] = [];
   let expectedCount: number | undefined;
@@ -84,7 +93,9 @@ async function readAllRowsParallel<T>(
       throw fail();
     }
     const page = data ?? [];
-    if (page.length !== Math.min(READ_PAGE_SIZE, count - offset)) throw fail();
+    const expectedLength = Math.min(READ_PAGE_SIZE, count - offset);
+    if (page.length > 0 && page.length < expectedLength) throw new ShortPage();
+    if (page.length !== expectedLength) throw fail();
     return { page, count };
   };
 

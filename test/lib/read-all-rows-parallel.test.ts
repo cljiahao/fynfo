@@ -78,36 +78,47 @@ describe('readAllRows parallel mode', () => {
     ).rejects.toThrow('fixture read failed');
   });
 
-  it('rejects a short non-final page', async () => {
-    const rows = makeRows(1200);
+  it('falls back to sequential reads when the API caps rows below the page size', async () => {
+    const rows = makeRows(1203);
     const read = vi.fn(async (from: number, to: number) => ({
-      data: rows.slice(from, from === 500 ? from + 499 : to + 1),
+      data: rows.slice(from, Math.min(to + 1, from + 125)),
       count: rows.length,
+      error: null,
+    }));
+    expect(await readAllRows(read, 'fixture read', { concurrency: 4 })).toEqual(
+      rows
+    );
+  });
+
+  it('falls back at most once and still rejects an inconsistent read', async () => {
+    const rows = makeRows(1400);
+    let calls = 0;
+    const read = vi.fn(async (from: number, to: number) => {
+      calls++;
+      return {
+        data: rows.slice(from, Math.min(to + 1, from + 125)),
+        // Stable through the parallel attempt, then drifts during the fallback.
+        count: calls <= 2 ? 1200 : 1300,
+        error: null,
+      };
+    });
+    await expect(
+      readAllRows(read, 'fixture read', { concurrency: 4 })
+    ).rejects.toThrow('fixture read failed');
+    expect(read.mock.calls.filter(([from]) => from === 0)).toHaveLength(2);
+  });
+
+  it('rejects an over-long final page', async () => {
+    const rows = makeRows(1400);
+    const read = vi.fn(async (from: number, to: number) => ({
+      data:
+        from === 1000 ? rows.slice(from, from + 201) : rows.slice(from, to + 1),
+      count: 1200,
       error: null,
     }));
     await expect(
       readAllRows(read, 'fixture read', { concurrency: 4 })
     ).rejects.toThrow('fixture read failed');
-  });
-
-  it('rejects an over-long or short final page', async () => {
-    const rows = makeRows(1400);
-    const withFinalLength = (length: number) =>
-      vi.fn(async (from: number, to: number) => ({
-        data:
-          from === 1000
-            ? rows.slice(from, from + length)
-            : rows.slice(from, to + 1),
-        count: 1200,
-        error: null,
-      }));
-    for (const length of [201, 199]) {
-      await expect(
-        readAllRows(withFinalLength(length), 'fixture read', {
-          concurrency: 4,
-        })
-      ).rejects.toThrow('fixture read failed');
-    }
   });
 
   it('rejects the whole read when any page errors', async () => {
