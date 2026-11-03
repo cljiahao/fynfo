@@ -97,10 +97,27 @@ Instrumentation: `readExpenses` emits one `logger.info` per call (`event: 'expen
 
 Local benchmark: `node scripts/bench-expenses-read.mjs [scales]` (Docker + `pnpm db:start`). It seeds a throwaway local user, times the records and splits paged reads through supabase-js under RLS, and saves `EXPLAIN (ANALYZE, BUFFERS)` for one page of each to `scripts/.bench-out/`.
 
-Status: local numbers NOT yet recorded. Docker Desktop on the build machine did not become responsive (every `docker` command hung), so no local Supabase could start. No figures are claimed.
+Local results (Docker Desktop, local Supabase, tables `ANALYZE`d after seeding, ~40% of records shared with 1-2 splits, two runs per scale; reads go through supabase-js as the seeded user so RLS applies, with `count: 'exact'` on every page as in `readAllRows`). Per-page ms lists are in the order the pages were read.
 
-| Source               | Records | Splits  | Records ms (pages) | Splits ms (pages) | Decrypt ms | Total ms |
-| -------------------- | ------- | ------- | ------------------ | ----------------- | ---------- | -------- |
-| Local 2,500 records  | pending | pending | pending            | pending           | n/a        | pending  |
-| Local 10,000 records | pending | pending | pending            | pending           | n/a        | pending  |
-| Prod (Vercel logs)   | pending | pending | pending            | pending           | pending    | pending  |
+| Source              | Records (pages) | Splits (pages) | Records ms total (per page) | Splits ms total (per page) | Decrypt ms   | Sequential total ms |
+| ------------------- | --------------- | -------------- | --------------------------- | -------------------------- | ------------ | ------------------- |
+| Local 2,500, run 1  | 2,500 (5)       | 1,419 (3)      | 168 (46,27,33,33,29)        | 187 (65,61,61)             | not measured | 355                 |
+| Local 2,500, run 2  | 2,500 (5)       | 1,508 (4)      | 140 (35,32,27,16,30)        | 473 (96,151,124,101)       | not measured | 613                 |
+| Local 10,000, run 1 | 10,000 (20)     | 6,034 (13)     | 810 (about 26-81 each)      | 2,747 (174-254 each)       | not measured | 3,557               |
+| Local 10,000, run 2 | 10,000 (20)     | 5,920 (12)     | 597 (16-41 each)            | 2,269 (147-216 each)       | not measured | 2,866               |
+| Prod (Vercel logs)  | pending         | pending        | pending                     | pending                    | pending      | pending             |
+
+Reading: at 10,000 records the splits read costs about 4x the records read (about 2.3-2.7 s vs 0.6-0.8 s) and each splits page costs about 150-250 ms against about 30 ms for a records page. Local figures are well under the 15 s deadline, so the prod overrun is not explained by local query cost alone; the remaining candidates are Vercel-to-Supabase latency multiplied by the page count (sequential round trips) and a larger prod dataset. The count-exact overhead per page was not separated (the script does not time a no-count variant); this is open. Decrypt time is only measured by the instrumentation in `readExpenses`, not by the script.
+
+Caveat: a first pair of runs on unanalyzed freshly seeded tables showed the planner estimating one row per table, and one run of splits reads took 44 s at 10,000 (per page 0.5 s growing to 6 s) while table bloat from earlier delete cycles was present. After `VACUUM FULL ANALYZE` and an `ANALYZE` step in the script the results above were stable. Prod tables are autovacuumed, but stale statistics or bloat on prod `expense_splits` / `expense_records` is a cheap hypothesis to check.
+
+EXPLAIN (ANALYZE, BUFFERS), page 1 of 500, as the seeded user, RLS applied (`scripts/.bench-out/`):
+
+| Query                  | Scale  | Plan                                                                                                                                                                                                                                                           | Execution ms | Buffers (hit) |
+| ---------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ------------- |
+| records page           | 2,500  | Limit > Incremental Sort > Index Scan Backward `idx_expense_records_date` with Filter `user_id` (501 rows read, 1 removed)                                                                                                                                     | 1.5          | 2,382         |
+| records page           | 10,000 | same plan                                                                                                                                                                                                                                                      | 0.9          | 724           |
+| splits page (`!inner`) | 2,500  | Limit > Incremental Sort > Merge Join: Index Scan `idx_expense_splits_expense` carrying the RLS `ANY (hashed SubPlan 2)` filter, joined to Sort > Seq Scan `expense_records p`; SubPlan 2 is a Seq Scan on `expense_records` returning all 2,500 rows (3.5 ms) | 8.2          | 2,344         |
+| splits page (`!inner`) | 10,000 | same shape with Index Scan on `expense_records_pkey` for `p`; SubPlan 2 is an Index Scan `idx_expense_records_user` returning 10,000 rows (6.4 ms)                                                                                                             | 11.6         | 2,932         |
+
+Findings: the records page uses `idx_expense_records_date` and filters on `user_id`, so the per-user index is not used for ordering. The splits policy runs as a hashed SubPlan that scans all of the user's `expense_records` on every page, in addition to the explicit `!inner` join that scans them again. Page 1 is cheap inside Postgres (under 12 ms), yet the REST pages cost 150-250 ms; the gap is the `count: 'exact'` query, which counts the full join on each page, deeper OFFSET pages, and PostgREST/network overhead. Which of these dominates is not yet separated. The policies' per-row `auth.uid()` appears here as `COALESCE(NULLIF(current_setting(...)))` evaluated once as an InitPlan-style One-Time Filter, so it is not obviously per-row in these plans.

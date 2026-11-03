@@ -3,6 +3,8 @@
  * synthetic encrypted rows, then runs EXPLAIN (ANALYZE, BUFFERS) for one
  * records page and one splits page as the seeded user (RLS applied).
  *
+ * Requires Node 22.18+ (runs the .ts import natively; no tsx) and Docker.
+ *
  * Usage (Docker running, then `pnpm db:start`):
  *   node scripts/bench-expenses-read.mjs [scale ...]     default: 2500 10000
  * Writes EXPLAIN output to scripts/.bench-out/explain-<scale>.txt (gitignored). Seeded data and the throwaway
@@ -154,6 +156,9 @@ async function runScale(env, records) {
     const { recs, splits } = seedRows(userId, dek, records);
     await insertBatched(admin, 'expense_records', recs);
     await insertBatched(admin, 'expense_splits', splits);
+    // Autovacuum would have analyzed prod tables; fresh inserts otherwise leave
+    // the planner guessing one row per table.
+    psql('analyze expense_records, expense_splits;');
 
     const anon = createClient(env.API_URL, env.ANON_KEY, {
       auth: { persistSession: false },
