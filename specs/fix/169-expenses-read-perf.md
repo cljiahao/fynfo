@@ -70,7 +70,7 @@ Encryption-touching paths: only the decrypt loop at `expense-actions.ts:95-120` 
 - [ ] Vitest (node env) covers every changed read path: concurrent reads, splits scoping, and `readAllRows` consistency checks (count mismatch, short page, over-count still throw `DB_ERROR`), plus unchanged default behaviour for existing callers.
 - [ ] Error responses stay opaque; no Supabase text, table or constraint names in responses.
 - [ ] `requireActionContext()` is still the first call in each touched action.
-- [ ] Hard load of `/dashboard/expenses` shows readable text while loading and a timeout is not retried three times.
+- [x] Hard load of `/dashboard/expenses` shows readable text while loading and a timeout is not retried three times (4b366d0).
 - [ ] `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test:ci`, `pnpm build` green.
 - [ ] If a migration is included: reviewed and approved separately, applied by Clarence, EXPLAIN before/after recorded.
 - [ ] Spec hash matches at impl PR time.
@@ -84,12 +84,12 @@ Encryption-touching paths: only the decrypt loop at `expense-actions.ts:95-120` 
 
 ## Open questions
 
-- [ ] Q: Target latency for `getExpenses` (proposed p50 < 3 s, p95 < 6 s)? — Owner: Clarence — A:
-- [ ] Q: Keep the 15 s deadline, raise it, or lower it once the read is fast? — Owner: Clarence — A:
-- [ ] Q: Prod row counts for `expense_records` and `expense_splits` (Clarence runs the count query himself)? — Owner: Clarence — A:
-- [ ] Q: Is the per-stage timing kept permanently or removed after phase 1? — Owner: Clarence — A:
-- [ ] Q: Is the migration part of this spec or split into its own spec after phase 1? — Owner: Clarence — A:
-- [ ] Q: Do the Vercel function region and the Supabase project region match? Back-to-back 500-row pages each pay a cross-region round trip that a seeded local DB will not show. — Owner: Clarence — A:
+- [x] Q: Target latency for `getExpenses` (proposed p50 < 3 s, p95 < 6 s)? — Owner: Clarence — A: Keep p50 < 3 s and p95 < 6 s. Not yet met (prod about 5.4-5.6 s after phase 2). (Clarence, 2026-11-03)
+- [x] Q: Keep the 15 s deadline, raise it, or lower it once the read is fast? — Owner: Clarence — A: Keep 15 s for now (with retry: 1, worst case about 30 s). Lower to about 10 s once reads are reliably under 3 s; do not raise. (Clarence, 2026-11-03)
+- [x] Q: Prod row counts for `expense_records` and `expense_splits` (Clarence runs the count query himself)? — Owner: Clarence — A: Taken from the prod timing log instead of a separate count query: about 4,410 `expense_records` (9 pages) and about 700 `expense_splits`. (Clarence, 2026-11-03)
+- [x] Q: Is the per-stage timing kept permanently or removed after phase 1? — Owner: Clarence — A: Keep permanently (one log line per read, durations and counts only) to catch regressions as data grows. (Clarence, 2026-11-03)
+- [x] Q: Is the migration part of this spec or split into its own spec after phase 1? — Owner: Clarence — A: Split out of this spec and likely unneeded. Phase 1 showed the `auth.uid()` initplan is not a measurable cost. Write a separate spec only if a prod EXPLAIN shows a policy or index cost. (Clarence, 2026-11-03)
+- [x] Q: Do the Vercel function region and the Supabase project region match? Back-to-back 500-row pages each pay a cross-region round trip that a seeded local DB will not show. — Owner: Clarence — A: They do not match. Supabase is Singapore (ap-southeast-1); Vercel functions run in iad1 (US East). Prod responses for `/login` and `/auth/callback` carried `X-Vercel-Id: sin1::iad1::...` (edge sin1, function iad1), which explains about 1.1 s per 500-row page on prod against 16-250 ms locally. Clarence has since set the Vercel function region to sin1 and redeployed; prod responses now carry `X-Vercel-Id: sin1::sin1::...`, so the regions are now matched. Post-switch timing is pending re-measurement with the `expenses.read.timing` log. (Clarence, 2026-11-03)
 
 ## Audit: phase 1 measurements
 
