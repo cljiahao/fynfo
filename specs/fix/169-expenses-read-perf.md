@@ -2,10 +2,10 @@
 id: 169
 slug: expenses-read-perf
 area: fix
-status: draft
+status: approved
 author: Claude
 created: 2026-11-03
-approved:
+approved: 2026-11-03
 shipped:
 impl_pr:
 supersedes:
@@ -42,6 +42,7 @@ Phased. Phase 2 and 3 items are chosen only after phase 1 numbers exist.
    - Add per-stage timing in `readExpenses` using the existing pino `logger` (`src/lib/logger.ts`), not `console.log`: context/auth, each records page, each splits page, decrypt. Log durations and row counts only, never row contents. Keep it behind a flag or remove it before merge; decide in review.
    - Dataset: a local Supabase seeded with synthetic encrypted rows sized to prod scale (script under `scripts/` or a Vitest bench; no real user data). Prod row counts come from Clarence's own count query (see Open questions).
    - Separately time the same queries via SQL `EXPLAIN (ANALYZE, BUFFERS)` on the seeded DB to isolate RLS and join cost from network and `count: 'exact'` cost.
+   - Also capture the same per-stage timing on prod (logger output in Vercel logs, durations and row counts only), because network latency between Vercel and Supabase cannot be reproduced locally.
    - Record the numbers in an audit note appended to this spec before any fix is chosen.
 2. Candidate fixes, each kept only if phase 1 shows it matters.
    - Run the records and splits reads concurrently (`Promise.all`); the splits query does not depend on the records result.
@@ -88,3 +89,4 @@ Encryption-touching paths: only the decrypt loop at `expense-actions.ts:95-120` 
 - [ ] Q: Prod row counts for `expense_records` and `expense_splits` (Clarence runs the count query himself)? — Owner: Clarence — A:
 - [ ] Q: Is the per-stage timing kept permanently or removed after phase 1? — Owner: Clarence — A:
 - [ ] Q: Is the migration part of this spec or split into its own spec after phase 1? — Owner: Clarence — A:
+- [ ] Q: Do the Vercel function region and the Supabase project region match? Back-to-back 500-row pages each pay a cross-region round trip that a seeded local DB will not show. — Owner: Clarence — A:
