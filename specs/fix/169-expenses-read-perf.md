@@ -66,7 +66,7 @@ Encryption-touching paths: only the decrypt loop at `expense-actions.ts:95-120` 
 ## Acceptance
 
 - [ ] Before and after per-stage timings recorded in this spec or an audit note, same dataset.
-- [ ] `getExpenses` p50 on a prod-scale dataset under 3 s and p95 under 6 s (proposed; see Open questions).
+- [x] `getExpenses` p50 on a prod-scale dataset under 3 s and p95 under 6 s (proposed; see Open questions). After the sin1 region switch, 5 prod reads: p50 about 1,176 ms, max 2,193 ms.
 - [ ] Vitest (node env) covers every changed read path: concurrent reads, splits scoping, and `readAllRows` consistency checks (count mismatch, short page, over-count still throw `DB_ERROR`), plus unchanged default behaviour for existing callers.
 - [ ] Error responses stay opaque; no Supabase text, table or constraint names in responses.
 - [ ] `requireActionContext()` is still the first call in each touched action.
@@ -84,12 +84,12 @@ Encryption-touching paths: only the decrypt loop at `expense-actions.ts:95-120` 
 
 ## Open questions
 
-- [x] Q: Target latency for `getExpenses` (proposed p50 < 3 s, p95 < 6 s)? — Owner: Clarence — A: Keep p50 < 3 s and p95 < 6 s. Not yet met (prod about 5.4-5.6 s after phase 2). (Clarence, 2026-11-03)
+- [x] Q: Target latency for `getExpenses` (proposed p50 < 3 s, p95 < 6 s)? — Owner: Clarence — A: Keep p50 < 3 s and p95 < 6 s. Not met after phase 2 (prod about 5.4-5.6 s); met after the sin1 switch (see Phase 2). (Clarence, 2026-11-03)
 - [x] Q: Keep the 15 s deadline, raise it, or lower it once the read is fast? — Owner: Clarence — A: Keep 15 s for now (with retry: 1, worst case about 30 s). Lower to about 10 s once reads are reliably under 3 s; do not raise. (Clarence, 2026-11-03)
 - [x] Q: Prod row counts for `expense_records` and `expense_splits` (Clarence runs the count query himself)? — Owner: Clarence — A: Taken from the prod timing log instead of a separate count query: about 4,410 `expense_records` (9 pages) and about 700 `expense_splits`. (Clarence, 2026-11-03)
 - [x] Q: Is the per-stage timing kept permanently or removed after phase 1? — Owner: Clarence — A: Keep permanently (one log line per read, durations and counts only) to catch regressions as data grows. (Clarence, 2026-11-03)
 - [x] Q: Is the migration part of this spec or split into its own spec after phase 1? — Owner: Clarence — A: Split out of this spec and likely unneeded. Phase 1 showed the `auth.uid()` initplan is not a measurable cost. Write a separate spec only if a prod EXPLAIN shows a policy or index cost. (Clarence, 2026-11-03)
-- [x] Q: Do the Vercel function region and the Supabase project region match? Back-to-back 500-row pages each pay a cross-region round trip that a seeded local DB will not show. — Owner: Clarence — A: They do not match. Supabase is Singapore (ap-southeast-1); Vercel functions run in iad1 (US East). Prod responses for `/login` and `/auth/callback` carried `X-Vercel-Id: sin1::iad1::...` (edge sin1, function iad1), which explains about 1.1 s per 500-row page on prod against 16-250 ms locally. Clarence has since set the Vercel function region to sin1 and redeployed; prod responses now carry `X-Vercel-Id: sin1::sin1::...`, so the regions are now matched. Post-switch timing is pending re-measurement with the `expenses.read.timing` log. (Clarence, 2026-11-03)
+- [x] Q: Do the Vercel function region and the Supabase project region match? Back-to-back 500-row pages each pay a cross-region round trip that a seeded local DB will not show. — Owner: Clarence — A: They do not match. Supabase is Singapore (ap-southeast-1); Vercel functions run in iad1 (US East). Prod responses for `/login` and `/auth/callback` carried `X-Vercel-Id: sin1::iad1::...` (edge sin1, function iad1), which explains about 1.1 s per 500-row page on prod against 16-250 ms locally. Clarence has since set the Vercel function region to sin1 and redeployed; prod responses now carry `X-Vercel-Id: sin1::sin1::...`, so the regions are now matched. Post-switch prod timing: p50 about 1,176 ms, max 2,193 ms (see Phase 2). (Clarence, 2026-11-03)
 
 ## Audit: phase 1 measurements
 
@@ -128,12 +128,15 @@ Findings: the records page uses `idx_expense_records_date` and filters on `user_
 
 The expenses read now uses an opt-in `readAllRows(..., { concurrency })` mode (`PARALLEL_READ_CONCURRENCY` = 4). It reads page 1 alone to learn the exact count, then fetches the remaining pages with bounded concurrency, assembles rows in offset order, and keeps the same count-consistency guard (every page must repeat the first count; non-final pages must be exactly 500 rows and the final page exactly the remainder). Default callers are unchanged. In `readExpensesTimed` the unranged records and splits reads now run concurrently; the ranged path still needs record ids first. Expected round trips for the prod capture: records 1 + ceil(8/4) = 3 waves instead of 9 serial pages, and splits (2 pages) overlap with them, so roughly 3 round trips of about 1.1 s plus context instead of about 13.7 s. The `expenses.read.timing` fields are unchanged; `recordsMs` and `splitsMs` now overlap, so `totalMs` is no longer their sum. Prod re-measure (2026-11-03 17:57 SGT, deploy fcc1c09): two `getExpenses` reads ran concurrently, one from `/dashboard` and one from `/dashboard/expenses`, each unranged with 4,410 records (9 pages) and 703 splits (2 pages).
 
-| Source (phase 2, prod) | context ms | recordsMs | splitsMs | decrypt ms | totalMs |
-| ---------------------- | ---------- | --------- | -------- | ---------- | ------- |
-| Baseline (phase 1)     | 827        | 10,572    | 2,088    | 232        | 13,718  |
-| `/dashboard/expenses`  | 828        | 4,443     | 1,642    | 138        | 5,409   |
-| `/dashboard`           | 858        | 4,517     | 2,605    | 231        | 5,606   |
+| Source (phase 2, prod) | context ms | recordsMs | splitsMs  | decrypt ms | totalMs   |
+| ---------------------- | ---------- | --------- | --------- | ---------- | --------- |
+| Baseline (phase 1)     | 827        | 10,572    | 2,088     | 232        | 13,718    |
+| `/dashboard/expenses`  | 828        | 4,443     | 1,642     | 138        | 5,409     |
+| `/dashboard`           | 858        | 4,517     | 2,605     | 231        | 5,606     |
+| After sin1 region (5)  | 49-256     | 424-944   | 402-1,946 | 160-248    | 812-2,193 |
 
 `recordsMs` and `splitsMs` overlap, so they do not sum to `totalMs`. Records still take about 4.4 s (page 1 plus two waves of 4 at about 1.1-1.5 s per round trip). The overview and expenses pages each fire their own full read on the same load.
 
 Conclusion: `totalMs` fell about 2.5x (13.7 s to about 5.5 s), well under the 15 s `EXPENSE_READ_TIMEOUT_MS` deadline.
+
+After the Vercel function region was moved to sin1 (matching Supabase), five prod reads in the Vercel logs on 2026-11-03 at 20:34-20:37 each read 4,410 record rows over 9 pages and 703 split rows over 2 pages. `totalMs` was 812, 909, 1,176, 1,467 and 2,193 (p50 about 1,176 ms, max 2,193 ms), against 5,409 and 5,606 before the switch. The range in the table row is min-max across those five reads.
