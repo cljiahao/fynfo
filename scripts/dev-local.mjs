@@ -32,16 +32,20 @@ if (!url || !publishableKey || !secretKey)
 if (!LOCAL_HOSTS.has(new URL(url).hostname))
   throw new Error('Refusing to start: Supabase URL is not local.');
 
-const child = spawn('pnpm', ['exec', 'next', 'dev', '--turbopack'], {
-  shell,
-  stdio: 'inherit',
-  env: {
-    ...process.env,
-    NEXT_PUBLIC_SUPABASE_URL: url,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: publishableKey,
-    SUPABASE_SECRET_KEY: secretKey,
-    SESSION_SECRET: randomBytes(32).toString('base64'),
-    ADMIN_EMAILS: '',
-  },
-});
+const child = spawn(
+  'pnpm',
+  ['exec', 'next', 'dev', '--turbopack', '-p', '3001'],
+  {
+    shell,
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_SUPABASE_URL: url,
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: publishableKey,
+      SUPABASE_SECRET_KEY: secretKey,
+      SESSION_SECRET: randomBytes(32).toString('base64'),
+      ADMIN_EMAILS: '',
+    },
+  }
+);
 child.on('exit', (code) => process.exit(code ?? 0));
