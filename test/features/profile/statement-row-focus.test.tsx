@@ -19,6 +19,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const forced = vi.hoisted(() => ({ hidden: false }));
+const paging = vi.hoisted(() => ({ rowsPerPage: 20 }));
 const mocks = vi.hoisted(() => ({
   extract: vi.fn(),
   read: vi.fn(),
@@ -34,6 +35,17 @@ vi.mock('@/features/import-review/lib/local-pdf', () => ({
     destroy: () => {},
   }),
 }));
+// Rendering a full 20-row page is what made the pagination case slow.
+vi.mock('@/features/import-review/constants', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/features/import-review/constants')>();
+  return {
+    ...actual,
+    get STATEMENT_ROWS_PER_PAGE() {
+      return paging.rowsPerPage;
+    },
+  };
+});
 vi.mock('@/features/privacy', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/privacy')>();
   return {
@@ -79,6 +91,7 @@ function statementLines(count: number) {
 beforeEach(() => {
   vi.clearAllMocks();
   forced.hidden = false;
+  paging.rowsPerPage = 20;
   mocks.rulebook.mockResolvedValue(null);
   mocks.extract.mockResolvedValue(statementLines(4));
   mocks.read.mockResolvedValue([]);
@@ -116,11 +129,10 @@ async function setup() {
     target: { files: [file] },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Extract for review' }));
-  await screen.findByRole('button', { name: 'Remove row #1' });
+  await screen.findByLabelText('Remove row #1');
 }
 
-const removeButton = (n: number) =>
-  screen.getByRole('button', { name: `Remove row #${n}` });
+const removeButton = (n: number) => screen.getByLabelText(`Remove row #${n}`);
 const showAll = () =>
   fireEvent.change(screen.getByLabelText('Show transactions'), {
     target: { value: 'all' },
@@ -148,13 +160,14 @@ describe('announced counts', () => {
   });
 
   it('excludes removed stubs from the all-view pagination text', async () => {
-    mocks.extract.mockResolvedValue(statementLines(22));
+    paging.rowsPerPage = 3;
+    mocks.extract.mockResolvedValue(statementLines(5));
     await setup();
     showAll();
-    expect(screen.getByText(/Rows 1–20 of 22/)).toBeInTheDocument();
+    expect(screen.getByText(/Rows 1–3 of 5/)).toBeInTheDocument();
     fireEvent.click(removeButton(1));
-    expect(screen.getByText(/Rows 1–19 of 21/)).toBeInTheDocument();
-  }, 30_000);
+    expect(screen.getByText(/Rows 1–2 of 4/)).toBeInTheDocument();
+  });
 
   it('keeps the figures masked while amounts are hidden', async () => {
     await setup();
