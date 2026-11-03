@@ -1,5 +1,7 @@
 export type AppErrorCode =
   | 'UNAUTHORIZED'
+  | 'REAUTH_REQUIRED'
+  | 'RATE_LIMITED'
   | 'VAULT_LOCKED'
   | 'VAULT_REJECTED'
   | 'VALIDATION'
@@ -10,6 +12,8 @@ export type AppErrorCode =
 
 const STATUS_BY_CODE: Record<AppErrorCode, number> = {
   UNAUTHORIZED: 401,
+  REAUTH_REQUIRED: 403,
+  RATE_LIMITED: 429,
   VAULT_LOCKED: 401,
   VAULT_REJECTED: 401,
   VALIDATION: 400,

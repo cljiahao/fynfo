@@ -11,6 +11,7 @@ vi.mock('@/integrations/services/supabase', () => ({
 }));
 vi.mock('@/integrations/services/security-rpc', () => ({
   recordMarketingEvent: boundary.recordEvent,
+  consumeRateLimit: vi.fn().mockResolvedValue(true),
   reserveVaultUnlock: vi.fn(),
   finishVaultUnlock: vi.fn(),
 }));

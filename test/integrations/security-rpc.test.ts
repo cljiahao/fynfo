@@ -1,4 +1,5 @@
 import {
+  consumeRateLimit,
   finishVaultUnlock,
   readMarketingAggregates,
   recordMarketingEvent,
@@ -140,6 +141,17 @@ describe('trusted security RPC facade', () => {
       p_path: '/login',
     });
     expect(sdk.rpc).toHaveBeenCalledOnce();
+  });
+  it('forwards rate limit parameters and rejects non-boolean results', async () => {
+    sdk.rpc.mockResolvedValueOnce({ data: true, error: null });
+    await expect(consumeRateLimit('k', 3, 60)).resolves.toBe(true);
+    expect(sdk.rpc).toHaveBeenCalledWith('consume_rate_limit', {
+      p_key: 'k',
+      p_max: 3,
+      p_window_seconds: 60,
+    });
+    sdk.rpc.mockResolvedValueOnce({ data: 'yes', error: null });
+    await expect(consumeRateLimit('k', 3, 60)).rejects.toThrow();
   });
   it('reads both aggregate RPCs and normalizes numeric Postgres bigint strings', async () => {
     sdk.rpc.mockImplementation(async (name) => ({

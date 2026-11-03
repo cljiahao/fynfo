@@ -8,6 +8,7 @@ type SecurityRpc =
   | 'reserve_vault_unlock'
   | 'finish_vault_unlock'
   | 'record_marketing_event'
+  | 'consume_rate_limit'
   | 'get_marketing_event_stats'
   | 'get_signup_stats';
 
@@ -40,7 +41,7 @@ function unavailable(): never {
 
 async function callSecurityRpc(
   name: SecurityRpc,
-  parameters?: Record<string, string | boolean>
+  parameters?: Record<string, string | boolean | number>
 ): Promise<unknown> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const secret = process.env.SUPABASE_SECRET_KEY;
@@ -110,6 +111,21 @@ export async function recordMarketingEvent(
     p_event_type: eventType,
     p_path: path,
   });
+}
+
+export async function consumeRateLimit(
+  key: string,
+  max: number,
+  windowSeconds: number
+): Promise<boolean> {
+  return parseResult(
+    z.boolean(),
+    await callSecurityRpc('consume_rate_limit', {
+      p_key: key,
+      p_max: max,
+      p_window_seconds: windowSeconds,
+    })
+  );
 }
 
 export async function readMarketingAggregates() {

@@ -1,4 +1,5 @@
 import {
+  consumeRateLimit,
   finishVaultUnlock,
   reserveVaultUnlock,
 } from '@/integrations/services/security-rpc';
@@ -21,6 +22,11 @@ import { z } from 'zod';
 
 const VAULT_CANARY = 'fynfo_vault_ok';
 const VAULT_BODY_MAX_BYTES = 2048;
+// A forgotten PIN must stay recoverable, so reset requires a fresh sign-in
+// instead of the PIN: a stolen long-lived session cannot wipe the vault.
+const RESET_MAX_SESSION_AGE_MS = 10 * 60 * 1000;
+const RESET_MAX_PER_WINDOW = 3;
+const RESET_WINDOW_SECONDS = 15 * 60;
 
 const base64Dek = z
   .string()
@@ -113,6 +119,29 @@ export const DELETE = withLogging('api.vault.reset', async (req: Request) => {
 
     if (userError || !user) {
       throw new AppError('UNAUTHORIZED', 'Unauthorized');
+    }
+
+    const age = Date.now() - Date.parse(user.last_sign_in_at ?? '');
+    if (!Number.isFinite(age) || age < 0 || age > RESET_MAX_SESSION_AGE_MS) {
+      throw new AppError(
+        'REAUTH_REQUIRED',
+        'Please sign in again to reset your vault'
+      );
+    }
+
+    let allowed: boolean;
+    try {
+      allowed = await consumeRateLimit(
+        `vault_reset:${user.id}`,
+        RESET_MAX_PER_WINDOW,
+        RESET_WINDOW_SECONDS
+      );
+    } catch {
+      logger.error('vault reset rate limiter unavailable');
+      throw new AppError('INTERNAL', 'Failed to reset vault');
+    }
+    if (!allowed) {
+      throw new AppError('RATE_LIMITED', 'Too many attempts. Try again later.');
     }
 
     const { error } = await supabase

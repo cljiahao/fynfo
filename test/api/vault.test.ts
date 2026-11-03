@@ -40,6 +40,7 @@ let getUserResult: {
 };
 let rpcLocked: { data: unknown; error: unknown };
 let rpcRecord: { data: unknown; error: unknown };
+let rateLimit: { data: unknown; error: unknown };
 
 vi.mock('next/headers', () => ({
   cookies: async () => cookieJar,
@@ -113,17 +114,20 @@ describe('/api/vault lifecycle', () => {
   );
   beforeEach(() => {
     vi.stubEnv('SUPABASE_SECRET_KEY', 'fixture-secret-key');
+    rateLimit = { data: true, error: null };
     securityRpc.mockImplementation(async (name) =>
-      name === 'reserve_vault_unlock'
-        ? {
-            data: rpcLocked.error
-              ? null
-              : rpcLocked.data === true
+      name === 'consume_rate_limit'
+        ? rateLimit
+        : name === 'reserve_vault_unlock'
+          ? {
+              data: rpcLocked.error
                 ? null
-                : ATTEMPT_ID,
-            error: rpcLocked.error,
-          }
-        : rpcRecord
+                : rpcLocked.data === true
+                  ? null
+                  : ATTEMPT_ID,
+              error: rpcLocked.error,
+            }
+          : rpcRecord
     );
     cookieJar = {
       set: vi.fn(),
@@ -416,6 +420,69 @@ describe('/api/vault lifecycle', () => {
     expect(cookieJar.set).not.toHaveBeenCalled();
   });
   describe('DELETE /api/vault', () => {
+    const freshUser = (minutesAgo: number) => ({
+      data: {
+        user: {
+          id: USER_ID,
+          email: 'user@test',
+          last_sign_in_at: new Date(
+            Date.now() - minutesAgo * 60_000
+          ).toISOString(),
+        },
+      },
+      error: null,
+    });
+    beforeEach(() => {
+      getUserResult = freshUser(1);
+    });
+    const del = async () => {
+      const { DELETE } = await import('@/app/api/vault/route');
+      return DELETE(
+        new Request('http://localhost/api/vault', { method: 'DELETE' })
+      );
+    };
+
+    it.each([11, -5])(
+      'rejects a stale or invalid sign-in age (%s min) with an opaque 403',
+      async (minutesAgo) => {
+        getUserResult = freshUser(minutesAgo);
+        const response = await del();
+        expect(response.status).toBe(403);
+        expect(await response.json()).toEqual({
+          error: 'Please sign in again to reset your vault',
+          code: 'REAUTH_REQUIRED',
+        });
+        expect(updateSpy).not.toHaveBeenCalled();
+        expect(cookieJar.delete).not.toHaveBeenCalled();
+        expect(securityRpc).not.toHaveBeenCalled();
+      }
+    );
+
+    it('rejects a session with no sign-in timestamp', async () => {
+      getUserResult = {
+        data: { user: { id: USER_ID, email: 'user@test' } },
+        error: null,
+      };
+      expect((await del()).status).toBe(403);
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    it('returns 429 once the reset budget is spent', async () => {
+      rateLimit = { data: false, error: null };
+      const response = await del();
+      expect(response.status).toBe(429);
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect(cookieJar.delete).not.toHaveBeenCalled();
+    });
+
+    it('fails closed when the limiter is unavailable', async () => {
+      rateLimit = { data: null, error: { message: 'private' } };
+      const response = await del();
+      expect(response.status).toBe(500);
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect(cookieJar.delete).not.toHaveBeenCalled();
+    });
+
     it('resets only the authenticated profile before clearing the personal vault cookie', async () => {
       let finishWrite: () => void = () => {};
       const writeCompleted = vi.fn();
@@ -455,7 +522,14 @@ describe('/api/vault lifecycle', () => {
       );
       expect(cookieJar.set).not.toHaveBeenCalled();
       expect(upsertSpy).not.toHaveBeenCalled();
-      expect(securityRpc).not.toHaveBeenCalled();
+      expect(securityRpc).toHaveBeenCalledExactlyOnceWith(
+        'consume_rate_limit',
+        {
+          p_key: `vault_reset:${USER_ID}`,
+          p_max: 3,
+          p_window_seconds: 900,
+        }
+      );
       expect(writeCompleted.mock.invocationCallOrder[0]).toBeLessThan(
         cookieJar.delete.mock.invocationCallOrder[0]
       );
@@ -510,7 +584,14 @@ describe('/api/vault lifecycle', () => {
       expect(cookieJar.delete).not.toHaveBeenCalled();
       expect(cookieJar.set).not.toHaveBeenCalled();
       expect(upsertSpy).not.toHaveBeenCalled();
-      expect(securityRpc).not.toHaveBeenCalled();
+      expect(securityRpc).toHaveBeenCalledExactlyOnceWith(
+        'consume_rate_limit',
+        {
+          p_key: `vault_reset:${USER_ID}`,
+          p_max: 3,
+          p_window_seconds: 900,
+        }
+      );
     });
   });
 
