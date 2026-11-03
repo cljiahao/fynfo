@@ -5,7 +5,7 @@ import { encryptPayload } from '@/lib/crypto';
 import { decryptNumber, decryptOptionalString } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
-import { readAllRows } from '@/lib/read-all-rows';
+import { PARALLEL_READ_CONCURRENCY, readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { withDeadline } from '@/lib/with-deadline';
 import { RECORD_ID } from '@/lib/zod-utils';
@@ -95,50 +95,74 @@ async function readExpensesTimed(
   const { userId, dek, supabase } = await requireActionContext();
   timing.contextMs = elapsed(stageStart);
 
-  stageStart = performance.now();
-  const records = await readAllRows<ExpenseRow>((from, to) => {
-    let query = supabase
-      .from('expense_records')
-      .select('id, date, type, item, info, amount, split_type', {
-        count: 'exact',
-      })
-      .eq('user_id', userId);
-    if (range)
-      query = query
-        .gte('date', `${range.from}T00:00:00.000Z`)
-        .lte('date', `${range.to}T23:59:59.999Z`);
-    return query
-      .order('date', { ascending: false })
-      .order('id', { ascending: true })
-      .range(from, to);
-  }, 'expense read');
-  timing.recordsMs = elapsed(stageStart);
-  timing.recordRows = records.length;
-  if (records.length === 0) return [];
+  const readRecords = async () => {
+    const startedAt = performance.now();
+    const rows = await readAllRows<ExpenseRow>(
+      (from, to) => {
+        let query = supabase
+          .from('expense_records')
+          .select('id, date, type, item, info, amount, split_type', {
+            count: 'exact',
+          })
+          .eq('user_id', userId);
+        if (range)
+          query = query
+            .gte('date', `${range.from}T00:00:00.000Z`)
+            .lte('date', `${range.to}T23:59:59.999Z`);
+        return query
+          .order('date', { ascending: false })
+          .order('id', { ascending: true })
+          .range(from, to);
+      },
+      'expense read',
+      { concurrency: PARALLEL_READ_CONCURRENCY }
+    );
+    timing.recordsMs = elapsed(startedAt);
+    timing.recordRows = rows.length;
+    return rows;
+  };
 
-  stageStart = performance.now();
-  const splits = range
-    ? await readSplitsFor(
-        records.filter((r) => r.split_type === 'shared').map((r) => r.id),
-        userId,
+  // Unranged splits do not depend on the records, so both reads overlap; the
+  // ranged path needs the record ids first.
+  const readAllSplits = async () => {
+    const startedAt = performance.now();
+    const rows = await readAllRows<ExpenseSplitRow>(
+      (from, to) =>
         supabase
-      )
-    : await readAllRows<ExpenseSplitRow>(
-        (from, to) =>
-          supabase
-            .from('expense_splits')
-            .select(
-              'expense_id, person, amount, settled, parent:expense_records!inner(user_id)',
-              { count: 'exact' }
-            )
-            .eq('parent.user_id', userId)
-            .order('expense_id', { ascending: true })
-            .order('id', { ascending: true })
-            .range(from, to),
-        'expense splits read'
-      );
-  timing.splitsMs = elapsed(stageStart);
-  timing.splitRows = splits.length;
+          .from('expense_splits')
+          .select(
+            'expense_id, person, amount, settled, parent:expense_records!inner(user_id)',
+            { count: 'exact' }
+          )
+          .eq('parent.user_id', userId)
+          .order('expense_id', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+      'expense splits read',
+      { concurrency: PARALLEL_READ_CONCURRENCY }
+    );
+    timing.splitsMs = elapsed(startedAt);
+    timing.splitRows = rows.length;
+    return rows;
+  };
+
+  let records: ExpenseRow[];
+  let splits: ExpenseSplitRow[];
+  if (range) {
+    records = await readRecords();
+    if (records.length === 0) return [];
+    const startedAt = performance.now();
+    splits = await readSplitsFor(
+      records.filter((r) => r.split_type === 'shared').map((r) => r.id),
+      userId,
+      supabase
+    );
+    timing.splitsMs = elapsed(startedAt);
+    timing.splitRows = splits.length;
+  } else {
+    [records, splits] = await Promise.all([readRecords(), readAllSplits()]);
+    if (records.length === 0) return [];
+  }
 
   stageStart = performance.now();
   const splitsByExpense = new Map<string, ExpenseSplitRow[]>();

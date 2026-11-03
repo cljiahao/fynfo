@@ -132,7 +132,10 @@ describe('complete nested histories', () => {
   });
 
   it('reads every expense and every split without mixing parent groups', async () => {
+    // Parallel pages need fixed 500-row offsets, so the API cap must not be
+    // below the page size (Supabase max_rows is 1000).
     const fake = setup({
+      apiMaxRows: 500,
       selectDataByTable: {
         expense_records: Array.from({ length: TOTAL }, (_, index) => ({
           ...expense,
