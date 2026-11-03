@@ -63,3 +63,6 @@ scripts/.env.backup
 
 # tc5.0.1: per-machine symlink; a committed symlink breaks Windows CI runners
 .agents
+
+# benchmark output
+scripts/.bench-out/

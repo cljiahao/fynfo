@@ -90,3 +90,17 @@ Encryption-touching paths: only the decrypt loop at `expense-actions.ts:95-120` 
 - [ ] Q: Is the per-stage timing kept permanently or removed after phase 1? — Owner: Clarence — A:
 - [ ] Q: Is the migration part of this spec or split into its own spec after phase 1? — Owner: Clarence — A:
 - [ ] Q: Do the Vercel function region and the Supabase project region match? Back-to-back 500-row pages each pay a cross-region round trip that a seeded local DB will not show. — Owner: Clarence — A:
+
+## Audit: phase 1 measurements
+
+Instrumentation: `readExpenses` emits one `logger.info` per call (`event: 'expenses.read.timing'`) with `ranged`, `contextMs`, `recordsMs`, `recordRows`, `recordPages`, `splitsMs`, `splitRows`, `splitPages`, `decryptMs`, `totalMs`. Durations and counts only. It logs from a `finally`, so a read that outlives the 15 s `withDeadline` still logs when it settles; stages it never reached are absent. Page counts are derived as `ceil(rows / 500)` because `readAllRows` does not report them.
+
+Local benchmark: `node scripts/bench-expenses-read.mjs [scales]` (Docker + `pnpm db:start`). It seeds a throwaway local user, times the records and splits paged reads through supabase-js under RLS, and saves `EXPLAIN (ANALYZE, BUFFERS)` for one page of each to `scripts/.bench-out/`.
+
+Status: local numbers NOT yet recorded. Docker Desktop on the build machine did not become responsive (every `docker` command hung), so no local Supabase could start. No figures are claimed.
+
+| Source               | Records | Splits  | Records ms (pages) | Splits ms (pages) | Decrypt ms | Total ms |
+| -------------------- | ------- | ------- | ------------------ | ----------------- | ---------- | -------- |
+| Local 2,500 records  | pending | pending | pending            | pending           | n/a        | pending  |
+| Local 10,000 records | pending | pending | pending            | pending           | n/a        | pending  |
+| Prod (Vercel logs)   | pending | pending | pending            | pending           | pending    | pending  |
