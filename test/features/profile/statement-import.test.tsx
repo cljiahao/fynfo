@@ -209,7 +209,9 @@ it('offers one primary action per step and closes on Done after a confirmed save
   });
   fireEvent.click(screen.getByRole('button', { name: 'Save 1 expense' }));
   expect(await screen.findByText('1 expense saved')).toBeVisible();
-  expect(screen.getByRole('button', { name: 'Done' })).toHaveFocus();
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Done' })).toHaveFocus()
+  );
   expect(mocks.insert).toHaveBeenCalledTimes(1);
   const input = mocks.insert.mock.calls[0][0] as ImportedExpenseInput;
   expect(input.description).toBe('Corrected market');

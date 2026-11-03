@@ -40,6 +40,14 @@ Mapping, statement import (old -> new):
 
 Spec 161 raised per-test timeouts on the statement-import, statement-review and overview-workflows tests. Those bumps were superseded at merge: specs 167/168 make the tests fast enough for the default timeout, so no override is kept on them.
 
+## Done-focus flake
+
+Symptom: under the pre-push full run (two workers, machine loaded) the statement-import test "offers one primary action per step and closes on Done after a confirmed save" once failed `expect(Done).toHaveFocus()` with focus on the dialog content div.
+
+Cause: test timing, not a product race. `ImportComplete` focuses Done in a passive mount effect. When `complete` and `busy` clear in one commit, the progress overlay's focused panel is removed, Radix FocusScope's mutation observer moves focus to the dialog container in a microtask, and `findByText('1 expense saved')` resolves in that same window, before the scheduler task that runs the Done effect. The effect then runs after the assertion, so Done does end focused; the strict assertion only read the intermediate state. Isolated runs flush the effect first, which is why it passed there.
+
+Fix: the assertion waits (`waitFor`) for Done to hold focus, with no timeout override. The product code is unchanged; the mount-focus intent holds.
+
 ## Acceptance
 
 Full `pnpm exec vitest run --coverage` passes; `format:check`, `lint` and `typecheck` pass. Per-test durations are reported in the delivery notes, not asserted here.
