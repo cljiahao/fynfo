@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/copy-pdfjs-assets.mjs && next dev --turbopack",
+    "dev": "node scripts/copy-pdfjs-assets.mjs && next dev --turbopack -p 3001",
     "dev:local": "node scripts/copy-pdfjs-assets.mjs && node scripts/dev-local.mjs",
     "db:start": "supabase start",
     "db:reset": "supabase db reset",
