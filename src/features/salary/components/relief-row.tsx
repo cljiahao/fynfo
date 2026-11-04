@@ -2,8 +2,8 @@
 
 import { useAmountVisibility } from '@/features/privacy';
 
+import { NumericInput } from '@/components/numeric-input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -194,15 +194,13 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
         >
           <ReliefLabel label={def.label} description={def.description} />
         </Label>
-        <Input
-          type="number"
+        <NumericInput
           aria-label={`${def.label} amount (SGD)`}
-          min={0}
           className="h-8 w-24 text-sm"
           disabled={hidden || !state.enabled}
-          value={hidden ? '' : state.amount || ''}
-          onChange={(e) => {
-            if (canReveal()) onUpdate({ amount: Number(e.target.value) || 0 });
+          value={hidden || !state.amount ? null : state.amount}
+          onValueChange={(next) => {
+            if (canReveal()) onUpdate({ amount: next ?? 0 });
           }}
         />
       </div>

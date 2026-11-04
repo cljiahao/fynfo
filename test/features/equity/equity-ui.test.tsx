@@ -149,7 +149,7 @@ describe('123 trade field associations', () => {
         if (name === 'Ticker') {
           expect(screen.getByRole('textbox', { name })).toBe(control);
         } else if (name !== 'Date') {
-          expect(screen.getByRole('spinbutton', { name })).toBe(control);
+          expect(screen.getByRole('textbox', { name })).toBe(control);
         }
         await userEvent.click(label);
         expect(document.activeElement).toBe(control);

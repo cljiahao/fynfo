@@ -2,6 +2,7 @@
 
 import { useAmountVisibility } from '@/features/privacy';
 
+import { NumericInput } from '@/components/numeric-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -142,9 +143,9 @@ export function TradeFormDialog({
       broker: values.broker.trim(),
       ticker: values.ticker.trim().toUpperCase(),
       action: values.action,
-      shares: Number(values.shares) || 0,
-      price: Number(values.price) || 0,
-      fees: Number(values.fees) || 0,
+      shares: values.shares ?? 0,
+      price: values.price ?? 0,
+      fees: values.fees ?? 0,
       isCdp: values.isCdp,
       isPO: values.isPO,
     };
@@ -197,10 +198,16 @@ export function TradeFormDialog({
               return;
             }
             const submitEpoch = getHideEpoch();
-            void form.handleSubmit((values) => {
-              if (!canReveal() || getHideEpoch() !== submitEpoch) return;
-              return onSubmit(values);
-            })(event);
+            void form.handleSubmit(
+              (values) => {
+                if (!canReveal() || getHideEpoch() !== submitEpoch) return;
+                return onSubmit(values);
+              },
+              () => {
+                if (canReveal())
+                  toast.error('Please fill in all required fields');
+              }
+            )(event);
           }}
           className="space-y-4"
         >
@@ -363,72 +370,102 @@ export function TradeFormDialog({
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor={`${fieldId}-shares`}>Shares</Label>
-                <Input
-                  type="number"
-                  step="any"
-                  min="0"
-                  placeholder="0"
-                  id={`${fieldId}-shares`}
-                  {...form.register('shares', {
-                    setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
-                    onChange: () => setTimeout(autoFillFees, 0),
-                  })}
-                  disabled={hidden}
-                  value={hidden ? '' : (sharesRaw ?? '')}
-                  onBlur={(event) => {
-                    if (canReveal()) void form.register('shares').onBlur(event);
+                <Controller
+                  name="shares"
+                  control={form.control}
+                  rules={{
+                    validate: (v) =>
+                      (v !== null && v > 0) || 'Shares must be greater than 0',
                   }}
-                  onChange={(event) => {
-                    if (!canReveal()) return;
-                    void form.register('shares').onChange(event);
-                    setTimeout(autoFillFees, 0);
-                  }}
+                  render={({ field, fieldState }) => (
+                    <>
+                      <NumericInput
+                        id={`${fieldId}-shares`}
+                        placeholder="0"
+                        aria-invalid={fieldState.invalid}
+                        disabled={hidden}
+                        value={hidden ? null : field.value}
+                        onValueChange={(next) => {
+                          if (!canReveal()) return;
+                          field.onChange(next);
+                          setTimeout(autoFillFees, 0);
+                        }}
+                        onBlur={() => {
+                          if (canReveal()) field.onBlur();
+                        }}
+                      />
+                      {fieldState.error && (
+                        <p role="alert" className="text-destructive text-sm">
+                          {fieldState.error.message}
+                        </p>
+                      )}
+                    </>
+                  )}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor={`${fieldId}-price`}>Price per Share</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  id={`${fieldId}-price`}
-                  {...form.register('price', {
-                    setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
-                    onChange: () => setTimeout(autoFillFees, 0),
-                  })}
-                  disabled={hidden}
-                  value={hidden ? '' : (priceRaw ?? '')}
-                  onBlur={(event) => {
-                    if (canReveal()) void form.register('price').onBlur(event);
+                <Controller
+                  name="price"
+                  control={form.control}
+                  rules={{
+                    validate: (v) =>
+                      (v !== null && v > 0) || 'Price must be greater than 0',
                   }}
-                  onChange={(event) => {
-                    if (!canReveal()) return;
-                    void form.register('price').onChange(event);
-                    setTimeout(autoFillFees, 0);
-                  }}
+                  render={({ field, fieldState }) => (
+                    <>
+                      <NumericInput
+                        id={`${fieldId}-price`}
+                        placeholder="0.00"
+                        aria-invalid={fieldState.invalid}
+                        disabled={hidden}
+                        value={hidden ? null : field.value}
+                        onValueChange={(next) => {
+                          if (!canReveal()) return;
+                          field.onChange(next);
+                          setTimeout(autoFillFees, 0);
+                        }}
+                        onBlur={() => {
+                          if (canReveal()) field.onBlur();
+                        }}
+                      />
+                      {fieldState.error && (
+                        <p role="alert" className="text-destructive text-sm">
+                          {fieldState.error.message}
+                        </p>
+                      )}
+                    </>
+                  )}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor={`${fieldId}-fees`}>Fees</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  id={`${fieldId}-fees`}
-                  {...form.register('fees', {
-                    setValueAs: (v: string) => (v === '' ? 0 : parseFloat(v)),
-                  })}
-                  disabled={hidden}
-                  value={hidden ? '' : (feesRaw ?? '')}
-                  onBlur={(event) => {
-                    if (canReveal()) void form.register('fees').onBlur(event);
-                  }}
-                  onChange={(event) => {
-                    if (!canReveal()) return;
-                    void form.register('fees').onChange(event);
-                  }}
+                <Controller
+                  name="fees"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <>
+                      <NumericInput
+                        id={`${fieldId}-fees`}
+                        placeholder="0.00"
+                        aria-invalid={fieldState.invalid}
+                        disabled={hidden}
+                        value={hidden ? null : field.value}
+                        onValueChange={(next) => {
+                          if (!canReveal()) return;
+                          field.onChange(next);
+                        }}
+                        onBlur={() => {
+                          if (canReveal()) field.onBlur();
+                        }}
+                      />
+                      {fieldState.error && (
+                        <p role="alert" className="text-destructive text-sm">
+                          {fieldState.error.message}
+                        </p>
+                      )}
+                    </>
+                  )}
                 />
               </div>
             </div>

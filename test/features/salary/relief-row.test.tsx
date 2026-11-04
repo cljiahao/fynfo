@@ -49,7 +49,7 @@ it('names a standard relief amount and retains its disabled state and numeric up
     </TooltipProvider>
   );
   expect(
-    screen.getByRole('spinbutton', { name: def.label + ' amount (SGD)' })
+    screen.getByRole('textbox', { name: def.label + ' amount (SGD)' })
   ).toBeDisabled();
   view.rerender(
     <TooltipProvider>
@@ -60,10 +60,10 @@ it('names a standard relief amount and retains its disabled state and numeric up
       />
     </TooltipProvider>
   );
-  const input = screen.getByRole('spinbutton', {
+  const input = screen.getByRole('textbox', {
     name: def.label + ' amount (SGD)',
   });
-  expect(input).toHaveValue(100);
+  expect(input).toHaveValue('100');
   fireEvent.change(input, { target: { value: '200' } });
   expect(update).toHaveBeenCalledWith({ amount: 200 });
 });

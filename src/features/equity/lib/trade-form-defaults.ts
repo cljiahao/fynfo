@@ -6,9 +6,9 @@ export interface TradeFormValues {
   broker: string;
   ticker: string;
   action: 'buy' | 'sell';
-  shares: number;
-  price: number;
-  fees: number;
+  shares: number | null;
+  price: number | null;
+  fees: number | null;
   isCdp: boolean;
   isPO: boolean;
 }
@@ -43,9 +43,9 @@ export function buildTradeFormDefaults(
     broker: '',
     ticker: '',
     action: 'buy',
-    shares: '' as unknown as number,
-    price: '' as unknown as number,
-    fees: '' as unknown as number,
+    shares: null,
+    price: null,
+    fees: null,
     isCdp: false,
     isPO: false,
   };

@@ -155,7 +155,7 @@ it('conceals relief amount input and keeps the unsaved relief amount after showi
       <ReliefDraft />
     </AmountVisibilityProvider>
   );
-  const input = screen.getByRole('spinbutton') as HTMLInputElement;
+  const input = screen.getByRole('textbox') as HTMLInputElement;
   fireEvent.change(input, { target: { value: '34567.89' } });
   fireEvent.click(
     screen.getByRole('button', { name: 'Hide amounts', hidden: true })
