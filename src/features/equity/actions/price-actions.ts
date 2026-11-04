@@ -27,6 +27,7 @@ const tickerSchema = z
   .pipe(z.string().regex(/^[A-Z0-9.\-:]{1,16}$/))
   .refine((value) => value !== '.' && value !== '..');
 const tickersSchema = z.array(tickerSchema).max(MAX_PRICE_TICKERS);
+const marketsSchema = z.record(z.string(), z.enum(['SG', 'US']));
 const currencySchema = z
   .string()
   .regex(/^[A-Za-z]{3}$/)
@@ -127,13 +128,18 @@ export async function fetchStockPrices(
   const parsed = tickersSchema.safeParse(tickers);
   if (!parsed.success) return {};
   const unique = [...new Set(parsed.data)];
+  const parsedMarkets = marketsSchema.safeParse(markets);
+  const marketByTicker = parsedMarkets.success ? parsedMarkets.data : {};
   const quotes: Array<StockPrice | null> = Array(unique.length).fill(null);
   let cursor = 0;
 
   const worker = async () => {
     while (cursor < unique.length) {
       const index = cursor++;
-      quotes[index] = await readQuote(unique[index], markets[unique[index]]);
+      quotes[index] = await readQuote(
+        unique[index],
+        marketByTicker[unique[index]]
+      );
     }
   };
   await Promise.all(

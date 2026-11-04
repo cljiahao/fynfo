@@ -347,6 +347,46 @@ describe.each(['trade', 'distribution'] as const)(
   }
 );
 
+describe('trade ticker combobox visibility', () => {
+  it('keeps the selected ticker and market through Hide and Show', async () => {
+    render(
+      <AmountVisibilityProvider>
+        <Control />
+        <TradeFormDialog
+          open
+          onOpenChange={vi.fn()}
+          editTrade={{
+            id: 'synthetic-trade',
+            date: '2026-01-01',
+            ticker: 'AAPL',
+            market: 'US',
+            broker: 'Synthetic broker',
+            action: 'buy',
+            shares: 5,
+            price: 10,
+            fees: 1,
+          }}
+        />
+      </AmountVisibilityProvider>
+    );
+    const ticker = screen.getByRole('combobox', {
+      name: 'Ticker',
+    }) as HTMLInputElement;
+    expect(ticker.value).toBe('AAPL');
+    fireEvent.click(screen.getByText('Hide'));
+    fireEvent.click(screen.getByText('Show'));
+    expect(ticker.value).toBe('AAPL');
+    const form = ticker.closest('form');
+    if (!form) throw new Error('Expected equity form');
+    fireEvent.submit(form);
+    await waitFor(() => expect(saveTrade).toHaveBeenCalledTimes(1));
+    expect(saveTrade).toHaveBeenCalledWith({
+      id: 'synthetic-trade',
+      data: expect.objectContaining({ ticker: 'AAPL', market: 'US' }),
+    });
+  });
+});
+
 // Exercise actual registered field onBlur after DOM masking, rather than only
 // asserting presentation; a later save must retain the owner's typed draft.
 describe.each([

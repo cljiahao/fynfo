@@ -54,6 +54,19 @@ describe('price-actions — fetchStockPrices', () => {
       asOf: '1970-01-01T00:00:00.000Z',
     });
   });
+  it('uses the stored market for the Yahoo symbol and ignores malformed markets', async () => {
+    fetchMock.mockResolvedValue(chartResponse({ regularMarketPrice: 1 }));
+    const { fetchStockPrices } =
+      await import('@/features/equity/actions/price-actions');
+    await fetchStockPrices(['NEWSG'], { NEWSG: 'SG' });
+    expect(String(fetchMock.mock.calls[0][0])).toContain('NEWSG.SI');
+    fetchMock.mockClear();
+    await fetchStockPrices(['NEWSG'], {
+      NEWSG: 'XX',
+    } as unknown as Record<string, 'SG'>);
+    expect(String(fetchMock.mock.calls[0][0])).not.toContain('.SI');
+  });
+
   it('rejects oversized ticker arrays before issuing requests', async () => {
     fetchMock.mockResolvedValue(chartResponse({ regularMarketPrice: 1 }));
     const { fetchStockPrices } =

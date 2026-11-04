@@ -13,8 +13,8 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   computeHoldings,
   finiteProduct,
-  getMarket,
   holdingMarkets,
+  resolveMarket,
   useExchangeRate,
   useStockPrices,
   useTrades,
@@ -111,7 +111,7 @@ export function InvestmentBreakdown({
 
   // useMemo justified: filters and sums trades for current quarter per market
   const { sgSpent, usSpent } = useMemo(
-    () => computeQuarterSpend(trades ?? [], qStart, qEnd, getMarket),
+    () => computeQuarterSpend(trades ?? [], qStart, qEnd, resolveMarket),
     [trades, qStart, qEnd]
   );
 
