@@ -198,6 +198,7 @@ describe('other states', () => {
 describe('amounts hidden', () => {
   it('masks the name, amounts and pace and disables Add item', () => {
     visibility.hidden = true;
+    setGoals([{ ...goalWithItems, targetDate: '2020-01-01' }]);
     const { container } = mount();
     expect(
       screen.getByRole('heading', { level: 1, name: 'Hidden' })
@@ -205,6 +206,8 @@ describe('amounts hidden', () => {
     expect(container.textContent).not.toMatch(/\d{1,3},\d{3}/);
     expect(container.textContent).not.toContain('Wedding');
     expect(screen.queryByRole('status')).toBeNull();
+    expect(container.textContent).toMatch(/Monthly pace\s*Hidden/);
+    expect(container.textContent).not.toMatch(/Past target date/);
     expect(screen.getByRole('button', { name: 'Add item' })).toBeDisabled();
   });
 });

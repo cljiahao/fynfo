@@ -212,11 +212,13 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
         <StatCard
           label="Monthly pace"
           value={
-            pace === null
-              ? '-'
-              : pace === 'past'
-                ? 'Past target date'
-                : `${mask(formatSGD(pace))}/mo`
+            hidden
+              ? mask('')
+              : pace === null
+                ? '-'
+                : pace === 'past'
+                  ? 'Past target date'
+                  : `${mask(formatSGD(pace))}/mo`
           }
         />
       </div>
@@ -262,8 +264,8 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
         </div>
         {!hidden && goal.budgeted > goal.targetAmount && (
           <p role="status" className="text-warning text-xs">
-            Items total {formatSGD(goal.budgeted)}, above the{' '}
-            {formatSGD(goal.targetAmount)} target.
+            Items total {mask(formatSGD(goal.budgeted))}, above the{' '}
+            {mask(formatSGD(goal.targetAmount))} target.
           </p>
         )}
         {hasItems ? (
