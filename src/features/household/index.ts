@@ -22,7 +22,11 @@ export {
   deleteSpending,
   getSpaces,
 } from './actions/spending-actions';
-export { HouseholdOverview } from './components';
+export {
+  GoalDetail,
+  GoalDetailSkeleton,
+  HouseholdOverview,
+} from './components';
 export type {
   AcceptInviteResult,
   CreateHouseholdResult,

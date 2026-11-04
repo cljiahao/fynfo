@@ -8,9 +8,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { formatSGD } from '@/lib/utils/currency';
 import { format } from 'date-fns';
-import { Check, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Check, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
-import { PERSON_COLORS } from '../constants';
+import { GOAL_DETAIL_PATH, PERSON_COLORS } from '../constants';
 import type { HouseholdGoal } from '../types';
 import { ProjectBreakdown } from './project-breakdown';
 
@@ -63,7 +64,14 @@ export function GoalCard({
       <CardContent className="space-y-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="truncate font-semibold">{mask(goal.name)}</h2>
+            <h2 className="truncate font-semibold">
+              <Link
+                href={GOAL_DETAIL_PATH(goal.id)}
+                className="hover:underline focus-visible:underline"
+              >
+                {mask(goal.name)}
+              </Link>
+            </h2>
             {goal.targetDate && (
               <p className="text-muted-foreground text-xs">
                 by {format(new Date(goal.targetDate), 'dd MMM yyyy')}
@@ -142,6 +150,14 @@ export function GoalCard({
             <Plus className="mr-1 size-3.5" />
             Add to goal
           </Button>
+          <Link
+            href={GOAL_DETAIL_PATH(goal.id)}
+            aria-label={`View details for ${mask(goal.name)}`}
+            className="text-muted-foreground hover:text-foreground flex min-h-11 items-center gap-0.5 text-sm"
+          >
+            View details
+            <ChevronRight className="size-4" />
+          </Link>
           <div className="flex items-center">
             <Button
               size="sm"
