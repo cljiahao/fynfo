@@ -80,11 +80,23 @@ async function unlock() {
 
 describe('unlock with dividend auto-scan', () => {
   it('reveals the vault while the scan is still pending', async () => {
-    autoScanDividends.mockReturnValue(new Promise(() => undefined));
+    let finish: (v: { added: number }) => void = () => undefined;
+    autoScanDividends.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
     const onUnlocked = await unlock();
     await waitFor(() => expect(onUnlocked).toHaveBeenCalled());
     expect(autoScanDividends).toHaveBeenCalledOnce();
     expect(localStorage.getItem('fynfo:divscan:last:test-user')).toBeNull();
+    // The in-flight guard is module-level; settle the scan so later tests can run theirs.
+    finish({ added: 0 });
+    await waitFor(() =>
+      expect(
+        localStorage.getItem('fynfo:divscan:last:test-user')
+      ).not.toBeNull()
+    );
   });
 
   it('reveals the vault and shows no error when the scan rejects', async () => {
