@@ -26,6 +26,8 @@
     "// testing": "",
     "test": "vitest",
     "test:ci": "vitest run --coverage",
+    "test:shard": "vitest run --shard",
+    "test:shards": "vitest run --shard 1/4 && vitest run --shard 2/4 && vitest run --shard 3/4 && vitest run --shard 4/4",
     "test:coverage": "vitest run --coverage",
     "coverage": "pnpm test:coverage"
   },

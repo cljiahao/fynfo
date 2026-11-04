@@ -304,6 +304,15 @@ coverage, alongside stricter security-critical file thresholds. Empty test
 discovery fails. Two test workers limit memory pressure from browser suites. Set `VITEST_COVERAGE_DIR` to give a concurrent coverage run its own
 report folder; two runs sharing `coverage/` overwrite each other and report false
 threshold failures.
+
+`pnpm test:shard 1/4` (through `4/4`) runs one quarter of the suite without
+coverage, which fits a foreground run; `pnpm test:shards` runs all four in
+sequence and stops at the first failure. Coverage thresholds are not enforced
+per shard, so a full `pnpm test:ci` remains the gate of record.
+
+The pre-push hook runs only `pnpm run check`. Build and `test:ci` no longer run
+on push; they run in CI and through `/next-verify` before landing on `main`.
+
 The project verification skill and quality gates are documented in
 [AGENTS.md](AGENTS.md).
 

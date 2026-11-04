@@ -47,6 +47,7 @@ async function edit() {
   fireEvent.change(screen.getAllByRole('spinbutton')[0], {
     target: { value: '123' },
   });
+  await waitFor(() => expect(amount()).toBe('123'));
 }
 function amount() {
   return (screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value;
