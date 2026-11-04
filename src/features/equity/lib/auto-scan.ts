@@ -7,6 +7,9 @@ import { DIVIDENDS_KEY } from '../hooks/use-dividends';
 
 const AUTO_SCAN_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
+/** Guards against overlapping runs (e.g. rapid re-unlock) that would both pass the throttle before either saves it. */
+const inFlight = new Set<string>();
+
 const lastScanKey = (userId: string) => `fynfo:divscan:last:${userId}`;
 
 /** A missing or unreadable timestamp scans; the dedupe rule makes a repeat harmless. */
@@ -25,8 +28,9 @@ export async function runDividendAutoScan(
   userId: string,
   queryClient: QueryClient
 ): Promise<void> {
+  if (!userId || inFlight.has(userId)) return;
+  inFlight.add(userId);
   try {
-    if (!userId) return;
     const key = lastScanKey(userId);
     const last = loadLocal<string | null>(key, null);
     if (!shouldAutoScan(typeof last === 'string' ? last : null, Date.now()))
@@ -39,5 +43,7 @@ export async function runDividendAutoScan(
     }
   } catch {
     // Opaque by design; the server logged the cause and the next unlock retries.
+  } finally {
+    inFlight.delete(userId);
   }
 }
