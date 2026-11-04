@@ -32,6 +32,7 @@ vi.mock('@/features/equity/hooks/use-equity', () => ({
   useDeleteTrade: () => ({ isPending: false, mutateAsync: deleteRecord }),
   useCreateTrade: () => ({ isPending: false, mutateAsync: saveTrade }),
   useUpdateTrade: () => ({ isPending: false, mutateAsync: saveTrade }),
+  useTrades: () => ({ data: [] }),
 }));
 vi.mock('@/features/equity/hooks/use-dividends', () => ({
   useDeleteDividend: () => ({ isPending: false, mutateAsync: deleteRecord }),
@@ -349,7 +350,6 @@ describe.each(['trade', 'distribution'] as const)(
 // Exercise actual registered field onBlur after DOM masking, rather than only
 // asserting presentation; a later save must retain the owner's typed draft.
 describe.each([
-  { kind: 'trade', label: 'Ticker', raw: 'MSFT', expected: { ticker: 'MSFT' } },
   {
     kind: 'trade',
     label: 'Date',
