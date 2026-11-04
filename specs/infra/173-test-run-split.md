@@ -2,10 +2,10 @@
 id: '173'
 slug: test-run-split
 area: infra
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-04
-approved:
+approved: 2026-11-05
 shipped:
 impl_pr:
 supersedes:
@@ -194,9 +194,9 @@ All parts:
 
 ## Open questions
 
-- [ ] Q: Which pre-push option (A, B or C)? — Owner: Clarence — A:
-- [ ] Q: Is 4 the right shard count, or should it follow measured timings? —
-      Owner: Clarence — A:
+- [x] Q: Which pre-push option (A, B or C)? — Owner: Clarence — A: C — owner, 2026-11-05: 'Approve, option C'
+- [x] Q: Is 4 the right shard count, or should it follow measured timings? —
+      Owner: Clarence — A: 4 by default; adjust from measured timings
 - [ ] Q: Should the shard commands also be added to a governance document such
       as `AGENTS.md` (needs a `governance/` spec) or stay README-only? —
       Owner: Clarence — A:
