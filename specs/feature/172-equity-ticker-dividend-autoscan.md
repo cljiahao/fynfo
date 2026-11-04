@@ -1,5 +1,5 @@
 ---
-id: 171
+id: 172
 slug: equity-ticker-dividend-autoscan
 area: feature
 status: draft
@@ -23,7 +23,7 @@ constitution_satisfies:
 constitution_overrides: []
 ---
 
-# Spec 171: Equity numeric inputs, ticker picker, dividend scan hardening and post-unlock auto-scan
+# Spec 172: Equity numeric inputs, ticker picker, dividend scan hardening and post-unlock auto-scan
 
 ## Problem
 
