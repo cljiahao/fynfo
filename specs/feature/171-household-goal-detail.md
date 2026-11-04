@@ -2,12 +2,12 @@
 id: '171'
 slug: household-goal-detail
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-04
 approved: 2026-11-04 # YYYY-MM-DD, set on approval
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # link to impl PR, set on shipped
+shipped: 2026-11-04
+impl_pr: no PR (direct to main), aa29aaa 82b472b ce0fde9 258a22f (impl/171-household-goal-detail)
 supersedes:
 constitution_satisfies:
   - '§1.1'
