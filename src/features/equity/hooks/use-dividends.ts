@@ -11,7 +11,7 @@ import {
 } from '../actions/dividend-actions';
 import type { DividendData } from '../types';
 
-const DIVIDENDS_KEY = ['equity-dividends'] as const;
+export const DIVIDENDS_KEY = ['equity-dividends'] as const;
 
 export function useDividends() {
   return useQuery({

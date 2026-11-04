@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { runDividendAutoScan } from '@/features/equity';
 import { createSupabaseBrowserClient } from '@/integrations/clients/supabase';
 import { deriveKeyClient, deriveKeyLegacy } from '@/lib/client-crypto';
 import { useVaultStatus } from '../hooks/use-vault-status';
@@ -122,6 +123,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
         });
 
         if (res.ok) {
+          void runDividendAutoScan(userId, queryClient);
           await revealWhenReady();
           return;
         }
@@ -135,6 +137,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
           });
 
           if (migrateRes.ok) {
+            void runDividendAutoScan(userId, queryClient);
             await revealWhenReady();
             return;
           }
@@ -171,7 +174,7 @@ export function VaultUnlockFlow({ onUnlocked }: VaultUnlockFlowProps) {
         toast.error(message);
       }
     },
-    [getUserId, revealWhenReady, resetField, setError, vaultState]
+    [getUserId, queryClient, revealWhenReady, resetField, setError, vaultState]
   );
 
   return (

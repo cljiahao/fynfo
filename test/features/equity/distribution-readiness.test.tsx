@@ -57,7 +57,7 @@ function mount(initial?: DividendData[]) {
 beforeEach(() => {
   vi.resetAllMocks();
   api.fetchExchangeRate.mockResolvedValue(1.3);
-  api.fetchDividends.mockResolvedValue([]);
+  api.fetchDividends.mockResolvedValue({ points: [] });
   vi.stubGlobal(
     'ResizeObserver',
     class {

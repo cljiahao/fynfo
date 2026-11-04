@@ -26,7 +26,9 @@ const deleteRecord = vi.hoisted(() => vi.fn());
 const saveDividend = vi.hoisted(() => vi.fn());
 const importDividends = vi.hoisted(() => vi.fn());
 vi.mock('@/features/equity/actions/price-actions', () => ({
-  fetchDividends: vi.fn().mockResolvedValue([{ exDate: '2026-02-01', dpu: 2 }]),
+  fetchDividends: vi
+    .fn()
+    .mockResolvedValue({ points: [{ exDate: '2026-02-01', dpu: 2 }] }),
 }));
 vi.mock('@/features/equity/hooks/use-equity', () => ({
   useDeleteTrade: () => ({ isPending: false, mutateAsync: deleteRecord }),
