@@ -2,12 +2,12 @@
 id: 172
 slug: equity-ticker-dividend-autoscan
 area: feature
-status: approved
+status: shipped
 author: builder (Claude)
 created: 2026-11-04
 approved:
-shipped:
-impl_pr:
+shipped: 2026-11-05
+impl_pr: https://github.com/cljiahao/fynfo/commit/e3e62420f3223ae2400fc8e8c8563244c98e90ef
 supersedes:
 constitution_satisfies:
   - '§2.1'
