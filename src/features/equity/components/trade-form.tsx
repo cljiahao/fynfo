@@ -22,17 +22,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useMemo } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
-import { useCreateTrade, useUpdateTrade } from '../hooks/use-equity';
+import { useCreateTrade, useTrades, useUpdateTrade } from '../hooks/use-equity';
 import { BROKERS, resolveTradeFees } from '../lib/broker-fees';
-import { getMarket } from '../lib/ticker-map';
+import { resolveMarket } from '../lib/ticker-map';
+import type { Market } from '../lib/ticker-market';
 import {
   buildTradeFormDefaults,
   type TradeFormValues,
 } from '../lib/trade-form-defaults';
 import type { EquityTradeData } from '../types';
+import { TickerCombobox, type TickerOption } from './ticker-combobox';
 import { TradeFeeBreakdown, TradeSummary } from './trade-form-summary';
 
 interface TradeFormDialogProps {
@@ -69,9 +71,25 @@ export function TradeFormDialog({
     }
   }, [open, editTrade, form]);
 
+  const { data: trades } = useTrades();
+  const tickerOptions = useMemo<TickerOption[]>(() => {
+    const byTicker = new Map<string, TickerOption>();
+    for (const t of trades ?? []) {
+      const ticker = t.ticker.toUpperCase();
+      // An explicit market outranks one inferred from the legacy map.
+      if (t.market || !byTicker.has(ticker)) {
+        byTicker.set(ticker, { ticker, market: resolveMarket(t) });
+      }
+    }
+    return [...byTicker.values()].sort((a, b) =>
+      a.ticker.localeCompare(b.ticker)
+    );
+  }, [trades]);
+
   const {
     broker,
     ticker,
+    market,
     action,
     shares: sharesRaw,
     price: priceRaw,
@@ -83,7 +101,6 @@ export function TradeFormDialog({
   const price = Number(priceRaw) || 0;
   const fees = Number(feesRaw) || 0;
 
-  const market = ticker ? getMarket(ticker.toUpperCase()) : null;
   const isSg = market === 'SG';
   const cdpEnabled = isSg;
   const currency = market === 'US' ? 'USD' : 'SGD';
@@ -91,6 +108,7 @@ export function TradeFormDialog({
   const tradeValue = shares * price;
   const calculatedFees = resolveTradeFees({
     ticker,
+    market,
     action,
     broker,
     tradeValue,
@@ -103,6 +121,7 @@ export function TradeFormDialog({
     if (!canReveal()) return;
     const fees = resolveTradeFees({
       ticker: form.getValues('ticker'),
+      market: form.getValues('market'),
       action: form.getValues('action'),
       broker: form.getValues('broker'),
       tradeValue:
@@ -122,10 +141,26 @@ export function TradeFormDialog({
     // Empty is not a broker option; preserve the registered draft on that event.
     if (!canReveal() || v === '') return;
     form.setValue('broker', v);
-    const tickerVal = form.getValues('ticker');
-    const mkt = tickerVal ? getMarket(tickerVal.toUpperCase()) : null;
-    if (mkt === 'SG' && (v === 'DBS Vickers' || v === 'FSMOne')) {
+    if (
+      form.getValues('market') === 'SG' &&
+      (v === 'DBS Vickers' || v === 'FSMOne')
+    ) {
       if (!canReveal()) return;
+      form.setValue('isCdp', true);
+    }
+    autoFillFees();
+  };
+
+  const handleTickerChange = (next: { ticker: string; market?: Market }) => {
+    if (!canReveal()) return;
+    form.setValue('ticker', next.ticker, { shouldDirty: true });
+    form.setValue('market', next.market, { shouldDirty: true });
+    form.clearErrors('market');
+    const brokerVal = form.getValues('broker');
+    if (
+      next.market === 'SG' &&
+      (brokerVal === 'DBS Vickers' || brokerVal === 'FSMOne')
+    ) {
       form.setValue('isCdp', true);
     }
     autoFillFees();
@@ -142,6 +177,7 @@ export function TradeFormDialog({
       date: date.toISOString(),
       broker: values.broker.trim(),
       ticker: values.ticker.trim().toUpperCase(),
+      market: values.market,
       action: values.action,
       shares: values.shares ?? 0,
       price: values.price ?? 0,
@@ -157,6 +193,10 @@ export function TradeFormDialog({
       data.price <= 0
     ) {
       toast.error('Please fill in all required fields');
+      return;
+    }
+    if (!data.market) {
+      form.setError('market', { message: 'Select a market for this ticker' });
       return;
     }
 
@@ -215,21 +255,13 @@ export function TradeFormDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor={`${fieldId}-ticker`}>Ticker</Label>
-                <Input
+                <TickerCombobox
                   id={`${fieldId}-ticker`}
-                  placeholder="e.g. AAPL, DBS"
-                  {...form.register('ticker', {
-                    onChange: () => setTimeout(autoFillFees, 0),
-                  })}
-                  value={hidden ? '' : (ticker ?? '')}
-                  onBlur={(event) => {
-                    if (canReveal()) void form.register('ticker').onBlur(event);
-                  }}
-                  onChange={(event) => {
-                    if (!canReveal()) return;
-                    void form.register('ticker').onChange(event);
-                    setTimeout(autoFillFees, 0);
-                  }}
+                  options={tickerOptions}
+                  value={{ ticker: ticker ?? '', market }}
+                  onChange={handleTickerChange}
+                  disabled={hidden}
+                  error={form.formState.errors.market?.message}
                 />
               </div>
               <div className="space-y-2">

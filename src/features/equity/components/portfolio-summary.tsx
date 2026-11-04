@@ -7,7 +7,7 @@ import { formatCurrency } from '@/lib/utils/currency';
 import { useMemo } from 'react';
 import { VALUATION_MARKETS } from '../constants';
 import { useStockPrices } from '../hooks/use-prices';
-import { computeHoldings } from '../lib/holdings';
+import { computeHoldings, holdingMarkets } from '../lib/holdings';
 import { buildCashFlows, verifiedIRR } from '../lib/mwr';
 import { marketValue, nativeCurrency } from '../lib/valuation';
 import type { EquityTradeData } from '../types';
@@ -26,7 +26,10 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
     isFetching,
     isStale,
     dataUpdatedAt,
-  } = useStockPrices(holdings.map((holding) => holding.ticker));
+  } = useStockPrices(
+    holdings.map((holding) => holding.ticker),
+    holdingMarkets(holdings)
+  );
   const markets = VALUATION_MARKETS.map((market) => {
     const rows = holdings.filter((holding) => holding.market === market);
     const currency = nativeCurrency(market);

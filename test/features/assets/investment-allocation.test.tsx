@@ -12,6 +12,7 @@ vi.mock('@/features/equity/hooks/use-prices', () => ({
 }));
 vi.mock('@/features/equity/lib/holdings', () => ({
   computeHoldings: () => [{ ticker: 'TEST', market: 'SG', shares: 1 }],
+  holdingMarkets: () => ({ TEST: 'SG' }),
 }));
 vi.mock('@/features/assets/components/market-allocation-table', () => ({
   MarketAllocationTable: ({

@@ -11,6 +11,7 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 afterEach(cleanup);
@@ -129,4 +130,38 @@ it('routes a second relief label click to that mounted row', async () => {
   );
   expect(first).not.toHaveBeenCalled();
   expect(second).toHaveBeenCalledWith({ enabled: true });
+});
+
+it('keeps a typed "0" so "0.5" can be entered, and an emptied field stores 0', async () => {
+  const updates: number[] = [];
+  function Harness() {
+    const [state, setState] = useState({
+      enabled: true,
+      amount: 100,
+      count: 1,
+      variant: '',
+    });
+    return (
+      <TooltipProvider>
+        <ReliefRow
+          def={standardDef}
+          state={state}
+          onUpdate={(patch) => {
+            if (patch.amount !== undefined) updates.push(patch.amount);
+            setState((s) => ({ ...s, ...patch }));
+          }}
+        />
+      </TooltipProvider>
+    );
+  }
+  render(<Harness />);
+  const input = screen.getByRole('textbox', {
+    name: standardDef.label + ' amount (SGD)',
+  });
+  await userEvent.clear(input);
+  expect(input).toHaveValue('');
+  expect(updates.at(-1)).toBe(0);
+  await userEvent.type(input, '0.5');
+  expect(input).toHaveValue('0.5');
+  expect(updates.at(-1)).toBe(0.5);
 });

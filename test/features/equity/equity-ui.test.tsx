@@ -75,6 +75,12 @@ function mount(child: ReactNode) {
     client,
   };
 }
+async function pickTicker(ticker: string) {
+  fireEvent.click(screen.getByRole('combobox', { name: 'Ticker' }));
+  fireEvent.click(
+    await screen.findByRole('option', { name: new RegExp(`^${ticker}`) })
+  );
+}
 beforeEach(() => {
   vi.resetAllMocks();
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
@@ -143,12 +149,10 @@ describe('123 trade field associations', () => {
       const label = screen.getByText(name, { selector: 'label' });
       expect(label.getAttribute('for')).toBe(control.id);
       expect((label as HTMLLabelElement).control).toBe(control);
-      if (name === 'Broker') {
+      if (name === 'Broker' || name === 'Ticker') {
         expect(screen.getByRole('combobox', { name })).toBe(control);
       } else {
-        if (name === 'Ticker') {
-          expect(screen.getByRole('textbox', { name })).toBe(control);
-        } else if (name !== 'Date') {
+        if (name !== 'Date') {
           expect(screen.getByRole('textbox', { name })).toBe(control);
         }
         await userEvent.click(label);
@@ -286,15 +290,15 @@ describe('real equity dialogs', () => {
 
   it('calculates new-trade broker fees and respects manual overrides', async () => {
     mount(<TradeFormDialog open onOpenChange={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('e.g. AAPL, DBS'), {
-      target: { value: 'DBS' },
-    });
+    await pickTicker('DBS');
     fireEvent.change(screen.getByPlaceholderText('0'), {
       target: { value: '100' },
     });
     const numeric = screen.getAllByPlaceholderText('0.00');
     fireEvent.change(numeric[0], { target: { value: '10' } });
-    fireEvent.keyDown(screen.getByRole('combobox'), { key: 'ArrowDown' });
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Broker' }), {
+      key: 'ArrowDown',
+    });
     fireEvent.click(await screen.findByRole('option', { name: 'DBS Vickers' }));
     expect(
       screen.getByRole('checkbox', { name: 'CDP' }).getAttribute('data-state')
@@ -342,6 +346,10 @@ describe('real equity dialogs', () => {
 
   it('updates saved custom broker trades and surfaces action failures', async () => {
     const close = vi.fn();
+    api.getTrades.mockResolvedValue([
+      trade,
+      { ...trade, id: 't2', ticker: 'AAPL', market: 'US' },
+    ]);
     mount(
       <TradeFormDialog
         open
@@ -349,10 +357,10 @@ describe('real equity dialogs', () => {
         editTrade={{ ...trade, broker: 'Custom broker' }}
       />
     );
-    expect(screen.getByRole('combobox').textContent).toContain('Custom broker');
-    fireEvent.change(screen.getByPlaceholderText('e.g. AAPL, DBS'), {
-      target: { value: ' aapl ' },
-    });
+    expect(
+      screen.getByRole('combobox', { name: 'Broker' }).textContent
+    ).toContain('Custom broker');
+    await pickTicker('AAPL');
     fireEvent.click(screen.getByRole('button', { name: 'Sell' }));
     fireEvent.click(screen.getByRole('button', { name: 'Update Trade' }));
     await waitFor(() =>
@@ -379,9 +387,7 @@ describe('real equity dialogs', () => {
       )
     );
     expect(api.createTrade).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByPlaceholderText('e.g. AAPL, DBS'), {
-      target: { value: 'DBS' },
-    });
+    await pickTicker('DBS');
     fireEvent.change(screen.getByPlaceholderText('0'), {
       target: { value: '10' },
     });

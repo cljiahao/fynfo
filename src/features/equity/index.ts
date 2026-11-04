@@ -4,9 +4,9 @@ export * from './components';
 export * from './hooks';
 export type { DividendData, EquityTradeData } from './types';
 
-export { computeHoldings } from './lib/holdings';
+export { computeHoldings, holdingMarkets } from './lib/holdings';
 export type { Holding } from './lib/holdings';
-export { getMarket } from './lib/ticker-map';
+export { getMarket, resolveMarket } from './lib/ticker-map';
 export {
   finiteProduct,
   holdingPrice,

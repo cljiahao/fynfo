@@ -360,7 +360,10 @@ it('connects calculated market budgets to real ticker allocation edits without p
   fireEvent.change(usInput, { target: { value: '50' } });
   expect(screen.getByText('50%')).toBeTruthy();
   expect(localStorage.getItem('fynfo-allocations')).toBeNull();
-  expect(api.fetchStockPrices).toHaveBeenCalledWith(['DBS', 'AAPL']);
+  expect(api.fetchStockPrices).toHaveBeenCalledWith(
+    ['DBS', 'AAPL'],
+    expect.anything()
+  );
 });
 
 it('keeps planner salary and allocation edits after a snapshot read is retried', async () => {

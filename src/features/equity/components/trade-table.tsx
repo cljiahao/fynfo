@@ -21,7 +21,7 @@ import { Pencil, Trash2, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useDeleteTrade } from '../hooks/use-equity';
-import { getMarket } from '../lib/ticker-map';
+import { resolveMarket } from '../lib/ticker-map';
 import type { EquityTradeData } from '../types';
 
 interface TradeTableProps {
@@ -135,7 +135,7 @@ export function TradeTable({ trades, onEdit }: TradeTableProps) {
             </thead>
             <tbody>
               {paged.map((t) => {
-                const currency = getMarket(t.ticker) === 'SG' ? 'SGD' : 'USD';
+                const currency = resolveMarket(t) === 'SG' ? 'SGD' : 'USD';
                 const total = t.shares * t.price;
                 return (
                   <tr key={t.id} className="border-b last:border-0">

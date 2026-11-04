@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({
+  getTrades: vi.fn().mockResolvedValue([]),
   createTrade: vi.fn(),
   updateTrade: vi.fn(),
   success: vi.fn(),

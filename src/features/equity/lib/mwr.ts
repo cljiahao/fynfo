@@ -1,6 +1,6 @@
 import type { EquityTradeData } from '../types';
 import { type Holding } from './holdings';
-import { getMarket } from './ticker-map';
+import { resolveMarket } from './ticker-map';
 
 // Cash flow: negative = money out (buy), positive = money in (sell / current value)
 export interface CashFlow {
@@ -49,7 +49,7 @@ export function buildCashFlows(
   const flows: CashFlow[] = [];
 
   for (const t of trades) {
-    const market = getMarket(t.ticker.toUpperCase());
+    const market = resolveMarket(t);
     if (marketFilter && market !== marketFilter) continue;
 
     const gross = t.shares * t.price;

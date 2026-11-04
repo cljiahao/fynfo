@@ -13,7 +13,7 @@ import { formatCurrency } from '@/lib/utils/currency';
 import { Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useExchangeRate, useStockPrices } from '../hooks/use-prices';
-import { computeHoldings, type Holding } from '../lib/holdings';
+import { computeHoldings, holdingMarkets, type Holding } from '../lib/holdings';
 import {
   finiteProduct,
   holdingPrice,
@@ -181,7 +181,7 @@ export function HoldingsTable({ trades }: HoldingsTableProps) {
     data: prices,
     isLoading: pricesLoading,
     isError: pricesError,
-  } = useStockPrices(heldTickers);
+  } = useStockPrices(heldTickers, holdingMarkets(holdings));
   const { data: usdToSgd, isError: rateError } = useExchangeRate('USD', 'SGD');
 
   const [expanded, setExpanded] = useState(false);

@@ -59,6 +59,28 @@ describe('equity-actions — getTrades', () => {
     ]);
   });
 
+  it('decodes the market prefix and leaves unprefixed rows undefined', async () => {
+    const base = {
+      date: '2026-03-01',
+      broker: 'Moomoo',
+      action: 'buy',
+      shares: await encryptPayload('1', DEK),
+      price: await encryptPayload('1', DEK),
+      fees: await encryptPayload('0', DEK),
+    };
+    setSupabase({
+      selectData: [
+        { ...base, id: 'a', ticker: await encryptPayload('SG:Z74', DEK) },
+        { ...base, id: 'b', ticker: await encryptPayload('DBS', DEK) },
+      ],
+    });
+    const { getTrades } =
+      await import('@/features/equity/actions/equity-actions');
+    const [a, b] = await getTrades();
+    expect([a.ticker, a.market]).toEqual(['Z74', 'SG']);
+    expect([b.ticker, b.market]).toEqual(['DBS', undefined]);
+  });
+
   it('maps the saved is_cdp / is_po flags', async () => {
     setSupabase({
       selectData: [
@@ -139,6 +161,24 @@ describe('equity-actions — createTrade', () => {
     expect(await decryptPayload(row.fees, DEK)).toBe('1.2');
     expect(row.is_cdp).toBe(false);
     expect(row.is_po).toBe(false);
+  });
+
+  it('stores the market as a prefix inside the encrypted ticker', async () => {
+    const fake = setSupabase();
+    const { createTrade } =
+      await import('@/features/equity/actions/equity-actions');
+    await createTrade({ ...VALID_TRADE, ticker: 'z74', market: 'SG' });
+    const row = fake.calls.insert[0] as Record<string, string>;
+    expect(await decryptPayload(row.ticker, DEK)).toBe('SG:Z74');
+  });
+
+  it('rejects a prefix typed into the ticker body', async () => {
+    setSupabase();
+    const { createTrade } =
+      await import('@/features/equity/actions/equity-actions');
+    await expect(
+      createTrade({ ...VALID_TRADE, ticker: 'SG:Z74' })
+    ).rejects.toThrow();
   });
 
   it('persists is_cdp / is_po when provided', async () => {

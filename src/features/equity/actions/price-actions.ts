@@ -8,7 +8,7 @@ import {
   MAX_PRICE_TICKERS,
   PRICE_FETCH_TIMEOUT_MS,
 } from '../constants';
-import { getYahooSymbol } from '../lib/ticker-map';
+import { deriveYahooSymbol, getYahooSymbol } from '../lib/ticker-map';
 
 export interface StockPrice {
   ticker: string;
@@ -83,8 +83,11 @@ async function fetchYahooChart(
   return res.json();
 }
 
-async function readQuote(ticker: string): Promise<StockPrice | null> {
-  const symbol = getYahooSymbol(ticker);
+async function readQuote(
+  ticker: string,
+  market?: 'SG' | 'US'
+): Promise<StockPrice | null> {
+  const symbol = deriveYahooSymbol(ticker, market);
   try {
     const data = await fetchYahooChart(symbol, 'interval=1d&range=1d', 300);
     if (data === null) return null;
@@ -117,7 +120,8 @@ async function readQuote(ticker: string): Promise<StockPrice | null> {
 }
 
 export async function fetchStockPrices(
-  tickers: string[]
+  tickers: string[],
+  markets: Record<string, 'SG' | 'US'> = {}
 ): Promise<Record<string, StockPrice>> {
   await requireUserId();
   const parsed = tickersSchema.safeParse(tickers);
@@ -129,7 +133,7 @@ export async function fetchStockPrices(
   const worker = async () => {
     while (cursor < unique.length) {
       const index = cursor++;
-      quotes[index] = await readQuote(unique[index]);
+      quotes[index] = await readQuote(unique[index], markets[unique[index]]);
     }
   };
   await Promise.all(

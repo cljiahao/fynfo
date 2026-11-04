@@ -1,10 +1,13 @@
 import { format } from 'date-fns';
 import type { EquityTradeData } from '../types';
+import { resolveMarket } from './ticker-map';
+import type { Market } from './ticker-market';
 
 export interface TradeFormValues {
   date: string;
   broker: string;
   ticker: string;
+  market: Market | undefined;
   action: 'buy' | 'sell';
   shares: number | null;
   price: number | null;
@@ -29,6 +32,8 @@ export function buildTradeFormDefaults(
       date: format(new Date(editTrade.date), 'yyyy-MM-dd'),
       broker: editTrade.broker,
       ticker: editTrade.ticker,
+      // Legacy trades get their inferred market stamped on the next save.
+      market: resolveMarket(editTrade),
       action: editTrade.action,
       shares: editTrade.shares,
       price: editTrade.price,
@@ -42,6 +47,7 @@ export function buildTradeFormDefaults(
     date: todayIso,
     broker: '',
     ticker: '',
+    market: undefined,
     action: 'buy',
     shares: null,
     price: null,

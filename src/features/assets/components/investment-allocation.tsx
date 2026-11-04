@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/card';
 import {
   computeHoldings,
+  holdingMarkets,
   useExchangeRate,
   useStockPrices,
   useTrades,
@@ -35,7 +36,7 @@ export function InvestmentAllocation({ budgets }: InvestmentAllocationProps) {
     data: prices,
     isLoading: pricesLoading,
     isError: pricesError,
-  } = useStockPrices(heldTickers);
+  } = useStockPrices(heldTickers, holdingMarkets(holdings));
   const { data: usdToSgd, isError: rateError } = useExchangeRate('USD', 'SGD');
 
   const [allocations, setAllocations] = useState<Record<string, number>>({});

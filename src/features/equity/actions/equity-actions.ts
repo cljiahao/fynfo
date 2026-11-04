@@ -8,6 +8,7 @@ import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { RECORD_ID } from '@/lib/zod-utils';
 import { randomUUID } from 'crypto';
+import { decodeTickerMarket, encodeTickerMarket } from '../lib/ticker-market';
 import { equityTradeInputSchema } from '../schemas';
 import type { EquityTradeData } from '../types';
 
@@ -31,7 +32,7 @@ export async function getTrades(): Promise<EquityTradeData[]> {
       id: t.id,
       date: t.date,
       broker: t.broker,
-      ticker: await decryptPayload(t.ticker, dek),
+      ...decodeTickerMarket(await decryptPayload(t.ticker, dek)),
       action: t.action as EquityTradeData['action'],
       shares: await decryptNumber(t.shares, dek),
       price: await decryptNumber(t.price, dek),
@@ -57,7 +58,10 @@ export async function createTrade(
     user_id: userId,
     date: new Date(parsed.date).toISOString(),
     broker: parsed.broker,
-    ticker: await encryptPayload(parsed.ticker, dek),
+    ticker: await encryptPayload(
+      encodeTickerMarket(parsed.ticker, parsed.market),
+      dek
+    ),
     action: parsed.action,
     shares: await encryptPayload(parsed.shares.toString(), dek),
     price: await encryptPayload(parsed.price.toString(), dek),
@@ -86,7 +90,10 @@ export async function updateTrade(
     .update({
       date: new Date(parsed.date).toISOString(),
       broker: parsed.broker,
-      ticker: await encryptPayload(parsed.ticker, dek),
+      ticker: await encryptPayload(
+        encodeTickerMarket(parsed.ticker, parsed.market),
+        dek
+      ),
       action: parsed.action,
       shares: await encryptPayload(parsed.shares.toString(), dek),
       price: await encryptPayload(parsed.price.toString(), dek),

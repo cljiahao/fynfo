@@ -14,6 +14,7 @@ import {
   computeHoldings,
   finiteProduct,
   getMarket,
+  holdingMarkets,
   useExchangeRate,
   useStockPrices,
   useTrades,
@@ -62,7 +63,10 @@ export function InvestmentBreakdown({
   const holdings = useMemo(() => computeHoldings(trades ?? []), [trades]);
 
   const heldTickers = holdings.map((h) => h.ticker);
-  const { data: prices, isError: pricesError } = useStockPrices(heldTickers);
+  const { data: prices, isError: pricesError } = useStockPrices(
+    heldTickers,
+    holdingMarkets(holdings)
+  );
   const { data: exchangeRate, isError: rateError } = useExchangeRate(
     'USD',
     'SGD'

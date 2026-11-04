@@ -1,4 +1,5 @@
 import { getMarket } from './ticker-map';
+import type { Market } from './ticker-market';
 
 // All rates are GST-inclusive where stated
 
@@ -107,9 +108,10 @@ export function calculateFees(
   action: 'buy' | 'sell',
   tradeValue: number,
   isCdp: boolean,
-  isPO: boolean = false
+  isPO: boolean = false,
+  explicitMarket?: Market
 ): FeeResult {
-  const market = getMarket(ticker.toUpperCase());
+  const market = explicitMarket ?? getMarket(ticker.toUpperCase());
 
   // Preferential Offering: no broker commission, only SGX clearing fees
   if (isPO && market === 'SG') {
@@ -140,6 +142,7 @@ export function calculateFees(
 
 export interface TradeFeeInput {
   ticker?: string;
+  market?: Market;
   action?: 'buy' | 'sell';
   broker?: string;
   tradeValue: number;
@@ -156,6 +159,7 @@ export interface TradeFeeInput {
 export function resolveTradeFees(input: TradeFeeInput): FeeResult | null {
   const {
     ticker,
+    market,
     action,
     broker,
     tradeValue,
@@ -172,6 +176,7 @@ export function resolveTradeFees(input: TradeFeeInput): FeeResult | null {
     action,
     tradeValue,
     isCdp,
-    isPO
+    isPO,
+    market
   );
 }
