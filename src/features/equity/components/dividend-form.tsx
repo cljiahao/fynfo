@@ -138,7 +138,7 @@ function DividendFormEditor({
     const request = ++work.current.request;
     setSuggesting(true);
     try {
-      const points = await fetchDividends(ticker);
+      const { points } = await fetchDividends(ticker);
       if (
         !canReveal() ||
         hideEpoch !== getHideEpoch() ||

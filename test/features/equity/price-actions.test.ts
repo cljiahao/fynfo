@@ -298,7 +298,7 @@ describe('price-actions — fetchDividends', () => {
     fetchMock.mockResolvedValue(dividendsResponse({}));
     const { fetchDividends } =
       await import('@/features/equity/actions/price-actions');
-    expect(await fetchDividends('../AAPL')).toEqual([]);
+    expect(await fetchDividends('../AAPL')).toEqual({ points: [] });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -315,9 +315,10 @@ describe('price-actions — fetchDividends', () => {
     );
     const { fetchDividends } =
       await import('@/features/equity/actions/price-actions');
-    expect(await fetchDividends('MLT')).toEqual([
-      { exDate: '2026-02-15', dpu: 0.02 },
-    ]);
+    expect(await fetchDividends('MLT')).toEqual({
+      points: [{ exDate: '2026-02-15', dpu: 0.02 }],
+      currency: undefined,
+    });
     expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
   });
 
@@ -334,9 +335,39 @@ describe('price-actions — fetchDividends', () => {
       await import('@/features/equity/actions/price-actions');
     const out = await fetchDividends('MLT');
     expect(requireUserId).toHaveBeenCalledOnce();
-    expect(out).toEqual([
+    expect(out.points).toEqual([
       { exDate: '2026-02-15', dpu: 0.02 },
       { exDate: '2026-05-30', dpu: 0.025 },
+    ]);
+  });
+
+  it('converts timestamps to the exchange-local day and returns feed currency', async () => {
+    const lateUtc = Math.floor(Date.UTC(2026, 1, 14, 23, 30) / 1000);
+    const earlyUtc = Math.floor(Date.UTC(2026, 1, 15, 1, 0) / 1000);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        chart: {
+          result: [
+            {
+              meta: { currency: 'SGD' },
+              events: { dividends: { a: { amount: 0.02, date: lateUtc } } },
+            },
+          ],
+        },
+      }),
+    } as Response);
+    const { fetchDividends } =
+      await import('@/features/equity/actions/price-actions');
+    expect(await fetchDividends('MLT')).toEqual({
+      points: [{ exDate: '2026-02-15', dpu: 0.02 }],
+      currency: 'SGD',
+    });
+    fetchMock.mockResolvedValue(
+      dividendsResponse({ a: { amount: 0.5, date: earlyUtc } })
+    );
+    expect((await fetchDividends('AAPL')).points).toEqual([
+      { exDate: '2026-02-14', dpu: 0.5 },
     ]);
   });
 
@@ -357,7 +388,10 @@ describe('price-actions — fetchDividends', () => {
     } as Response);
     const { fetchDividends } =
       await import('@/features/equity/actions/price-actions');
-    expect(await fetchDividends('MLT')).toEqual([]);
+    expect(await fetchDividends('MLT')).toEqual({
+      points: [],
+      currency: undefined,
+    });
   });
 
   it('rejects opaque when the fetch throws', async () => {

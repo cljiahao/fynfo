@@ -39,5 +39,8 @@ it('retains successful empty-array contract', async () => {
     ok: true,
     json: async () => ({ chart: { result: [{ events: {} }] } }),
   });
-  expect(await fetchDividends('DBS')).toEqual([]);
+  expect(await fetchDividends('DBS')).toEqual({
+    points: [],
+    currency: undefined,
+  });
 });

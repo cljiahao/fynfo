@@ -104,7 +104,9 @@ beforeEach(() => {
     AAPL: { price: 5, currency: 'USD' },
   });
   api.fetchExchangeRate.mockResolvedValue(1.3);
-  api.fetchDividends.mockResolvedValue([{ exDate: '2026-02-01', dpu: 0.2 }]);
+  api.fetchDividends.mockResolvedValue({
+    points: [{ exDate: '2026-02-01', dpu: 0.2 }],
+  });
   api.getDividends.mockResolvedValue([dividend]);
   api.getTrades.mockResolvedValue([trade]);
   Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
@@ -454,7 +456,10 @@ describe('real equity dialogs', () => {
     async (reason) => {
       api.fetchDividends.mockImplementation(async () => {
         if (reason === 'network') throw new Error('offline');
-        return reason === 'empty' ? [] : [{ exDate: '2026-02-01', dpu: 0.2 }];
+        return {
+          points:
+            reason === 'empty' ? [] : [{ exDate: '2026-02-01', dpu: 0.2 }],
+        };
       });
       mount(<DividendFormDialog open onOpenChange={vi.fn()} trades={[]} />);
       fireEvent.change(screen.getByLabelText('Ticker'), {
@@ -898,19 +903,21 @@ describe('historical scan entitlement regressions', () => {
   });
   it('deduplicates historical tickers and limits active requests', async () => {
     const pending: Array<
-      (points: Array<{ exDate: string; dpu: number }>) => void
+      (feed: { points: Array<{ exDate: string; dpu: number }> }) => void
     > = [];
     let active = 0;
     let peak = 0;
     api.fetchDividends.mockImplementation(() => {
       active++;
       peak = Math.max(peak, active);
-      return new Promise<Array<{ exDate: string; dpu: number }>>((resolve) => {
-        pending.push((points) => {
-          active--;
-          resolve(points);
-        });
-      });
+      return new Promise<{ points: Array<{ exDate: string; dpu: number }> }>(
+        (resolve) => {
+          pending.push((feed) => {
+            active--;
+            resolve(feed);
+          });
+        }
+      );
     });
     mount(
       <DividendScanDialog
@@ -927,9 +934,9 @@ describe('historical scan entitlement regressions', () => {
       />
     );
     await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(5));
-    pending[0]([]);
+    pending[0]({ points: [] });
     await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(6));
-    for (const resolve of pending.slice(1)) resolve([]);
+    for (const resolve of pending.slice(1)) resolve({ points: [] });
     await screen.findByText('No new distributions found');
     expect(peak).toBe(5);
     expect(api.fetchDividends.mock.calls.map(([ticker]) => ticker)).toEqual([
@@ -946,7 +953,7 @@ describe('historical scan entitlement regressions', () => {
     api.fetchDividends.mockImplementation(
       () =>
         new Promise((resolve) => {
-          pending.push(() => resolve([]));
+          pending.push(() => resolve({ points: [] }));
         })
     );
     const view = mount(
@@ -968,13 +975,13 @@ describe('historical scan entitlement regressions', () => {
   });
 });
 
-it('stops queued historical scan work after a request throws', async () => {
+it('keeps scanning queued tickers after one request throws', async () => {
   const pending: Array<() => void> = [];
   api.fetchDividends.mockRejectedValueOnce(new Error('offline'));
   api.fetchDividends.mockImplementation(
     () =>
       new Promise((resolve) => {
-        pending.push(() => resolve([]));
+        pending.push(() => resolve({ points: [] }));
       })
   );
   mount(
@@ -988,9 +995,10 @@ it('stops queued historical scan work after a request throws', async () => {
       existing={[]}
     />
   );
-  await waitFor(() =>
-    expect(api.error).toHaveBeenCalledWith('Could not scan for distributions')
-  );
+  await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(6));
   for (const resolve of pending) resolve();
-  await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(5));
+  await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(7));
+  for (const resolve of pending) resolve();
+  expect(await screen.findByText('Skipped: TEST0')).toBeTruthy();
+  expect(api.error).not.toHaveBeenCalled();
 });

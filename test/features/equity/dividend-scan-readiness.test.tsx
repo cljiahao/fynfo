@@ -56,7 +56,7 @@ afterEach(cleanup);
 it('exposes retry after failed scan instead of a false empty-result claim', async () => {
   api.fetchDividends
     .mockRejectedValueOnce(new Error('private provider detail'))
-    .mockResolvedValueOnce([{ exDate: '2026-02-01', dpu: 0.2 }]);
+    .mockResolvedValueOnce({ points: [{ exDate: '2026-02-01', dpu: 0.2 }] });
   mount();
   expect(
     await screen.findByRole('alert', { name: 'Couldn’t scan distributions' })
@@ -70,21 +70,33 @@ it('exposes retry after failed scan instead of a false empty-result claim', asyn
   ).toBeTruthy();
   expect(api.fetchDividends).toHaveBeenCalledTimes(2);
 });
-it('never publishes partial candidates when one ticker feed fails', async () => {
+it('keeps candidates from healthy tickers and lists the failed ticker as skipped', async () => {
   api.fetchDividends.mockImplementation(async (ticker: string) => {
-    if (ticker === 'DBS') return [{ exDate: '2026-02-01', dpu: 0.2 }];
+    if (ticker === 'DBS')
+      return { points: [{ exDate: '2026-02-01', dpu: 0.2 }] };
     throw new Error('synthetic provider failure');
   });
   mount([trade, { ...trade, id: 'synthetic-us', ticker: 'AAPL' }]);
   await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(2));
   expect(
+    await screen.findByLabelText('Amount for DBS 2026-02-01')
+  ).toBeTruthy();
+  expect(screen.getByText('Skipped: AAPL')).toBeTruthy();
+  expect(
+    screen.queryByRole('alert', { name: 'Couldn’t scan distributions' })
+  ).toBeNull();
+});
+it('shows the error state only when every ticker fails', async () => {
+  api.fetchDividends.mockRejectedValue(new Error('synthetic provider failure'));
+  mount([trade, { ...trade, id: 'synthetic-us', ticker: 'AAPL' }]);
+  expect(
     await screen.findByRole('alert', { name: 'Couldn’t scan distributions' })
   ).toBeTruthy();
-  expect(screen.queryByLabelText('Amount for DBS 2026-02-01')).toBeNull();
+  expect(screen.queryByText(/^Skipped:/)).toBeNull();
   expect(api.createDividends).not.toHaveBeenCalled();
 });
 it('qualifies genuine empty scan results to returned market data, not payment completeness', async () => {
-  api.fetchDividends.mockResolvedValue([]);
+  api.fetchDividends.mockResolvedValue({ points: [] });
   mount();
   expect(await screen.findByText('No new distributions found')).toBeTruthy();
   expect(

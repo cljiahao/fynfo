@@ -39,7 +39,7 @@ const trades: EquityTradeData[] = [
     fees: 0,
   },
 ];
-const points = [{ exDate: '2026-02-01', dpu: 0.2 }];
+const points = { points: [{ exDate: '2026-02-01', dpu: 0.2 }] };
 function deferred<T>() {
   let resolve: (value: T) => void = () => {};
   let reject: (reason: Error) => void = () => {};

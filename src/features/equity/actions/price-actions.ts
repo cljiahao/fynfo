@@ -8,7 +8,8 @@ import {
   MAX_PRICE_TICKERS,
   PRICE_FETCH_TIMEOUT_MS,
 } from '../constants';
-import { getYahooSymbol } from '../lib/ticker-map';
+import { type DividendFeed, exchangeLocalDate } from '../lib/dividend-scan';
+import { getMarket, getYahooSymbol } from '../lib/ticker-map';
 
 export interface StockPrice {
   ticker: string;
@@ -51,6 +52,7 @@ const dividendResponseSchema = z.object({
     result: z
       .array(
         z.object({
+          meta: z.object({ currency: z.string().optional() }).optional(),
           events: z
             .object({ dividends: z.record(z.string(), z.unknown()).optional() })
             .optional(),
@@ -173,12 +175,10 @@ export async function fetchExchangeRate(
 }
 
 /** Historical per-unit distributions, sorted by ex-date. Unavailable feeds reject. */
-export async function fetchDividends(
-  ticker: string
-): Promise<Array<{ exDate: string; dpu: number }>> {
+export async function fetchDividends(ticker: string): Promise<DividendFeed> {
   await requireUserId();
   const parsedTicker = tickerSchema.safeParse(ticker);
-  if (!parsedTicker.success) return [];
+  if (!parsedTicker.success) return { points: [] };
 
   try {
     const symbol = getYahooSymbol(parsedTicker.data);
@@ -192,19 +192,23 @@ export async function fetchDividends(
     const parsed = dividendResponseSchema.safeParse(data);
     if (!parsed.success)
       throw new AppError('EXTERNAL_API', 'Dividend data unavailable');
-    const dividends = parsed.data.chart.result[0].events?.dividends;
-    if (!dividends) return [];
+    const { meta, events } = parsed.data.chart.result[0];
+    const currency = meta?.currency;
+    const dividends = events?.dividends;
+    if (!dividends) return { points: [], currency };
 
-    const points: Array<{ exDate: string; dpu: number }> = [];
+    const market = getMarket(parsedTicker.data);
+    const points: DividendFeed['points'] = [];
     for (const entry of Object.values(dividends)) {
       const point = dividendPointSchema.safeParse(entry);
       if (!point.success) continue;
       points.push({
-        exDate: new Date(point.data.date * 1000).toISOString().slice(0, 10),
+        exDate: exchangeLocalDate(point.data.date, market),
         dpu: point.data.amount,
       });
     }
-    return points.sort((a, b) => a.exDate.localeCompare(b.exDate));
+    points.sort((a, b) => a.exDate.localeCompare(b.exDate));
+    return { points, currency };
   } catch {
     throw new AppError('EXTERNAL_API', 'Dividend data unavailable');
   }

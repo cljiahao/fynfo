@@ -20,9 +20,11 @@ import { fetchDividends } from '../actions/price-actions';
 import { MAX_PRICE_CONCURRENCY } from '../constants';
 import { useCreateDividends } from '../hooks/use-dividends';
 import {
-  buildDividendCandidates,
+  buildDividendScan,
   dividendScanTickers,
   type DividendCandidate,
+  type DividendFeed,
+  type DividendScanSkip,
 } from '../lib/dividend-scan';
 
 import type { DividendData, EquityTradeData } from '../types';
@@ -52,6 +54,7 @@ export function DividendScanDialog({
   const [scanInterrupted, setScanInterrupted] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [rows, setRows] = useState<ScanRow[]>([]);
+  const [skipped, setSkipped] = useState<DividendScanSkip[]>([]);
 
   useEffect(() => {
     if (!open || !canReveal()) return;
@@ -63,26 +66,24 @@ export function DividendScanDialog({
       setScanFailed(false);
       setScanInterrupted(false);
       setRows([]);
+      setSkipped([]);
       try {
         const tickers = dividendScanTickers(trades);
-        const pointsByTicker: Parameters<typeof buildDividendCandidates>[1] =
-          {};
+        const feeds: Record<string, DividendFeed> = {};
+        const fetchFailed: string[] = [];
         let cursor = 0;
-        let failed = false;
         async function worker() {
           while (
             !cancelled &&
-            !failed &&
             canReveal() &&
             hideEpoch === getHideEpoch() &&
             cursor < tickers.length
           ) {
             const ticker = tickers[cursor++];
             try {
-              pointsByTicker[ticker] = await fetchDividends(ticker);
-            } catch (error) {
-              failed = true;
-              throw error;
+              feeds[ticker] = await fetchDividends(ticker);
+            } catch {
+              fetchFailed.push(ticker);
             }
           }
         }
@@ -97,14 +98,19 @@ export function DividendScanDialog({
           setScanInterrupted(true);
           return;
         }
-        const candidates = buildDividendCandidates(
-          trades,
-          pointsByTicker,
-          existing
-        );
-        if (!cancelled) {
-          setRows(candidates.map((c) => ({ ...c, selected: true })));
+        if (tickers.length > 0 && fetchFailed.length === tickers.length) {
+          setScanFailed(true);
+          toast.error('Could not scan for distributions');
+          return;
         }
+        const { candidates, skipped: skips } = buildDividendScan(
+          trades,
+          feeds,
+          existing,
+          fetchFailed
+        );
+        setSkipped(skips);
+        setRows(candidates.map((c) => ({ ...c, selected: true })));
       } catch {
         if (!cancelled) {
           setScanFailed(true);
@@ -290,6 +296,11 @@ export function DividendScanDialog({
               Add {mask(selectedCount)} selected
             </Button>
           </>
+        )}
+        {!scanning && !scanFailed && !scanInterrupted && skipped.length > 0 && (
+          <p role="status" className="text-muted-foreground text-sm">
+            Skipped: {skipped.map((s) => s.ticker).join(', ')}
+          </p>
         )}
       </DialogContent>
     </Dialog>

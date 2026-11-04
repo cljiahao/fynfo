@@ -1,6 +1,7 @@
 import {
-  buildDividendCandidates,
+  buildDividendScan,
   dividendScanTickers,
+  exchangeLocalDate,
 } from '@/features/equity/lib/dividend-scan';
 import type { DividendPoint } from '@/features/equity/lib/dividend-suggest';
 import type { DividendData, EquityTradeData } from '@/features/equity/types';
@@ -22,6 +23,103 @@ const points: Record<string, DividendPoint[]> = {
     { exDate: '2025-09-15', dpu: 0.022 },
   ],
 };
+
+const feedsOf = (byTicker: Record<string, DividendPoint[]>) =>
+  Object.fromEntries(
+    Object.entries(byTicker).map(([ticker, pts]) => [ticker, { points: pts }])
+  );
+const buildDividendCandidates = (
+  trades: EquityTradeData[],
+  byTicker: Record<string, DividendPoint[]>,
+  existing: DividendData[]
+) => buildDividendScan(trades, feedsOf(byTicker), existing).candidates;
+const dividend = (over: Partial<DividendData>): DividendData => ({
+  ticker: 'MLT',
+  date: '2025-03-15',
+  amount: 20,
+  currency: 'SGD',
+  ...over,
+});
+
+describe('exchangeLocalDate', () => {
+  it('maps 23:30 UTC the day before to the next Singapore day', () => {
+    const seconds = Date.UTC(2025, 2, 14, 23, 30) / 1000;
+    expect(exchangeLocalDate(seconds, 'SG')).toBe('2025-03-15');
+  });
+  it('maps 01:00 UTC to the previous New York day', () => {
+    const seconds = Date.UTC(2025, 2, 15, 1, 0) / 1000;
+    expect(exchangeLocalDate(seconds, 'US')).toBe('2025-03-14');
+  });
+});
+
+describe('buildDividendScan dedupe', () => {
+  const one = { MLT: [{ exDate: '2025-03-15', dpu: 0.02 }] };
+  const run = (existing: DividendData[]) =>
+    buildDividendScan([trade({})], feedsOf(one), existing).candidates;
+
+  it('suppresses a candidate matched by a payment-date entry in window', () => {
+    expect(run([dividend({ date: '2025-04-20', amount: 20.3 })])).toEqual([]);
+  });
+  it('treats an exact same-date entry as a duplicate regardless of amount', () => {
+    expect(run([dividend({ amount: 99 })])).toEqual([]);
+  });
+  it('keeps the candidate for a different amount on a different date', () => {
+    expect(run([dividend({ date: '2025-04-20', amount: 25 })])).toHaveLength(1);
+  });
+  it('keeps the candidate when the entry is outside the window', () => {
+    expect(run([dividend({ date: '2025-05-20' })])).toHaveLength(1);
+    expect(run([dividend({ date: '2025-03-11' })])).toHaveLength(1);
+    expect(run([dividend({ date: '2025-03-12' })])).toEqual([]);
+  });
+  it('lets one existing row suppress only one candidate, nearest date first', () => {
+    const monthly = {
+      MLT: [
+        { exDate: '2025-03-15', dpu: 0.02 },
+        { exDate: '2025-04-15', dpu: 0.02 },
+      ],
+    };
+    const out = buildDividendScan([trade({})], feedsOf(monthly), [
+      dividend({ date: '2025-04-20' }),
+    ]).candidates;
+    expect(out.map((c) => c.date)).toEqual(['2025-03-15']);
+  });
+});
+
+describe('buildDividendScan skipped tickers', () => {
+  const aapl = trade({ ticker: 'AAPL' });
+  it('lists fetch failures and still returns the other candidates', () => {
+    const result = buildDividendScan(
+      [trade({}), aapl],
+      feedsOf(points),
+      [],
+      ['AAPL']
+    );
+    expect(result.candidates).toHaveLength(2);
+    expect(result.skipped).toEqual([{ ticker: 'AAPL', reason: 'fetch' }]);
+  });
+  it('reports malformed trades instead of dropping them silently', () => {
+    const result = buildDividendScan(
+      [trade({}), trade({ ticker: 'AAPL', shares: 0 })],
+      feedsOf(points),
+      []
+    );
+    expect(result.skipped).toEqual([
+      { ticker: 'AAPL', reason: 'malformed-trade' },
+    ]);
+    expect(result.candidates).toHaveLength(2);
+  });
+  it('skips a ticker whose feed currency disagrees, and passes an absent one', () => {
+    const feeds = {
+      MLT: { points: points.MLT, currency: 'USD' },
+      AAPL: { points: [{ exDate: '2025-05-10', dpu: 0.24 }] },
+    };
+    const result = buildDividendScan([trade({}), aapl], feeds, []);
+    expect(result.skipped).toEqual([
+      { ticker: 'MLT', reason: 'currency-mismatch' },
+    ]);
+    expect(result.candidates.map((c) => c.ticker)).toEqual(['AAPL']);
+  });
+});
 
 describe('buildDividendCandidates', () => {
   it('reconstructs rounded native-currency amounts newest first', () => {
