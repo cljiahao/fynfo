@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
-import { ProjectBreakdown } from '@/features/household/components/project-breakdown';
-import { UndoableDeleteProvider } from '@/features/household/hooks/use-undoable-delete';
+import { GoalItemList } from '@/features/household/components/goal-item-list';
+import {
+  UndoableDeleteProvider,
+  useUndoableDelete,
+} from '@/features/household/hooks/use-undoable-delete';
+import { withoutPending } from '@/features/household/lib/goal-stats';
 import type { HouseholdGoal } from '@/features/household/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
@@ -98,6 +102,11 @@ const goal: HouseholdGoal = {
   paid: 9000,
 };
 
+function PageItems() {
+  const { pendingIds } = useUndoableDelete();
+  return <GoalItemList items={withoutPending(goal, pendingIds).items} />;
+}
+
 function mount() {
   return render(
     <QueryClientProvider
@@ -106,7 +115,7 @@ function mount() {
       }
     >
       <UndoableDeleteProvider delayMs={DELAY}>
-        <ProjectBreakdown goal={goal} />
+        <PageItems />
       </UndoableDeleteProvider>
     </QueryClientProvider>
   );
@@ -139,38 +148,16 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-it('summarises the breakdown collapsed and expands to show over-budget items', async () => {
+it('lists every item with its over-budget and remaining text', () => {
   mount();
-  const toggle = screen.getByRole('button', { name: /Breakdown/ });
-  expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  expect(toggle).toHaveTextContent('2 items');
-  expect(toggle).toHaveTextContent(/9,000\.00 paid of .*11,000\.00/);
-  expect(screen.queryByText('Venue')).toBeNull();
-  await userEvent.click(toggle);
-  expect(toggle).toHaveAttribute('aria-expanded', 'true');
   expect(screen.getByText('Venue')).toBeInTheDocument();
+  expect(screen.getByText('Photographer')).toBeInTheDocument();
   expect(screen.getByText(/Over by .*1,000\.00/)).toBeInTheDocument();
   expect(screen.getByText(/3,000\.00 left/)).toBeInTheDocument();
-  expect(screen.getByRole('status')).toHaveTextContent(/above the .* target/);
-});
-
-it('adds an item with a trimmed name and parsed budget', async () => {
-  mount();
-  await userEvent.click(screen.getByRole('button', { name: /Breakdown/ }));
-  await userEvent.type(screen.getByLabelText('Item'), '  Flowers ');
-  await userEvent.type(screen.getByLabelText('Budget'), '1200.5');
-  await userEvent.click(screen.getByRole('button', { name: 'Add item' }));
-  await waitFor(() =>
-    expect(actions.addGoalItem).toHaveBeenCalledWith(
-      { goalId: 'g1', name: 'Flowers', budget: 1200.5 },
-      expect.anything()
-    )
-  );
 });
 
 it('records a payment against an item with the chosen date', async () => {
   mount();
-  await userEvent.click(screen.getByRole('button', { name: /Breakdown/ }));
   const [, photographerPay] = screen.getAllByRole('button', {
     name: 'Record payment',
   });
@@ -196,13 +183,8 @@ describe('undoable removals', () => {
     vi.useFakeTimers();
   });
 
-  function open() {
-    fireEvent.click(screen.getByRole('button', { name: /Breakdown/ }));
-  }
-
   it('hides an item, restores it on Undo and never calls the mutation', async () => {
     mount();
-    open();
     fireEvent.click(screen.getByRole('button', { name: 'Delete item Venue' }));
     expect(screen.queryByText('Venue')).toBeNull();
     const label = String(toasts.toast.mock.calls.at(-1)?.[0]);
@@ -215,7 +197,6 @@ describe('undoable removals', () => {
 
   it('commits an item delete once after the window', async () => {
     mount();
-    open();
     fireEvent.click(screen.getByRole('button', { name: 'Delete item Venue' }));
     await tick(DELAY - 1);
     expect(actions.deleteGoalItem).not.toHaveBeenCalled();
@@ -227,7 +208,6 @@ describe('undoable removals', () => {
   it('restores an item when its mutation fails', async () => {
     actions.deleteGoalItem.mockRejectedValue(new Error('boom'));
     mount();
-    open();
     fireEvent.click(screen.getByRole('button', { name: 'Delete item Venue' }));
     await tick(DELAY);
     expect(toasts.error).toHaveBeenCalledWith('Could not delete the item');
@@ -236,7 +216,6 @@ describe('undoable removals', () => {
 
   it('hides a payment, restores it on Undo and never calls the mutation', async () => {
     mount();
-    open();
     expect(
       screen.getAllByRole('button', { name: /payment on 02 Oct 2026/ })
     ).toHaveLength(2);
@@ -261,7 +240,6 @@ describe('undoable removals', () => {
 
   it('commits a payment delete once after the window', async () => {
     mount();
-    open();
     fireEvent.click(
       screen.getByRole('button', {
         name: /payment on 02 Oct 2026 by Partner/,
@@ -275,7 +253,6 @@ describe('undoable removals', () => {
   it('restores a payment when its mutation fails', async () => {
     actions.deleteItemPayment.mockRejectedValue(new Error('boom'));
     mount();
-    open();
     fireEvent.click(
       screen.getByRole('button', {
         name: /payment on 02 Oct 2026 by Partner/,
@@ -287,35 +264,9 @@ describe('undoable removals', () => {
       screen.getAllByRole('button', { name: /payment on 02 Oct 2026/ })
     ).toHaveLength(2);
   });
-  it('keeps totals and the over-target warning consistent while an item delete is pending', () => {
-    mount();
-    open();
-    const toggle = screen.getByRole('button', { name: /Breakdown/ });
-    expect(toggle).toHaveTextContent(/9,000\.00 paid of .*11,000\.00/);
-    expect(screen.getByRole('status')).toHaveTextContent(/11,000\.00/);
-    fireEvent.click(screen.getByRole('button', { name: 'Delete item Venue' }));
-    expect(toggle).toHaveTextContent(/0\.00 paid of .*3,000\.00/);
-    expect(toggle).not.toHaveTextContent('11,000.00');
-    expect(screen.queryByRole('status')).toBeNull();
-    act(() => undoAction()());
-    expect(toggle).toHaveTextContent(/9,000\.00 paid of .*11,000\.00/);
-    expect(screen.getByRole('status')).toBeInTheDocument();
-  });
 
-  it('subtracts a pending payment from the paid total', () => {
+  it('does not commit a pending payment delete separately once its item is deleted', async () => {
     mount();
-    open();
-    fireEvent.click(
-      screen.getByRole('button', { name: /payment on 02 Oct 2026 by Partner/ })
-    );
-    expect(screen.getByRole('button', { name: /Breakdown/ })).toHaveTextContent(
-      /4,500\.00 paid of .*11,000\.00/
-    );
-  });
-
-  it('skips the payment commit when its parent item is also pending deletion', async () => {
-    mount();
-    open();
     fireEvent.click(
       screen.getByRole('button', { name: /payment on 02 Oct 2026 by Partner/ })
     );
@@ -331,7 +282,6 @@ describe('undoable removals', () => {
 
 it('keeps two same-day payments distinct by who paid', async () => {
   mount();
-  await userEvent.click(screen.getByRole('button', { name: /Breakdown/ }));
   const labels = screen
     .getAllByRole('button', { name: /payment on/ })
     .map((button) => button.getAttribute('aria-label'));
@@ -341,7 +291,6 @@ it('keeps two same-day payments distinct by who paid', async () => {
 it('leaks no amount into delete labels when amounts are hidden', async () => {
   visibility.hidden = true;
   mount();
-  await userEvent.click(screen.getByRole('button', { name: /Breakdown/ }));
   const buttons = screen.getAllByRole('button', { name: /payment on/ });
   expect(buttons.length).toBeGreaterThan(0);
   for (const button of buttons) {
@@ -351,7 +300,6 @@ it('leaks no amount into delete labels when amounts are hidden', async () => {
 
 it('keeps the item track without a fill when amounts are hidden', async () => {
   const visible = mount();
-  await userEvent.click(screen.getByRole('button', { name: /Breakdown/ }));
   const trackClass = (root: HTMLElement) =>
     root.querySelector('div.bg-muted.h-1\\.5')?.className;
   const shownClass = trackClass(visible.container);
@@ -360,33 +308,13 @@ it('keeps the item track without a fill when amounts are hidden', async () => {
 
   visibility.hidden = true;
   const masked = mount();
-  await userEvent.click(screen.getByRole('button', { name: /Breakdown/ }));
   expect(trackClass(masked.container)).toBe(shownClass);
   expect(masked.container.querySelector('rect')).toBeNull();
 });
 
 describe('inline errors', () => {
-  it('flags an empty item form without a toast and clears on edit', async () => {
-    mount();
-    await userEvent.click(screen.getByRole('button', { name: /Breakdown/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Add item' }));
-    const name = screen.getByLabelText('Item');
-    const budget = screen.getByLabelText('Budget');
-    expect(name).toHaveAttribute('aria-invalid', 'true');
-    expect(budget).toHaveAttribute('aria-invalid', 'true');
-    expect(name).toHaveFocus();
-    expect(
-      document.getElementById(budget.getAttribute('aria-describedby') ?? '')
-    ).toHaveTextContent('Enter an amount above 0');
-    expect(toasts.error).not.toHaveBeenCalled();
-    expect(actions.addGoalItem).not.toHaveBeenCalled();
-    await userEvent.type(name, 'Cake');
-    expect(name).not.toHaveAttribute('aria-invalid');
-  });
-
   it('flags an empty payment amount without a toast', async () => {
     mount();
-    await userEvent.click(screen.getByRole('button', { name: /Breakdown/ }));
     const [, photographerPay] = screen.getAllByRole('button', {
       name: 'Record payment',
     });

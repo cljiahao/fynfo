@@ -181,4 +181,19 @@ describe('goal card presentation', () => {
       );
     }
   });
+
+  it('links the title and footer to the detail page without nesting controls', () => {
+    const { container } = render(<Card goal={buildGoal(100, 40)} />);
+    const details = screen.getByRole('link', {
+      name: 'View details for Synthetic target',
+    });
+    expect(details).toHaveAttribute(
+      'href',
+      '/dashboard/household/goals/synthetic-goal'
+    );
+    expect(
+      screen.getByRole('link', { name: 'Synthetic target' })
+    ).toHaveAttribute('href', '/dashboard/household/goals/synthetic-goal');
+    expect(container.querySelector('a button, button a, a a')).toBeNull();
+  });
 });
