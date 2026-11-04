@@ -2,7 +2,7 @@
 id: 172
 slug: equity-ticker-dividend-autoscan
 area: feature
-status: draft
+status: approved
 author: builder (Claude)
 created: 2026-11-04
 approved:
