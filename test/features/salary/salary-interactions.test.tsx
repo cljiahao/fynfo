@@ -371,7 +371,7 @@ describe('salary calculations and relief controls', () => {
     const spouse = screen
       .getByRole('checkbox', { name: 'Spouse Relief' })
       .closest('div.flex') as HTMLElement;
-    fireEvent.change(within(spouse).getByRole('spinbutton'), {
+    fireEvent.change(within(spouse).getByRole('textbox'), {
       target: { value: '' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
@@ -474,7 +474,7 @@ describe('salary calculations and relief controls', () => {
     const spouse = screen
       .getByRole('checkbox', { name: 'Spouse Relief' })
       .closest('div.flex')!;
-    fireEvent.change(within(spouse as HTMLElement).getByRole('spinbutton'), {
+    fireEvent.change(within(spouse as HTMLElement).getByRole('textbox'), {
       target: { value: '2500' },
     });
     fireEvent.click(
@@ -750,7 +750,7 @@ describe('saved relief readiness across salary displays', () => {
       name: 'SRS Relief',
     });
     const row = checkbox.closest('.flex')!;
-    fireEvent.change(within(row as HTMLElement).getByRole('spinbutton'), {
+    fireEvent.change(within(row as HTMLElement).getByRole('textbox'), {
       target: { value: '200' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));

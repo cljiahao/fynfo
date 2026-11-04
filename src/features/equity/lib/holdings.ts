@@ -1,5 +1,5 @@
 import type { EquityTradeData } from '../types';
-import { getMarket } from './ticker-map';
+import { resolveMarket } from './ticker-map';
 
 export interface Holding {
   ticker: string;
@@ -9,6 +9,13 @@ export interface Holding {
   totalBuyShares: number;
   avgBuyPrice: number;
   costBasis: number;
+}
+
+/** Ticker -> market lookup so price fetches can derive non-legacy SG symbols. */
+export function holdingMarkets(
+  holdings: Holding[]
+): Record<string, 'SG' | 'US'> {
+  return Object.fromEntries(holdings.map((h) => [h.ticker, h.market]));
 }
 
 export function computeHoldings(trades: EquityTradeData[]): Holding[] {
@@ -28,8 +35,9 @@ export function computeHoldings(trades: EquityTradeData[]): Holding[] {
       shares: 0,
       totalBuyCost: 0,
       totalBuyShares: 0,
-      market: getMarket(ticker),
+      market: resolveMarket({ ticker, market: t.market }),
     };
+    if (t.market) existing.market = t.market;
 
     if (t.action === 'buy') {
       existing.shares += t.shares;

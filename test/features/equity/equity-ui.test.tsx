@@ -75,6 +75,12 @@ function mount(child: ReactNode) {
     client,
   };
 }
+async function pickTicker(ticker: string) {
+  fireEvent.click(screen.getByRole('combobox', { name: 'Ticker' }));
+  fireEvent.click(
+    await screen.findByRole('option', { name: new RegExp(`^${ticker}`) })
+  );
+}
 beforeEach(() => {
   vi.resetAllMocks();
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
@@ -104,7 +110,9 @@ beforeEach(() => {
     AAPL: { price: 5, currency: 'USD' },
   });
   api.fetchExchangeRate.mockResolvedValue(1.3);
-  api.fetchDividends.mockResolvedValue([{ exDate: '2026-02-01', dpu: 0.2 }]);
+  api.fetchDividends.mockResolvedValue({
+    points: [{ exDate: '2026-02-01', dpu: 0.2 }],
+  });
   api.getDividends.mockResolvedValue([dividend]);
   api.getTrades.mockResolvedValue([trade]);
   Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
@@ -143,13 +151,11 @@ describe('123 trade field associations', () => {
       const label = screen.getByText(name, { selector: 'label' });
       expect(label.getAttribute('for')).toBe(control.id);
       expect((label as HTMLLabelElement).control).toBe(control);
-      if (name === 'Broker') {
+      if (name === 'Broker' || name === 'Ticker') {
         expect(screen.getByRole('combobox', { name })).toBe(control);
       } else {
-        if (name === 'Ticker') {
+        if (name !== 'Date') {
           expect(screen.getByRole('textbox', { name })).toBe(control);
-        } else if (name !== 'Date') {
-          expect(screen.getByRole('spinbutton', { name })).toBe(control);
         }
         await userEvent.click(label);
         expect(document.activeElement).toBe(control);
@@ -286,15 +292,15 @@ describe('real equity dialogs', () => {
 
   it('calculates new-trade broker fees and respects manual overrides', async () => {
     mount(<TradeFormDialog open onOpenChange={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText('e.g. AAPL, DBS'), {
-      target: { value: 'DBS' },
-    });
+    await pickTicker('DBS');
     fireEvent.change(screen.getByPlaceholderText('0'), {
       target: { value: '100' },
     });
     const numeric = screen.getAllByPlaceholderText('0.00');
     fireEvent.change(numeric[0], { target: { value: '10' } });
-    fireEvent.keyDown(screen.getByRole('combobox'), { key: 'ArrowDown' });
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Broker' }), {
+      key: 'ArrowDown',
+    });
     fireEvent.click(await screen.findByRole('option', { name: 'DBS Vickers' }));
     expect(
       screen.getByRole('checkbox', { name: 'CDP' }).getAttribute('data-state')
@@ -342,6 +348,10 @@ describe('real equity dialogs', () => {
 
   it('updates saved custom broker trades and surfaces action failures', async () => {
     const close = vi.fn();
+    api.getTrades.mockResolvedValue([
+      trade,
+      { ...trade, id: 't2', ticker: 'AAPL', market: 'US' },
+    ]);
     mount(
       <TradeFormDialog
         open
@@ -349,10 +359,10 @@ describe('real equity dialogs', () => {
         editTrade={{ ...trade, broker: 'Custom broker' }}
       />
     );
-    expect(screen.getByRole('combobox').textContent).toContain('Custom broker');
-    fireEvent.change(screen.getByPlaceholderText('e.g. AAPL, DBS'), {
-      target: { value: ' aapl ' },
-    });
+    expect(
+      screen.getByRole('combobox', { name: 'Broker' }).textContent
+    ).toContain('Custom broker');
+    await pickTicker('AAPL');
     fireEvent.click(screen.getByRole('button', { name: 'Sell' }));
     fireEvent.click(screen.getByRole('button', { name: 'Update Trade' }));
     await waitFor(() =>
@@ -379,9 +389,7 @@ describe('real equity dialogs', () => {
       )
     );
     expect(api.createTrade).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByPlaceholderText('e.g. AAPL, DBS'), {
-      target: { value: 'DBS' },
-    });
+    await pickTicker('DBS');
     fireEvent.change(screen.getByPlaceholderText('0'), {
       target: { value: '10' },
     });
@@ -454,7 +462,10 @@ describe('real equity dialogs', () => {
     async (reason) => {
       api.fetchDividends.mockImplementation(async () => {
         if (reason === 'network') throw new Error('offline');
-        return reason === 'empty' ? [] : [{ exDate: '2026-02-01', dpu: 0.2 }];
+        return {
+          points:
+            reason === 'empty' ? [] : [{ exDate: '2026-02-01', dpu: 0.2 }],
+        };
       });
       mount(<DividendFormDialog open onOpenChange={vi.fn()} trades={[]} />);
       fireEvent.change(screen.getByLabelText('Ticker'), {
@@ -589,7 +600,9 @@ describe('real equity tables and calculations', () => {
     expect(screen.getByText('Scanning your trade history…')).toBeTruthy();
     view.unmount();
     reject(new Error('late failure'));
-    await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledWith('DBS'));
+    await waitFor(() =>
+      expect(api.fetchDividends).toHaveBeenCalledWith('DBS', 'SG')
+    );
     expect(api.error).not.toHaveBeenCalled();
   });
   it('shows unavailable holdings quotes and negative portfolio returns', async () => {
@@ -859,7 +872,7 @@ describe('historical scan entitlement regressions', () => {
         )) as HTMLInputElement
       ).value
     ).toBe('20');
-    expect(api.fetchDividends).toHaveBeenCalledExactlyOnceWith('DBS');
+    expect(api.fetchDividends).toHaveBeenCalledExactlyOnceWith('DBS', 'SG');
     expect(
       screen.getByText(/Dates are ex-dates, not confirmed payment dates/)
     ).toBeTruthy();
@@ -898,19 +911,21 @@ describe('historical scan entitlement regressions', () => {
   });
   it('deduplicates historical tickers and limits active requests', async () => {
     const pending: Array<
-      (points: Array<{ exDate: string; dpu: number }>) => void
+      (feed: { points: Array<{ exDate: string; dpu: number }> }) => void
     > = [];
     let active = 0;
     let peak = 0;
     api.fetchDividends.mockImplementation(() => {
       active++;
       peak = Math.max(peak, active);
-      return new Promise<Array<{ exDate: string; dpu: number }>>((resolve) => {
-        pending.push((points) => {
-          active--;
-          resolve(points);
-        });
-      });
+      return new Promise<{ points: Array<{ exDate: string; dpu: number }> }>(
+        (resolve) => {
+          pending.push((feed) => {
+            active--;
+            resolve(feed);
+          });
+        }
+      );
     });
     mount(
       <DividendScanDialog
@@ -927,9 +942,9 @@ describe('historical scan entitlement regressions', () => {
       />
     );
     await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(5));
-    pending[0]([]);
+    pending[0]({ points: [] });
     await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(6));
-    for (const resolve of pending.slice(1)) resolve([]);
+    for (const resolve of pending.slice(1)) resolve({ points: [] });
     await screen.findByText('No new distributions found');
     expect(peak).toBe(5);
     expect(api.fetchDividends.mock.calls.map(([ticker]) => ticker)).toEqual([
@@ -946,7 +961,7 @@ describe('historical scan entitlement regressions', () => {
     api.fetchDividends.mockImplementation(
       () =>
         new Promise((resolve) => {
-          pending.push(() => resolve([]));
+          pending.push(() => resolve({ points: [] }));
         })
     );
     const view = mount(
@@ -968,13 +983,13 @@ describe('historical scan entitlement regressions', () => {
   });
 });
 
-it('stops queued historical scan work after a request throws', async () => {
+it('keeps scanning queued tickers after one request throws', async () => {
   const pending: Array<() => void> = [];
   api.fetchDividends.mockRejectedValueOnce(new Error('offline'));
   api.fetchDividends.mockImplementation(
     () =>
       new Promise((resolve) => {
-        pending.push(() => resolve([]));
+        pending.push(() => resolve({ points: [] }));
       })
   );
   mount(
@@ -988,9 +1003,10 @@ it('stops queued historical scan work after a request throws', async () => {
       existing={[]}
     />
   );
-  await waitFor(() =>
-    expect(api.error).toHaveBeenCalledWith('Could not scan for distributions')
-  );
+  await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(6));
   for (const resolve of pending) resolve();
-  await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(5));
+  await waitFor(() => expect(api.fetchDividends).toHaveBeenCalledTimes(7));
+  for (const resolve of pending) resolve();
+  expect(await screen.findByText('Skipped: TEST0')).toBeTruthy();
+  expect(api.error).not.toHaveBeenCalled();
 });

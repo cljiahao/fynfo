@@ -7,8 +7,10 @@ import {
   MAX_PRICE_CONCURRENCY,
   MAX_PRICE_TICKERS,
   PRICE_FETCH_TIMEOUT_MS,
+  SCAN_TICKER_PATTERN,
 } from '../constants';
-import { getYahooSymbol } from '../lib/ticker-map';
+import { type DividendFeed, exchangeLocalDate } from '../lib/dividend-scan';
+import { deriveYahooSymbol, getMarket } from '../lib/ticker-map';
 
 export interface StockPrice {
   ticker: string;
@@ -24,9 +26,10 @@ const tickerSchema = z
   .string()
   .max(64)
   .transform((value) => value.trim().toUpperCase())
-  .pipe(z.string().regex(/^[A-Z0-9.\-:]{1,16}$/))
+  .pipe(z.string().regex(SCAN_TICKER_PATTERN))
   .refine((value) => value !== '.' && value !== '..');
 const tickersSchema = z.array(tickerSchema).max(MAX_PRICE_TICKERS);
+const marketsSchema = z.record(z.string(), z.enum(['SG', 'US']));
 const currencySchema = z
   .string()
   .regex(/^[A-Za-z]{3}$/)
@@ -51,6 +54,7 @@ const dividendResponseSchema = z.object({
     result: z
       .array(
         z.object({
+          meta: z.object({ currency: z.string().optional() }).optional(),
           events: z
             .object({ dividends: z.record(z.string(), z.unknown()).optional() })
             .optional(),
@@ -83,8 +87,11 @@ async function fetchYahooChart(
   return res.json();
 }
 
-async function readQuote(ticker: string): Promise<StockPrice | null> {
-  const symbol = getYahooSymbol(ticker);
+async function readQuote(
+  ticker: string,
+  market?: 'SG' | 'US'
+): Promise<StockPrice | null> {
+  const symbol = deriveYahooSymbol(ticker, market);
   try {
     const data = await fetchYahooChart(symbol, 'interval=1d&range=1d', 300);
     if (data === null) return null;
@@ -117,19 +124,25 @@ async function readQuote(ticker: string): Promise<StockPrice | null> {
 }
 
 export async function fetchStockPrices(
-  tickers: string[]
+  tickers: string[],
+  markets: Record<string, 'SG' | 'US'> = {}
 ): Promise<Record<string, StockPrice>> {
   await requireUserId();
   const parsed = tickersSchema.safeParse(tickers);
   if (!parsed.success) return {};
   const unique = [...new Set(parsed.data)];
+  const parsedMarkets = marketsSchema.safeParse(markets);
+  const marketByTicker = parsedMarkets.success ? parsedMarkets.data : {};
   const quotes: Array<StockPrice | null> = Array(unique.length).fill(null);
   let cursor = 0;
 
   const worker = async () => {
     while (cursor < unique.length) {
       const index = cursor++;
-      quotes[index] = await readQuote(unique[index]);
+      quotes[index] = await readQuote(
+        unique[index],
+        marketByTicker[unique[index]]
+      );
     }
   };
   await Promise.all(
@@ -174,14 +187,17 @@ export async function fetchExchangeRate(
 
 /** Historical per-unit distributions, sorted by ex-date. Unavailable feeds reject. */
 export async function fetchDividends(
-  ticker: string
-): Promise<Array<{ exDate: string; dpu: number }>> {
+  ticker: string,
+  market?: 'SG' | 'US'
+): Promise<DividendFeed> {
   await requireUserId();
   const parsedTicker = tickerSchema.safeParse(ticker);
-  if (!parsedTicker.success) return [];
+  const parsedMarket = z.enum(['SG', 'US']).optional().safeParse(market);
+  if (!parsedTicker.success || !parsedMarket.success) return { points: [] };
 
   try {
-    const symbol = getYahooSymbol(parsedTicker.data);
+    const feedMarket = parsedMarket.data ?? getMarket(parsedTicker.data);
+    const symbol = deriveYahooSymbol(parsedTicker.data, feedMarket);
     const data = await fetchYahooChart(
       symbol,
       'interval=1d&range=5y&events=div',
@@ -192,19 +208,22 @@ export async function fetchDividends(
     const parsed = dividendResponseSchema.safeParse(data);
     if (!parsed.success)
       throw new AppError('EXTERNAL_API', 'Dividend data unavailable');
-    const dividends = parsed.data.chart.result[0].events?.dividends;
-    if (!dividends) return [];
+    const { meta, events } = parsed.data.chart.result[0];
+    const currency = meta?.currency;
+    const dividends = events?.dividends;
+    if (!dividends) return { points: [], currency };
 
-    const points: Array<{ exDate: string; dpu: number }> = [];
+    const points: DividendFeed['points'] = [];
     for (const entry of Object.values(dividends)) {
       const point = dividendPointSchema.safeParse(entry);
       if (!point.success) continue;
       points.push({
-        exDate: new Date(point.data.date * 1000).toISOString().slice(0, 10),
+        exDate: exchangeLocalDate(point.data.date, feedMarket),
         dpu: point.data.amount,
       });
     }
-    return points.sort((a, b) => a.exDate.localeCompare(b.exDate));
+    points.sort((a, b) => a.exDate.localeCompare(b.exDate));
+    return { points, currency };
   } catch {
     throw new AppError('EXTERNAL_API', 'Dividend data unavailable');
   }

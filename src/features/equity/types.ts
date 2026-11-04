@@ -6,6 +6,8 @@ export interface EquityTradeData {
   date: string;
   broker: string;
   ticker: string;
+  // Absent on trades saved before markets were recorded.
+  market?: 'SG' | 'US';
   action: TradeAction;
   shares: number;
   price: number;

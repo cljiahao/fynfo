@@ -103,12 +103,12 @@ export function computeMarketEquity(
   };
 }
 
-/** Buy-side cost spent per market within [qStart, qEnd]. `getMarket` injected. */
+/** Buy-side cost spent per market within [qStart, qEnd]. `resolveMarket` injected. */
 export function computeQuarterSpend(
   trades: EquityTradeData[],
   qStart: Date,
   qEnd: Date,
-  getMarket: (ticker: string) => 'SG' | 'US' | null
+  resolveMarket: (trade: EquityTradeData) => 'SG' | 'US' | null
 ): { sgSpent: number; usSpent: number } {
   let sg = 0;
   let us = 0;
@@ -117,7 +117,7 @@ export function computeQuarterSpend(
     const d = new Date(t.date);
     if (d < qStart || d > qEnd) continue;
     const cost = t.shares * t.price + t.fees;
-    if (getMarket(t.ticker.toUpperCase()) === 'SG') sg += cost;
+    if (resolveMarket(t) === 'SG') sg += cost;
     else us += cost;
   }
   return { sgSpent: sg, usSpent: us };

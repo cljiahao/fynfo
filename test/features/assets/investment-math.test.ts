@@ -8,6 +8,7 @@ import {
   sumCat,
 } from '@/features/assets/lib/investment-math';
 import type { Holding } from '@/features/equity/lib/holdings';
+import { resolveMarket } from '@/features/equity/lib/ticker-map';
 import type { EquityTradeData } from '@/features/equity/types';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -103,7 +104,8 @@ describe('computeMarketEquity', () => {
 });
 
 describe('computeQuarterSpend', () => {
-  const market = (t: string) => (t === 'D05' ? 'SG' : 'US') as 'SG' | 'US';
+  const market = (t: EquityTradeData) =>
+    (t.market ?? (t.ticker === 'D05' ? 'SG' : 'US')) as 'SG' | 'US';
   const trade = (over: Partial<EquityTradeData>): EquityTradeData => ({
     id: 't',
     date: '2026-05-10',
@@ -133,6 +135,16 @@ describe('computeQuarterSpend', () => {
     );
     expect(r.usSpent).toBe(205);
     expect(r.sgSpent).toBe(401);
+  });
+
+  it('counts an explicit-SG ticker that is not in the legacy map as SG', () => {
+    const r = computeQuarterSpend(
+      [trade({ ticker: 'NEWSG', market: 'SG', shares: 1, price: 50, fees: 0 })],
+      new Date(2026, 3, 1),
+      new Date(2026, 5, 30, 23, 59, 59),
+      resolveMarket
+    );
+    expect(r).toEqual({ sgSpent: 50, usSpent: 0 });
   });
 });
 
@@ -247,7 +259,7 @@ describe.each(['Asia/Singapore', 'UTC', 'America/New_York'])(
           ];
           expect(
             computeQuarterSpend(trades, q.start, q.end, (t) =>
-              t === 'D05' ? 'SG' : 'US'
+              t.ticker === 'D05' ? 'SG' : 'US'
             )
           ).toEqual({ sgSpent: 63, usSpent: 21 });
           expect(q.end.getMilliseconds()).toBe(999);

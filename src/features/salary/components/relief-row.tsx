@@ -2,8 +2,8 @@
 
 import { useAmountVisibility } from '@/features/privacy';
 
+import { NumericInput } from '@/components/numeric-input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/tooltip';
 import { formatSGD } from '@/lib/utils/currency';
 import { Info } from 'lucide-react';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { RELIEF_CATALOG } from '../constants';
 import type { ReliefState } from '../lib/tax-reliefs';
 
@@ -58,6 +58,9 @@ interface ReliefRowProps {
 export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
   const { hidden, mask, canReveal } = useAmountVisibility();
   const checkboxId = useId();
+  // Remembers what was typed so "0" (stored 0) is not collapsed to an empty
+  // field mid-edit, while an emptied field still stores 0.
+  const [draft, setDraft] = useState<number | null>(null);
   const state = rawState ?? {
     enabled: false,
     amount: def.defaultAmount,
@@ -194,15 +197,21 @@ export function ReliefRow({ def, state: rawState, onUpdate }: ReliefRowProps) {
         >
           <ReliefLabel label={def.label} description={def.description} />
         </Label>
-        <Input
-          type="number"
+        <NumericInput
           aria-label={`${def.label} amount (SGD)`}
-          min={0}
           className="h-8 w-24 text-sm"
           disabled={hidden || !state.enabled}
-          value={hidden ? '' : state.amount || ''}
-          onChange={(e) => {
-            if (canReveal()) onUpdate({ amount: Number(e.target.value) || 0 });
+          value={
+            hidden
+              ? null
+              : (draft ?? 0) === state.amount
+                ? draft
+                : state.amount || null
+          }
+          onValueChange={(next) => {
+            if (!canReveal()) return;
+            setDraft(next);
+            onUpdate({ amount: next ?? 0 });
           }}
         />
       </div>

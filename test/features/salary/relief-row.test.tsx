@@ -11,6 +11,7 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 afterEach(cleanup);
@@ -49,7 +50,7 @@ it('names a standard relief amount and retains its disabled state and numeric up
     </TooltipProvider>
   );
   expect(
-    screen.getByRole('spinbutton', { name: def.label + ' amount (SGD)' })
+    screen.getByRole('textbox', { name: def.label + ' amount (SGD)' })
   ).toBeDisabled();
   view.rerender(
     <TooltipProvider>
@@ -60,10 +61,10 @@ it('names a standard relief amount and retains its disabled state and numeric up
       />
     </TooltipProvider>
   );
-  const input = screen.getByRole('spinbutton', {
+  const input = screen.getByRole('textbox', {
     name: def.label + ' amount (SGD)',
   });
-  expect(input).toHaveValue(100);
+  expect(input).toHaveValue('100');
   fireEvent.change(input, { target: { value: '200' } });
   expect(update).toHaveBeenCalledWith({ amount: 200 });
 });
@@ -129,4 +130,38 @@ it('routes a second relief label click to that mounted row', async () => {
   );
   expect(first).not.toHaveBeenCalled();
   expect(second).toHaveBeenCalledWith({ enabled: true });
+});
+
+it('keeps a typed "0" so "0.5" can be entered, and an emptied field stores 0', async () => {
+  const updates: number[] = [];
+  function Harness() {
+    const [state, setState] = useState({
+      enabled: true,
+      amount: 100,
+      count: 1,
+      variant: '',
+    });
+    return (
+      <TooltipProvider>
+        <ReliefRow
+          def={standardDef}
+          state={state}
+          onUpdate={(patch) => {
+            if (patch.amount !== undefined) updates.push(patch.amount);
+            setState((s) => ({ ...s, ...patch }));
+          }}
+        />
+      </TooltipProvider>
+    );
+  }
+  render(<Harness />);
+  const input = screen.getByRole('textbox', {
+    name: standardDef.label + ' amount (SGD)',
+  });
+  await userEvent.clear(input);
+  expect(input).toHaveValue('');
+  expect(updates.at(-1)).toBe(0);
+  await userEvent.type(input, '0.5');
+  expect(input).toHaveValue('0.5');
+  expect(updates.at(-1)).toBe(0.5);
 });

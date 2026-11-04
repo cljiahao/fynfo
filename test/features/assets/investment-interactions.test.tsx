@@ -305,7 +305,10 @@ it('clears investment budgets when USD conversion is unavailable while keeping b
   );
   await screen.findByText(/Investment targets unavailable/);
   await waitFor(() =>
-    expect(external.fetchStockPrices).toHaveBeenCalledWith(['AAPL'])
+    expect(external.fetchStockPrices).toHaveBeenCalledWith(
+      ['AAPL'],
+      expect.anything()
+    )
   );
   expect(changed).toHaveBeenLastCalledWith(null);
   expect(

@@ -7,10 +7,19 @@ import {
   type StockPrice,
 } from '../actions/price-actions';
 
-export function useStockPrices(tickers: string[]) {
+export function useStockPrices(
+  tickers: string[],
+  markets?: Record<string, 'SG' | 'US'>
+) {
   return useQuery<Record<string, StockPrice>>({
-    queryKey: ['stock-prices', [...tickers].sort().join(',')],
-    queryFn: () => fetchStockPrices(tickers),
+    queryKey: [
+      'stock-prices',
+      [...tickers]
+        .sort()
+        .map((t) => `${markets?.[t] ?? ''}:${t}`)
+        .join(','),
+    ],
+    queryFn: () => fetchStockPrices(tickers, markets),
     enabled: tickers.length > 0,
     staleTime: 5 * 60 * 1000,
     // TanStack's refetchIntervalInBackground defaults to false, so polling
