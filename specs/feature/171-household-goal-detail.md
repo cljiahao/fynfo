@@ -2,10 +2,10 @@
 id: '171'
 slug: household-goal-detail
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-04
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-04 # YYYY-MM-DD, set on approval
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # link to impl PR, set on shipped
 supersedes:
@@ -360,20 +360,20 @@ Component (jsdom per file, per the repo's test infra):
 
 ## Open questions
 
-- [ ] Q1: Make the whole card clickable (stretched link) in addition to the title
+- [x] Q1: Make the whole card clickable (stretched link) in addition to the title
       and "View details" link? — Owner: Clarence — Recommended default: no; keep
       the explicit title link plus "View details". It is accessible, avoids
       accidental taps on mobile where the card also holds four buttons, and a
       stretched link can be added later in one class change.
-- [ ] Q2: Should paying an item (recording a payment) be possible from the goal
+- [x] Q2: Should paying an item (recording a payment) be possible from the goal
       card summary, or only on the detail page? — Owner: Clarence — Recommended
       default: detail page only, as decided; the card keeps just the "Add item"
       modal button to stay minimal.
-- [ ] Q3: Monthly pace: should "months remaining" count the current partial month
+- [x] Q3: Monthly pace: should "months remaining" count the current partial month
       as a full month (pace is lower, slightly optimistic) or round down (higher,
       conservative)? — Owner: Clarence — Recommended default: ceil the remaining
       months, minimum 1, so the figure never understates what is needed.
-- [ ] Q4: Cap the budget-vs-paid chart at the 8 largest items with a "+N more"
+- [x] Q4: Cap the budget-vs-paid chart at the 8 largest items with a "+N more"
       note, or chart every item? — Owner: Clarence — Recommended default: cap at
       8; the full list is directly below and a 20-bar chart is unreadable at
       375px.
