@@ -44,6 +44,15 @@ describe('summarizeSpending', () => {
     ]);
   });
 
+  it('merges case and whitespace variants under the first-seen casing', () => {
+    const summary = summarizeSpending([
+      { category: 'Groceries', amount: 10, isSelf: true },
+      { category: ' groceries ', amount: 5, isSelf: true },
+      { category: 'GROCERIES', amount: 1, isSelf: false },
+    ]);
+    expect(summary.byCategory).toEqual([{ category: 'Groceries', total: 16 }]);
+  });
+
   it('says who owes whom to split evenly, to the cent', () => {
     expect(
       summarizeSpending([

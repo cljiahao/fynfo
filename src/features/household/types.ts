@@ -106,3 +106,10 @@ export type SaveGoalResult =
       error: { formErrors: string[]; fieldErrors: Record<string, string[]> };
     }
   | { ok: false; code: 'SERVER'; goalId: string; itemIds: string[] };
+
+/** A monthly spending budget for one category of the household. */
+export interface SpendingBudget {
+  id: string;
+  category: string;
+  monthlyAmount: number;
+}

@@ -1,3 +1,5 @@
+import { normalizeCategory } from './spending-stats';
+
 export interface SpendingLine {
   category: string;
   amount: number;
@@ -22,20 +24,28 @@ const toCents = (value: number) => Math.round(value * 100);
 export function summarizeSpending(lines: SpendingLine[]): SpendingSummary {
   let youCents = 0;
   let partnerCents = 0;
-  const categories = new Map<string, number>();
+  // Keyed by normalized category so case and spacing variants merge; the
+  // first-seen casing is what gets displayed.
+  const categories = new Map<string, { label: string; cents: number }>();
   for (const line of lines) {
     const cents = toCents(line.amount);
     if (line.isSelf) youCents += cents;
     else partnerCents += cents;
-    categories.set(line.category, (categories.get(line.category) ?? 0) + cents);
+    const key = normalizeCategory(line.category);
+    const entry = categories.get(key) ?? {
+      label: line.category.trim(),
+      cents: 0,
+    };
+    entry.cents += cents;
+    categories.set(key, entry);
   }
   const totalCents = youCents + partnerCents;
   // Whoever paid more than half is owed the difference from the other.
   const diffCents = youCents - Math.round(totalCents / 2);
   return {
     total: totalCents / 100,
-    byCategory: [...categories]
-      .map(([category, cents]) => ({ category, total: cents / 100 }))
+    byCategory: [...categories.values()]
+      .map(({ label, cents }) => ({ category: label, total: cents / 100 }))
       .sort(
         (a, b) => b.total - a.total || a.category.localeCompare(b.category)
       ),

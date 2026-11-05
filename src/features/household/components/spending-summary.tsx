@@ -11,9 +11,12 @@ import type { SharedSpendingEntry } from '../types';
 export function SpendingSummary({
   entries,
   emptyLabel,
+  showCategories = true,
 }: {
   entries: SharedSpendingEntry[];
   emptyLabel: string;
+  /** Off where the category bars already list every category. */
+  showCategories?: boolean;
 }) {
   const { mask } = useAmountVisibility();
   if (entries.length === 0)
@@ -56,14 +59,16 @@ export function SpendingSummary({
           difference.
         </p>
       </div>
-      <ul className="space-y-1 text-sm">
-        {summary.byCategory.slice(0, 5).map((row) => (
-          <li key={row.category} className="flex justify-between gap-2">
-            <span className="truncate">{mask(row.category)}</span>
-            <span className="tabular-nums">{mask(formatSGD(row.total))}</span>
-          </li>
-        ))}
-      </ul>
+      {showCategories && (
+        <ul className="space-y-1 text-sm">
+          {summary.byCategory.slice(0, 5).map((row) => (
+            <li key={row.category} className="flex justify-between gap-2">
+              <span className="truncate">{mask(row.category)}</span>
+              <span className="tabular-nums">{mask(formatSGD(row.total))}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -118,3 +118,12 @@ export type UpdateGoalPaymentInput = z.infer<typeof updateGoalPaymentSchema>;
 export type UpdateGoalContributionInput = z.infer<
   typeof updateGoalContributionSchema
 >;
+
+export const setCategoryBudgetSchema = z.object({
+  /** Present when editing an existing budget. */
+  id: z.uuid().optional(),
+  category: z.string().trim().min(1).max(40),
+  monthlyAmount: z.number().positive().finite(),
+});
+
+export type SetCategoryBudgetInput = z.infer<typeof setCategoryBudgetSchema>;

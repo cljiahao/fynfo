@@ -19,9 +19,17 @@ import {
   useDeleteSpace,
   useDeleteSpending,
 } from '../hooks/use-household';
+import { useSpendingBudgets } from '../hooks/use-spending-budgets';
 import { useUndoableDelete } from '../hooks/use-undoable-delete';
 import { inMonth } from '../lib/shared-spending';
-import type { HouseholdSpace, SharedSpendingEntry } from '../types';
+import { categoryOptions, resolveCategory } from '../lib/spending-stats';
+import type {
+  HouseholdSpace,
+  SharedSpendingEntry,
+  SpendingBudget,
+} from '../types';
+import { CategoryBudgetBars } from './category-budget-bars';
+import { CategoryPicker } from './category-picker';
 import { ConfirmDeleteDialog } from './confirm-delete-dialog';
 import { SpendingSummary } from './spending-summary';
 
@@ -51,6 +59,7 @@ export function SharedSpending({ spaces }: { spaces: HouseholdSpace[] }) {
   const createSpace = useCreateSpace();
   const { pendingIds } = useUndoableDelete();
   const monthId = useId();
+  const budgets = useSpendingBudgets().data ?? [];
   const [month, setMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const ongoing = spaces.filter((space) => space.kind === 'ongoing');
   const trips = spaces.filter((space) => space.kind === 'trip');
@@ -81,13 +90,16 @@ export function SharedSpending({ spaces }: { spaces: HouseholdSpace[] }) {
     );
   }
 
-  const monthEntries = ongoing
+  const ongoingEntries = ongoing
     .flatMap((space) => space.entries)
-    .filter((entry) => inMonth(entry.date, month) && !pendingIds.has(entry.id));
+    .filter((entry) => !pendingIds.has(entry.id));
+  const monthEntries = ongoingEntries.filter((entry) =>
+    inMonth(entry.date, month)
+  );
 
   return (
     <div className="space-y-6">
-      <QuickAdd spaces={spaces} />
+      <QuickAdd spaces={spaces} budgets={budgets} />
 
       <Card>
         <CardContent className="space-y-4 p-5">
@@ -111,6 +123,13 @@ export function SharedSpending({ spaces }: { spaces: HouseholdSpace[] }) {
           <SpendingSummary
             entries={monthEntries}
             emptyLabel="Nothing shared this month yet."
+            showCategories={false}
+          />
+          <CategoryBudgetBars
+            monthEntries={monthEntries}
+            allEntries={ongoingEntries}
+            budgets={budgets}
+            currentMonth={format(new Date(), 'yyyy-MM')}
           />
           <EntryList entries={monthEntries} />
         </CardContent>
@@ -131,7 +150,13 @@ export function SharedSpending({ spaces }: { spaces: HouseholdSpace[] }) {
 
 type QuickAddField = 'category' | 'amount' | 'date';
 
-function QuickAdd({ spaces }: { spaces: HouseholdSpace[] }) {
+function QuickAdd({
+  spaces,
+  budgets,
+}: {
+  spaces: HouseholdSpace[];
+  budgets: SpendingBudget[];
+}) {
   const { hidden, canReveal } = useAmountVisibility();
   const fieldId = useId();
   const addSpending = useAddSpending();
@@ -145,9 +170,10 @@ function QuickAdd({ spaces }: { spaces: HouseholdSpace[] }) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [errors, setErrors] = useState<FormErrors<QuickAddField>>({});
-  const categories = [
-    ...new Set(spaces.flatMap((space) => space.entries.map((e) => e.category))),
-  ].sort();
+  const options = categoryOptions(
+    budgets,
+    spaces.flatMap((space) => space.entries)
+  );
   const activeSpaceId = ordered.some((space) => space.id === spaceId)
     ? spaceId
     : (ordered[0]?.id ?? '');
@@ -191,7 +217,7 @@ function QuickAdd({ spaces }: { spaces: HouseholdSpace[] }) {
       {
         spaceId: activeSpaceId,
         date,
-        category: category.trim(),
+        category: resolveCategory(options, category),
         amount: value,
         note: note.trim() || undefined,
       },
@@ -217,24 +243,19 @@ function QuickAdd({ spaces }: { spaces: HouseholdSpace[] }) {
               <Label htmlFor={ids.category} className="text-xs">
                 Category
               </Label>
-              <Input
+              <CategoryPicker
                 id={ids.category}
-                list={`${fieldId}-categories`}
+                options={hidden ? [] : options}
                 placeholder="e.g. Groceries"
-                maxLength={40}
                 disabled={hidden}
                 value={hidden ? '' : category}
                 {...invalidProps('category')}
-                onChange={(event) => {
+                onValueChange={(value) => {
                   if (!canReveal()) return;
-                  setCategory(event.target.value);
+                  setCategory(value);
                   clearError('category');
                 }}
               />
-              <datalist id={`${fieldId}-categories`}>
-                {!hidden &&
-                  categories.map((name) => <option key={name} value={name} />)}
-              </datalist>
               <FieldError id={`${ids.category}-error`}>
                 {errors.category}
               </FieldError>

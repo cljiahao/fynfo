@@ -69,3 +69,18 @@ export const GOAL_STATUS_LABEL: Record<GoalStatus, string> = {
   'on-track': 'On track',
   behind: 'Behind',
 };
+
+/** Full calendar months averaged for a suggested category budget. */
+export const BUDGET_SUGGESTION_MONTHS = 3;
+
+export const CATEGORY_MAX_LENGTH = 40;
+
+/** Error message when a budget's normalized category already has a budget. */
+export const BUDGET_EXISTS = 'BUDGET_EXISTS';
+
+export const USE_NEW_CATEGORY_LABEL = 'Use new category';
+
+export const BUDGET_BAR_COLORS = {
+  within: 'fill-primary',
+  over: 'fill-loss',
+} as const;

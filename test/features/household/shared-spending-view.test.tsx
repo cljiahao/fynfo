@@ -25,6 +25,12 @@ const actions = vi.hoisted(() => ({
   deleteSpending: vi.fn(),
 }));
 vi.mock('@/features/household/actions/spending-actions', () => actions);
+const budgetActions = vi.hoisted(() => ({
+  getSpendingBudgets: vi.fn(),
+  setCategoryBudget: vi.fn(),
+  deleteCategoryBudget: vi.fn(),
+}));
+vi.mock('@/features/household/actions/budget-actions', () => budgetActions);
 vi.mock('@/features/household/actions/goal-actions', () => ({}));
 vi.mock('@/features/household/actions/household-actions', () => ({}));
 
@@ -129,6 +135,8 @@ beforeEach(() => {
   actions.getSpaces.mockResolvedValue(spaces);
   actions.addSpending.mockResolvedValue(undefined);
   actions.createSpace.mockResolvedValue(undefined);
+  budgetActions.getSpendingBudgets.mockResolvedValue([]);
+  budgetActions.setCategoryBudget.mockResolvedValue(undefined);
 });
 afterEach(() => {
   cleanup();
@@ -370,5 +378,100 @@ describe('inline errors', () => {
     expect(
       screen.getByText('The trip cannot end before it starts')
     ).toBeInTheDocument();
+  });
+});
+
+describe('category budgets', () => {
+  const budgets = [
+    { id: 'b1', category: 'groceries', monthlyAmount: 80 },
+    { id: 'b2', category: 'Travel', monthlyAmount: 500 },
+  ];
+
+  it('shows this month against budget, highlights over-budget and leaves unbudgeted spend plain', async () => {
+    budgetActions.getSpendingBudgets.mockResolvedValue(budgets);
+    mount(spaces);
+    expect(
+      await screen.findByText(/Over budget by .*20\.00/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/groceries spent against budget/i)
+    ).toHaveAttribute('aria-valuenow', '100');
+    expect(
+      screen.getByLabelText(/Travel spent against budget/i)
+    ).toHaveAttribute('aria-valuenow', '0');
+    expect(
+      screen.queryByLabelText(/Utilities spent against budget/i)
+    ).toBeNull();
+    expect(screen.getAllByText(/\$40\.00/).length).toBeGreaterThan(0);
+  });
+
+  it('masks amounts on the bars and disables budget edits when hidden', async () => {
+    budgetActions.getSpendingBudgets.mockResolvedValue(budgets);
+    visibility.hidden = true;
+    mount(spaces);
+    await screen.findAllByRole('progressbar');
+    expect(screen.queryByText(/\$80\.00/)).toBeNull();
+    expect(screen.queryByText(/Over budget by .*20\.00/)).toBeNull();
+    expect(screen.getByRole('button', { name: /Add budget/ })).toBeDisabled();
+  });
+
+  it('offers the 3-month mean as a Use button and only saves on Save', async () => {
+    const monthAt = (delta: number) => {
+      const d = new Date();
+      d.setDate(1);
+      d.setMonth(d.getMonth() + delta);
+      return format(d, 'yyyy-MM');
+    };
+    const base = spaces[0].entries[0];
+    const history: HouseholdSpace[] = [
+      {
+        ...spaces[0],
+        entries: [
+          ...spaces[0].entries,
+          { ...base, id: 'h1', date: `${monthAt(-3)}-05`, amount: 90 },
+          { ...base, id: 'h2', date: `${monthAt(-1)}-05`, amount: 210 },
+        ],
+      },
+      spaces[1],
+    ];
+    mount(history);
+    await userEvent.click(screen.getByRole('button', { name: /Add budget/ }));
+    await userEvent.type(screen.getByLabelText('Budget category'), 'groceries');
+    const use = await screen.findByRole('button', { name: 'Use $100.00' });
+    expect(budgetActions.setCategoryBudget).not.toHaveBeenCalled();
+    await userEvent.click(use);
+    expect(screen.getByLabelText('Monthly budget (SGD)')).toHaveValue(100);
+    expect(budgetActions.setCategoryBudget).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(budgetActions.setCategoryBudget).toHaveBeenCalledWith(
+        { id: undefined, category: 'Groceries', monthlyAmount: 100 },
+        expect.anything()
+      )
+    );
+  });
+
+  it('shows no suggestion without 3 months of history', async () => {
+    mount(spaces);
+    await userEvent.click(screen.getByRole('button', { name: /Add budget/ }));
+    await userEvent.type(screen.getByLabelText('Budget category'), 'Groceries');
+    expect(screen.queryByRole('button', { name: /^Use \$/ })).toBeNull();
+  });
+
+  it('logs quick-add spending under the budgeted category casing', async () => {
+    budgetActions.getSpendingBudgets.mockResolvedValue([
+      { id: 'b3', category: 'Pets', monthlyAmount: 50 },
+    ]);
+    mount(spaces);
+    await screen.findByLabelText(/Pets spent against budget/i);
+    await userEvent.type(screen.getByLabelText('Category'), ' PETS ');
+    await userEvent.type(screen.getByLabelText('Amount (SGD)'), '12');
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(actions.addSpending).toHaveBeenCalledWith(
+        expect.objectContaining({ category: 'Pets' }),
+        expect.anything()
+      )
+    );
   });
 });
