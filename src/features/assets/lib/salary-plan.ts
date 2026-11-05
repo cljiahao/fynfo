@@ -16,29 +16,6 @@ export function sumByCategory(
     .reduce((sum, e) => sum + e.amount, 0);
 }
 
-/**
- * All-time average of the user's *own* monthly expense (shared splits subtract
- * the other people's portions). Averages across the months that have data.
- */
-export function calcAllTimeAvgExpense(
-  expenses: ExpenseData[] | undefined
-): number {
-  if (!expenses?.length) return 0;
-  const monthTotals = new Map<string, number>();
-  for (const e of expenses) {
-    if (!isCountedInExpenseTotals(e.type)) continue;
-    const key = e.date.slice(0, 7);
-    let userAmount = e.amount;
-    if (e.splitType === 'shared' && e.splits.length > 0) {
-      userAmount = e.amount - e.splits.reduce((sum, s) => sum + s.amount, 0);
-    }
-    monthTotals.set(key, (monthTotals.get(key) ?? 0) + userAmount);
-  }
-  const totals = Array.from(monthTotals.values());
-  if (totals.length === 0) return 0;
-  return totals.reduce((sum, v) => sum + v, 0) / totals.length;
-}
-
 function userExpenseAmount(e: ExpenseData): number {
   if (e.splitType === 'shared' && e.splits.length > 0) {
     return e.amount - e.splits.reduce((sum, s) => sum + s.amount, 0);
@@ -167,6 +144,11 @@ export function computeSalaryPlan(input: SalaryPlanInput): SalaryPlan {
 
   const usedPct =
     expensesPct + insurancePct + tithePct + allowancePct + householdPct;
+  const available =
+    netAfterCpf -
+    expenses -
+    netAfterCpf * (insurancePct + tithePct + allowancePct) -
+    householdMonthlyDeduction;
   const cappedPct = Math.max(1 - usedPct, 0);
 
   let savingsPct = 0;
@@ -226,17 +208,7 @@ export function computeSalaryPlan(input: SalaryPlanInput): SalaryPlan {
     savingsTarget,
     savingsGap: Math.max(0, savingsTarget - goalsFunded),
     investmentPaused: reserveGap > 0,
-    householdShortfallAmt: Math.max(
-      0,
-      -(
-        netAfterCpf -
-        expenses -
-        netAfterCpf * insurancePct -
-        netAfterCpf * tithePct -
-        netAfterCpf * allowancePct -
-        householdMonthlyDeduction
-      )
-    ),
+    householdShortfallAmt: Math.max(0, -available),
   };
 }
 
@@ -246,7 +218,9 @@ export function planStateLine(plan: SalaryPlan): string {
     return `Investing paused: savings ${formatSGD(plan.savingsGap)} short of emergency + war chest + household reserve (${formatSGD(plan.savingsTarget)})`;
   }
   if (!plan.goalsFulfilled) {
-    return `Savings ${formatSGD(plan.savingsGap)} short of emergency + war chest (${formatSGD(plan.savingsTarget)})`;
+    // Reserve is funded here, so only the emergency + war chest goals count.
+    const short = Math.max(0, plan.goalsNeeded - plan.goalsFunded);
+    return `Savings ${formatSGD(short)} short of emergency + war chest (${formatSGD(plan.goalsNeeded)})`;
   }
   return `Investing ${formatSGD(plan.investmentAmt)} a month`;
 }

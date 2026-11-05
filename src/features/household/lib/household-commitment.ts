@@ -68,12 +68,6 @@ export function goalShare(
   );
 }
 
-function excludedReason(goal: CommitmentGoal): ExcludedReason | null {
-  if (!goal.targetDate) return 'no-date';
-  if (goal.remaining <= 0) return 'funded';
-  return null;
-}
-
 /**
  * Splits the caller's household obligations into a reserve (goals due within
  * the horizon or overdue) and a monthly deduction (longer-dated goals paced
@@ -93,23 +87,23 @@ export function computeHouseholdCommitment(
   for (const goal of goals) {
     const share = goalShare(split, goal.id, callerUserId);
     const remaining = Math.max(0, goal.remaining);
-    const reason = excludedReason(goal);
+    const { targetDate } = goal;
 
-    if (reason !== null || goal.targetDate === null) {
-      const why = reason ?? 'no-date';
-      excluded.push({ goalId: goal.id, reason: why });
+    if (targetDate === null || remaining <= 0) {
+      const reason: ExcludedReason = targetDate === null ? 'no-date' : 'funded';
+      excluded.push({ goalId: goal.id, reason });
       lines.push({
         goalId: goal.id,
         bucket: 'excluded',
         amount: 0,
         share,
         remaining,
-        reason: why,
+        reason,
       });
       continue;
     }
 
-    const months = monthsUntil(goal.targetDate, now);
+    const months = monthsUntil(targetDate, now);
     if (months === null || months <= horizonMonths) {
       const amount = share * remaining;
       reserve += amount;

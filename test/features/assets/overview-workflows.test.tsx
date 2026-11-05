@@ -24,9 +24,11 @@ const api = vi.hoisted(() => ({
   getDividends: vi.fn(),
   fetchStockPrices: vi.fn(),
   fetchExchangeRate: vi.fn(),
+  getPlannerCommitment: vi.fn(),
 }));
 vi.mock('@/features/assets/actions/snapshot-actions', () => api);
 vi.mock('@/features/assets/actions/planner-actions', () => api);
+vi.mock('@/features/household/actions/planner-actions', () => api);
 vi.mock('@/features/salary/actions/salary-actions', () => api);
 vi.mock('@/features/expenses/actions/expense-actions', () => api);
 vi.mock('@/features/profile/actions/profile-actions', () => api);
@@ -81,6 +83,7 @@ beforeEach(() => {
   api.fetchExchangeRate.mockResolvedValue(1.3);
   api.fetchStockPrices.mockResolvedValue({});
   api.upsertPlannerSettings.mockResolvedValue(undefined);
+  api.getPlannerCommitment.mockResolvedValue({ state: 'none' });
 });
 afterEach(() => {
   cleanup();
@@ -198,9 +201,10 @@ it('hydrates all four server datasets into the real overview without fetching th
     screen.getByRole('link', { name: 'Add Snapshot' }).getAttribute('href')
   ).toBe('/dashboard/entry');
   expect(screen.queryByText('Investment Breakdown')).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
   expect(await screen.findByText('Net (after CPF)')).toBeTruthy();
-  expect(screen.getByText('Investment Breakdown')).toBeTruthy();
+  const tabs = screen.getAllByRole('button').map((b) => b.textContent);
+  expect(tabs.indexOf('Overview')).toBeLessThan(tabs.indexOf('Investments'));
+  expect(screen.queryByText('Plan income')).toBeNull();
   for (const read of [
     api.getSnapshots,
     api.getSalaryRecords,
@@ -211,8 +215,12 @@ it('hydrates all four server datasets into the real overview without fetching th
   fireEvent.change(screen.getAllByRole('spinbutton')[1], {
     target: { value: '1000' },
   });
-  expect(screen.getByText('Emergency Fund (3mo)')).toBeTruthy();
-  expect(screen.getByText(/need \$4,000\.00/)).toBeTruthy();
+  expect(screen.getByText('Custom')).toBeTruthy();
+  expect(
+    screen.getByRole('progressbar', { name: 'Emergency fund' })
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Investments' }));
+  expect(await screen.findByText('Investment Breakdown')).toBeTruthy();
 });
 
 it('keeps planner inputs unavailable after an upstream error and restores calculated amounts on retry', async () => {
@@ -228,7 +236,6 @@ it('keeps planner inputs unavailable after an upstream error and restores calcul
       <DashboardOverview />
     </QueryClientProvider>
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
   const retryButton = await screen.findByRole('button', { name: 'Retry' });
   api.getExpenses.mockResolvedValue([]);
   fireEvent.click(retryButton);
@@ -250,7 +257,7 @@ it('shows zero-state salary/planner values when all prefetched datasets are empt
   expect(
     await screen.findByRole('link', { name: 'Add your first snapshot' })
   ).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Plan income' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Investments' }));
   expect(
     await screen.findByText('Enter salary to see allocation')
   ).toBeTruthy();
@@ -330,7 +337,7 @@ async function renderPlannerWithHoldings() {
       {await getPrefetchedOverview()}
     </QueryClientProvider>
   );
-  fireEvent.click(screen.getByText('Plan income'));
+  fireEvent.click(screen.getByText('Investments'));
   await screen.findByText('SG Stocks');
   return client;
 }
@@ -343,9 +350,12 @@ async function enterPlannerEdits() {
   fireEvent.change(getAllocationInput('AAPL', 'US Stocks'), {
     target: { value: '50' },
   });
-  fireEvent.change(screen.getAllByRole('spinbutton')[0], {
+  fireEvent.click(screen.getByRole('button', { name: 'Overview' }));
+  fireEvent.change(await screen.findByLabelText('Gross Salary'), {
     target: { value: '8000' },
   });
+  fireEvent.click(screen.getByRole('button', { name: 'Investments' }));
+  await screen.findByText('SG Stocks');
   return client;
 }
 
@@ -375,10 +385,10 @@ it('keeps planner salary and allocation edits after a snapshot read is retried',
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
   );
-  fireEvent.click(screen.getByText('Plan income'));
-  expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe(
-    '8000'
-  );
+  expect(
+    (screen.getByLabelText('Gross Salary') as HTMLInputElement).value
+  ).toBe('8000');
+  fireEvent.click(screen.getByText('Investments'));
   expect(getAllocationInput('AAPL', 'US Stocks').value).toBe('50');
   expect(getAllocationInput('DBS', 'SG Stocks').value).toBe('100');
 });
@@ -387,16 +397,16 @@ it('keeps planner salary and allocation edits after an expense read is retried',
   const client = await enterPlannerEdits();
   api.getExpenses.mockRejectedValue(new Error('offline'));
   await client.invalidateQueries({ queryKey: ['expenses'] });
-  fireEvent.click(screen.getByText('Plan income'));
+  fireEvent.click(screen.getByRole('button', { name: 'Overview' }));
   const retryButton = await screen.findByRole('button', { name: 'Retry' });
   api.getExpenses.mockResolvedValue([]);
   fireEvent.click(retryButton);
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
   );
-  fireEvent.click(screen.getByText('Plan income'));
-  expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe(
-    '8000'
-  );
+  expect(
+    (screen.getByLabelText('Gross Salary') as HTMLInputElement).value
+  ).toBe('8000');
+  fireEvent.click(screen.getByText('Investments'));
   expect(getAllocationInput('DBS', 'SG Stocks').value).toBe('100');
 });

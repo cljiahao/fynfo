@@ -18,7 +18,11 @@ export {
   getHousehold,
   unlockHousehold,
 } from './actions/household-actions';
-export { getPlannerSplit, setPlannerSplit } from './actions/planner-actions';
+export {
+  getPlannerCommitment,
+  getPlannerSplit,
+  setPlannerSplit,
+} from './actions/planner-actions';
 export {
   addSpending,
   createSpace,
@@ -31,6 +35,7 @@ export {
   GoalDetailSkeleton,
   HouseholdOverview,
 } from './components';
+export { usePlannerCommitment } from './hooks/use-planner-commitment';
 export type {
   AcceptInviteResult,
   CreateHouseholdResult,
@@ -43,6 +48,9 @@ export type {
   HouseholdSpaceKind,
   HouseholdSummary,
   InviteResult,
+  PlannerCommitment,
+  PlannerCommitmentGoal,
+  PlannerCommitmentState,
   PlannerSplit,
   SaveGoalResult,
   SharedSpendingEntry,

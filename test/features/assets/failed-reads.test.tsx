@@ -110,7 +110,7 @@ it('cancels autosave when planner unmounts', () => {
       <SalaryPlanner />
     </QueryClientProvider>
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Adjust reserves' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Adjust settings' }));
   fireEvent.change(screen.getAllByRole('spinbutton')[2], {
     target: { value: '6' },
   });

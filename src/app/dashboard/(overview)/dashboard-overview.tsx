@@ -134,20 +134,19 @@ function DashboardOverviewContent() {
                   retryExpenses={() => void retryExpenses()}
                 />
 
-                <DividendSummary />
-              </>
-            ),
-          },
-          {
-            id: 'plan',
-            label: 'Plan income',
-            content: (
-              <>
                 <SalaryPlanner
                   isSnapshotReady={!assetsPending && !assetsError}
                   snapshot={latest}
                   onPlannerValuesChange={handlePlannerValuesChange}
                 />
+              </>
+            ),
+          },
+          {
+            id: 'investments',
+            label: 'Investments',
+            content: (
+              <>
                 <QueryContent
                   ready={
                     !assetsPending &&
@@ -167,6 +166,8 @@ function DashboardOverviewContent() {
                   />
 
                   <InvestmentAllocation budgets={marketBudgets} />
+
+                  <DividendSummary />
                 </QueryContent>
               </>
             ),

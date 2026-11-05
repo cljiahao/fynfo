@@ -78,7 +78,7 @@ async function mountPlanner() {
     </QueryClientProvider>
   );
   await screen.findByLabelText('Gross Salary');
-  fireEvent.click(screen.getByRole('button', { name: 'Adjust reserves' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Adjust settings' }));
   const input = screen.getByLabelText('Emergency Fund (months)');
   vi.useFakeTimers();
   return input;
@@ -92,12 +92,16 @@ describe('actual salary planner delayed-save visibility', () => {
   it('preserves the draft and suppresses a queued save while hidden and after showing', async () => {
     const input = await mountPlanner();
     fireEvent.change(input, { target: { value: '4' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Hide amounts', hidden: true })
+    );
     expect(input).toHaveValue(null);
     expect(input).toBeDisabled();
     await finishDebounce();
     expect(api.upsertPlannerSettings).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show amounts', hidden: true })
+    );
     expect(input).toHaveValue(4);
     await finishDebounce();
     expect(api.upsertPlannerSettings).not.toHaveBeenCalled();
@@ -105,8 +109,12 @@ describe('actual salary planner delayed-save visibility', () => {
   it('suppresses a queued Hide/Show save but permits a fresh visible edit', async () => {
     const input = await mountPlanner();
     fireEvent.change(input, { target: { value: '4' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Show amounts' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Hide amounts', hidden: true })
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show amounts', hidden: true })
+    );
     await finishDebounce();
     expect(api.upsertPlannerSettings).not.toHaveBeenCalled();
     expect(input).toHaveValue(4);
@@ -115,6 +123,7 @@ describe('actual salary planner delayed-save visibility', () => {
     expect(api.upsertPlannerSettings).toHaveBeenCalledTimes(1);
     expect(api.upsertPlannerSettings).toHaveBeenCalledWith({
       ...settings,
+      householdHorizonMonths: 24,
       emergencyMonths: 5,
     });
   });

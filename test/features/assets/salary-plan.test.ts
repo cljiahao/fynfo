@@ -1,10 +1,8 @@
 import {
-  calcAllTimeAvgExpense,
   ceilToThousand,
   computeSalaryPlan,
   sumByCategory,
 } from '@/features/assets/lib/salary-plan';
-import type { ExpenseData } from '@/features/expenses';
 import { describe, expect, it } from 'vitest';
 
 describe('ceilToThousand', () => {
@@ -23,49 +21,6 @@ describe('sumByCategory', () => {
       { category: 'savings' as const, account: '', amount: 7 },
     ];
     expect(sumByCategory(entries, 'savings')).toBe(17);
-  });
-});
-
-describe('calcAllTimeAvgExpense', () => {
-  const exp = (over: Partial<ExpenseData>): ExpenseData => ({
-    id: 'x',
-    date: '2026-06-01',
-    type: 'food_drink',
-    item: '',
-    info: '',
-    amount: 0,
-    splitType: 'self',
-    splits: [],
-    ...over,
-  });
-
-  it('returns 0 for no expenses', () => {
-    expect(calcAllTimeAvgExpense(undefined)).toBe(0);
-    expect(calcAllTimeAvgExpense([])).toBe(0);
-  });
-
-  it('returns zero when every expense is excluded insurance', () => {
-    expect(
-      calcAllTimeAvgExpense([
-        exp({ type: 'insurance', amount: 100, date: '2026-05-10' }),
-        exp({ type: 'insurance', amount: 200, date: '2026-06-10' }),
-      ])
-    ).toBe(0);
-  });
-
-  it('averages per-month user-share, subtracting others split portions', () => {
-    const list = [
-      exp({ date: '2026-05-10', amount: 100 }),
-      exp({
-        date: '2026-06-05',
-        amount: 200,
-        splitType: 'shared',
-        splits: [{ person: 'A', amount: 120, settled: false }],
-        // June user-share: 80
-      }),
-    ];
-    // (100 + 80) / 2 months = 90
-    expect(calcAllTimeAvgExpense(list)).toBe(90);
   });
 });
 

@@ -212,6 +212,14 @@ it('uses salary and expenses to calculate goals and saves changed optional deduc
     />
   );
   await screen.findByText('Net (after CPF)');
+  fireEvent.change(screen.getByLabelText('Expenses'), {
+    target: { value: '1000' },
+  });
+  expect(screen.getByText('Custom')).toBeTruthy();
+  expect(screen.getByTestId('planner-state-line')).toHaveTextContent(
+    /Investing \$2,400/
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Adjust settings' }));
   expect(
     screen.getByRole('spinbutton', { name: 'Tithe percentage' })
   ).toHaveValue(10);
@@ -224,16 +232,8 @@ it('uses salary and expenses to calculate goals and saves changed optional deduc
   expect(
     screen.getByRole('spinbutton', { name: 'Allowance percentage' })
   ).toBeDisabled();
-  fireEvent.change(screen.getAllByRole('spinbutton')[1], {
-    target: { value: '1000' },
-  });
-  expect(screen.getByText('Emergency Fund (3mo)')).toBeTruthy();
-  expect(
-    screen.getByText('All goals fulfilled — surplus goes to investment')
-  ).toBeTruthy();
   fireEvent.click(screen.getByRole('checkbox', { name: 'Tithe' }));
   fireEvent.click(screen.getByRole('checkbox', { name: 'Allowance' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Adjust reserves' }));
   expect(
     screen.getByRole('spinbutton', { name: 'Tithe percentage' })
   ).toBeDisabled();
@@ -246,13 +246,13 @@ it('uses salary and expenses to calculate goals and saves changed optional deduc
       target: { value: '7' },
     }
   );
-  fireEvent.change(screen.getAllByRole('spinbutton')[2], {
+  fireEvent.change(screen.getByLabelText('Emergency Fund (months)'), {
     target: { value: '4' },
   });
-  fireEvent.change(screen.getAllByRole('spinbutton')[3], {
+  fireEvent.change(screen.getByLabelText('War Chest (months)'), {
     target: { value: '8' },
   });
-  expect(screen.getByText('Allowance (7%)')).toBeTruthy();
+  expect(screen.getByText(/Allowance 7%/)).toBeTruthy();
   await waitFor(
     () =>
       expect(external.upsertPlannerSettings).toHaveBeenCalledWith({
@@ -262,6 +262,7 @@ it('uses salary and expenses to calculate goals and saves changed optional deduc
         tithePct: 10,
         allowanceEnabled: true,
         allowancePct: 7,
+        householdHorizonMonths: 24,
       }),
     { timeout: 2000 }
   );
@@ -272,7 +273,7 @@ it('uses salary and expenses to calculate goals and saves changed optional deduc
       expenses: 1000,
     })
   );
-  fireEvent.change(screen.getAllByRole('spinbutton')[0], {
+  fireEvent.change(screen.getByLabelText('Gross Salary'), {
     target: { value: '' },
   });
   expect(screen.getByText('Enter salary to see allocation')).toBeTruthy();

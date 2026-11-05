@@ -127,11 +127,6 @@ describe('saved scenario isolation', () => {
       '-$100'
     );
     const originalCalls = live.mock.calls.length;
-    const liveTithe = document
-      .querySelector('#tithe')
-      ?.closest('div')
-      ?.querySelector('input');
-    expect(liveTithe).toHaveAccessibleName('Tithe percentage');
     expect(
       within(dialog).getByRole('spinbutton', { name: 'Tithe percentage' })
     ).toBeDisabled();

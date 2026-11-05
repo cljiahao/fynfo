@@ -173,6 +173,15 @@ describe('computeSalaryPlan with household inputs', () => {
     expect(p.investmentAmt).toBe(0);
   });
 
+  it('reports the full deficit when expenses alone exceed take-home', () => {
+    const p = computeSalaryPlan({ ...base, expenses: 9000 });
+    // net 8000 - 9000 - 400 - 800 = -2200, with no household deduction
+    expect(p.householdAmt).toBe(0);
+    expect(p.householdShortfallAmt).toBeCloseTo(2200);
+    expect(p.savingsAmt).toBe(0);
+    expect(p.investmentAmt).toBe(0);
+  });
+
   it('has no shortfall when money is left over', () => {
     expect(computeSalaryPlan(base).householdShortfallAmt).toBe(0);
   });
@@ -195,6 +204,20 @@ describe('planStateLine', () => {
     const p = computeSalaryPlan(base);
     expect(planStateLine(p)).toBe(
       `Savings ${formatSGD(24000)} short of emergency + war chest (${formatSGD(24000)})`
+    );
+  });
+
+  it('uses the goals-only target when the reserve is funded but goals are not', () => {
+    const p = computeSalaryPlan({
+      ...base,
+      currentSavings: 30000,
+      currentBonds: 0,
+      householdReserve: 5000,
+    });
+    expect(p.investmentPaused).toBe(false);
+    expect(p.goalsFulfilled).toBe(false);
+    expect(planStateLine(p)).toBe(
+      `Savings ${formatSGD(0)} short of emergency + war chest (${formatSGD(24000)})`
     );
   });
 
