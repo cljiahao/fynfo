@@ -40,8 +40,8 @@ vi.mock('@/features/household/components/goal-list', () => ({
 vi.mock('@/features/household/components/invite-panel', () => ({
   InvitePanel: () => <div>Private invite</div>,
 }));
-vi.mock('@/features/household/components/create-goal-dialog', () => ({
-  CreateGoalDialog: () => <div>Create goal dialog</div>,
+vi.mock('@/features/household/components/goal-editor-sheet', () => ({
+  GoalEditorSheet: () => <div>Goal editor sheet</div>,
 }));
 vi.mock('@/features/household/components/shared-spending', () => ({
   SharedSpending: function SharedSpendingStub() {

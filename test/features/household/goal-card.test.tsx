@@ -10,7 +10,8 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 afterEach(cleanup);
 
@@ -131,19 +132,20 @@ describe('goal card presentation', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps the progress track but draws no fill, figure or percent when amounts are hidden', () => {
+  it('keeps the progress track but draws no fill, chip or figure when amounts are hidden', () => {
     const { container } = render(<Card goal={buildGoal(100, 40)} />);
-    const visibleTrack = container.querySelector('.bg-muted.rounded-full');
+    const visibleTrack = container.querySelector('[class~="h-2.5"]');
     const visibleClass = visibleTrack?.className;
     expect(visibleTrack?.querySelector('rect')).not.toBeNull();
-    expect(screen.getByText('40%')).toBeInTheDocument();
+    expect(screen.getByText('No date')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
 
-    const hiddenTrack = container.querySelector('.bg-muted.rounded-full');
+    const hiddenTrack = container.querySelector('[class~="h-2.5"]');
     expect(hiddenTrack).not.toBeNull();
     expect(hiddenTrack?.className).toBe(visibleClass);
     expect(container.querySelector('rect')).toBeNull();
+    expect(screen.queryByText('No date')).not.toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/\d%|40\.00|100\.00/);
   });
 
@@ -163,37 +165,90 @@ describe('goal card presentation', () => {
     expect(screen.getByText('Funded').className).not.toContain('animate-in');
   });
 
-  it('colours you and partner with the shared identity tokens', () => {
+  it('draws the saved segment with the shared identity token', () => {
     const { container } = render(<Card goal={buildGoal(100, 40)} />);
-    expect(container.querySelector('.bg-brand')).not.toBeNull();
-    expect(container.querySelector('.bg-chart-4')).not.toBeNull();
     expect(container.querySelector('rect.fill-brand')).not.toBeNull();
   });
 
-  it('enlarges icon buttons to 44px on coarse pointers', () => {
+  it('enlarges the actions trigger to 44px on coarse pointers', () => {
     render(<Card goal={buildGoal(100, 40)} />);
-    for (const name of [
-      'Edit goal Synthetic target',
-      'Delete goal Synthetic target',
-    ]) {
-      expect(screen.getByRole('button', { name }).className).toContain(
-        'pointer-coarse:size-11'
-      );
-    }
+    expect(
+      screen.getByRole('button', { name: 'Goal actions' }).className
+    ).toContain('pointer-coarse:size-11');
   });
 
-  it('links the title and footer to the detail page without nesting controls', () => {
+  it('has one stretched link and a sibling menu with no nested controls', () => {
     const { container } = render(<Card goal={buildGoal(100, 40)} />);
-    const details = screen.getByRole('link', {
-      name: 'View details for Synthetic target',
-    });
-    expect(details).toHaveAttribute(
+    const links = screen.getAllByRole('link');
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute(
       'href',
       '/dashboard/household/goals/synthetic-goal'
     );
+    expect(links[0].className).toContain('after:absolute');
+    expect(links[0].querySelector('button, a')).toBeNull();
     expect(
-      screen.getByRole('link', { name: 'Synthetic target' })
-    ).toHaveAttribute('href', '/dashboard/household/goals/synthetic-goal');
+      screen.getByRole('button', { name: 'Goal actions' }).closest('a')
+    ).toBeNull();
     expect(container.querySelector('a button, button a, a a')).toBeNull();
+  });
+
+  it('offers Add to goal, Edit and Delete from the menu', async () => {
+    const onContribute = vi.fn();
+    const onEdit = vi.fn();
+    const onDelete = vi.fn();
+    const goal = buildGoal(100, 40);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <AmountVisibilityProvider>
+          <GoalCard
+            goal={goal}
+            onContribute={onContribute}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        </AmountVisibilityProvider>
+      </QueryClientProvider>
+    );
+    for (const [name, handler] of [
+      ['Add to goal', onContribute],
+      ['Edit', onEdit],
+      ['Delete', onDelete],
+    ] as const) {
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Goal actions' })
+      );
+      await userEvent.click(await screen.findByRole('menuitem', { name }));
+      expect(handler).toHaveBeenCalledWith(goal);
+    }
+  });
+});
+
+describe('goal card dates and pace', () => {
+  const original = process.env.TZ;
+  beforeAll(() => {
+    process.env.TZ = 'America/Los_Angeles';
+    return () => {
+      if (original === undefined) delete process.env.TZ;
+      else process.env.TZ = original;
+    };
+  });
+
+  it('shows a date-only target on the same calendar day west of UTC', () => {
+    render(<Card goal={{ ...buildGoal(100, 40), targetDate: '2099-12-01' }} />);
+    expect(screen.getByText('by 01 Dec 2099')).toBeInTheDocument();
+  });
+
+  it('shows the monthly pace, and masks it when amounts are hidden', () => {
+    render(<Card goal={{ ...buildGoal(1200, 0), targetDate: '2099-12-01' }} />);
+    expect(screen.getByText(/\/mo needed$/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    expect(document.body.textContent).not.toMatch(/\d[\d,]*\.\d\d\/mo/);
+  });
+
+  it('says so when the target date has passed', () => {
+    render(<Card goal={{ ...buildGoal(100, 40), targetDate: '2020-01-01' }} />);
+    expect(screen.getByText('Past target date')).toBeInTheDocument();
+    expect(screen.getByText('Behind')).toBeInTheDocument();
   });
 });

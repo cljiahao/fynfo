@@ -1,3 +1,5 @@
+import type { GoalStatus } from './lib/goal-stats';
+
 /** Invite secret lifetime before it expires unaccepted. */
 export const INVITE_TTL_HOURS = 48;
 
@@ -29,3 +31,41 @@ export const NO_ITEMS_SUMMARY = 'Split into budget items';
 
 /** Keeps the horizontal bar axis from squeezing the plot area at 375px. */
 export const ITEM_CHART_NAME_WIDTH = 92;
+
+/** Item segments shown on a breakdown bar before the rest collapse into "Other". */
+export const ITEM_BAR_CAP = 6;
+
+/** Upper bound on budget lines in one goal; keeps a save request and its diff small. */
+export const GOAL_ITEM_LIMIT = 50;
+
+export interface GoalTemplate {
+  id: string;
+  label: string;
+  items: readonly string[];
+}
+
+/** Typical budget lines to prefill a new goal; amounts are left blank on purpose. */
+export const GOAL_TEMPLATES: readonly GoalTemplate[] = [
+  {
+    id: 'wedding',
+    label: 'Wedding',
+    items: ['Venue', 'Catering', 'Photography', 'Attire', 'Rings'],
+  },
+  {
+    id: 'renovation',
+    label: 'Renovation',
+    items: ['Design', 'Materials', 'Labour', 'Furniture', 'Contingency'],
+  },
+  {
+    id: 'car',
+    label: 'Car',
+    items: ['Deposit', 'Insurance', 'Registration', 'Accessories'],
+  },
+] as const;
+
+export const GOAL_STATUS_LABEL: Record<GoalStatus, string> = {
+  funded: 'Funded',
+  'no-date': 'No date',
+  'on-track': 'On track',
+  behind: 'Behind',
+};

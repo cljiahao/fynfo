@@ -17,23 +17,38 @@ import { Label } from '@/components/ui/label';
 import { format } from 'date-fns/format';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useAddContribution } from '../hooks/use-household';
-import type { HouseholdGoal } from '../types';
+import {
+  useAddContribution,
+  useUpdateGoalContribution,
+} from '../hooks/use-household';
+import type { GoalContribution, HouseholdGoal } from '../types';
 
 interface AddContributionDialogProps {
   goal: HouseholdGoal | null;
+  /** When set the dialog edits this contribution; mount with a key to re-seed. */
+  contribution?: GoalContribution | null;
   onOpenChange: (open: boolean) => void;
 }
 
 export function AddContributionDialog({
   goal,
+  contribution,
   onOpenChange,
 }: AddContributionDialogProps) {
+  const isEdit = !!contribution;
   const { hidden, mask, canReveal } = useAmountVisibility();
   const addContribution = useAddContribution();
-  const [amount, setAmount] = useState('');
-  const [note, setNote] = useState('');
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const updateContribution = useUpdateGoalContribution();
+  const pending = addContribution.isPending || updateContribution.isPending;
+  const [amount, setAmount] = useState(
+    contribution ? contribution.amount.toFixed(2) : ''
+  );
+  const [note, setNote] = useState(contribution?.note ?? '');
+  const [date, setDate] = useState(
+    contribution
+      ? contribution.date.slice(0, 10)
+      : format(new Date(), 'yyyy-MM-dd')
+  );
 
   const [errors, setErrors] = useState<{ amount?: string; date?: string }>({});
   const amountRef = useRef<HTMLInputElement>(null);
@@ -58,8 +73,22 @@ export function AddContributionDialog({
       (next.amount ? amountRef : dateRef).current?.focus();
       return;
     }
+    const trimmed = note.trim() || undefined;
+    if (contribution) {
+      updateContribution.mutate(
+        { contributionId: contribution.id, amount: value, note: trimmed, date },
+        {
+          onSuccess: () => {
+            toast.success('Contribution updated');
+            onOpenChange(false);
+          },
+          onError: () => toast.error('Could not update the contribution'),
+        }
+      );
+      return;
+    }
     addContribution.mutate(
-      { goalId: goal.id, amount: value, note: note.trim() || undefined, date },
+      { goalId: goal.id, amount: value, note: trimmed, date },
       {
         onSuccess: () => {
           toast.success('Contribution added');
@@ -75,9 +104,13 @@ export function AddContributionDialog({
     <Dialog open={goal !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add to {mask(goal?.name ?? '')}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? 'Edit contribution' : `Add to ${mask(goal?.name ?? '')}`}
+          </DialogTitle>
           <DialogDescription>
-            Log what you put toward this goal.
+            {isEdit
+              ? 'Change the amount, date or note.'
+              : 'Log what you put toward this goal.'}
           </DialogDescription>
         </DialogHeader>
         <AmountsHiddenNotice />
@@ -144,12 +177,12 @@ export function AddContributionDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={hidden || addContribution.isPending}
+            disabled={hidden || pending}
           >
             Cancel
           </Button>
-          <Button onClick={submit} disabled={addContribution.isPending}>
-            Add contribution
+          <Button onClick={submit} disabled={pending}>
+            {isEdit ? 'Save changes' : 'Add contribution'}
           </Button>
         </DialogFooter>
       </DialogContent>

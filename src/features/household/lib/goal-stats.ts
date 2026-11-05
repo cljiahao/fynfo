@@ -1,10 +1,11 @@
 import { formatSGD } from '@/lib/utils/currency';
 import { addMonths } from 'date-fns/addMonths';
+import { differenceInCalendarDays } from 'date-fns/differenceInCalendarDays';
 import { differenceInMonths } from 'date-fns/differenceInMonths';
 import { parseISO } from 'date-fns/parseISO';
 import { startOfDay } from 'date-fns/startOfDay';
 import { ITEM_CHART_CAP, NO_ITEMS_SUMMARY } from '../constants';
-import type { HouseholdGoal } from '../types';
+import type { GoalItem, HouseholdGoal } from '../types';
 import { computeItemBudget } from './project-budget';
 
 /**
@@ -160,4 +161,49 @@ export function withoutPending(
     budgeted: items.reduce((sum, item) => sum + item.budget, 0),
     paid: items.reduce((sum, item) => sum + item.paid, 0),
   };
+}
+
+/** What an item is expected to cost: the final quote once there is one, else the estimate. */
+export function effectiveAmount(item: Pick<GoalItem, 'budget' | 'quote'>) {
+  return item.quote ?? item.budget;
+}
+
+/** Still-to-pay across items; overpaid items contribute nothing, not a credit. */
+export function goalCommitted(goal: Pick<HouseholdGoal, 'items'>): number {
+  return goal.items.reduce(
+    (sum, item) => sum + Math.max(0, effectiveAmount(item) - item.paid),
+    0
+  );
+}
+
+export type GoalStatus = 'funded' | 'no-date' | 'on-track' | 'behind';
+
+const toCents = (amount: number) => Math.round(amount * 100);
+
+/**
+ * Funded, undated, or on track against a straight line from creation to the
+ * target date. Compared in whole cents so float noise never flips the chip.
+ */
+export function goalStatus(
+  goal: Pick<
+    HouseholdGoal,
+    'targetAmount' | 'targetDate' | 'createdAt' | 'contributed' | 'remaining'
+  >,
+  now: Date
+): GoalStatus {
+  // A corrupt target or total must never read as a finished goal.
+  const sound =
+    Number.isFinite(goal.targetAmount) &&
+    goal.targetAmount > 0 &&
+    Number.isFinite(goal.contributed);
+  if (sound && goal.remaining <= 0) return 'funded';
+  if (!goal.targetDate) return 'no-date';
+  const today = startOfDay(now);
+  const target = parseISO(goal.targetDate.slice(0, 10));
+  if (target < today) return 'behind';
+  const created = parseISO(goal.createdAt.slice(0, 10));
+  const total = Math.max(1, differenceInCalendarDays(target, created));
+  const elapsed = Math.max(1, differenceInCalendarDays(today, created));
+  const expected = (goal.targetAmount * Math.min(elapsed, total)) / total;
+  return toCents(goal.contributed) >= toCents(expected) ? 'on-track' : 'behind';
 }

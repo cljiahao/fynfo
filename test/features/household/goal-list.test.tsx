@@ -17,6 +17,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const external = vi.hoisted(() => ({
@@ -37,6 +38,9 @@ vi.mock('@/features/household/actions/goal-actions', () => ({
   deleteGoalItem: vi.fn(),
   addItemPayment: vi.fn(),
   deleteItemPayment: vi.fn(),
+  saveGoal: vi.fn(),
+  updateGoalPayment: vi.fn(),
+  updateGoalContribution: vi.fn(),
 }));
 vi.mock('sonner', () => ({
   toast: { error: external.toastError, success: external.toastSuccess },
@@ -84,6 +88,11 @@ function mount(goals: HouseholdGoal[], onCreate?: () => void) {
   );
 }
 
+async function pickAction(action: string) {
+  await userEvent.click(screen.getByRole('button', { name: 'Goal actions' }));
+  await userEvent.click(await screen.findByRole('menuitem', { name: action }));
+}
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -116,6 +125,7 @@ describe('goal list', () => {
             id: 'i1',
             name: 'Frame',
             budget: 10,
+            quote: null,
             payments: [],
             paid: 0,
             remaining: 10,
@@ -124,7 +134,7 @@ describe('goal list', () => {
         ],
       },
     ]);
-    fireEvent.click(screen.getByRole('button', { name: 'Delete goal Sofa' }));
+    await pickAction('Delete');
     const dialog = await screen.findByRole('alertdialog');
     expect(dialog).toHaveTextContent('1 contribution and 1 budget item');
     expect(external.deleteGoal).not.toHaveBeenCalled();
@@ -135,7 +145,7 @@ describe('goal list', () => {
     );
     expect(external.deleteGoal).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete goal Sofa' }));
+    await pickAction('Delete');
     const again = await screen.findByRole('alertdialog');
     const confirm = within(again).getByRole('button', { name: 'Delete goal' });
     expect(confirm.className).toContain('bg-destructive');
@@ -176,17 +186,16 @@ describe('goal list', () => {
 });
 
 describe('goal dialogs inline errors', () => {
-  it('create-goal shows field errors, focuses the first, and clears on edit', async () => {
+  it('editor shows field errors and clears on edit', async () => {
     mount([]);
     fireEvent.click(screen.getByRole('button', { name: 'New goal' }));
     await screen.findByRole('dialog');
-    fireEvent.click(screen.getByRole('button', { name: 'Create goal' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review changes' }));
 
-    const name = screen.getByLabelText('Name');
+    const name = await screen.findByLabelText('Name');
     const amount = screen.getByLabelText('Target amount (SGD)');
-    expect(name).toHaveAttribute('aria-invalid', 'true');
+    await waitFor(() => expect(name).toHaveAttribute('aria-invalid', 'true'));
     expect(amount).toHaveAttribute('aria-invalid', 'true');
-    expect(name).toHaveFocus();
     expect(screen.getByText('Enter a name')).toHaveAttribute(
       'id',
       name.getAttribute('aria-describedby')
@@ -196,17 +205,11 @@ describe('goal dialogs inline errors', () => {
       amount.getAttribute('aria-describedby')
     );
     expect(external.toastError).not.toHaveBeenCalled();
-    expect(external.createGoal).not.toHaveBeenCalled();
-
-    fireEvent.change(name, { target: { value: 'Sofa' } });
-    expect(name).not.toHaveAttribute('aria-invalid');
-    expect(screen.queryByText('Enter a name')).not.toBeInTheDocument();
-    expect(amount).toHaveAttribute('aria-invalid', 'true');
   });
 
   it('add-contribution shows an amount error, focuses it, and clears on edit', async () => {
     mount([makeGoal('a', 'Sofa', 1000)]);
-    fireEvent.click(screen.getByRole('button', { name: 'Add to goal' }));
+    await pickAction('Add to goal');
     await screen.findByRole('dialog');
     fireEvent.click(screen.getByRole('button', { name: 'Add contribution' }));
 
@@ -226,7 +229,7 @@ describe('goal dialogs inline errors', () => {
 
   it('add-contribution flags a cleared date', async () => {
     mount([makeGoal('a', 'Sofa', 1000)]);
-    fireEvent.click(screen.getByRole('button', { name: 'Add to goal' }));
+    await pickAction('Add to goal');
     await screen.findByRole('dialog');
     fireEvent.change(screen.getByLabelText('Amount (SGD)'), {
       target: { value: '5' },

@@ -47,7 +47,10 @@ export interface GoalItemPayment {
 export interface GoalItem {
   id: string;
   name: string;
+  /** The estimate. */
   budget: number;
+  /** Final quote; null until the household has one. */
+  quote: number | null;
   payments: GoalItemPayment[];
   paid: number;
   remaining: number;
@@ -93,3 +96,13 @@ export interface HouseholdSpace {
   endDate: string | null;
   entries: SharedSpendingEntry[];
 }
+
+/** Result of saveGoal; validation and server failures never throw to the client. */
+export type SaveGoalResult =
+  | { ok: true; goalId: string; itemIds: string[] }
+  | {
+      ok: false;
+      code: 'VALIDATION';
+      error: { formErrors: string[]; fieldErrors: Record<string, string[]> };
+    }
+  | { ok: false; code: 'SERVER'; goalId: string; itemIds: string[] };

@@ -131,6 +131,7 @@ it('caps the budget chart at eight items and notes the rest', () => {
     id: `i${i}`,
     name: `Item ${i}`,
     budget: i + 1,
+    quote: null,
     paid: 0,
     remaining: i + 1,
     over: 0,

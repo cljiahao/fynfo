@@ -11,7 +11,10 @@ import {
   deleteGoalItem,
   deleteItemPayment,
   getGoals,
+  saveGoal,
   updateGoal,
+  updateGoalContribution,
+  updateGoalPayment,
 } from '../actions/goal-actions';
 import {
   acceptInvite,
@@ -124,6 +127,25 @@ function useGoalsMutation<T>(mutationFn: (input: T) => Promise<void>) {
 
 export function useUpdateGoal() {
   return useGoalsMutation(updateGoal);
+}
+
+export function useUpdateGoalPayment() {
+  return useGoalsMutation(updateGoalPayment);
+}
+
+export function useUpdateGoalContribution() {
+  return useGoalsMutation(updateGoalContribution);
+}
+
+/** The editor reads the result itself, so a SERVER failure must not refresh. */
+export function useSaveGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: saveGoal,
+    onSuccess: (result) => {
+      if (result.ok) return refreshQueriesAfterMutation(qc, GOALS_KEY);
+    },
+  });
 }
 
 export function useAddGoalItem() {

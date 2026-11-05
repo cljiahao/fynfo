@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { GOAL_ITEM_LIMIT } from './constants';
 
 export const createHouseholdSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -43,6 +44,43 @@ export const addItemPaymentSchema = z.object({
   date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
 });
 
+const saveGoalItemSchema = z.object({
+  id: z.uuid().optional(),
+  name: z.string().trim().min(1).max(80),
+  budget: z.number().positive().finite(),
+  quote: z.number().positive().finite().nullish(),
+});
+
+export const saveGoalSchema = z
+  .object({
+    goalId: z.uuid().optional(),
+    name: z.string().trim().min(1).max(80),
+    target: z.number().positive().finite(),
+    targetDate: z.string().regex(ISO_DATE, 'date must be ISO-8601').optional(),
+    items: z.array(saveGoalItemSchema).max(GOAL_ITEM_LIMIT),
+  })
+  .refine(
+    ({ items }) => {
+      const ids = items.flatMap((item) => (item.id ? [item.id] : []));
+      return new Set(ids).size === ids.length;
+    },
+    { message: 'duplicate item id', path: ['items'] }
+  );
+
+export const updateGoalPaymentSchema = z.object({
+  paymentId: z.uuid(),
+  amount: z.number().positive().finite(),
+  note: z.string().trim().max(200).optional(),
+  date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
+});
+
+export const updateGoalContributionSchema = z.object({
+  contributionId: z.uuid(),
+  amount: z.number().positive().finite(),
+  note: z.string().trim().max(200).optional(),
+  date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
+});
+
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 export const createSpaceSchema = z
@@ -75,3 +113,8 @@ export type AddGoalItemInput = z.infer<typeof addGoalItemSchema>;
 export type AddItemPaymentInput = z.infer<typeof addItemPaymentSchema>;
 export type CreateSpaceInput = z.infer<typeof createSpaceSchema>;
 export type AddSpendingInput = z.infer<typeof addSpendingSchema>;
+export type SaveGoalInput = z.infer<typeof saveGoalSchema>;
+export type UpdateGoalPaymentInput = z.infer<typeof updateGoalPaymentSchema>;
+export type UpdateGoalContributionInput = z.infer<
+  typeof updateGoalContributionSchema
+>;

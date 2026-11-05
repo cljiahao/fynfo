@@ -7,6 +7,9 @@ export {
   deleteGoalItem,
   deleteItemPayment,
   getGoals,
+  saveGoal,
+  updateGoalContribution,
+  updateGoalPayment,
 } from './actions/goal-actions';
 export {
   acceptInvite,
@@ -39,5 +42,6 @@ export type {
   HouseholdSpaceKind,
   HouseholdSummary,
   InviteResult,
+  SaveGoalResult,
   SharedSpendingEntry,
 } from './types';

@@ -21,6 +21,7 @@ import {
   renderHook,
   screen,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { StrictMode, type ReactNode } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 
@@ -173,7 +174,7 @@ it('keeps an already-open split draft and blocks hidden confirmation', () => {
   ]);
 });
 
-it('conceals household values and progress geometry and prevents hidden goal actions', () => {
+it('conceals household values and progress geometry and prevents hidden goal actions', async () => {
   const contribute = vi.fn();
   const remove = vi.fn();
   const edit = vi.fn();
@@ -210,9 +211,12 @@ it('conceals household values and progress geometry and prevents hidden goal act
     /9876\.54|1,234\.56|13%|8,641\.98/
   );
   expect(document.querySelector('[style*="width"]')).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Add to goal' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Delete goal Hidden' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Edit goal Hidden' }));
+  for (const action of ['Add to goal', 'Delete', 'Edit']) {
+    await userEvent.click(screen.getByRole('button', { name: 'Goal actions' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: action })
+    );
+  }
   expect(contribute).not.toHaveBeenCalled();
   expect(edit).not.toHaveBeenCalled();
   expect(remove).not.toHaveBeenCalled();

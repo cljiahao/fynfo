@@ -3,10 +3,12 @@
 import { requireHouseholdContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { AppError, throwIfSupabaseError } from '@/lib/errors';
+import { logger } from '@/lib/logger';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { ROW_UUID } from '@/lib/zod-utils';
 import { randomUUID } from 'crypto';
+import { z } from 'zod';
 import { computeGoalProgress } from '../lib/goal-progress';
 import { computeItemBudget, computeProjectTotals } from '../lib/project-budget';
 import {
@@ -14,6 +16,9 @@ import {
   addGoalItemSchema,
   addItemPaymentSchema,
   createGoalSchema,
+  saveGoalSchema,
+  updateGoalContributionSchema,
+  updateGoalPaymentSchema,
   updateGoalSchema,
 } from '../schemas';
 import type {
@@ -21,6 +26,7 @@ import type {
   GoalItem,
   GoalItemPayment,
   HouseholdGoal,
+  SaveGoalResult,
 } from '../types';
 
 interface GoalRow {
@@ -45,6 +51,7 @@ interface ItemRow {
   goal_id: string;
   name: string;
   budget: string;
+  quote: string | null;
 }
 
 interface PaymentRow {
@@ -73,7 +80,7 @@ async function readGoalItems(
         (from, to) =>
           supabase
             .from('household_goal_items')
-            .select('id, goal_id, name, budget', { count: 'exact' })
+            .select('id, goal_id, name, budget, quote', { count: 'exact' })
             .in('goal_id', ids)
             .order('created_at', { ascending: true })
             .order('id', { ascending: true })
@@ -122,6 +129,7 @@ async function readGoalItems(
       id: row.id,
       name: decryptPayload(row.name, kh),
       budget,
+      quote: row.quote ? Number(decryptPayload(row.quote, kh)) : null,
       payments,
       ...computeItemBudget(
         budget,
@@ -350,4 +358,204 @@ export async function deleteItemPayment(id: string): Promise<void> {
     .delete()
     .eq('id', id);
   throwIfSupabaseError(error, 'household goal payment delete');
+}
+
+/** Edits a payment's amount, note and date; the payer and item never change. */
+export async function updateGoalPayment(input: unknown): Promise<void> {
+  const { kh, supabase } = await requireHouseholdContext();
+  const data = parseOrThrow(
+    updateGoalPaymentSchema,
+    input,
+    'household.payment.update.input'
+  );
+  const { data: rows, error } = await supabase
+    .from('household_goal_payments')
+    .update({
+      amount: encryptPayload(data.amount.toString(), kh),
+      note: data.note ? encryptPayload(data.note, kh) : null,
+      date: data.date,
+    })
+    .eq('id', data.paymentId)
+    .select('id');
+  throwIfSupabaseError(error, 'household goal payment update');
+  // RLS hides rows the caller may not edit without an error, so zero rows is not a save.
+  if (!rows || rows.length === 0) {
+    throw new AppError('NOT_FOUND', 'Payment not found');
+  }
+}
+
+/** Edits a contribution's amount, note and date; the contributor never changes. */
+export async function updateGoalContribution(input: unknown): Promise<void> {
+  const { kh, supabase } = await requireHouseholdContext();
+  const data = parseOrThrow(
+    updateGoalContributionSchema,
+    input,
+    'household.contribution.update.input'
+  );
+  const { data: rows, error } = await supabase
+    .from('household_goal_contributions')
+    .update({
+      amount: encryptPayload(data.amount.toString(), kh),
+      note: data.note ? encryptPayload(data.note, kh) : null,
+      date: data.date,
+    })
+    .eq('id', data.contributionId)
+    .select('id');
+  throwIfSupabaseError(error, 'household contribution update');
+  if (!rows || rows.length === 0) {
+    throw new AppError('NOT_FOUND', 'Contribution not found');
+  }
+}
+
+interface ExistingItem {
+  name: string;
+  budget: number;
+  quote: number | null;
+}
+
+/**
+ * Saves a goal and its budget lines from the editor draft.
+ *
+ * Not transactional: goal first, then item updates and inserts, deletes last,
+ * each keyed on a stable id so a retry converges instead of duplicating. A
+ * failure returns an opaque result with the ids so the draft retries as is.
+ */
+export async function saveGoal(input: unknown): Promise<SaveGoalResult> {
+  const { userId, kh, supabase } = await requireHouseholdContext();
+  const parsed = saveGoalSchema.safeParse(input);
+  if (!parsed.success) {
+    const error = z.flattenError(parsed.error);
+    logger.warn(
+      { label: 'household.goal.save.input', issues: error },
+      'server-action input validation failed'
+    );
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      error: {
+        formErrors: error.formErrors,
+        fieldErrors: Object.fromEntries(
+          Object.entries(error.fieldErrors).map(([key, value]) => [
+            key,
+            value ?? [],
+          ])
+        ),
+      },
+    };
+  }
+  const data = parsed.data;
+  const goalId = data.goalId ?? randomUUID();
+  const draft = data.items.map((item) => ({
+    ...item,
+    id: item.id ?? randomUUID(),
+  }));
+  const itemIds = draft.map((item) => item.id);
+
+  try {
+    const { data: goalRows, error: goalReadError } = await supabase
+      .from('household_goals')
+      .select('id')
+      .eq('id', goalId);
+    throwIfSupabaseError(goalReadError, 'household goal read');
+    const goalExists = (goalRows ?? []).length > 0;
+
+    const goalFields = {
+      name: encryptPayload(data.name, kh),
+      target_amount: encryptPayload(data.target.toString(), kh),
+      target_date: data.targetDate ?? null,
+    };
+    if (goalExists) {
+      const { error } = await supabase
+        .from('household_goals')
+        .update(goalFields)
+        .eq('id', goalId);
+      throwIfSupabaseError(error, 'household goal update');
+    } else {
+      const { data: memberRows, error: memberError } = await supabase
+        .from('household_members')
+        .select('household_id')
+        .eq('user_id', userId);
+      throwIfSupabaseError(memberError, 'household member read');
+      const householdId = (
+        (memberRows ?? [])[0] as { household_id: string } | undefined
+      )?.household_id;
+      if (!householdId) throw new AppError('NOT_FOUND', 'No household');
+      const { error } = await supabase.from('household_goals').insert({
+        id: goalId,
+        household_id: householdId,
+        ...goalFields,
+        created_by: userId,
+      });
+      throwIfSupabaseError(error, 'household goal create');
+    }
+
+    const existing = new Map<string, ExistingItem>();
+    if (goalExists) {
+      const rows = await readAllRows<
+        Pick<ItemRow, 'id' | 'name' | 'budget' | 'quote'>
+      >(
+        (from, to) =>
+          supabase
+            .from('household_goal_items')
+            .select('id, name, budget, quote', { count: 'exact' })
+            .eq('goal_id', goalId)
+            .order('created_at', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, to),
+        'household goal items read'
+      );
+      for (const row of rows) {
+        existing.set(row.id, {
+          name: decryptPayload(row.name, kh),
+          budget: Number(decryptPayload(row.budget, kh)),
+          quote: row.quote ? Number(decryptPayload(row.quote, kh)) : null,
+        });
+      }
+    }
+
+    const seal = (item: (typeof draft)[number]) => ({
+      name: encryptPayload(item.name, kh),
+      budget: encryptPayload(item.budget.toString(), kh),
+      quote: item.quote ? encryptPayload(item.quote.toString(), kh) : null,
+    });
+
+    for (const item of draft) {
+      const before = existing.get(item.id);
+      if (!before) continue;
+      const unchanged =
+        before.name === item.name &&
+        before.budget === item.budget &&
+        before.quote === (item.quote ?? null);
+      if (unchanged) continue;
+      const { error } = await supabase
+        .from('household_goal_items')
+        .update(seal(item))
+        .eq('id', item.id);
+      throwIfSupabaseError(error, 'household goal item update');
+    }
+
+    // One insert per row: rows in a batch share a transaction timestamp, which
+    // would lose the draft order that reads sort by.
+    for (const item of draft) {
+      if (existing.has(item.id)) continue;
+      const { error } = await supabase
+        .from('household_goal_items')
+        .insert({ id: item.id, goal_id: goalId, ...seal(item) });
+      throwIfSupabaseError(error, 'household goal item create');
+    }
+
+    const kept = new Set(itemIds);
+    const removed = [...existing.keys()].filter((id) => !kept.has(id));
+    if (removed.length > 0) {
+      const { error } = await supabase
+        .from('household_goal_items')
+        .delete()
+        .in('id', removed);
+      throwIfSupabaseError(error, 'household goal item delete');
+    }
+    return { ok: true, goalId, itemIds };
+  } catch (error) {
+    logger.error({ err: error, goalId }, 'household goal save failed');
+    return { ok: false, code: 'SERVER', goalId, itemIds };
+  }
 }
