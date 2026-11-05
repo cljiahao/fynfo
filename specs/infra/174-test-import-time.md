@@ -2,10 +2,10 @@
 id: '174'
 slug: test-import-time
 area: infra
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-05
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-05
 shipped:
 impl_pr:
 supersedes:
@@ -119,9 +119,10 @@ Three changes, applied together.
    the bare specifier, so `date-fns/format` stays allowed. Verify manually that
    a bare `from 'date-fns'` fails lint.
 
-Test files that import `date-fns` are not covered by the lint rule (its block
-targets `src/**`); if any exist after the change they may be converted
-opportunistically within this spec. Encryption-touching paths: none. Data
+Test files (`test/**`) are covered by the same rule (owner answer to Q1): a
+second `eslint.config.mjs` block applies the `paths` restriction to
+`test/**/*.{ts,tsx}`, and the four test files that import the barrel are
+converted. Encryption-touching paths: none. Data
 model: none. No new components, hooks or actions.
 
 ## Out of scope
@@ -145,7 +146,7 @@ model: none. No new components, hooks or actions.
 - [ ] `pnpm typecheck` green
 - [ ] `pnpm test:ci` green with unchanged coverage thresholds; any `vi.mock('date-fns')` must follow the new subpath and is noted in the PR
 - [ ] `pnpm build` green
-- [ ] No bare `date-fns` imports remain in `src/` (`grep` returns none)
+- [ ] No bare `date-fns` imports remain in `src/` or `test/` (`grep` returns none); a bare import under `test/` also fails lint
 - [ ] Before/after import (collect) time and wall time recorded for all four shards (`pnpm test:shard 1/4` to `4/4`), same idle host, two runs each, in the PR body; shard 1 import time expected near 49.5 s from 67 s
 - [ ] Manual: the date picker, quick-add date field and household charts render and format dates as before
 - [ ] Spec hash matches at impl PR time
@@ -166,5 +167,5 @@ model: none. No new components, hooks or actions.
 
 ## Open questions
 
-- [ ] Q: Should `test/**` files also be forbidden from bare `date-fns` imports? — Owner: Clarence — A:
-- [ ] Q: Is the `test.deps.optimizer.ssr` key shape valid in vitest 4.1.12 as measured? — Owner: implementer, resolved before first edit — A:
+- [ ] Q: Should `test/**` files also be forbidden from bare `date-fns` imports? — Owner: Clarence — A: Yes (2026-11-05); the lint rule covers `test/**`.
+- [ ] Q: Is the `test.deps.optimizer.ssr` key shape valid in vitest 4.1.12 as measured? — Owner: implementer, resolved before first edit — A: Yes. vitest 4.1.12 types declare `deps.optimizer?: Partial<Record<'client' | 'ssr' | string, DepsOptimizationOptions>>`, so `test.deps.optimizer.ssr: { enabled: true, include: [...] }` is valid.
