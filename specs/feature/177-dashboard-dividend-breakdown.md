@@ -27,7 +27,7 @@ constitution_satisfies:
 constitution_overrides:
 ---
 
-# Spec 177: Dashboard dividend breakdown (move to Plan income, richer card)
+# Spec 177: Dashboard dividend breakdown (move to Investments tab, richer card)
 
 ## Problem
 
@@ -37,7 +37,8 @@ summary sitting in the wrong place. Concrete pain today (spec 159 shipped it):
 - `DividendSummary` renders in the **Overview** tab
   (`src/app/dashboard/(overview)/dashboard-overview.tsx:137`), next to the
   net-worth and latest-records cards. Dividends are income that funds the plan,
-  so they belong in **Plan income** (`:141-170`), which today ends with
+  so they belong in the investing tab (today **Plan income**, `:141-170`;
+  renamed **Investments** by spec 176), which today ends with
   `InvestmentBreakdown` and `InvestmentAllocation`.
 - The card shows only three stat cards (Dividends earned, Last 12 months,
   Average per year) and a 5-calendar-year bar chart
@@ -70,6 +71,19 @@ The Equity page Dividends tab (`src/app/dashboard/equity/page.tsx:54-71`,
   plain server-safe TS file with no directive. No override needed: the rule
   allows client components with a justification, given here.
 - Overrides: none. No `HARD` rule is touched; no governance spec required.
+
+## Sequencing with spec 176
+
+Spec 176 moves `SalaryPlanner` into the Overview tab and renames "Plan income"
+to "Investments". Both specs edit `dashboard-overview.tsx`, so 177
+implementation (S2 in particular) is sequenced after 176 ships; this spec's
+references to the Plan income tab mean the Investments tab once 176 lands.
+The dividend card goes in that tab after `InvestmentBreakdown` and
+`InvestmentAllocation`. The coverage line depends on `plannerValues.expenses`,
+which stays reachable because it is lifted into `dashboard-overview.tsx` state
+via `handlePlannerValuesChange` (`:54-67`) regardless of which tab renders
+`SalaryPlanner`. If 176 changes that, the coverage line is dropped from 177
+rather than re-plumbed.
 
 ## Solution shape
 
@@ -196,8 +210,9 @@ false`, fixed-height `Skeleton` to avoid layout shift. This honours spec 174
   `src/features/equity/lib/dividend-breakdown.ts` (same thresholds as
   `dividend-metrics.ts`: 95 lines / 95 statements / 100 functions / 85
   branches), per the spec refactor/049 pattern.
-- New `src/features/equity/lib/dividend-breakdown.test.ts` (path convention to
-  match the neighbouring `dividend-metrics` test; confirm at S1).
+- New `src/features/equity/lib/dividend-breakdown.test.ts` at
+  `test/features/equity/dividend-breakdown.test.ts`, matching
+  `test/features/equity/dividend-metrics.test.ts`.
 - `specs/feature/159-overview-dividend-summary.md` is not edited (shipped specs
   are history); this spec records the move.
 
@@ -245,7 +260,7 @@ record shas in `impl_pr`.
       export; coverage gate for that file passes
 - [ ] `pnpm build` green; no static recharts import added to the dashboard
       route (new chart reached only through `next/dynamic`)
-- [ ] Manual: Overview tab no longer shows dividends; Plan income tab shows the
+- [ ] Manual: Overview tab no longer shows dividends; Investments tab shows the
       card after Investment allocation; Equity Dividends tab is byte-identical
       in behaviour
 - [ ] Manual: with amounts hidden, no dividend or coverage figure is visible;
@@ -258,7 +273,7 @@ record shas in `impl_pr`.
 
 ## Risk & reversibility
 
-- **Blast radius**: dashboard Overview and Plan income tabs, read-only
+- **Blast radius**: dashboard Overview and Investments tabs, read-only
   presentation of existing decrypted data. No writes, no schema, no auth.
 - **Reversibility**: each slice is a single `git revert`; no migration.
 - **Backout plan**: revert S2 to restore the old card on Overview; S1 is inert
@@ -280,7 +295,7 @@ record shas in `impl_pr`.
       (the planner's all-time average monthly expense, `salary-planner.tsx:109`)
       or a different "planned" number? — Owner: Clarence — A:
 - [ ] Q: Should `DividendSummary` sit inside or outside `QueryContent` in the
-      Plan tab? Draft says outside, so dividends load independently of
+      Investments tab? Draft says outside, so dividends load independently of
       snapshot, salary and expense readiness. — Owner: Clarence — A:
 - [ ] Q: Is the 12-month monthly chart enough, or do you want 24 months or a
       toggle (monthly / yearly)? Draft keeps 12 months plus the existing 5-year
