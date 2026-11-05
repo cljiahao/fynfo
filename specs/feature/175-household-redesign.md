@@ -7,7 +7,7 @@ author: Claude Code
 created: 2026-11-05
 approved: 2026-11-05 # YYYY-MM-DD, set on approval
 shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # no PR (direct to main); commit shas recorded per slice
+impl_pr: 'slice A f99133e' # no PR (direct to main); commit shas recorded per slice
 supersedes:
 constitution_satisfies:
   - '§1.1'
