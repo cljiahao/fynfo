@@ -57,7 +57,7 @@ describe('PlannerSplitEditor', () => {
     await userEvent.click(screen.getByRole('button', { name: /save split/i }));
 
     await waitFor(() =>
-      expect(external.setPlannerSplit).toHaveBeenCalledWith({
+      expect(external.setPlannerSplit.mock.calls[0][0]).toEqual({
         members: { [ME]: 70, [PARTNER]: 30 },
         goalOverrides: {},
       })
