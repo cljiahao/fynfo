@@ -103,6 +103,15 @@ describe('saveGoal', () => {
     expect(fake.calls.delete).toBe(1);
     const removed = fake.calls.queries.find((q) => q.operation === 'delete');
     expect(removed?.in[0]?.values).toEqual([ITEM_B]);
+    expect(removed?.eq).toContainEqual({ column: 'goal_id', value: GOAL_ID });
+    const updates = fake.calls.queries.filter(
+      (q) => q.table === 'household_goal_items' && q.operation === 'update'
+    );
+    expect(updates).toHaveLength(1);
+    expect(updates[0]?.eq).toContainEqual({
+      column: 'goal_id',
+      value: GOAL_ID,
+    });
   });
 
   it('skips the write for an unchanged existing row', async () => {

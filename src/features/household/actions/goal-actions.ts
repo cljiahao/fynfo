@@ -530,7 +530,8 @@ export async function saveGoal(input: unknown): Promise<SaveGoalResult> {
       const { error } = await supabase
         .from('household_goal_items')
         .update(seal(item))
-        .eq('id', item.id);
+        .eq('id', item.id)
+        .eq('goal_id', goalId);
       throwIfSupabaseError(error, 'household goal item update');
     }
 
@@ -550,7 +551,8 @@ export async function saveGoal(input: unknown): Promise<SaveGoalResult> {
       const { error } = await supabase
         .from('household_goal_items')
         .delete()
-        .in('id', removed);
+        .in('id', removed)
+        .eq('goal_id', goalId);
       throwIfSupabaseError(error, 'household goal item delete');
     }
     return { ok: true, goalId, itemIds };
