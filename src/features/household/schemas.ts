@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { GOAL_ITEM_LIMIT } from './constants';
 
+import { CATEGORY_MAX_LENGTH } from './constants';
+
 export const createHouseholdSchema = z.object({
   name: z.string().trim().min(1).max(80),
 });
@@ -122,7 +124,7 @@ export type UpdateGoalContributionInput = z.infer<
 export const setCategoryBudgetSchema = z.object({
   /** Present when editing an existing budget. */
   id: z.uuid().optional(),
-  category: z.string().trim().min(1).max(40),
+  category: z.string().trim().min(1).max(CATEGORY_MAX_LENGTH),
   monthlyAmount: z.number().positive().finite(),
 });
 

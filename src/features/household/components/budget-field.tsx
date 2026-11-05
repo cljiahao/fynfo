@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { formatSGD } from '@/lib/utils/currency';
 import { useId, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
-import { BUDGET_EXISTS } from '../constants';
+import { BUDGET_EXISTS, BUDGET_SUGGESTION_MONTHS } from '../constants';
 import {
   useDeleteCategoryBudget,
   useSetCategoryBudget,
@@ -153,7 +153,8 @@ export function BudgetField({
       </div>
       {suggestion !== null && (
         <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-          Average of the last 3 months: {mask(formatSGD(suggestion))}
+          Average of the last {BUDGET_SUGGESTION_MONTHS} months:{' '}
+          {mask(formatSGD(suggestion))}
           <Button
             type="button"
             size="xs"

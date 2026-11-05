@@ -41,6 +41,18 @@ async function readBudgets(ctx: Context): Promise<SpendingBudget[]> {
     .sort((a, b) => a.category.localeCompare(b.category));
 }
 
+async function readHouseholdId({ userId, supabase }: Context): Promise<string> {
+  const { data, error } = await supabase
+    .from('household_members')
+    .select('household_id')
+    .eq('user_id', userId);
+  throwIfSupabaseError(error, 'household member read');
+  const householdId = ((data ?? [])[0] as { household_id: string })
+    ?.household_id;
+  if (!householdId) throw new Error('No household');
+  return householdId;
+}
+
 /** Reads the household's decrypted monthly category budgets. */
 export async function getSpendingBudgets(): Promise<SpendingBudget[]> {
   return readBudgets(await requireHouseholdContext());
@@ -69,27 +81,26 @@ export async function setCategoryBudget(input: unknown): Promise<void> {
   const category = encryptPayload(data.category, kh);
   const monthlyAmount = encryptPayload(data.monthlyAmount.toString(), kh);
 
+  const householdId = await readHouseholdId(ctx);
+
   if (data.id) {
-    const { error } = await supabase
+    const { data: rows, error } = await supabase
       .from('household_spending_budgets')
       .update({
         category,
         monthly_amount: monthlyAmount,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', data.id);
+      .eq('id', data.id)
+      .eq('household_id', householdId)
+      .select('id');
     throwIfSupabaseError(error, 'household budget update');
+    // RLS hides rows from non-members without an error, so zero rows is not a save.
+    if (!rows || rows.length === 0) {
+      throw new AppError('NOT_FOUND', 'Budget not found');
+    }
     return;
   }
-
-  const { data: memberData, error: memberErr } = await supabase
-    .from('household_members')
-    .select('household_id')
-    .eq('user_id', userId);
-  throwIfSupabaseError(memberErr, 'household member read');
-  const householdId = ((memberData ?? [])[0] as { household_id: string })
-    ?.household_id;
-  if (!householdId) throw new Error('No household');
 
   const { error } = await supabase.from('household_spending_budgets').insert({
     id: randomUUID(),
@@ -104,10 +115,12 @@ export async function setCategoryBudget(input: unknown): Promise<void> {
 /** Deletes one category budget (RLS scoped). */
 export async function deleteCategoryBudget(id: string): Promise<void> {
   parseOrThrow(ROW_UUID, id, 'household.deleteBudget.id');
-  const { supabase } = await requireHouseholdContext();
-  const { error } = await supabase
+  const ctx = await requireHouseholdContext();
+  const householdId = await readHouseholdId(ctx);
+  const { error } = await ctx.supabase
     .from('household_spending_budgets')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('household_id', householdId);
   throwIfSupabaseError(error, 'household budget delete');
 }

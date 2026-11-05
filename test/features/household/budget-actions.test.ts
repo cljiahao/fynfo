@@ -119,10 +119,27 @@ describe('setCategoryBudget', () => {
     expect(fake.calls.insert).toHaveLength(0);
     const patch = fake.calls.update[0] as Record<string, string>;
     expect(decryptPayload(patch.monthly_amount, KH)).toBe('350');
-    expect(fake.calls.queries.at(-1)?.eq).toContainEqual({
-      column: 'id',
-      value: BUDGET_ID,
+    const eq = fake.calls.queries.at(-1)?.eq;
+    expect(eq).toContainEqual({ column: 'id', value: BUDGET_ID });
+    expect(eq).toContainEqual({
+      column: 'household_id',
+      value: HOUSEHOLD_ID,
     });
+  });
+
+  it('throws an opaque NOT_FOUND when the update changes no rows', async () => {
+    setSupabase();
+    const { setCategoryBudget } =
+      await import('@/features/household/actions/budget-actions');
+    const failure = await setCategoryBudget({
+      id: BUDGET_ID,
+      category: 'Groceries',
+      monthlyAmount: 100,
+    }).catch((e: Error) => e);
+    expect(failure).toMatchObject({ code: 'NOT_FOUND' });
+    expect((failure as Error).message).not.toMatch(
+      /household_spending_budgets/
+    );
   });
 
   it('rejects an edit that renames onto another budget', async () => {
@@ -187,9 +204,11 @@ describe('deleteCategoryBudget', () => {
       await import('@/features/household/actions/budget-actions');
     await deleteCategoryBudget(BUDGET_ID);
     expect(fake.calls.delete).toBe(1);
-    expect(fake.calls.queries.at(-1)?.eq).toContainEqual({
-      column: 'id',
-      value: BUDGET_ID,
+    const eq = fake.calls.queries.at(-1)?.eq;
+    expect(eq).toContainEqual({ column: 'id', value: BUDGET_ID });
+    expect(eq).toContainEqual({
+      column: 'household_id',
+      value: HOUSEHOLD_ID,
     });
   });
 
