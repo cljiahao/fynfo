@@ -10,6 +10,19 @@ import type { GoalItem, HouseholdGoal } from '../types';
 import { computeItemBudget } from './project-budget';
 
 /**
+ * Whole months from `now` to the target date, partial months rounded up, never
+ * below 1. Returns `null` when the date has already passed.
+ */
+export function monthsUntil(targetDate: string, now: Date): number | null {
+  const today = startOfDay(now);
+  const target = parseISO(targetDate.slice(0, 10));
+  if (target < today) return null;
+  const whole = differenceInMonths(target, today);
+  const months = addMonths(today, whole) < target ? whole + 1 : whole;
+  return Math.max(1, months);
+}
+
+/**
  * Amount to set aside per month to reach the target by its date, or `null`
  * when there is nothing to pace (no date, or already funded). `'past'` means
  * the date has gone by while the goal is still short. Partial months count as
@@ -20,12 +33,9 @@ export function monthlyPaceNeeded(
   now: Date
 ): number | 'past' | null {
   if (!goal.targetDate || goal.remaining <= 0) return null;
-  const today = startOfDay(now);
-  const target = parseISO(goal.targetDate.slice(0, 10));
-  if (target < today) return 'past';
-  const whole = differenceInMonths(target, today);
-  const months = addMonths(today, whole) < target ? whole + 1 : whole;
-  return goal.remaining / Math.max(1, months);
+  const months = monthsUntil(goal.targetDate, now);
+  if (months === null) return 'past';
+  return goal.remaining / months;
 }
 
 export interface CumulativePoint {
