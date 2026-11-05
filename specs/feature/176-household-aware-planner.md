@@ -2,10 +2,10 @@
 id: '176'
 slug: household-aware-planner
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-06
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-06 # YYYY-MM-DD, set on approval
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # no PR (direct to main); commit shas recorded per slice
 supersedes:
@@ -425,7 +425,7 @@ one after the other, in either order, never in parallel.
 
 ## Open questions
 
-- [ ] Q1: Investment-pause rule. The owner's wording ("while savings < target, all
+- [x] Q1: Investment-pause rule. The owner's wording ("while savings < target, all
       surplus goes to savings") differs from today's rule, which spreads the
       remaining emergency/war-chest need over 9 months and lets the rest flow to
       investment. To keep results identical with no household, proposed default:
@@ -433,25 +433,25 @@ one after the other, in either order, never in parallel.
       reserve gap exists; with no reserve the existing 9-month rule is kept. This
       makes investment pause as soon as any reserve gap appears. Should the strict
       rule also replace the 9-month rule for emergency and war chest (changing
-      today's results)? Owner: Clarence. A:
-- [ ] Q2: May either member edit the split, or only the household owner?
+      today's results)? Owner: Clarence. A: Strict "all surplus to savings" applies only while a household reserve gap exists. With no reserve, the existing 9-month emergency/war-chest rule is kept, so results are unchanged without a household. (owner, 2026-11-06, recommended default).
+- [x] Q2: May either member edit the split, or only the household owner?
       Proposed default: either member, since it is a mutual agreement and RLS
-      treats members alike. Owner: Clarence. A:
-- [ ] Q3: For project goals with items, is `remaining` simply target minus
+      treats members alike. Owner: Clarence. A: Either member may edit the split. (owner, 2026-11-06, recommended default).
+- [x] Q3: For project goals with items, is `remaining` simply target minus
       contributions (`goal.remaining`), or the committed amount (`quote ?? budget`
       per item, `goalCommitted`, `goal-stats.ts:141-146`)? Proposed default:
       `goal.remaining`, which matches the pace line and burn-up. Owner: Clarence.
-      A:
-- [ ] Q4: Should the planner warn when personal Expenses look like they already
+      A: Use `goal.remaining` (target minus contributions). (owner, 2026-11-06, recommended default).
+- [x] Q4: Should the planner warn when personal Expenses look like they already
       include a household cost? Proposed default: copy guidance only, no
-      detection. Owner: Clarence. A:
-- [ ] Q5: Expenses window N = 6 full months (proposed) or 3? Owner: Clarence. A:
-- [ ] Q6: Horizon default 24 months, configurable 1 to 120, stored in
+      detection. Owner: Clarence. A: Copy guidance only, no detection. (owner, 2026-11-06, recommended default).
+- [x] Q5: Expenses window N = 6 full months (proposed) or 3? Owner: Clarence. A: N = 6 full months. (owner, 2026-11-06, recommended default).
+- [x] Q6: Horizon default 24 months, configurable 1 to 120, stored in
       `planner_settings`. Is a personal (not shared) horizon right? Proposed
-      default: personal. Owner: Clarence. A:
-- [ ] Q7: Persist the expenses override only per browser (`localStorage`,
+      default: personal. Owner: Clarence. A: Personal horizon, default 24, range 1 to 120, stored in `planner_settings`. (owner, 2026-11-06, recommended default).
+- [x] Q7: Persist the expenses override only per browser (`localStorage`,
       proposed) or per account (would need an encrypted column and a migration)?
-      Owner: Clarence. A:
-- [ ] Q8: Should a budget in a category whose goal already exists be netted out?
+      Owner: Clarence. A: `localStorage` only, per browser. (owner, 2026-11-06, recommended default).
+- [x] Q8: Should a budget in a category whose goal already exists be netted out?
       Proposed default: no, goals and budgets are independent lines. Owner:
-      Clarence. A:
+      Clarence. A: No netting; goals and budgets are independent lines. (owner, 2026-11-06, recommended default).

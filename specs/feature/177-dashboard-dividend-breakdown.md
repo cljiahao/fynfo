@@ -2,10 +2,10 @@
 id: '177'
 slug: dashboard-dividend-breakdown
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-06
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-06 # YYYY-MM-DD, set on approval
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # no PR (direct to main); commit shas recorded per slice
 supersedes:
@@ -82,8 +82,9 @@ The dividend card goes in that tab after `InvestmentBreakdown` and
 `InvestmentAllocation`. The coverage line depends on `plannerValues.expenses`,
 which stays reachable because it is lifted into `dashboard-overview.tsx` state
 via `handlePlannerValuesChange` (`:54-67`) regardless of which tab renders
-`SalaryPlanner`. If 176 changes that, the coverage line is dropped from 177
-rather than re-plumbed.
+`SalaryPlanner`. Spec 176 changes what that value is (a 6-month average or the
+user's override), not whether it is available, so the coverage line stays
+and uses the new value.
 
 ## Solution shape
 
@@ -133,8 +134,8 @@ tested, owner-seen). Add, in this order:
    `ttmDistributionsSGD` (`dividend-metrics.ts:124-154`) and `computeHoldings`
    from the trades already cached by `useTrades`. Sold tickers show no yield
    (cost basis of shares held is 0). Note `costBasis` is whatever currency
-   `computeHoldings` produces; verify at S1 that it is SGD-comparable (see Open
-   questions).
+   `computeHoldings` produces; verify at S1 whether it is SGD-comparable and convert if not (see
+   Open questions).
 6. **Forward 12-month estimate**: TTM SGD of tickers currently held, labelled
    "Estimate: assumes the last 12 months repeat for current holdings". Shown as
    a line, not a stat card, so it cannot be mistaken for a figure. Excludes
@@ -146,10 +147,12 @@ tested, owner-seen). Add, in this order:
    `DividendSummary` receives it as an optional `monthlyExpenses` prop; the
    feature does not import from `assets` (avoids a cross-feature cycle).
 
-Dropped, with reasons: **SGD vs USD split** (the card already says USD is
-converted at a current rate; a split adds a number that moves with FX, and top
-tickers already reveal the USD names); **stacked or by-year monthly chart**
-(see 3); any per-payment table (lives on the Equity Dividends tab).
+The **SGD vs USD split** is kept as one caption line under the total, masked
+with the other amounts (owner decision, 2026-11-06). The card's existing note
+that USD is converted at a current rate stays beside it.
+
+Dropped, with reasons: **stacked or by-year monthly chart** (see 3); any
+per-payment table (lives on the Equity Dividends tab).
 
 All amounts use `mask(formatSGDWhole(...))`; percentages are not masked (they
 leak no absolute amount) except the coverage percent, which is masked too
@@ -281,24 +284,24 @@ record shas in `impl_pr`.
 - **Risks**: FX estimate applied to a forward figure (mitigated by labelling);
   yield on cost depends on `costBasis` currency (see Open questions); a user
   may read the forward estimate as a promise (label wording is explicit);
-  `plannerValues.expenses` is the planner's own average, not necessarily
-  "planned" expenses (see Open questions).
+  `plannerValues.expenses` is the planner's recent average or the user's
+  override, not necessarily "planned" expenses (see Open questions).
 
 ## Open questions
 
-- [ ] Q: Is `Holding.costBasis` (`src/features/equity/lib/holdings.ts:11`, from
+- [x] Q: Is `Holding.costBasis` (`src/features/equity/lib/holdings.ts:11`, from
       trade prices) in the same currency as SGD-converted TTM for US tickers?
       If not, yield on cost per ticker for USD names needs a currency
       conversion or must be limited to SG tickers. — Owner: author at S1
-      (read-only check), Clarence if a product call — A:
-- [ ] Q: Which expenses figure should coverage use: `plannerValues.expenses`
+      (read-only check), Clarence if a product call — A: Check at S1 whether `Holding.costBasis` is in the ticker's native currency. If it is not SGD, convert it to SGD with the same FX source the TTM SGD total uses. (owner, 2026-11-06, recommended default).
+- [x] Q: Which expenses figure should coverage use: `plannerValues.expenses`
       (the planner's all-time average monthly expense, `salary-planner.tsx:109`)
-      or a different "planned" number? — Owner: Clarence — A:
-- [ ] Q: Should `DividendSummary` sit inside or outside `QueryContent` in the
+      or a different "planned" number? — Owner: Clarence — A: Use `plannerValues.expenses`, which after spec 176 is the recent 6-month average or the user's override. (owner, 2026-11-06, recommended default).
+- [x] Q: Should `DividendSummary` sit inside or outside `QueryContent` in the
       Investments tab? Draft says outside, so dividends load independently of
-      snapshot, salary and expense readiness. — Owner: Clarence — A:
-- [ ] Q: Is the 12-month monthly chart enough, or do you want 24 months or a
+      snapshot, salary and expense readiness. — Owner: Clarence — A: Outside `QueryContent`, so dividends load independently of snapshot, salary and expense readiness. (owner, 2026-11-06, recommended default).
+- [x] Q: Is the 12-month monthly chart enough, or do you want 24 months or a
       toggle (monthly / yearly)? Draft keeps 12 months plus the existing 5-year
-      chart. — Owner: Clarence — A:
-- [ ] Q: Drop the SGD vs USD split as proposed, or keep it as one caption line?
-      — Owner: Clarence — A:
+      chart. — Owner: Clarence — A: 12-month bar chart plus the existing 5-year chart; no toggle. (owner, 2026-11-06, recommended default).
+- [x] Q: Drop the SGD vs USD split as proposed, or keep it as one caption line?
+      — Owner: Clarence — A: Keep the SGD vs USD split as a single caption line under the total, masked like the other amounts. (owner, 2026-11-06, recommended default).
