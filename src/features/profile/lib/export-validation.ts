@@ -119,6 +119,7 @@ const planner = z.strictObject({
   tithePct: percentage,
   allowanceEnabled: z.boolean(),
   allowancePct: percentage,
+  householdHorizonMonths: z.number().int().min(1).max(120).optional(),
 });
 const scenarioPayload = z
   .strictObject({

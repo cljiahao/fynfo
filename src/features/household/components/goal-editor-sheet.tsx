@@ -31,6 +31,7 @@ import { useSaveGoal } from '../hooks/use-household';
 import { computeGoalDelta, type DraftItem } from '../lib/goal-delta';
 import { saveGoalSchema } from '../schemas';
 import type { HouseholdGoal } from '../types';
+import { GoalSplitOverride } from './goal-split-override';
 
 interface GoalEditorSheetProps {
   open: boolean;
@@ -411,6 +412,7 @@ function GoalEditorForm({
             Add item
           </Button>
         </fieldset>
+        {goal && <GoalSplitOverride goalId={goal.id} />}
       </div>
       <SheetFooter>
         <Button type="button" variant="outline" onClick={onDone}>

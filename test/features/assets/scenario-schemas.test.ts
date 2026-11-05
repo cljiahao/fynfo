@@ -24,6 +24,25 @@ const payload = {
     currentBonds: 2000,
   },
 };
+describe('scenario household fields', () => {
+  it('still validates a stored payload without the household figures', () => {
+    expect(scenarioPayloadSchema.safeParse(payload).success).toBe(true);
+  });
+
+  it('accepts and bounds the optional household figures', () => {
+    const withHousehold = (extra: Record<string, number>) =>
+      scenarioPayloadSchema.safeParse({
+        ...payload,
+        inputs: { ...payload.inputs, ...extra },
+      }).success;
+    expect(
+      withHousehold({ householdMonthlyDeduction: 400, householdReserve: 9000 })
+    ).toBe(true);
+    expect(withHousehold({ householdMonthlyDeduction: -1 })).toBe(false);
+    expect(withHousehold({ householdReserve: 1e9 + 1 })).toBe(false);
+  });
+});
+
 describe('scenario storage contract', () => {
   it('preserves all ten inputs, fractional months and negative captured balances', () => {
     const parsed = scenarioPayloadSchema.parse(payload);

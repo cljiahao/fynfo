@@ -18,6 +18,7 @@ export {
   getHousehold,
   unlockHousehold,
 } from './actions/household-actions';
+export { getPlannerSplit, setPlannerSplit } from './actions/planner-actions';
 export {
   addSpending,
   createSpace,
@@ -42,6 +43,7 @@ export type {
   HouseholdSpaceKind,
   HouseholdSummary,
   InviteResult,
+  PlannerSplit,
   SaveGoalResult,
   SharedSpendingEntry,
 } from './types';

@@ -113,3 +113,14 @@ export interface SpendingBudget {
   category: string;
   monthlyAmount: number;
 }
+
+export interface PlannerSplit {
+  /** Percentage per household member id; totals 100. */
+  members: Record<string, number>;
+  /** Per-goal percentage overrides keyed by goal id, then member id. */
+  goalOverrides: Record<string, Record<string, number>>;
+  /** True when no split has been saved yet and the 50/50 default is shown. */
+  isDefault: boolean;
+  /** The caller, so the UI can label "your share". */
+  userId: string;
+}

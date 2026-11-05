@@ -29,6 +29,7 @@ const VALID_SETTINGS = {
   tithePct: 10,
   allowanceEnabled: false,
   allowancePct: 0,
+  householdHorizonMonths: 24,
 };
 
 describe('planner-actions — getPlannerSettings', () => {
@@ -100,5 +101,47 @@ describe('planner-actions — upsertPlannerSettings', () => {
     await expect(upsertPlannerSettings(VALID_SETTINGS)).rejects.toThrow(
       'planner write failed'
     );
+  });
+
+  it('writes the household horizon when given and omits it otherwise', async () => {
+    const fake = setSupabase();
+    const { upsertPlannerSettings } =
+      await import('@/features/assets/actions/planner-actions');
+    await upsertPlannerSettings({
+      ...VALID_SETTINGS,
+      householdHorizonMonths: 36,
+    });
+    const { householdHorizonMonths: omitted, ...withoutHorizon } =
+      VALID_SETTINGS;
+    expect(omitted).toBe(24);
+    await upsertPlannerSettings(withoutHorizon);
+
+    const [first, second] = fake.calls.upsert as Record<string, unknown>[];
+    expect(first.household_horizon_months).toBe(36);
+    expect('household_horizon_months' in second).toBe(false);
+  });
+
+  it.each([0, 121, 12.5])('rejects horizon %s', async (months) => {
+    const fake = setSupabase();
+    const { upsertPlannerSettings } =
+      await import('@/features/assets/actions/planner-actions');
+    await expect(
+      upsertPlannerSettings({
+        ...VALID_SETTINGS,
+        householdHorizonMonths: months,
+      })
+    ).rejects.toThrow();
+    expect(fake.calls.upsert).toHaveLength(0);
+  });
+
+  it.each([1, 120])('accepts horizon bound %s', async (months) => {
+    const fake = setSupabase();
+    const { upsertPlannerSettings } =
+      await import('@/features/assets/actions/planner-actions');
+    await upsertPlannerSettings({
+      ...VALID_SETTINGS,
+      householdHorizonMonths: months,
+    });
+    expect(fake.calls.upsert).toHaveLength(1);
   });
 });

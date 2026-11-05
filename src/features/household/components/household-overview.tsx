@@ -25,6 +25,7 @@ import { GoalList } from './goal-list';
 import { HouseholdSetup } from './household-setup';
 import { HouseholdSkeleton } from './household-skeleton';
 import { InvitePanel } from './invite-panel';
+import { PlannerSplitEditor } from './planner-split-editor';
 import { SharedSpending } from './shared-spending';
 
 const VIEWS = [
@@ -138,6 +139,9 @@ export function HouseholdOverview() {
               {goals.data && (
                 <>
                   {showInvite && <InvitePanel />}
+                  {household.data.memberCount === HOUSEHOLD_MEMBER_CAP && (
+                    <PlannerSplitEditor />
+                  )}
                   <GoalList
                     goals={goals.data}
                     onCreate={() => {

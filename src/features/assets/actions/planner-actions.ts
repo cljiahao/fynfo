@@ -7,13 +7,15 @@ import { randomUUID } from 'crypto';
 import { plannerSettingsSchema } from '../schemas';
 import type { PlannerSettingsData } from '../types';
 
+const DEFAULT_HOUSEHOLD_HORIZON_MONTHS = 24;
+
 export async function getPlannerSettings(): Promise<PlannerSettingsData | null> {
   const { userId, supabase } = await requireDbContext();
 
   const { data, error } = await supabase
     .from('planner_settings')
     .select(
-      'emergency_months, war_chest_months, tithe_enabled, tithe_pct, allowance_enabled, allowance_pct'
+      'emergency_months, war_chest_months, tithe_enabled, tithe_pct, allowance_enabled, allowance_pct, household_horizon_months'
     )
     .eq('user_id', userId)
     .maybeSingle();
@@ -28,6 +30,8 @@ export async function getPlannerSettings(): Promise<PlannerSettingsData | null> 
     tithePct: data.tithe_pct,
     allowanceEnabled: data.allowance_enabled,
     allowancePct: data.allowance_pct,
+    householdHorizonMonths:
+      data.household_horizon_months ?? DEFAULT_HOUSEHOLD_HORIZON_MONTHS,
   };
 }
 
@@ -47,6 +51,10 @@ export async function upsertPlannerSettings(
       tithe_pct: data.tithePct,
       allowance_enabled: data.allowanceEnabled,
       allowance_pct: data.allowancePct,
+      // Omitted when absent so a planner save never resets the stored horizon.
+      ...(data.householdHorizonMonths === undefined
+        ? {}
+        : { household_horizon_months: data.householdHorizonMonths }),
       updated_at: new Date().toISOString(),
     },
     {

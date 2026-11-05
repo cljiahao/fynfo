@@ -129,3 +129,41 @@ export const setCategoryBudgetSchema = z.object({
 });
 
 export type SetCategoryBudgetInput = z.infer<typeof setCategoryBudgetSchema>;
+
+const PCT = z.number().int().min(0).max(100);
+const MAX_GOAL_OVERRIDES = 500;
+
+// A split always covers exactly the two household members and totals 100.
+const pctMapSchema = z
+  .record(z.uuid(), PCT)
+  .refine((map) => Object.keys(map).length === 2, {
+    message: 'a split covers exactly two members',
+  })
+  .refine(
+    (map) => Object.values(map).reduce((sum, pct) => sum + pct, 0) === 100,
+    { message: 'a split must total 100' }
+  );
+
+export const plannerSplitSchema = z
+  .object({
+    members: pctMapSchema,
+    goalOverrides: z
+      .record(z.uuid(), pctMapSchema)
+      .refine((all) => Object.keys(all).length <= MAX_GOAL_OVERRIDES, {
+        message: 'too many goal overrides',
+      }),
+  })
+  .refine(
+    ({ members, goalOverrides }) => {
+      const ids = Object.keys(members).sort().join();
+      return Object.values(goalOverrides).every(
+        (map) => Object.keys(map).sort().join() === ids
+      );
+    },
+    {
+      message: 'overrides must cover the same two members',
+      path: ['goalOverrides'],
+    }
+  );
+
+export type PlannerSplitInput = z.infer<typeof plannerSplitSchema>;

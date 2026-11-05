@@ -56,6 +56,8 @@ export interface PlannerSettingsData {
   tithePct: number;
   allowanceEnabled: boolean;
   allowancePct: number;
+  /** Months of household goals reserved up front; the stored default is 24. */
+  householdHorizonMonths?: number;
 }
 
 export interface ScenarioPayload {

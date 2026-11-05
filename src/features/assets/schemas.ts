@@ -42,6 +42,7 @@ export const plannerSettingsSchema = z.object({
   tithePct: z.number().min(0).max(100),
   allowanceEnabled: z.boolean(),
   allowancePct: z.number().min(0).max(100),
+  householdHorizonMonths: z.number().int().min(1).max(120).optional(),
 });
 
 // Bounds apply only to saved snapshots, not the live planner contract.
@@ -56,6 +57,8 @@ export const scenarioInputsSchema = z.strictObject({
   allowancePctInput: z.number().min(0).max(100),
   currentSavings: z.number().min(-1e9).max(1e9),
   currentBonds: z.number().min(-1e9).max(1e9),
+  householdMonthlyDeduction: z.number().min(0).max(1e9).optional(),
+  householdReserve: z.number().min(0).max(1e9).optional(),
 });
 
 export const scenarioPayloadSchema = z.strictObject({

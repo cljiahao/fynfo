@@ -40,6 +40,9 @@ vi.mock('@/features/household/components/goal-list', () => ({
 vi.mock('@/features/household/components/invite-panel', () => ({
   InvitePanel: () => <div>Private invite</div>,
 }));
+vi.mock('@/features/household/components/planner-split-editor', () => ({
+  PlannerSplitEditor: () => <div>Split editor</div>,
+}));
 vi.mock('@/features/household/components/goal-editor-sheet', () => ({
   GoalEditorSheet: () => <div>Goal editor sheet</div>,
 }));
