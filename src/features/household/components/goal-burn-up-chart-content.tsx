@@ -19,6 +19,7 @@ import { useState } from 'react';
 import { burnUpSeries } from '../lib/goal-stats';
 import type { HouseholdGoal } from '../types';
 
+const SAVED_STROKE = 'var(--chart-2)';
 const SERIES_LABEL = { saved: 'Saved', needed: 'Needed pace' } as const;
 
 export function GoalBurnUpChart({ goal }: { goal: HouseholdGoal }) {
@@ -34,6 +35,10 @@ export function GoalBurnUpChart({ goal }: { goal: HouseholdGoal }) {
     saved: row.saved,
     needed: row.needed,
   }));
+  const yMax = Math.max(
+    goal.targetAmount,
+    ...data.map((row) => Math.max(row.saved ?? 0, row.needed ?? 0))
+  );
   const hasPace = data.some((row) => row.needed !== null);
 
   return (
@@ -58,7 +63,8 @@ export function GoalBurnUpChart({ goal }: { goal: HouseholdGoal }) {
               tickLine={false}
               axisLine={false}
               width={56}
-              domain={[0, (max: number) => Math.max(max, goal.targetAmount)]}
+              domain={[0, yMax]}
+              ticks={[0, yMax / 4, yMax / 2, (yMax * 3) / 4, yMax]}
               tickFormatter={(v: number) => formatSGDWhole(v)}
               {...CHART_AXIS_TICK_PROPS}
             />
@@ -87,7 +93,7 @@ export function GoalBurnUpChart({ goal }: { goal: HouseholdGoal }) {
             <Line
               type="monotone"
               dataKey="saved"
-              stroke="var(--chart-2)"
+              stroke={SAVED_STROKE}
               strokeWidth={2}
               dot={data.length < 3}
               connectNulls
@@ -97,7 +103,13 @@ export function GoalBurnUpChart({ goal }: { goal: HouseholdGoal }) {
         </ResponsiveContainer>
       </div>
       <p className="text-muted-foreground flex flex-wrap gap-x-4 text-xs">
-        <span>Saved</span>
+        <span className="flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className="inline-block h-0.5 w-4 rounded-full bg-[var(--chart-2)]"
+          />
+          Saved
+        </span>
         {hasPace && <span>Dashed: needed pace to the target date</span>}
       </p>
     </div>

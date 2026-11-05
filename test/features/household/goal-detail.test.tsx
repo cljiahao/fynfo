@@ -93,6 +93,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+const overCommittedGoal: HouseholdGoal = {
+  ...goalWithItems,
+  contributed: 8000,
+};
+
 describe('with items', () => {
   it('shows the header, stats, charts, items and activity', () => {
     mount();
@@ -114,27 +119,42 @@ describe('with items', () => {
     expect(screen.getByText(/You added /)).toBeInTheDocument();
   });
 
-  it('warns when items total above the target', () => {
+  it('warns when saved plus still-to-pay is above the target, matching the bar', () => {
+    setGoals([overCommittedGoal]);
     mount();
     expect(screen.getByRole('status')).toHaveTextContent(
-      /Items total .*11,000\.00, above the .*10,000\.00 target/
+      /Saved plus items still to pay total .*11,000\.00, above the .*10,000\.00 target/
     );
+    expect(
+      screen.getByText('Saved plus what is still to pay is above the target.')
+    ).toBeInTheDocument();
+  });
+
+  it('stays quiet when items total above the target but nothing is over-committed', () => {
+    mount();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(
+      screen.queryByText('Saved plus what is still to pay is above the target.')
+    ).toBeNull();
   });
 
   it('keeps totals and the warning consistent while an item delete is pending', () => {
+    setGoals([overCommittedGoal]);
     vi.useFakeTimers();
     mount();
-    fireEvent.click(screen.getByRole('button', { name: 'Delete item Venue' }));
-    expect(screen.queryByText('Venue')).toBeNull();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Delete item Photographer' })
+    );
+    expect(screen.queryByText('Photographer')).toBeNull();
     expect(screen.queryByRole('status')).toBeNull();
-    expect(screen.getByText(/of .*3,000\.00 budgeted/)).toBeInTheDocument();
+    expect(screen.getByText(/of .*8,000\.00 budgeted/)).toBeInTheDocument();
     const undo = (
       toasts.toast.mock.calls.at(-1)?.[1] as {
         action: { onClick: () => void };
       }
     ).action.onClick;
     act(() => undo());
-    expect(screen.getAllByText('Venue').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Photographer').length).toBeGreaterThan(0);
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
@@ -170,6 +190,36 @@ describe('with items', () => {
     expect(
       screen.getByRole('dialog', { name: 'Edit contribution' })
     ).toBeVisible();
+  });
+
+  it('finds a payment that belongs to a later item', () => {
+    const [venue, photographer] = goalWithItems.items;
+    setGoals([
+      {
+        ...goalWithItems,
+        items: [
+          venue,
+          {
+            ...photographer,
+            paid: 500,
+            payments: [
+              {
+                id: 'p9',
+                amount: 500,
+                note: null,
+                date: '2026-10-06',
+                isSelf: true,
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+    mount();
+    fireEvent.click(
+      screen.getByRole('button', { name: /^Edit You paid .* to Photographer$/ })
+    );
+    expect(screen.getByRole('dialog', { name: 'Edit payment' })).toBeVisible();
   });
 });
 

@@ -23,6 +23,8 @@ import {
   useUndoableDelete,
 } from '../hooks/use-undoable-delete';
 import {
+  breakdownSegments,
+  goalCommitted,
   monthlyPaceNeeded,
   recentActivity,
   withoutPending,
@@ -175,6 +177,7 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
   const funded = goal.targetAmount > 0 && goal.contributed >= goal.targetAmount;
   const pace = monthlyPaceNeeded(goal, new Date());
   const hasItems = goal.items.length > 0;
+  const { overCommitted } = breakdownSegments(goal);
   const activity = recentActivity(goal, RECENT_ACTIVITY_LIMIT);
 
   function openEditor() {
@@ -191,7 +194,10 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
     }
     for (const item of goal.items) {
       const found = item.payments.find((p) => p.id === entry.id);
-      if (found) setEditingPayment({ payment: found, itemName: item.name });
+      if (found) {
+        setEditingPayment({ payment: found, itemName: item.name });
+        break;
+      }
     }
   }
 
@@ -315,9 +321,10 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
             Add item
           </Button>
         </div>
-        {!hidden && goal.budgeted > goal.targetAmount && (
+        {!hidden && overCommitted && (
           <p role="status" className="text-warning text-xs">
-            Items total {mask(formatSGD(goal.budgeted))}, above the{' '}
+            Saved plus items still to pay total{' '}
+            {mask(formatSGD(goal.contributed + goalCommitted(goal)))}, above the{' '}
             {mask(formatSGD(goal.targetAmount))} target.
           </p>
         )}
