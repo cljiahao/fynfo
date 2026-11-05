@@ -9,7 +9,7 @@ import {
   PaginationControls,
 } from '@/components/widgets';
 import { formatCurrency } from '@/lib/utils/currency';
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 import { Coins, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';

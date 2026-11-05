@@ -14,7 +14,8 @@ import {
   YAxis,
 } from '@/lib/recharts';
 import { formatSGDWhole } from '@/lib/utils/currency';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns/format';
+import { parseISO } from 'date-fns/parseISO';
 import { cumulativeContributions } from '../lib/goal-stats';
 import type { HouseholdGoal } from '../types';
 

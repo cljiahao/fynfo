@@ -16,7 +16,7 @@ import {
   PaginationControls,
 } from '@/components/widgets';
 import { formatCurrency } from '@/lib/utils/currency';
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 import { Pencil, Trash2, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';

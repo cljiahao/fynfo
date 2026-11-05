@@ -5,6 +5,13 @@ import prettier from 'eslint-config-prettier/flat';
 import sonarjs from 'eslint-plugin-sonarjs';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
+// Exact-path match: the bare barrel is blocked, date-fns/<fn> subpaths are not.
+const dateFnsBarrelRestriction = {
+  name: 'date-fns',
+  message:
+    'Import from a subpath such as date-fns/format to keep test and bundle import cost low.',
+};
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -66,6 +73,7 @@ const eslintConfig = defineConfig([
       'no-restricted-imports': [
         'error',
         {
+          paths: [dateFnsBarrelRestriction],
           patterns: [
             {
               group: ['@/features/*/*'],
@@ -75,6 +83,12 @@ const eslintConfig = defineConfig([
           ],
         },
       ],
+    },
+  },
+  {
+    files: ['test/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', { paths: [dateFnsBarrelRestriction] }],
     },
   },
   globalIgnores([

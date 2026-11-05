@@ -8,7 +8,7 @@ import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatSGD } from '@/lib/utils/currency';
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 import { Plane, Plus, Trash2, X } from 'lucide-react';
 import { useId, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';

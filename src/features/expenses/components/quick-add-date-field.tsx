@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/popover';
 import { useAmountVisibility } from '@/features/privacy';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 import { CalendarIcon } from 'lucide-react';
 
 export function QuickAddDateField({

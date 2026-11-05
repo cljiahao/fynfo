@@ -4,7 +4,7 @@ import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 import { ClipboardPaste, Plus, Zap } from 'lucide-react';
 import {
   useEffect,

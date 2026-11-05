@@ -18,7 +18,8 @@ import {
   XAxis,
   YAxis,
 } from '@/lib/recharts';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns/format';
+import { parseISO } from 'date-fns/parseISO';
 import type { DailyPoint } from '../types';
 
 interface MarketingTrendChartProps {

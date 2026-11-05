@@ -9,7 +9,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const external = vi.hoisted(() => ({
   getSnapshots: vi.fn(),

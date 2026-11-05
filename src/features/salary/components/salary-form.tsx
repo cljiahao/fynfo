@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useId, type FormEvent } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';

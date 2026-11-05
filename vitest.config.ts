@@ -21,6 +21,23 @@ export default defineConfig({
     maxWorkers: 2,
     passWithNoTests: false,
     include: ['test/**/*.{test,spec}.{ts,tsx}'],
+    deps: {
+      // Pre-bundling these barrels once avoids re-transforming them in every
+      // test file's fresh module graph, which dominated import time (spec 174).
+      optimizer: {
+        ssr: {
+          enabled: true,
+          include: [
+            'date-fns',
+            'react-day-picker',
+            'radix-ui',
+            'recharts',
+            'lucide-react',
+            '@testing-library/react',
+          ],
+        },
+      },
+    },
     coverage: {
       provider: 'v8',
       // Concurrent runs in one checkout need their own output folder.

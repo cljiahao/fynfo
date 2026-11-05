@@ -1,4 +1,5 @@
-import { format, subYears } from 'date-fns';
+import { format } from 'date-fns/format';
+import { subYears } from 'date-fns/subYears';
 import type { ExpenseData } from '../types';
 
 export interface MonthGroup {

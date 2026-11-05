@@ -24,7 +24,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 import { createRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 

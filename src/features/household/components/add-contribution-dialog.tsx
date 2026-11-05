@@ -14,7 +14,7 @@ import {
 import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useAddContribution } from '../hooks/use-household';

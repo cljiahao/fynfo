@@ -18,7 +18,7 @@ import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { formatSGD } from '@/lib/utils/currency';
 import { YYYY_MM } from '@/lib/zod-utils';
 import { useIsMutating } from '@tanstack/react-query';
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 import Link from 'next/link';
 import { useState } from 'react';
 import { qualifyBudgetSpending } from '../lib/budget-reserve';

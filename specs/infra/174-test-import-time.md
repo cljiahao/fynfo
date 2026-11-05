@@ -151,6 +151,21 @@ model: none. No new components, hooks or actions.
 - [ ] Manual: the date picker, quick-add date field and household charts render and format dates as before
 - [ ] Spec hash matches at impl PR time
 
+## Results
+
+Measured with `vitest run --shard N/4` (no coverage), seconds. The host is
+shared with other vitest runs, so rows marked contended are not comparable.
+
+| Shard | Before wall / import | After wall / import | Note                                                  |
+| ----- | -------------------- | ------------------- | ----------------------------------------------------- |
+| 1/4   | 77.5 / 86.3          | 60.9 / 58.7         | both quiet; import -32%                               |
+| 2/4   | 146.4 / 138.6        | 74.0 / 63.3         | before contended (another run active); not comparable |
+| 3/4   | 181.7 / 191.1        | 80.4 / 74.8         | before contended; not comparable                      |
+| 4/4   | 73.6 / 77.0          | 70.1 / 63.0         | both quiet; import -18%                               |
+
+Only one run per shard was taken after the host became contended; the quiet
+shards 1 and 4 show the effect. All shards pass (586, 732, 515, 689 tests).
+
 ## Risk & reversibility
 
 - **Blast radius**: test tooling plus 21 source files, mechanical import

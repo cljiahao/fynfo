@@ -1,5 +1,8 @@
 import { formatSGD } from '@/lib/utils/currency';
-import { addMonths, differenceInMonths, parseISO, startOfDay } from 'date-fns';
+import { addMonths } from 'date-fns/addMonths';
+import { differenceInMonths } from 'date-fns/differenceInMonths';
+import { parseISO } from 'date-fns/parseISO';
+import { startOfDay } from 'date-fns/startOfDay';
 import { ITEM_CHART_CAP, NO_ITEMS_SUMMARY } from '../constants';
 import type { HouseholdGoal } from '../types';
 import { computeItemBudget } from './project-budget';

@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 import type { EquityTradeData } from '../types';
 import { resolveMarket } from './ticker-map';
 import type { Market } from './ticker-market';

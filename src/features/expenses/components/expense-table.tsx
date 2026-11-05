@@ -3,7 +3,7 @@
 import { useAmountVisibility } from '@/features/privacy';
 
 import { EmptyState, PaginationControls } from '@/components/widgets';
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 import { Receipt } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';

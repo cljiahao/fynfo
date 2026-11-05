@@ -5,7 +5,7 @@ import { useAmountVisibility } from '@/features/privacy';
 import { Button } from '@/components/ui/button';
 import { ProgressBar, StatCard } from '@/components/widgets';
 import { formatSGD } from '@/lib/utils/currency';
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 import { ChevronLeft, Lock, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';

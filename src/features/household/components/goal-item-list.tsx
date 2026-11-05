@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { formatSGD } from '@/lib/utils/currency';
-import { format } from 'date-fns';
+import { format } from 'date-fns/format';
 import { Trash2, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
