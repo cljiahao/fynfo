@@ -148,7 +148,7 @@ model: none. No new components, hooks or actions.
 - [x] `pnpm build` green
 - [x] No bare `date-fns` imports remain in `src/` or `test/` (`grep` returns none); a bare import under `test/` also fails lint
 - [x] Before/after import (collect) time and wall time recorded for all four shards (`pnpm test:shard 1/4` to `4/4`), same idle host, two runs each, in the PR body; shard 1 import time expected near 49.5 s from 67 s
-- [ ] Manual: the date picker, quick-add date field and household charts render and format dates as before
+- [x] Manual: the date picker, quick-add date field and household charts render and format dates as before (owner-verified 2026-11-05)
 - [x] Spec hash matches at impl PR time
 
 ## Results
