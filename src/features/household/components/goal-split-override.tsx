@@ -27,9 +27,9 @@ function OverrideForm({
   );
   if (!partnerId) return null;
 
-  const write = (goalOverrides: PlannerSplit['goalOverrides']) =>
+  const write = (next: Record<string, number> | null) =>
     save.mutate(
-      { members: split.members, goalOverrides },
+      { goalId, override: next },
       {
         onSuccess: () => toast.success('Goal split saved'),
         onError: () => toast.error('Could not save the split, try again'),
@@ -42,16 +42,12 @@ function OverrideForm({
 
   const onSave = () => {
     if (pct === null) return;
-    write({
-      ...split.goalOverrides,
-      [goalId]: { [split.userId]: pct, [partnerId]: 100 - pct },
-    });
+    write({ [split.userId]: pct, [partnerId]: 100 - pct });
   };
 
   const onReset = () => {
-    const { [goalId]: _removed, ...rest } = split.goalOverrides;
     setMine('');
-    write(rest);
+    write(null);
   };
 
   return (

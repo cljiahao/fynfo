@@ -167,3 +167,12 @@ export const plannerSplitSchema = z
   );
 
 export type PlannerSplitInput = z.infer<typeof plannerSplitSchema>;
+
+// Partial updates: the caller names only the part it edited, so a stale client
+// cache can never overwrite what the partner saved meanwhile.
+export const plannerSplitUpdateSchema = z.union([
+  z.object({ members: pctMapSchema }),
+  z.object({ goalId: z.uuid(), override: pctMapSchema.nullable() }),
+]);
+
+export type PlannerSplitUpdateInput = z.infer<typeof plannerSplitUpdateSchema>;

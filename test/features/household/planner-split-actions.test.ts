@@ -11,14 +11,17 @@ const STRANGER = '33333333-3333-4333-8333-333333333333';
 const KH = Buffer.alloc(32, 9);
 const HOUSEHOLD_ID = '7d1c6c0e-1f0a-4f55-8d0e-0a8e4b7a0c11';
 const LIVE_GOAL = '44444444-4444-4444-8444-444444444444';
+const OTHER_GOAL = '66666666-6666-4666-8666-666666666666';
 const DELETED_GOAL = '55555555-5555-4555-8555-555555555555';
 
 let supabase: ReturnType<typeof makeFakeSupabase>['client'];
 const order: string[] = [];
+let guardError: Error | null = null;
 
 vi.mock('@/lib/action-guard', () => ({
   requireHouseholdContext: async () => {
     order.push('guard');
+    if (guardError) throw guardError;
     return { userId: ME, kh: KH, supabase };
   },
 }));
@@ -46,6 +49,7 @@ const storedSplit = (split: unknown) => ({
 
 beforeEach(() => {
   order.length = 0;
+  guardError = null;
   setSupabase();
 });
 
@@ -95,10 +99,65 @@ describe('getPlannerSplit', () => {
       await import('@/features/household/actions/planner-actions');
     await expect(getPlannerSplit()).rejects.toThrow('unreadable');
   });
+
+  it('reports an opaque error when decryption fails', async () => {
+    setSupabase({
+      selectDataByTable: {
+        household_planner_settings: {
+          split: encryptPayload(
+            JSON.stringify({ members: { [ME]: 50, [PARTNER]: 50 } }),
+            Buffer.alloc(32, 1)
+          ),
+        },
+      },
+    });
+    const { getPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    const failure = getPlannerSplit();
+    await expect(failure).rejects.toThrow('unreadable');
+    await expect(failure).rejects.toMatchObject({ code: 'INTERNAL' });
+  });
+
+  it('falls back to the default when the stored members differ from the roster', async () => {
+    setSupabase({
+      selectDataByTable: {
+        household_planner_settings: storedSplit({
+          members: { [ME]: 70, [STRANGER]: 30 },
+          goalOverrides: {},
+        }),
+      },
+    });
+    const { getPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    expect(await getPlannerSplit()).toEqual({
+      members: { [ME]: 50, [PARTNER]: 50 },
+      goalOverrides: {},
+      isDefault: true,
+      userId: ME,
+    });
+  });
 });
 
 describe('setPlannerSplit', () => {
-  const valid = { members: { [ME]: 70, [PARTNER]: 30 }, goalOverrides: {} };
+  const valid = { members: { [ME]: 70, [PARTNER]: 30 } };
+  const stored = {
+    members: { [ME]: 50, [PARTNER]: 50 },
+    goalOverrides: {
+      [LIVE_GOAL]: { [ME]: 80, [PARTNER]: 20 },
+      [OTHER_GOAL]: { [ME]: 10, [PARTNER]: 90 },
+    },
+  };
+  const withStored = () =>
+    setSupabase({
+      selectDataByTable: {
+        household_goals: [{ id: LIVE_GOAL }, { id: OTHER_GOAL }],
+        household_planner_settings: storedSplit(stored),
+      },
+    });
+  const written = (fake: ReturnType<typeof setSupabase>) =>
+    JSON.parse(
+      decryptPayload((fake.calls.upsert[0] as { split: string }).split, KH)
+    );
 
   it('encrypts under K_h and upserts one row per household', async () => {
     const fake = setSupabase();
@@ -111,37 +170,86 @@ describe('setPlannerSplit', () => {
     expect(row.household_id).toBe(HOUSEHOLD_ID);
     expect(row.created_by).toBe(ME);
     expect(row.split).not.toContain(ME);
-    expect(JSON.parse(decryptPayload(row.split, KH))).toEqual(valid);
+    expect(written(fake)).toEqual({ ...valid, goalOverrides: {} });
   });
 
-  it('prunes overrides of deleted goals on write', async () => {
-    const fake = setSupabase();
+  it('keeps stored goal overrides on a members-only edit', async () => {
+    const fake = withStored();
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await setPlannerSplit(valid);
+    expect(written(fake)).toEqual({
+      members: valid.members,
+      goalOverrides: stored.goalOverrides,
+    });
+  });
+
+  it('updates only the edited goal and keeps members and other overrides', async () => {
+    const fake = withStored();
     const { setPlannerSplit } =
       await import('@/features/household/actions/planner-actions');
     await setPlannerSplit({
-      members: valid.members,
+      goalId: LIVE_GOAL,
+      override: { [ME]: 30, [PARTNER]: 70 },
+    });
+    expect(written(fake)).toEqual({
+      members: stored.members,
       goalOverrides: {
-        [LIVE_GOAL]: { [ME]: 100, [PARTNER]: 0 },
-        [DELETED_GOAL]: { [ME]: 0, [PARTNER]: 100 },
+        [LIVE_GOAL]: { [ME]: 30, [PARTNER]: 70 },
+        [OTHER_GOAL]: stored.goalOverrides[OTHER_GOAL],
       },
     });
-    const row = fake.calls.upsert[0] as Record<string, string>;
-    expect(
-      Object.keys(JSON.parse(decryptPayload(row.split, KH)).goalOverrides)
-    ).toEqual([LIVE_GOAL]);
   });
 
-  it('rejects invalid input before the guard or any database access', async () => {
+  it('removes only the named override when it is cleared', async () => {
+    const fake = withStored();
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await setPlannerSplit({ goalId: LIVE_GOAL, override: null });
+    expect(written(fake)).toEqual({
+      members: stored.members,
+      goalOverrides: { [OTHER_GOAL]: stored.goalOverrides[OTHER_GOAL] },
+    });
+  });
+
+  it('prunes overrides of deleted goals on write', async () => {
+    const fake = setSupabase({
+      selectDataByTable: {
+        household_planner_settings: storedSplit({
+          members: stored.members,
+          goalOverrides: {
+            [LIVE_GOAL]: { [ME]: 100, [PARTNER]: 0 },
+            [DELETED_GOAL]: { [ME]: 0, [PARTNER]: 100 },
+          },
+        }),
+      },
+    });
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await setPlannerSplit(valid);
+    expect(Object.keys(written(fake).goalOverrides)).toEqual([LIVE_GOAL]);
+  });
+
+  it('authenticates before validating input', async () => {
+    const fake = setSupabase();
+    guardError = new Error('not signed in');
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await expect(setPlannerSplit({ members: 'junk' })).rejects.toThrow(
+      'not signed in'
+    );
+    expect(order).toEqual(['guard']);
+    expect(fake.calls.upsert).toHaveLength(0);
+  });
+
+  it('rejects invalid input before any database access', async () => {
     const fake = setSupabase();
     const { setPlannerSplit } =
       await import('@/features/household/actions/planner-actions');
     await expect(
-      setPlannerSplit({
-        members: { [ME]: 60, [PARTNER]: 60 },
-        goalOverrides: {},
-      })
+      setPlannerSplit({ members: { [ME]: 60, [PARTNER]: 60 } })
     ).rejects.toThrow('invalid input');
-    expect(order).toHaveLength(0);
+    expect(fake.calls.from).toHaveLength(0);
     expect(fake.calls.upsert).toHaveLength(0);
   });
 
@@ -150,10 +258,7 @@ describe('setPlannerSplit', () => {
     const { setPlannerSplit } =
       await import('@/features/household/actions/planner-actions');
     await expect(
-      setPlannerSplit({
-        members: { [ME]: 50, [STRANGER]: 50 },
-        goalOverrides: {},
-      })
+      setPlannerSplit({ members: { [ME]: 50, [STRANGER]: 50 } })
     ).rejects.toThrow('both household members');
     expect(fake.calls.upsert).toHaveLength(0);
   });

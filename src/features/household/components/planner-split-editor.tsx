@@ -24,10 +24,7 @@ function SplitForm({ split }: { split: PlannerSplit }) {
     event.preventDefault();
     if (pct === null) return;
     save.mutate(
-      {
-        members: { [split.userId]: pct, [partnerId]: 100 - pct },
-        goalOverrides: split.goalOverrides,
-      },
+      { members: { [split.userId]: pct, [partnerId]: 100 - pct } },
       {
         onSuccess: () => toast.success('Split saved'),
         onError: () => toast.error('Could not save the split, try again'),

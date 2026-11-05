@@ -59,7 +59,6 @@ describe('PlannerSplitEditor', () => {
     await waitFor(() =>
       expect(external.setPlannerSplit.mock.calls[0][0]).toEqual({
         members: { [ME]: 70, [PARTNER]: 30 },
-        goalOverrides: {},
       })
     );
   });

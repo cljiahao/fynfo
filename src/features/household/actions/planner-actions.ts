@@ -3,9 +3,10 @@
 import { requireHouseholdContext } from '@/lib/action-guard';
 import { decryptPayload, encryptPayload } from '@/lib/crypto';
 import { AppError, throwIfSupabaseError } from '@/lib/errors';
+import { logger } from '@/lib/logger';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
-import { plannerSplitSchema } from '../schemas';
+import { plannerSplitSchema, plannerSplitUpdateSchema } from '../schemas';
 import type { PlannerSplit } from '../types';
 
 type Context = Awaited<ReturnType<typeof requireHouseholdContext>>;
@@ -67,25 +68,53 @@ function pruneOverrides(
   );
 }
 
-/**
- * Reads the agreed split. With no saved row it returns 50/50 flagged
- * `isDefault`, so "never set" and "set to 50/50" stay distinguishable.
- * Overrides for goals that no longer exist are dropped.
- */
-export async function getPlannerSplit(): Promise<PlannerSplit> {
-  const ctx = await requireHouseholdContext();
-  const { userId, kh, supabase } = ctx;
-  const { householdId, memberIds } = await readRoster(ctx);
+type StoredSplit = Omit<PlannerSplit, 'isDefault' | 'userId'>;
 
+function sameIds(a: string[], b: string[]): boolean {
+  return [...a].sort().join() === [...b].sort().join();
+}
+
+// Detail stays in the server log; callers only see an opaque message.
+function parseStored(ciphertext: string, kh: Buffer): StoredSplit {
+  try {
+    const parsed = plannerSplitSchema.safeParse(
+      JSON.parse(decryptPayload(ciphertext, kh))
+    );
+    if (!parsed.success) throw new Error('stored split failed validation');
+    return parsed.data;
+  } catch (err) {
+    logger.error({ err }, 'household planner split unreadable');
+    throw new AppError('INTERNAL', 'Household planner split is unreadable');
+  }
+}
+
+async function readStoredRow(
+  { supabase }: Context,
+  householdId: string
+): Promise<string | null> {
   const { data, error } = await supabase
     .from('household_planner_settings')
     .select('split')
     .eq('household_id', householdId)
     .maybeSingle();
   throwIfSupabaseError(error, 'household planner read');
+  return (data as { split: string } | null)?.split ?? null;
+}
 
-  const row = data as { split: string } | null;
-  if (!row)
+/**
+ * Reads the agreed split. With no saved row, or one saved for a different
+ * roster, it returns 50/50 flagged `isDefault`, so "never set" and "set to
+ * 50/50" stay distinguishable. Overrides for goals that no longer exist are
+ * dropped.
+ */
+export async function getPlannerSplit(): Promise<PlannerSplit> {
+  const ctx = await requireHouseholdContext();
+  const { userId, kh } = ctx;
+  const { householdId, memberIds } = await readRoster(ctx);
+
+  const ciphertext = await readStoredRow(ctx, householdId);
+  const stored = ciphertext ? parseStored(ciphertext, kh) : null;
+  if (!stored || !sameIds(Object.keys(stored.members), memberIds))
     return {
       members: evenSplit(memberIds),
       goalOverrides: {},
@@ -93,40 +122,61 @@ export async function getPlannerSplit(): Promise<PlannerSplit> {
       userId,
     };
 
-  const parsed = plannerSplitSchema.safeParse(
-    JSON.parse(decryptPayload(row.split, kh))
-  );
-  if (!parsed.success)
-    throw new AppError('INTERNAL', 'Household planner split is unreadable');
-
   const goalIds = await readGoalIds(ctx);
   return {
-    members: parsed.data.members,
-    goalOverrides: pruneOverrides(parsed.data.goalOverrides, goalIds),
+    members: stored.members,
+    goalOverrides: pruneOverrides(stored.goalOverrides, goalIds),
     isDefault: false,
     userId,
   };
 }
 
-/** Validates, prunes overrides of deleted goals, encrypts under K_h and upserts. */
+/**
+ * Applies a partial edit to the stored split: a members edit keeps stored
+ * overrides, an override edit touches only its goal key. Merging server-side
+ * means a stale client cache cannot discard the partner's newer changes.
+ */
 export async function setPlannerSplit(input: unknown): Promise<void> {
+  const ctx = await requireHouseholdContext();
+  const { userId, kh, supabase } = ctx;
   const data = parseOrThrow(
-    plannerSplitSchema,
+    plannerSplitUpdateSchema,
     input,
     'household.plannerSplit.input'
   );
-  const ctx = await requireHouseholdContext();
-  const { userId, kh, supabase } = ctx;
   const { householdId, memberIds } = await readRoster(ctx);
 
-  const submitted = Object.keys(data.members).sort().join();
-  if (memberIds.length !== 2 || [...memberIds].sort().join() !== submitted)
+  const edited = 'members' in data ? data.members : data.override;
+  if (
+    edited &&
+    (memberIds.length !== 2 || !sameIds(Object.keys(edited), memberIds))
+  )
     throw new AppError('VALIDATION', 'Split must cover both household members');
 
+  const ciphertext = await readStoredRow(ctx, householdId);
+  const stored = ciphertext ? parseStored(ciphertext, kh) : null;
+  const current: StoredSplit =
+    stored && sameIds(Object.keys(stored.members), memberIds)
+      ? stored
+      : { members: evenSplit(memberIds), goalOverrides: {} };
+
+  let merged: StoredSplit;
+  if ('members' in data) {
+    merged = { members: data.members, goalOverrides: current.goalOverrides };
+  } else {
+    const { [data.goalId]: _replaced, ...others } = current.goalOverrides;
+    merged = {
+      members: current.members,
+      goalOverrides: data.override
+        ? { ...others, [data.goalId]: data.override }
+        : others,
+    };
+  }
+
   const goalIds = await readGoalIds(ctx);
-  const split = {
-    members: data.members,
-    goalOverrides: pruneOverrides(data.goalOverrides, goalIds),
+  const split: StoredSplit = {
+    members: merged.members,
+    goalOverrides: pruneOverrides(merged.goalOverrides, goalIds),
   };
 
   const { error } = await supabase.from('household_planner_settings').upsert(
