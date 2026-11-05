@@ -2,12 +2,12 @@
 id: '174'
 slug: test-import-time
 area: infra
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-05
 approved: 2026-11-05
-shipped:
-impl_pr:
+shipped: 2026-11-05
+impl_pr: 6367cc4
 supersedes:
 constitution_satisfies:
   - '§2.6'
@@ -141,15 +141,15 @@ model: none. No new components, hooks or actions.
 
 ## Acceptance
 
-- [ ] `pnpm format:check` green
-- [ ] `pnpm lint` green (max-warnings=0); adding a bare `import { format } from 'date-fns'` under `src/` makes lint fail, and `date-fns/format` passes
-- [ ] `pnpm typecheck` green
-- [ ] `pnpm test:ci` green with unchanged coverage thresholds; any `vi.mock('date-fns')` must follow the new subpath and is noted in the PR
-- [ ] `pnpm build` green
-- [ ] No bare `date-fns` imports remain in `src/` or `test/` (`grep` returns none); a bare import under `test/` also fails lint
-- [ ] Before/after import (collect) time and wall time recorded for all four shards (`pnpm test:shard 1/4` to `4/4`), same idle host, two runs each, in the PR body; shard 1 import time expected near 49.5 s from 67 s
+- [x] `pnpm format:check` green
+- [x] `pnpm lint` green (max-warnings=0); adding a bare `import { format } from 'date-fns'` under `src/` makes lint fail, and `date-fns/format` passes
+- [x] `pnpm typecheck` green
+- [x] `pnpm test:ci` green with unchanged coverage thresholds; any `vi.mock('date-fns')` must follow the new subpath and is noted in the PR
+- [x] `pnpm build` green
+- [x] No bare `date-fns` imports remain in `src/` or `test/` (`grep` returns none); a bare import under `test/` also fails lint
+- [x] Before/after import (collect) time and wall time recorded for all four shards (`pnpm test:shard 1/4` to `4/4`), same idle host, two runs each, in the PR body; shard 1 import time expected near 49.5 s from 67 s
 - [ ] Manual: the date picker, quick-add date field and household charts render and format dates as before
-- [ ] Spec hash matches at impl PR time
+- [x] Spec hash matches at impl PR time
 
 ## Results
 
@@ -182,5 +182,5 @@ shards 1 and 4 show the effect. All shards pass (586, 732, 515, 689 tests).
 
 ## Open questions
 
-- [ ] Q: Should `test/**` files also be forbidden from bare `date-fns` imports? — Owner: Clarence — A: Yes (2026-11-05); the lint rule covers `test/**`.
-- [ ] Q: Is the `test.deps.optimizer.ssr` key shape valid in vitest 4.1.12 as measured? — Owner: implementer, resolved before first edit — A: Yes. vitest 4.1.12 types declare `deps.optimizer?: Partial<Record<'client' | 'ssr' | string, DepsOptimizationOptions>>`, so `test.deps.optimizer.ssr: { enabled: true, include: [...] }` is valid.
+- [x] Q: Should `test/**` files also be forbidden from bare `date-fns` imports? — Owner: Clarence — A: Yes (2026-11-05); the lint rule covers `test/**`.
+- [x] Q: Is the `test.deps.optimizer.ssr` key shape valid in vitest 4.1.12 as measured? — Owner: implementer, resolved before first edit — A: Yes. vitest 4.1.12 types declare `deps.optimizer?: Partial<Record<'client' | 'ssr' | string, DepsOptimizationOptions>>`, so `test.deps.optimizer.ssr: { enabled: true, include: [...] }` is valid.
