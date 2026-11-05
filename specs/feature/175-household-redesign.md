@@ -2,12 +2,12 @@
 id: '175'
 slug: household-redesign
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-05
 approved: 2026-11-05 # YYYY-MM-DD, set on approval
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: 'slice A f99133e' # no PR (direct to main); commit shas recorded per slice
+shipped: 2026-11-06 # YYYY-MM-DD, set on impl merge
+impl_pr: 'f99133e 9b559f7 d879b58 3a65853 4fda969' # no PR (direct to main); slice A, C, B commits
 supersedes:
 constitution_satisfies:
   - '§1.1'
