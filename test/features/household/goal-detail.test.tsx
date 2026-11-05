@@ -9,6 +9,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { goalWithItems, makeGoal } from './fixtures';
@@ -31,14 +32,21 @@ vi.mock('@/features/household/actions/goal-actions', () => ({
   addItemPayment: vi.fn(),
   deleteGoalItem: vi.fn().mockResolvedValue(undefined),
   deleteItemPayment: vi.fn().mockResolvedValue(undefined),
+  addContribution: vi.fn(),
+  createGoal: vi.fn(),
+  updateGoal: vi.fn(),
+  deleteGoal: vi.fn().mockResolvedValue(undefined),
+  saveGoal: vi.fn(),
+  updateGoalPayment: vi.fn(),
+  updateGoalContribution: vi.fn(),
 }));
 vi.mock('@/features/household/actions/household-actions', () => ({}));
-vi.mock('@/features/household/components/goal-contributions-chart', () => ({
-  GoalContributionsChart: () => <div>contributions chart</div>,
+vi.mock('@/features/household/components/goal-burn-up-chart', () => ({
+  GoalBurnUpChart: () => <div>burn-up chart</div>,
 }));
-vi.mock('@/features/household/components/goal-items-chart', () => ({
-  GoalItemsChart: () => <div>items chart</div>,
-}));
+
+const router = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => router }));
 
 const toasts = vi.hoisted(() => ({ toast: vi.fn() }));
 vi.mock('sonner', () => ({
@@ -98,10 +106,10 @@ describe('with items', () => {
     expect(screen.getByText('Contributed')).toBeInTheDocument();
     expect(screen.getByText('Paid')).toBeInTheDocument();
     expect(screen.getByText('Monthly pace')).toBeInTheDocument();
-    expect(screen.getByText('contributions chart')).toBeInTheDocument();
-    expect(screen.getByText('items chart')).toBeInTheDocument();
-    expect(screen.getByText('Venue')).toBeInTheDocument();
-    expect(screen.getByText('Photographer')).toBeInTheDocument();
+    expect(screen.getByText('burn-up chart')).toBeInTheDocument();
+    expect(screen.getByText(/^You \d+% \/ Partner \d+%$/)).toBeInTheDocument();
+    expect(screen.getAllByText('Venue').length).toBeGreaterThan(1);
+    expect(screen.getAllByText('Photographer').length).toBeGreaterThan(1);
     expect(screen.getByText(/Partner paid .* to Venue/)).toBeInTheDocument();
     expect(screen.getByText(/You added /)).toBeInTheDocument();
   });
@@ -126,16 +134,42 @@ describe('with items', () => {
       }
     ).action.onClick;
     act(() => undo());
-    expect(screen.getByText('Venue')).toBeInTheDocument();
+    expect(screen.getAllByText('Venue').length).toBeGreaterThan(0);
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
-  it('opens the add-item modal from the items section', () => {
+  it('opens the goal editor from Add item and from Edit', () => {
     mount();
     fireEvent.click(screen.getByRole('button', { name: 'Add item' }));
+    expect(screen.getByRole('dialog', { name: 'Edit goal' })).toBeVisible();
+    cleanup();
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.getByRole('dialog', { name: 'Edit goal' })).toBeVisible();
+  });
+
+  it('confirms before deleting and returns to the household page', async () => {
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    const confirm = screen.getByRole('button', { name: 'Delete goal' });
+    fireEvent.click(confirm);
+    await waitFor(() =>
+      expect(router.push).toHaveBeenCalledWith('/dashboard/household')
+    );
+  });
+
+  it('edits a payment and a contribution from recent activity', () => {
+    mount();
+    fireEvent.click(
+      screen.getByRole('button', { name: /^Edit Partner paid .* to Venue$/ })
+    );
+    expect(screen.getByRole('dialog', { name: 'Edit payment' })).toBeVisible();
+    cleanup();
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /^Edit You added / }));
     expect(
-      screen.getByRole('dialog', { name: 'Add budget item' })
-    ).toBeInTheDocument();
+      screen.getByRole('dialog', { name: 'Edit contribution' })
+    ).toBeVisible();
   });
 });
 
@@ -144,11 +178,11 @@ describe('without items', () => {
     setGoals([makeGoal()]);
   });
 
-  it('hides the budget chart and Paid stat but offers Add item', () => {
+  it('hides the Paid stat and shows the empty summary but offers Add item', () => {
     mount();
-    expect(screen.queryByText('items chart')).toBeNull();
     expect(screen.queryByText('Paid')).toBeNull();
-    expect(screen.getByText('No contributions yet.')).toBeInTheDocument();
+    expect(screen.getByText('Split into budget items')).toBeInTheDocument();
+    expect(screen.getByText('burn-up chart')).toBeInTheDocument();
     expect(screen.getByText('Nothing yet.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add item' })).toBeEnabled();
   });
@@ -209,5 +243,8 @@ describe('amounts hidden', () => {
     expect(container.textContent).toMatch(/Monthly pace\s*Hidden/);
     expect(container.textContent).not.toMatch(/Past target date/);
     expect(screen.getByRole('button', { name: 'Add item' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled();
+    expect(container.textContent).not.toMatch(/\d+%/);
   });
 });

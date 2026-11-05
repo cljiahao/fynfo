@@ -1,6 +1,7 @@
 import {
+  breakdownSegments,
+  burnUpSeries,
   cumulativeContributions,
-  itemChartRows,
   monthlyPaceNeeded,
   recentActivity,
   summarizeBreakdown,
@@ -99,15 +100,15 @@ describe('monthlyPaceNeeded', () => {
   });
 });
 
-describe('cumulativeContributions', () => {
-  const contribution = (id: string, amount: number, date: string) => ({
-    id,
-    amount,
-    date,
-    note: null,
-    isSelf: true,
-  });
+const contribution = (id: string, amount: number, date: string) => ({
+  id,
+  amount,
+  date,
+  note: null,
+  isSelf: true,
+});
 
+describe('cumulativeContributions', () => {
   it('is empty without contributions', () => {
     expect(cumulativeContributions(goal())).toEqual([]);
   });
@@ -154,41 +155,122 @@ describe('cumulativeContributions', () => {
   });
 });
 
-describe('itemChartRows', () => {
-  it('is empty with zero items', () => {
-    expect(itemChartRows(goal())).toEqual({ rows: [], more: 0 });
+describe('breakdownSegments', () => {
+  it('has no segments with zero items', () => {
+    const result = breakdownSegments(goal());
+    expect(result.segments).toEqual([]);
+    expect(result.unallocated).toBe(1200);
+    expect(result.scale).toBe(1200);
   });
 
-  it('keeps every item under the cap, largest budget first', () => {
-    const { rows, more } = itemChartRows(
-      goal({ items: [item('a', 100), item('b', 300), item('c', 200)] })
+  it('sizes by quote over estimate, largest first, with paid clamped', () => {
+    const quoted = { ...item('q', 100, [{ amount: 500 }]), quote: 400 };
+    const { segments, unallocated } = breakdownSegments(
+      goal({ items: [item('a', 300), quoted] })
     );
-    expect(rows.map((r) => r.id)).toEqual(['b', 'c', 'a']);
-    expect(more).toBe(0);
+    expect(segments.map((s) => [s.id, s.effective, s.paid])).toEqual([
+      ['q', 400, 400],
+      ['a', 300, 0],
+    ]);
+    expect(unallocated).toBe(500);
   });
 
-  it('caps at 8 by default and counts the remainder', () => {
-    const items = Array.from({ length: 11 }, (_, i) => item(`i${i}`, i + 1));
-    const { rows, more } = itemChartRows(goal({ items }));
-    expect(rows).toHaveLength(8);
-    expect(rows[0]?.id).toBe('i10');
-    expect(more).toBe(3);
+  it('collapses items beyond the cap into Other with their names', () => {
+    const items = Array.from({ length: 8 }, (_, i) => item(`i${i}`, i + 1));
+    const { segments } = breakdownSegments(goal({ items }), 6);
+    expect(segments).toHaveLength(7);
+    expect(segments[6]).toMatchObject({
+      id: 'other',
+      name: 'Other',
+      effective: 3,
+      names: ['Item i1', 'Item i0'],
+    });
   });
 
-  it('honours a custom cap', () => {
-    const { rows, more } = itemChartRows(
-      goal({ items: [item('a', 1), item('b', 2), item('c', 3)] }),
-      2
+  it('scales to the items total when it exceeds the target', () => {
+    const result = breakdownSegments(
+      goal({ items: [item('a', 2000)], budgeted: 2000 })
     );
-    expect(rows).toHaveLength(2);
-    expect(more).toBe(1);
+    expect(result.scale).toBe(2000);
+    expect(result.unallocated).toBe(0);
   });
 
-  it('carries the over-budget amount for colouring', () => {
-    const { rows } = itemChartRows(
-      goal({ items: [item('a', 100, [{ amount: 150 }])] })
+  it('flags saved plus still-to-pay above the target', () => {
+    const over = goal({
+      items: [item('a', 1000)],
+      budgeted: 1000,
+      contributed: 500,
+    });
+    expect(breakdownSegments(over).overCommitted).toBe(true);
+    expect(
+      breakdownSegments(goal({ items: [item('a', 1000)], budgeted: 1000 }))
+        .overCommitted
+    ).toBe(false);
+  });
+});
+
+describe('burnUpSeries', () => {
+  it('starts at creation with zero when there are no contributions', () => {
+    expect(
+      burnUpSeries(goal({ createdAt: '2026-10-01' }), NOW).map((r) => [
+        r.date,
+        r.saved,
+        r.needed,
+      ])
+    ).toEqual([
+      ['2026-10-01', 0, null],
+      ['2026-11-04', 0, null],
+    ]);
+  });
+
+  it('draws the pace line from the first contribution to the target date', () => {
+    const rows = burnUpSeries(
+      goal({
+        createdAt: '2026-09-01',
+        targetDate: '2027-01-01',
+        contributions: [contribution('a', 300, '2026-10-01')],
+        contributed: 300,
+      }),
+      NOW
     );
-    expect(rows[0]).toMatchObject({ paid: 150, over: 50 });
+    expect(rows.find((r) => r.date === '2026-09-01')).toMatchObject({
+      saved: 0,
+      needed: 0,
+    });
+    expect(rows[rows.length - 1]).toMatchObject({
+      date: '2027-01-01',
+      needed: 1200,
+      saved: null,
+    });
+  });
+
+  it('stops the pace line at a past target date while saved continues', () => {
+    const rows = burnUpSeries(
+      goal({
+        createdAt: '2026-08-01',
+        targetDate: '2026-09-01',
+        contributions: [contribution('a', 300, '2026-08-10')],
+        contributed: 300,
+      }),
+      NOW
+    );
+    expect(rows[rows.length - 1]).toMatchObject({
+      date: '2026-11-04',
+      saved: 300,
+      needed: null,
+    });
+    expect(rows.filter((r) => r.needed !== null).map((r) => r.date)).toEqual([
+      '2026-08-01',
+      '2026-09-01',
+    ]);
+  });
+
+  it('has no pace line without a target date', () => {
+    const rows = burnUpSeries(
+      goal({ contributions: [contribution('a', 100, '2026-10-01')] }),
+      NOW
+    );
+    expect(rows.every((r) => r.needed === null)).toBe(true);
   });
 });
 

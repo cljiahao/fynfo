@@ -1,6 +1,5 @@
 'use client';
 
-import { ProgressBar } from '@/components/widgets';
 import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
@@ -18,17 +17,14 @@ import { parseISO } from 'date-fns/parseISO';
 import { Check, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
-import {
-  GOAL_DETAIL_PATH,
-  GOAL_STATUS_LABEL,
-  PERSON_COLORS,
-} from '../constants';
+import { GOAL_DETAIL_PATH, GOAL_STATUS_LABEL } from '../constants';
 import {
   goalCommitted,
   goalStatus,
   monthlyPaceNeeded,
 } from '../lib/goal-stats';
 import type { HouseholdGoal } from '../types';
+import { ItemBreakdownBar } from './item-breakdown-bar';
 
 interface GoalCardProps {
   goal: HouseholdGoal;
@@ -51,14 +47,8 @@ export function GoalCard({
   const funded = status === 'funded';
   const pace = monthlyPaceNeeded(goal, now);
 
-  const committed = goalCommitted(goal);
-  const pctOf = (n: number) =>
-    goal.targetAmount > 0
-      ? Math.max(0, Math.min(100, (n / goal.targetAmount) * 100))
-      : 0;
-  const savedPct = pctOf(goal.contributed);
-  const committedPct = Math.min(100 - savedPct, pctOf(committed));
-  const overCommitted = goal.contributed + committed > goal.targetAmount;
+  const overCommitted =
+    goal.contributed + goalCommitted(goal) > goal.targetAmount;
 
   // Derive-state-from-props keeps the one-shot celebration free of refs and
   // effects, so a goal that is already funded on mount never animates.
@@ -149,22 +139,7 @@ export function GoalCard({
           </div>
         </div>
 
-        {/* The track stays while amounts are hidden so the card height is stable; the fill would reveal the masked percentage. */}
-        <div className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
-          {!hidden && (
-            <ProgressBar
-              segments={[
-                { pct: savedPct, className: PERSON_COLORS.you.fill },
-                {
-                  pct: committedPct,
-                  className: overCommitted
-                    ? 'bg-destructive/40'
-                    : 'bg-primary/30',
-                },
-              ]}
-            />
-          )}
-        </div>
+        <ItemBreakdownBar goal={goal} />
 
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
           <span className="font-medium tabular-nums">

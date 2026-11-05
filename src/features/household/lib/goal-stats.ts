@@ -2,9 +2,10 @@ import { formatSGD } from '@/lib/utils/currency';
 import { addMonths } from 'date-fns/addMonths';
 import { differenceInCalendarDays } from 'date-fns/differenceInCalendarDays';
 import { differenceInMonths } from 'date-fns/differenceInMonths';
+import { format } from 'date-fns/format';
 import { parseISO } from 'date-fns/parseISO';
 import { startOfDay } from 'date-fns/startOfDay';
-import { ITEM_CHART_CAP, NO_ITEMS_SUMMARY } from '../constants';
+import { ITEM_BAR_CAP, NO_ITEMS_SUMMARY } from '../constants';
 import type { GoalItem, HouseholdGoal } from '../types';
 import { computeItemBudget } from './project-budget';
 
@@ -48,38 +49,6 @@ export function cumulativeContributions(
       running += amount;
       return { date, total: running };
     });
-}
-
-export interface ItemChartRow {
-  id: string;
-  name: string;
-  budget: number;
-  paid: number;
-  over: number;
-}
-
-export interface ItemChartData {
-  rows: ItemChartRow[];
-  /** Items left out of `rows` by the cap. */
-  more: number;
-}
-
-/** The largest budgets first, capped so the chart stays readable on a phone. */
-export function itemChartRows(
-  goal: Pick<HouseholdGoal, 'items'>,
-  cap: number = ITEM_CHART_CAP
-): ItemChartData {
-  const sorted = [...goal.items].sort((a, b) => b.budget - a.budget);
-  return {
-    rows: sorted.slice(0, cap).map((item) => ({
-      id: item.id,
-      name: item.name,
-      budget: item.budget,
-      paid: item.paid,
-      over: item.over,
-    })),
-    more: Math.max(0, sorted.length - cap),
-  };
 }
 
 export interface ActivityEntry {
@@ -206,4 +175,119 @@ export function goalStatus(
   const elapsed = Math.max(1, differenceInCalendarDays(today, created));
   const expected = (goal.targetAmount * Math.min(elapsed, total)) / total;
   return toCents(goal.contributed) >= toCents(expected) ? 'on-track' : 'behind';
+}
+
+export interface BreakdownSegment {
+  id: string;
+  name: string;
+  /** What the segment is sized by: quote ?? estimate. */
+  effective: number;
+  /** Paid so far, clamped to `effective` so the shaded part never overflows. */
+  paid: number;
+  /** Names folded into an "Other" bucket; null for a single item. */
+  names: string[] | null;
+}
+
+export interface ItemBreakdown {
+  segments: BreakdownSegment[];
+  /** Sum of every item's effective amount. */
+  total: number;
+  /** Width of the bar: the target, or the items total when that is larger. */
+  scale: number;
+  /** Target not yet claimed by an item. */
+  unallocated: number;
+  /** Saved plus still-to-pay exceeds the target. */
+  overCommitted: boolean;
+}
+
+/**
+ * Largest items first, at most `cap` of them; the rest collapse into one
+ * "Other" bucket so the bar stays readable on a phone.
+ */
+export function breakdownSegments(
+  goal: Pick<HouseholdGoal, 'items' | 'targetAmount' | 'contributed'>,
+  cap: number = ITEM_BAR_CAP
+): ItemBreakdown {
+  const sized = goal.items
+    .map((item) => ({
+      id: item.id,
+      name: item.name,
+      effective: effectiveAmount(item),
+      paid: Math.min(item.paid, effectiveAmount(item)),
+    }))
+    .filter((item) => item.effective > 0)
+    .sort((a, b) => b.effective - a.effective);
+  const shown: BreakdownSegment[] = sized
+    .slice(0, cap)
+    .map((item) => ({ ...item, names: null }));
+  const rest = sized.slice(cap);
+  if (rest.length > 0) {
+    shown.push({
+      id: 'other',
+      name: 'Other',
+      effective: rest.reduce((sum, item) => sum + item.effective, 0),
+      paid: rest.reduce((sum, item) => sum + item.paid, 0),
+      names: rest.map((item) => item.name),
+    });
+  }
+  const total = sized.reduce((sum, item) => sum + item.effective, 0);
+  return {
+    segments: shown,
+    total,
+    scale: Math.max(goal.targetAmount, total),
+    unallocated: Math.max(0, goal.targetAmount - total),
+    overCommitted: goal.contributed + goalCommitted(goal) > goal.targetAmount,
+  };
+}
+
+export interface BurnUpRow {
+  date: string;
+  /** Cumulative saved; null where only the pace line has a point. */
+  saved: number | null;
+  /** Straight-line pace; null outside start..target date. */
+  needed: number | null;
+}
+
+const DAY_FORMAT = 'yyyy-MM-dd';
+
+/**
+ * Cumulative saved against the straight pace needed to hit the target by its
+ * date. The pace line runs from the first contribution (or creation when there
+ * are none) to the target date and stops there; saved continues to today.
+ */
+export function burnUpSeries(
+  goal: Pick<
+    HouseholdGoal,
+    'contributions' | 'createdAt' | 'targetDate' | 'targetAmount'
+  >,
+  now: Date
+): BurnUpRow[] {
+  const saved = cumulativeContributions(goal);
+  const created = goal.createdAt.slice(0, 10);
+  const start =
+    saved.length > 0 && saved[0].date < created ? saved[0].date : created;
+  const today = format(now, DAY_FORMAT);
+  const rows = new Map<string, BurnUpRow>();
+  const row = (date: string) => {
+    const existing = rows.get(date);
+    if (existing) return existing;
+    const added: BurnUpRow = { date, saved: null, needed: null };
+    rows.set(date, added);
+    return added;
+  };
+
+  if (saved.length === 0 || saved[0].date > start) row(start).saved = 0;
+  for (const point of saved) row(point.date).saved = point.total;
+  const last =
+    saved.length > 0 ? saved[saved.length - 1] : { date: start, total: 0 };
+  if (today > last.date) row(today).saved = last.total;
+
+  const end = goal.targetDate?.slice(0, 10);
+  if (end && end >= start) {
+    row(start).needed = 0;
+    row(end).needed = goal.targetAmount;
+  }
+  return [...rows.values()].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0
+  );
 }

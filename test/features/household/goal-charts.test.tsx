@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { GoalContributionsChart } from '@/features/household/components/goal-contributions-chart-content';
-import { GoalItemsChart } from '@/features/household/components/goal-items-chart-content';
+import { GoalBurnUpChart } from '@/features/household/components/goal-burn-up-chart-content';
+import { ItemBreakdownBar } from '@/features/household/components/item-breakdown-bar';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -16,10 +16,11 @@ vi.mock('@/features/privacy', () => ({
 }));
 
 type Props = Record<string, unknown>;
-const formatters = vi.hoisted(() => ({
+const captured = vi.hoisted(() => ({
   tick: [] as Array<(v: number) => string>,
   tooltip: [] as Array<(v: unknown, n: unknown) => unknown>,
-  rows: [] as unknown[],
+  rows: [] as Array<Record<string, unknown>>,
+  lines: [] as string[],
 }));
 
 vi.mock('@/lib/recharts', () => {
@@ -32,32 +33,22 @@ vi.mock('@/lib/recharts', () => {
     CHART_TOOLTIP_PROPS: {},
     ResponsiveContainer: box('container'),
     LineChart: ({ data, children }: Props & { children?: React.ReactNode }) => {
-      formatters.rows = data as unknown[];
+      captured.rows = data as Array<Record<string, unknown>>;
       return <div data-testid="line-chart">{children}</div>;
     },
-    BarChart: ({ data, children }: Props & { children?: React.ReactNode }) => {
-      formatters.rows = data as unknown[];
-      return <div data-testid="bar-chart">{children}</div>;
+    Line: ({ dataKey }: Props) => {
+      captured.lines.push(String(dataKey));
+      return <div data-testid="line" />;
     },
-    Line: box('line'),
-    Bar: box('bar'),
-    Cell: ({ fill }: { fill: string }) => (
-      <i data-testid="cell" data-fill={fill} />
-    ),
-    ReferenceLine: box('reference-line'),
-    XAxis: (props: Props) => {
-      if (typeof props.tickFormatter === 'function')
-        formatters.tick.push(props.tickFormatter as (v: number) => string);
-      return <div data-testid="x-axis" />;
-    },
+    XAxis: () => <div data-testid="x-axis" />,
     YAxis: (props: Props) => {
       if (typeof props.tickFormatter === 'function')
-        formatters.tick.push(props.tickFormatter as (v: number) => string);
+        captured.tick.push(props.tickFormatter as (v: number) => string);
       return <div data-testid="y-axis" />;
     },
     Tooltip: (props: Props) => {
       if (typeof props.formatter === 'function')
-        formatters.tooltip.push(
+        captured.tooltip.push(
           props.formatter as (v: unknown, n: unknown) => unknown
         );
       return <div data-testid="tooltip" />;
@@ -65,79 +56,105 @@ vi.mock('@/lib/recharts', () => {
   };
 });
 
-// The date axis shares the collector and throws on numbers; only the amount axis matters.
-function formatsAmount(fn: (v: number) => string, value: number, want: string) {
-  try {
-    return fn(value) === want;
-  } catch {
-    return false;
-  }
-}
-
 beforeEach(() => {
   visibility.hidden = false;
-  formatters.tick = [];
-  formatters.tooltip = [];
-  formatters.rows = [];
+  captured.tick = [];
+  captured.tooltip = [];
+  captured.rows = [];
+  captured.lines = [];
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(2026, 9, 20));
 });
-afterEach(cleanup);
-
-it('renders only a placeholder for the contributions chart when hidden', () => {
-  visibility.hidden = true;
-  render(<GoalContributionsChart goal={goalWithItems} />);
-  expect(screen.getByText('Contributions chart hidden')).toBeInTheDocument();
-  expect(screen.queryByTestId('tooltip')).toBeNull();
-  expect(screen.queryByTestId('x-axis')).toBeNull();
-  expect(screen.queryByTestId('y-axis')).toBeNull();
+afterEach(() => {
+  vi.useRealTimers();
+  cleanup();
 });
 
-it('renders only a placeholder for the budget chart when hidden', () => {
-  visibility.hidden = true;
-  render(<GoalItemsChart goal={goalWithItems} />);
-  expect(screen.getByText('Budget chart hidden')).toBeInTheDocument();
-  expect(screen.queryByTestId('tooltip')).toBeNull();
-  expect(screen.queryByTestId('x-axis')).toBeNull();
-  expect(screen.queryByTestId('y-axis')).toBeNull();
-});
-
-it('formats contribution axis and tooltip values as whole dollars', () => {
-  render(<GoalContributionsChart goal={goalWithItems} />);
-  expect(screen.getByTestId('tooltip')).toBeInTheDocument();
-  expect(formatters.tick.some((fn) => formatsAmount(fn, 1500, '$1,500'))).toBe(
-    true
-  );
-  expect(formatters.rows).toEqual([
-    { date: '2026-10-03', total: 600 },
-    { date: '2026-10-09', total: 1000 },
-  ]);
-});
-
-it('formats budget axis and tooltip values as whole dollars', () => {
-  render(<GoalItemsChart goal={goalWithItems} />);
-  expect(formatters.tick.some((fn) => formatsAmount(fn, 8000, '$8,000'))).toBe(
-    true
-  );
-  expect(formatters.tooltip[0]?.(8000, 'Budget')).toEqual(['$8,000', 'Budget']);
-});
-
-it('colours only over-budget paid bars as a loss', () => {
-  render(<GoalItemsChart goal={goalWithItems} />);
-  const fills = screen.getAllByTestId('cell').map((c) => c.dataset.fill);
-  expect(fills).toEqual(['var(--loss)', 'var(--chart-2)']);
-});
-
-it('caps the budget chart at eight items and notes the rest', () => {
-  const items = Array.from({ length: 11 }, (_, i) => ({
-    id: `i${i}`,
-    name: `Item ${i}`,
-    budget: i + 1,
+function item(index: number, budget: number, paid = 0) {
+  return {
+    id: `i${index}`,
+    name: `Item ${index}`,
+    budget,
     quote: null,
-    paid: 0,
-    remaining: i + 1,
-    over: 0,
+    paid,
+    remaining: Math.max(0, budget - paid),
+    over: Math.max(0, paid - budget),
     payments: [],
-  }));
-  render(<GoalItemsChart goal={makeGoal({ items })} />);
-  expect(formatters.rows).toHaveLength(8);
-  expect(screen.getByText('+3 more below')).toBeInTheDocument();
+  };
+}
+
+it('renders only a placeholder for the burn-up chart when hidden', () => {
+  visibility.hidden = true;
+  render(<GoalBurnUpChart goal={goalWithItems} />);
+  expect(screen.getByText('Burn-up chart hidden')).toBeInTheDocument();
+  expect(screen.queryByTestId('tooltip')).toBeNull();
+  expect(screen.queryByTestId('x-axis')).toBeNull();
+  expect(screen.queryByTestId('y-axis')).toBeNull();
+});
+
+it('plots cumulative saved from creation and formats amounts as whole dollars', () => {
+  render(<GoalBurnUpChart goal={goalWithItems} />);
+  expect(captured.tick.some((fn) => fn(1500) === '$1,500')).toBe(true);
+  expect(captured.tooltip[0]?.(1000, 'saved')).toEqual(['$1,000', 'Saved']);
+  expect(captured.rows.map((r) => r.saved)).toEqual([0, 600, 1000, 1000]);
+  expect(captured.lines).toEqual(['saved']);
+});
+
+it('adds the needed-pace line when the goal has a target date', () => {
+  render(
+    <GoalBurnUpChart goal={{ ...goalWithItems, targetDate: '2027-01-01' }} />
+  );
+  expect(captured.lines).toEqual(['needed', 'saved']);
+  expect(captured.tooltip[0]?.(500, 'needed')).toEqual(['$500', 'Needed pace']);
+  expect(captured.rows.at(-1)).toMatchObject({ needed: 10000, saved: null });
+});
+
+it('draws one segment per item with a tooltip and a paid part', () => {
+  const { container } = render(<ItemBreakdownBar goal={goalWithItems} />);
+  expect(container.querySelectorAll('g')).toHaveLength(2);
+  expect(container.querySelectorAll('rect')).toHaveLength(4);
+  expect(container.querySelector('title')).toHaveTextContent(/of \$8,000/);
+});
+
+it('collapses items beyond six into Other and lists them in the legend title', () => {
+  const items = Array.from({ length: 9 }, (_, i) => item(i, 100 + i));
+  render(
+    <ItemBreakdownBar goal={makeGoal({ items, targetAmount: 5000 })} labels />
+  );
+  const other = screen.getByText('Other').closest('li');
+  expect(other).toHaveAttribute('title', 'Item 2, Item 1, Item 0');
+  expect(document.querySelectorAll('g')).toHaveLength(7);
+});
+
+it('shows the empty summary for a goal without items', () => {
+  const { container } = render(
+    <ItemBreakdownBar goal={makeGoal({ items: [] })} />
+  );
+  expect(container.querySelectorAll('g')).toHaveLength(0);
+  expect(screen.getByText(/split into budget items/i)).toBeInTheDocument();
+});
+
+it('tints segments and rings the track when over-committed', () => {
+  const goal = makeGoal({
+    targetAmount: 1000,
+    contributed: 500,
+    items: [item(0, 800)],
+  });
+  const { container } = render(<ItemBreakdownBar goal={goal} />);
+  expect(container.querySelector('.ring-destructive\\/60')).not.toBeNull();
+  expect(container.querySelector('rect')).toHaveClass('fill-destructive/40');
+});
+
+it('draws no segments and no legend amounts when amounts are hidden', () => {
+  visibility.hidden = true;
+  const { container } = render(
+    <ItemBreakdownBar goal={goalWithItems} labels />
+  );
+  expect(container.querySelector('svg')).toBeNull();
+  expect(container.textContent).not.toMatch(/\d/);
+});
+
+it('omits the legend without labels', () => {
+  render(<ItemBreakdownBar goal={goalWithItems} />);
+  expect(screen.queryByRole('list')).toBeNull();
 });

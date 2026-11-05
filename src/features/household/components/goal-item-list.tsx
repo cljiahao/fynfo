@@ -1,14 +1,15 @@
 'use client';
 
-import { ProgressBar } from '@/components/widgets';
 import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { formatSGD } from '@/lib/utils/currency';
 import { format } from 'date-fns/format';
-import { Trash2, X } from 'lucide-react';
+import { parseISO } from 'date-fns/parseISO';
+import { Pencil, Trash2, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import {
@@ -18,7 +19,9 @@ import {
 } from '../hooks/use-household';
 import { useUndoableDelete } from '../hooks/use-undoable-delete';
 import { invalidProps, omitError } from '../lib/form-errors';
-import type { GoalItem } from '../types';
+import { effectiveAmount } from '../lib/goal-stats';
+import type { GoalItem, GoalItemPayment } from '../types';
+import { EditPaymentDialog } from './edit-payment-dialog';
 
 const today = () => format(new Date(), 'yyyy-MM-dd');
 
@@ -73,8 +76,13 @@ function ItemRow({
   const payments = item.payments.filter(
     (payment) => !pendingIds.has(payment.id)
   );
-  const pct =
-    item.budget > 0 ? Math.min(100, (item.paid / item.budget) * 100) : 0;
+  const [editing, setEditing] = useState<GoalItemPayment | null>(null);
+  const effective = effectiveAmount(item);
+  const over = Math.max(0, item.paid - effective);
+  const left = Math.max(0, effective - item.paid);
+  const scale = Math.max(item.budget, item.quote ?? 0, item.paid);
+  const widthOf = (amount: number) =>
+    scale > 0 ? Math.min(100, (amount / scale) * 100) : 0;
 
   function clearError(field: PaymentField) {
     setErrors((current) => omitError(current, field));
@@ -115,7 +123,7 @@ function ItemRow({
             {mask(formatSGD(item.paid))}
             <span className="text-muted-foreground">
               {' '}
-              / {mask(formatSGD(item.budget))}
+              / {mask(formatSGD(effective))}
             </span>
           </span>
           <Button
@@ -140,24 +148,46 @@ function ItemRow({
         </span>
       </div>
       {/* The track stays when amounts are hidden so the row keeps its height;
-          a fill would leak the masked percentage. */}
-      <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
+          a fill would leak the masked percentage. Estimate, quote and paid
+          share one scale, one thin lane each. */}
+      <div
+        className={cn(
+          'bg-muted h-3 w-full overflow-hidden rounded-sm',
+          !hidden && over > 0 && 'ring-loss/60 ring-1'
+        )}
+      >
         {!hidden && (
-          <ProgressBar
-            segments={[
-              { pct, className: item.over > 0 ? 'fill-loss' : 'fill-primary' },
-            ]}
-          />
+          <svg aria-hidden="true" className="block h-full w-full">
+            <rect
+              y="0"
+              height="33.4%"
+              width={`${widthOf(item.budget)}%`}
+              className="fill-muted-foreground/40"
+            />
+            {item.quote !== null && (
+              <rect
+                y="33.3%"
+                height="33.4%"
+                width={`${widthOf(item.quote)}%`}
+                className="fill-chart-3"
+              />
+            )}
+            <rect
+              y="66.6%"
+              height="33.4%"
+              width={`${widthOf(item.paid)}%`}
+              className={over > 0 ? 'fill-loss' : 'fill-primary'}
+            />
+          </svg>
         )}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-        {!hidden && item.over > 0 ? (
-          <span className="text-loss-strong">
-            Over by {formatSGD(item.over)}
-          </span>
+        {!hidden && over > 0 ? (
+          <span className="text-loss-strong">Over by {formatSGD(over)}</span>
         ) : (
           <span className="text-muted-foreground">
-            {mask(formatSGD(item.remaining))} left
+            {mask(formatSGD(left))} left
+            {item.quote !== null && ` · est ${mask(formatSGD(item.budget))}`}
           </span>
         )}
         {!paying && (
@@ -242,7 +272,7 @@ function ItemRow({
               className="flex items-center justify-between gap-2"
             >
               <span>
-                {format(new Date(payment.date), 'dd MMM yyyy')} ·{' '}
+                {format(parseISO(payment.date.slice(0, 10)), 'dd MMM yyyy')} ·{' '}
                 {payment.isSelf ? 'You' : 'Partner'}
               </span>
               <span className="flex items-center gap-1 tabular-nums">
@@ -251,10 +281,26 @@ function ItemRow({
                   type="button"
                   variant="ghost"
                   size="icon-xs"
+                  className={TOUCH_TARGET}
+                  disabled={hidden}
+                  aria-label={`Edit ${mask(formatSGD(payment.amount))} on ${format(
+                    parseISO(payment.date.slice(0, 10)),
+                    'dd MMM yyyy'
+                  )} by ${payment.isSelf ? 'You' : 'Partner'}`}
+                  onClick={() => {
+                    if (canReveal()) setEditing(payment);
+                  }}
+                >
+                  <Pencil className="size-3" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
                   className={`hover:text-destructive ${TOUCH_TARGET}`}
                   disabled={hidden}
                   aria-label={`Delete ${mask(formatSGD(payment.amount))} payment on ${format(
-                    new Date(payment.date),
+                    parseISO(payment.date.slice(0, 10)),
                     'dd MMM yyyy'
                   )} by ${payment.isSelf ? 'You' : 'Partner'}`}
                   onClick={() => {
@@ -279,6 +325,12 @@ function ItemRow({
           ))}
         </ul>
       )}
+      <EditPaymentDialog
+        key={editing?.id}
+        payment={editing}
+        itemName={item.name}
+        onOpenChange={(open) => !open && setEditing(null)}
+      />
     </li>
   );
 }

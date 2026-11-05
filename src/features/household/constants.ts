@@ -22,15 +22,9 @@ export const HOUSEHOLD_PATH = '/dashboard/household';
 
 export const GOAL_DETAIL_PATH = (id: string) => `${HOUSEHOLD_PATH}/goals/${id}`;
 
-/** Largest items shown in the budget chart; the full list sits below it. */
-export const ITEM_CHART_CAP = 8;
-
 export const RECENT_ACTIVITY_LIMIT = 8;
 
 export const NO_ITEMS_SUMMARY = 'Split into budget items';
-
-/** Keeps the horizontal bar axis from squeezing the plot area at 375px. */
-export const ITEM_CHART_NAME_WIDTH = 92;
 
 /** Item segments shown on a breakdown bar before the rest collapse into "Other". */
 export const ITEM_BAR_CAP = 6;
@@ -84,3 +78,22 @@ export const BUDGET_BAR_COLORS = {
   within: 'fill-primary',
   over: 'fill-loss',
 } as const;
+
+/** Literal classes so Tailwind sees them: `base` is the unpaid part, `paid` the shaded paid part. */
+export const ITEM_BAR_FILLS = [
+  { base: 'fill-chart-1/35', paid: 'fill-chart-1', dot: 'bg-chart-1' },
+  { base: 'fill-chart-2/35', paid: 'fill-chart-2', dot: 'bg-chart-2' },
+  { base: 'fill-chart-3/35', paid: 'fill-chart-3', dot: 'bg-chart-3' },
+  { base: 'fill-chart-4/35', paid: 'fill-chart-4', dot: 'bg-chart-4' },
+  { base: 'fill-chart-5/35', paid: 'fill-chart-5', dot: 'bg-chart-5' },
+  { base: 'fill-chart-6/35', paid: 'fill-chart-6', dot: 'bg-chart-6' },
+] as const;
+
+export const ITEM_BAR_OTHER_FILL = {
+  base: 'fill-muted-foreground/35',
+  paid: 'fill-muted-foreground',
+  dot: 'bg-muted-foreground',
+} as const;
+
+/** Unpaid part of every segment once saved plus still-to-pay exceeds the target. */
+export const ITEM_BAR_OVER_FILL = 'fill-destructive/40';

@@ -25,6 +25,13 @@ const actions = vi.hoisted(() => ({
   addItemPayment: vi.fn(),
   deleteGoalItem: vi.fn(),
   deleteItemPayment: vi.fn(),
+  addContribution: vi.fn(),
+  createGoal: vi.fn(),
+  updateGoal: vi.fn(),
+  deleteGoal: vi.fn(),
+  saveGoal: vi.fn(),
+  updateGoalPayment: vi.fn(),
+  updateGoalContribution: vi.fn(),
 }));
 vi.mock('@/features/household/actions/goal-actions', () => actions);
 vi.mock('@/features/household/actions/household-actions', () => ({}));
@@ -49,6 +56,7 @@ vi.mock('@/features/privacy', () => ({
     canReveal: () => !visibility.hidden,
     mask: (value: string) => (visibility.hidden ? 'Hidden' : value),
   }),
+  AmountsHiddenNotice: () => null,
 }));
 
 const DELAY = 6000;
@@ -303,7 +311,7 @@ it('leaks no amount into delete labels when amounts are hidden', async () => {
 it('keeps the item track without a fill when amounts are hidden', async () => {
   const visible = mount();
   const trackClass = (root: HTMLElement) =>
-    root.querySelector('div.bg-muted.h-1\\.5')?.className;
+    root.querySelector('div.bg-muted.h-3')?.className.replace(/ ring-\S+/g, '');
   const shownClass = trackClass(visible.container);
   expect(visible.container.querySelectorAll('rect').length).toBeGreaterThan(0);
   cleanup();
@@ -312,6 +320,31 @@ it('keeps the item track without a fill when amounts are hidden', async () => {
   const masked = mount();
   expect(trackClass(masked.container)).toBe(shownClass);
   expect(masked.container.querySelector('rect')).toBeNull();
+});
+
+describe('inline bar', () => {
+  it('highlights an over-budget item and leaves a within-budget one alone', () => {
+    const { container } = mount();
+    const [venue, photographer] = Array.from(
+      container.querySelectorAll(':scope > ul > li')
+    );
+    expect(venue.querySelector('.ring-loss\\/60')).not.toBeNull();
+    expect(venue.querySelector('rect.fill-loss')).not.toBeNull();
+    expect(screen.getByText('Over by $1,000.00')).toBeInTheDocument();
+    expect(photographer.querySelector('.ring-loss\\/60')).toBeNull();
+    expect(photographer.querySelector('rect.fill-primary')).not.toBeNull();
+  });
+});
+
+describe('editing a payment', () => {
+  it('opens the edit dialog from the pencil on a payment row', async () => {
+    mount();
+    const [edit] = screen.getAllByRole('button', { name: /^Edit \$4,500\.00/ });
+    await userEvent.click(edit);
+    expect(
+      await screen.findByRole('dialog', { name: 'Edit payment' })
+    ).toBeInTheDocument();
+  });
 });
 
 describe('inline errors', () => {
