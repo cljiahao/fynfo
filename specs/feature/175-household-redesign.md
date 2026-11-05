@@ -2,10 +2,10 @@
 id: '175'
 slug: household-redesign
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-05
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-05 # YYYY-MM-DD, set on approval
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # no PR (direct to main); commit shas recorded per slice
 supersedes:
@@ -147,12 +147,19 @@ filter, sort or uniqueness constraint touches `category` (`§5.4`).
 `components/goal-card.tsx` is rewritten. It shows, top to bottom:
 
 - Name, target date (see timezone fix below), and the status chip.
-- One bar, three segments: paid (`goal.saved`), committed (sum over items of
-  `max(0, effective_i - paid_i)`, where `effective_i = quote ?? budget`), and
-  remaining to target (`max(0, target - saved - committed)`). Segments are
-  clamped to 100%. If `saved + committed > target` the bar shows an
-  "over-committed" tint on the committed segment and the label says so.
+- One item breakdown bar (same component as the detail page, see Goal detail
+  page below): one segment per item sized by its committed amount
+  (`effective_i = quote ?? budget`), the paid part of each item shaded, plus a
+  remaining-to-target segment (`max(0, target - saved - committed)`, where
+  `committed` is the sum over items of `max(0, effective_i - paid_i)`). Items
+  beyond `ITEM_BAR_CAP` collapse into "Other" as on the detail page. Segments
+  are clamped to 100%. If `saved + committed > target` the committed segments
+  take the "over-committed" tint and the label says so. The bar is `w-full`
+  inside the card and must stay legible at 375px with no horizontal scroll;
+  the card has no labels on the bar (amounts stay in the text lines).
   Funded goals show the existing "Funded" state and a full paid bar.
+- Slice A ships this card with a single committed segment in place of the
+  per-item segments. Slice B swaps in the per-item segments (see Slice B).
 - A "`$X/mo needed`" line from `monthlyPaceNeeded` in `lib/goal-stats.ts`.
   Reuse as is for the number; the existing `'past'` result renders "Past
   target date". No line when funded or when there is no date.
@@ -248,8 +255,10 @@ state, not corruption. If open question 2 goes the other way, only the body of
   (`effective_i`), the paid part of each segment shaded. At most
   `ITEM_BAR_CAP = 6` segments; the remainder collapse into an "Other" bucket
   whose tooltip lists the names. The same bar, without labels, is reused on the
-  goal card in place of the plain committed segment only if it fits at 375px;
-  otherwise the card keeps the single committed segment (see open question 5).
+  goal card in place of the plain committed segment (open question 5, owner
+  decision 2026-11-05). The card must stay legible at 375px with no horizontal
+  scroll. This bar is owned by slice B, which also wires it into
+  `goal-card.tsx` after slice A lands, so B and C stay file-disjoint.
 - Burn-up chart replaces `goal-contributions-chart*.tsx`: cumulative saved
   against a straight needed-pace line from the first contribution (or goal
   creation if none) to the target date. Past the target date the line stops at
@@ -312,8 +321,8 @@ Acceptance:
 - [ ] Migration replays on a fresh DB copy, is idempotent when run twice, and
       grants/policies let an authenticated member read, insert, update and delete
       budgets, and update items and payments of their own household only.
-- [ ] Card shows name, date, one three-segment bar, `$X/mo needed`, chip, and
-      the overflow menu; no nested interactive elements (test asserts the link
+- [ ] Card shows name, date, one bar (single committed segment until slice B),
+      `$X/mo needed`, chip, and the overflow menu; no nested interactive elements (test asserts the link
       contains no `button`/`a` descendants and the menu is a sibling).
 - [ ] `goalStatus` unit tests cover funded, no-date, past-date, on-track and
       behind, with cent rounding and a goal created today.
@@ -346,6 +355,8 @@ amount (SGD)", "Funded", "Goal reached".
 Depends on A. Owned files (none shared with C):
 
 - `components/goal-detail.tsx`, `goal-item-list.tsx`, `goal-detail-skeleton.tsx`
+- `components/goal-card.tsx`: only the swap of the single committed segment for
+  the item breakdown bar (after A lands; no other card change is B's)
 - new `components/goal-burn-up-chart.tsx` and `-chart-content.tsx`, new
   `components/item-breakdown-bar.tsx`
 - removed: `goal-contributions-chart*.tsx`, `goal-items-chart*.tsx`,
@@ -363,7 +374,8 @@ Acceptance:
       navigate to the household page).
 - [ ] Breakdown bar: one segment per item sized by committed amount, paid part
       shaded, more than `ITEM_BAR_CAP` items collapse into "Other"; zero items
-      shows the empty summary.
+      shows the empty summary. The same bar appears on the goal card at 375px
+      without horizontal scroll.
 - [ ] Burn-up shows saved vs needed pace, handles no date, no contributions
       (starts at creation), and a past target date.
 - [ ] Old contributions line chart and budget-vs-paid chart are gone; each item
@@ -452,26 +464,30 @@ shipped` only when A, B and C are on `main`.
 
 ## Open questions
 
-- [ ] Q1: The edit actions need `GRANT UPDATE` and UPDATE policies on
+- [x] Q1: The edit actions need `GRANT UPDATE` and UPDATE policies on
       `household_goal_items` and `household_goal_payments`, which the owner's
       migration approval did not name. Proposed default: include them in the
       slice A migration as additive RLS (membership-gated, payer fixed). Owner:
-      Clarence. A:
-- [ ] Q2: Is best-effort ordered `saveGoal` acceptable, or does the owner want
+      Clarence. A: Accepted proposed default (Clarence, 2026-11-05).
+- [x] Q2: Is best-effort ordered `saveGoal` acceptable, or does the owner want
       a transactional RPC? Proposed default: best effort, as justified above.
-      Owner: Clarence. A:
-- [ ] Q3: On-track rule is linear from creation date to target date. Does the
+      Owner: Clarence. A: Accepted proposed default (Clarence, 2026-11-05).
+- [x] Q3: On-track rule is linear from creation date to target date. Does the
       owner prefer pace against the last 3 months of actual contributions?
-      Proposed default: linear. Owner: Clarence. A:
-- [ ] Q4: Templates (wedding, renovation, car): confirm item names. Proposed
+      Proposed default: linear. Owner: Clarence. A: Accepted proposed default
+      (Clarence, 2026-11-05).
+- [x] Q4: Templates (wedding, renovation, car): confirm item names. Proposed
       default: wedding = Venue, Catering, Photography, Attire, Rings; renovation
       = Design, Materials, Labour, Furniture, Contingency; car = Deposit,
-      Insurance, Registration, Accessories. Owner: Clarence. A:
-- [ ] Q5: Should the item breakdown bar also appear on the goal card? Proposed
+      Insurance, Registration, Accessories. Owner: Clarence. A: Accepted
+      proposed default (Clarence, 2026-11-05).
+- [x] Q5: Should the item breakdown bar also appear on the goal card? Proposed
       default: no, the card keeps the single committed segment; the detail page
-      has the full breakdown. Owner: Clarence. A:
-- [ ] Q6: Item breakdown cap. Proposed default: 6 segments plus "Other".
-      Owner: Clarence. A:
-- [ ] Q7: Suggested budget with fewer than 3 full months of history: show
+      has the full breakdown. Owner: Clarence. A: Yes: card shows the item
+      breakdown bar (cap per Q6) in place of the single committed segment, per
+      owner decision 2026-11-05.
+- [x] Q6: Item breakdown cap. Proposed default: 6 segments plus "Other".
+      Owner: Clarence. A: Accepted proposed default (Clarence, 2026-11-05).
+- [x] Q7: Suggested budget with fewer than 3 full months of history: show
       nothing, or average the months available? Proposed default: show nothing.
-      Owner: Clarence. A:
+      Owner: Clarence. A: Accepted proposed default (Clarence, 2026-11-05).
