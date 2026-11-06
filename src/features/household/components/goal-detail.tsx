@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import {
+  GOAL_ITEM_LIMIT,
   HOUSEHOLD_PATH,
   RECENT_ACTIVITY_LIMIT,
   UNDO_DELAY_MS,
@@ -36,6 +37,7 @@ import type {
   HouseholdGoal,
 } from '../types';
 import { AddContributionDialog } from './add-contribution-dialog';
+import { AddGoalItemDialog } from './add-goal-item-dialog';
 import { ConfirmDeleteDialog } from './confirm-delete-dialog';
 import { EditPaymentDialog } from './edit-payment-dialog';
 import { GoalBurnUpChart } from './goal-burn-up-chart';
@@ -158,6 +160,7 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
   const deleteGoal = useDeleteGoal();
   // Remounting the sheet per open re-seeds its draft from the current goal.
   const [editor, setEditor] = useState({ open: false, session: 0 });
+  const [addItemOpen, setAddItemOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editingContribution, setEditingContribution] =
     useState<GoalContribution | null>(null);
@@ -177,12 +180,19 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
   const funded = goal.targetAmount > 0 && goal.contributed >= goal.targetAmount;
   const pace = monthlyPaceNeeded(goal, new Date());
   const hasItems = goal.items.length > 0;
+  // Counted on the unfiltered goal: an item in its undo window still occupies a slot.
+  const itemLimitReached = source.items.length >= GOAL_ITEM_LIMIT;
+  const itemLimitReason = `A goal can have at most ${GOAL_ITEM_LIMIT} budget items`;
   const { overCommitted } = breakdownSegments(goal);
   const activity = recentActivity(goal, RECENT_ACTIVITY_LIMIT);
 
   function openEditor() {
     if (canReveal())
       setEditor((current) => ({ open: true, session: current.session + 1 }));
+  }
+
+  function openAddItem() {
+    if (canReveal()) setAddItemOpen(true);
   }
 
   function editEntry(entry: ActivityEntry) {
@@ -314,12 +324,21 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
             size="sm"
             variant="outline"
             className="pointer-coarse:min-h-11"
-            disabled={hidden}
-            onClick={openEditor}
+            disabled={hidden || itemLimitReached}
+            title={itemLimitReached ? itemLimitReason : undefined}
+            aria-describedby={
+              itemLimitReached ? 'item-limit-reason' : undefined
+            }
+            onClick={openAddItem}
           >
             <Plus className="mr-1 size-3.5" />
             Add item
           </Button>
+          {itemLimitReached && (
+            <span id="item-limit-reason" className="sr-only">
+              {itemLimitReason}
+            </span>
+          )}
         </div>
         {!hidden && overCommitted && (
           <p role="status" className="text-warning text-xs">
@@ -380,6 +399,12 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
         goal={goal}
         open={editor.open}
         onOpenChange={(open) => setEditor((current) => ({ ...current, open }))}
+      />
+      <AddGoalItemDialog
+        key={addItemOpen ? 'open' : 'closed'}
+        goal={source}
+        open={addItemOpen}
+        onOpenChange={setAddItemOpen}
       />
       <AddContributionDialog
         key={editingContribution?.id}

@@ -46,7 +46,7 @@ export const addItemPaymentSchema = z.object({
   date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
 });
 
-const saveGoalItemSchema = z.object({
+export const saveGoalItemSchema = z.object({
   id: z.uuid().optional(),
   name: z.string().trim().min(1).max(80),
   budget: z.number().positive().finite(),

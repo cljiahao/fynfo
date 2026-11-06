@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
+import { saveGoal } from '@/features/household/actions/goal-actions';
 import { GoalDetail } from '@/features/household/components/goal-detail';
+import { GOAL_ITEM_LIMIT } from '@/features/household/constants';
 import type { HouseholdGoal } from '@/features/household/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
@@ -158,14 +160,141 @@ describe('with items', () => {
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
-  it('opens the goal editor from Add item and from Edit', () => {
-    mount();
-    fireEvent.click(screen.getByRole('button', { name: 'Add item' }));
-    expect(screen.getByRole('dialog', { name: 'Edit goal' })).toBeVisible();
-    cleanup();
+  it('opens the goal editor from Edit', () => {
     mount();
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     expect(screen.getByRole('dialog', { name: 'Edit goal' })).toBeVisible();
+  });
+
+  describe('add item dialog', () => {
+    function fill(name: string, budget: string, quote = '') {
+      fireEvent.change(screen.getByLabelText('Item'), {
+        target: { value: name },
+      });
+      fireEvent.change(screen.getByLabelText('Estimate (SGD)'), {
+        target: { value: budget },
+      });
+      if (quote)
+        fireEvent.change(screen.getByLabelText('Final quote (optional)'), {
+          target: { value: quote },
+        });
+    }
+
+    function openDialog() {
+      fireEvent.click(screen.getByRole('button', { name: 'Add item' }));
+      return screen.getByRole('dialog', { name: 'Add budget item' });
+    }
+
+    beforeEach(() => {
+      vi.mocked(saveGoal).mockReset();
+      vi.mocked(saveGoal).mockResolvedValue({
+        ok: true,
+        goalId: 'g1',
+        itemIds: [],
+      });
+    });
+
+    it('asks only for the item, with no goal fields', () => {
+      mount();
+      const dialog = openDialog();
+      expect(dialog).toBeVisible();
+      expect(screen.getByLabelText('Item')).toHaveFocus();
+      expect(screen.queryByLabelText(/target/i)).toBeNull();
+      expect(screen.queryByDisplayValue('Wedding')).toBeNull();
+      expect(screen.queryByRole('dialog', { name: 'Edit goal' })).toBeNull();
+    });
+
+    it('saves unchanged goal fields and items plus the new item', async () => {
+      setGoals([{ ...goalWithItems, targetDate: '2027-03-01T00:00:00Z' }]);
+      mount();
+      openDialog();
+      fill('Cake', '250.5', '240');
+      fireEvent.submit(screen.getByLabelText('Item').closest('form')!);
+      await waitFor(() => expect(saveGoal).toHaveBeenCalledTimes(1));
+      expect(vi.mocked(saveGoal).mock.calls[0]?.[0]).toEqual({
+        goalId: 'g1',
+        name: 'Wedding',
+        target: 10000,
+        targetDate: '2027-03-01',
+        items: [
+          { id: 'i1', name: 'Venue', budget: 8000, quote: null },
+          { id: 'i2', name: 'Photographer', budget: 3000, quote: null },
+          { name: 'Cake', budget: 250.5, quote: 240 },
+        ],
+      });
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('dialog', { name: 'Add budget item' })
+        ).toBeNull()
+      );
+    });
+
+    it('keeps the dialog and input when saving fails', async () => {
+      vi.mocked(saveGoal).mockResolvedValue({
+        ok: false,
+        code: 'SERVER',
+        goalId: 'g1',
+        itemIds: [],
+      });
+      mount();
+      openDialog();
+      fill('Cake', '250');
+      fireEvent.submit(screen.getByLabelText('Item').closest('form')!);
+      await waitFor(() => expect(saveGoal).toHaveBeenCalled());
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Add item' })).toBeEnabled()
+      );
+      expect(screen.getByLabelText('Item')).toHaveValue('Cake');
+      expect(
+        screen.getByRole('dialog', { name: 'Add budget item' })
+      ).toBeVisible();
+    });
+
+    it('rejects a missing name or estimate without saving', () => {
+      mount();
+      openDialog();
+      fireEvent.submit(screen.getByLabelText('Item').closest('form')!);
+      expect(saveGoal).not.toHaveBeenCalled();
+      expect(screen.getByText('Enter a name')).toBeInTheDocument();
+      expect(screen.getByText('Enter an amount above 0')).toBeInTheDocument();
+    });
+
+    it('keeps an item that is pending undo-delete', async () => {
+      mount();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Delete item Photographer' })
+      );
+      openDialog();
+      fill('Cake', '250');
+      fireEvent.submit(screen.getByLabelText('Item').closest('form')!);
+      await waitFor(() => expect(saveGoal).toHaveBeenCalledTimes(1));
+      const sent = vi.mocked(saveGoal).mock.calls[0]?.[0] as {
+        items: { id?: string }[];
+      };
+      expect(sent.items.map((item) => item.id)).toEqual([
+        'i1',
+        'i2',
+        undefined,
+      ]);
+    });
+
+    it('disables Add item with a reason at the item limit', () => {
+      const items = Array.from({ length: GOAL_ITEM_LIMIT }, (_, index) => ({
+        ...goalWithItems.items[1]!,
+        id: `item-${index}`,
+        name: `Item ${index}`,
+      }));
+      setGoals([{ ...goalWithItems, items }]);
+      mount();
+      const button = screen.getByRole('button', { name: 'Add item' });
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('title', expect.stringContaining('50'));
+      expect(button).toHaveAccessibleDescription(
+        `A goal can have at most ${GOAL_ITEM_LIMIT} budget items`
+      );
+      fireEvent.click(button);
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
   });
 
   it('confirms before deleting and returns to the household page', async () => {
