@@ -166,9 +166,9 @@ function DashboardOverviewContent() {
                   />
 
                   <InvestmentAllocation budgets={marketBudgets} />
-
-                  <DividendSummary monthlyExpenses={plannerValues.expenses} />
                 </QueryContent>
+
+                <DividendSummary monthlyExpenses={plannerValues.expenses} />
               </>
             ),
           },

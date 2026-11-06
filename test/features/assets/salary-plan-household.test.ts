@@ -316,7 +316,7 @@ describe('calcRecentAvgExpense', () => {
       NOW,
       6
     );
-    expect(r).toEqual({ average: 200, monthsUsed: 2 });
+    expect(r).toEqual({ average: 400 / 6, monthsUsed: 6 });
   });
 
   it('defaults to the last 12 full months', () => {
@@ -328,10 +328,33 @@ describe('calcRecentAvgExpense', () => {
       ],
       NOW
     );
-    expect(r).toEqual({ average: 200, monthsUsed: 2 });
+    expect(r).toEqual({ average: 400 / 12, monthsUsed: 12 });
   });
 
-  it('averages across only the months that have data', () => {
+  it('divides by 12 when more than 12 months of data exist', () => {
+    const data = Array.from({ length: 15 }, (_, i) =>
+      exp({
+        date: new Date(2025, 7 + i, 5).toISOString().slice(0, 10),
+        amount: 120,
+      })
+    );
+    const r = calcRecentAvgExpense(data, NOW);
+    expect(r).toEqual({ average: 120, monthsUsed: 12 });
+  });
+
+  it('divides by 3 when the first expense is 3 full months back', () => {
+    const r = calcRecentAvgExpense(
+      [
+        exp({ date: '2026-08-10', amount: 300 }),
+        exp({ date: '2026-09-10', amount: 300 }),
+        exp({ date: '2026-10-10', amount: 300 }),
+      ],
+      NOW
+    );
+    expect(r).toEqual({ average: 300, monthsUsed: 3 });
+  });
+
+  it('counts a gap month inside the range as zero', () => {
     const r = calcRecentAvgExpense(
       [
         exp({ date: '2026-08-10', amount: 100 }),
@@ -340,7 +363,7 @@ describe('calcRecentAvgExpense', () => {
       ],
       NOW
     );
-    expect(r).toEqual({ average: 450, monthsUsed: 2 });
+    expect(r).toEqual({ average: 300, monthsUsed: 3 });
   });
 
   it('subtracts other people portions of shared expenses', () => {
@@ -355,7 +378,7 @@ describe('calcRecentAvgExpense', () => {
       ],
       NOW
     );
-    expect(r).toEqual({ average: 60, monthsUsed: 1 });
+    expect(r).toEqual({ average: 30, monthsUsed: 2 });
   });
 
   it('ignores insurance and honours a custom window', () => {

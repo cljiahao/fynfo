@@ -31,7 +31,8 @@ export interface RecentAvgExpense {
 /**
  * Average of the user's own monthly expense over the last `months` full
  * calendar months, leaving out the current partial month so it cannot dilute
- * the figure. Only months in the window that have data are averaged.
+ * the figure. The divisor runs from the first month with any expense to the
+ * last full month (at most `months`), so quiet months in between count as 0.
  */
 export function calcRecentAvgExpense(
   expenses: ExpenseData[] | undefined,
@@ -54,7 +55,11 @@ export function calcRecentAvgExpense(
   }
   if (monthTotals.size === 0) return { average: 0, monthsUsed: 0 };
   const total = Array.from(monthTotals.values()).reduce((a, v) => a + v, 0);
-  return { average: total / monthTotals.size, monthsUsed: monthTotals.size };
+  const first = Array.from(monthTotals.keys()).sort()[0];
+  const [fy, fm] = first.split('-').map(Number);
+  const span = (now.getFullYear() - fy) * 12 + (now.getMonth() + 1 - fm);
+  const monthsUsed = Math.min(months, Math.max(1, span));
+  return { average: total / monthsUsed, monthsUsed };
 }
 
 export interface SalaryPlanInput {

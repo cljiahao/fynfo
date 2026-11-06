@@ -173,7 +173,12 @@ export function PlannerSettingsSheet({
               value={hidden ? '' : values.expenseBufferPct || ''}
               onChange={(e) =>
                 canReveal() &&
-                onChange({ expenseBufferPct: Number(e.target.value) || 0 })
+                onChange({
+                  expenseBufferPct: Math.min(
+                    100,
+                    Math.max(0, Number(e.target.value) || 0)
+                  ),
+                })
               }
             />
             <span className="text-muted-foreground text-xs">%</span>
