@@ -25,6 +25,7 @@ export interface PlannerSettingsValues {
   tithePctInput: number;
   allowanceEnabled: boolean;
   allowancePctInput: number;
+  expenseBufferPct: number;
 }
 
 interface PlannerSettingsSheetProps {
@@ -153,6 +154,30 @@ export function PlannerSettingsSheet({
               }
             />
           )}
+        </section>
+
+        <section className="space-y-3">
+          <h3 className="text-sm font-medium">Expense buffer</h3>
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor="planner-buffer" className="text-xs">
+              Buffer over expenses
+            </Label>
+            <Input
+              id="planner-buffer"
+              type="number"
+              min="0"
+              max="100"
+              placeholder="0"
+              className="h-6 w-14 text-xs"
+              disabled={hidden}
+              value={hidden ? '' : values.expenseBufferPct || ''}
+              onChange={(e) =>
+                canReveal() &&
+                onChange({ expenseBufferPct: Number(e.target.value) || 0 })
+              }
+            />
+            <span className="text-muted-foreground text-xs">%</span>
+          </div>
         </section>
 
         <section className="space-y-3">

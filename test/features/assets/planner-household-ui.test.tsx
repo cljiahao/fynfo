@@ -153,7 +153,7 @@ describe('planner household states', () => {
     expect(
       await screen.findByText(/could not be loaded, so they are not included/)
     ).toBeTruthy();
-    expect(screen.getByLabelText('Gross Salary')).toBeTruthy();
+    expect(screen.getByText('Gross Salary')).toBeTruthy();
   });
 
   it('shows the shortfall alert when household exceeds take-home', async () => {

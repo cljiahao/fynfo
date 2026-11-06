@@ -46,7 +46,27 @@ describe('planner-actions — getPlannerSettings', () => {
     });
     const { getPlannerSettings } =
       await import('@/features/assets/actions/planner-actions');
-    expect(await getPlannerSettings()).toEqual(VALID_SETTINGS);
+    expect(await getPlannerSettings()).toEqual({
+      ...VALID_SETTINGS,
+      expenseBufferPct: 0,
+    });
+  });
+
+  it('maps the stored expense buffer', async () => {
+    setSupabase({
+      selectData: {
+        emergency_months: 6,
+        war_chest_months: 12,
+        tithe_enabled: true,
+        tithe_pct: 10,
+        allowance_enabled: false,
+        allowance_pct: 0,
+        expense_buffer_pct: '12.5',
+      },
+    });
+    const { getPlannerSettings } =
+      await import('@/features/assets/actions/planner-actions');
+    expect((await getPlannerSettings())?.expenseBufferPct).toBe(12.5);
   });
 
   it('returns null when the row is missing', async () => {
@@ -119,6 +139,27 @@ describe('planner-actions — upsertPlannerSettings', () => {
     const [first, second] = fake.calls.upsert as Record<string, unknown>[];
     expect(first.household_horizon_months).toBe(36);
     expect('household_horizon_months' in second).toBe(false);
+  });
+
+  it('writes the expense buffer only when given', async () => {
+    const fake = setSupabase();
+    const { upsertPlannerSettings } =
+      await import('@/features/assets/actions/planner-actions');
+    await upsertPlannerSettings({ ...VALID_SETTINGS, expenseBufferPct: 15 });
+    await upsertPlannerSettings(VALID_SETTINGS);
+    const [first, second] = fake.calls.upsert as Record<string, unknown>[];
+    expect(first.expense_buffer_pct).toBe(15);
+    expect('expense_buffer_pct' in second).toBe(false);
+  });
+
+  it.each([-1, 101])('rejects expense buffer %s', async (pct) => {
+    const fake = setSupabase();
+    const { upsertPlannerSettings } =
+      await import('@/features/assets/actions/planner-actions');
+    await expect(
+      upsertPlannerSettings({ ...VALID_SETTINGS, expenseBufferPct: pct })
+    ).rejects.toThrow();
+    expect(fake.calls.upsert).toHaveLength(0);
   });
 
   it.each([0, 121, 12.5])('rejects horizon %s', async (months) => {

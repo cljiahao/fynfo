@@ -139,7 +139,7 @@ describe('saved scenario isolation', () => {
     fireEvent.change(within(dialog).getByLabelText('Gross Salary'), {
       target: { value: '7000' },
     });
-    expect(screen.getAllByLabelText('Gross Salary')[0]).toHaveValue(5000);
+    expect(screen.getByTestId('planner-salary')).toHaveTextContent('$5,000');
     expect(within(dialog).getByLabelText('Gross Salary')).toHaveValue(7000);
     const ids = Array.from(
       document.querySelectorAll('[id]'),

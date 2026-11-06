@@ -58,6 +58,8 @@ export interface PlannerSettingsData {
   allowancePct: number;
   /** Months of household goals reserved up front; the stored default is 24. */
   householdHorizonMonths?: number;
+  /** Percent of expenses added as a separate buffer line; the stored default is 0. */
+  expenseBufferPct?: number;
 }
 
 export interface ScenarioPayload {

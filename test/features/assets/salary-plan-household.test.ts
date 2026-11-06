@@ -306,11 +306,24 @@ describe('calcRecentAvgExpense', () => {
     expect(r).toEqual({ average: 100, monthsUsed: 1 });
   });
 
-  it('uses only the last 6 full months', () => {
+  it('honours an explicit 6 month window', () => {
     const r = calcRecentAvgExpense(
       [
         exp({ date: '2026-04-30', amount: 5000 }),
         exp({ date: '2026-05-01', amount: 100 }),
+        exp({ date: '2026-10-31', amount: 300 }),
+      ],
+      NOW,
+      6
+    );
+    expect(r).toEqual({ average: 200, monthsUsed: 2 });
+  });
+
+  it('defaults to the last 12 full months', () => {
+    const r = calcRecentAvgExpense(
+      [
+        exp({ date: '2025-10-31', amount: 5000 }),
+        exp({ date: '2025-11-01', amount: 100 }),
         exp({ date: '2026-10-31', amount: 300 }),
       ],
       NOW
@@ -367,5 +380,43 @@ describe('calcRecentAvgExpense', () => {
       new Date(2026, 0, 10)
     );
     expect(r).toEqual({ average: 500, monthsUsed: 2 });
+  });
+});
+
+describe('expense buffer', () => {
+  it('defaults to no buffer and leaves the plan unchanged', () => {
+    const plan = computeSalaryPlan(base);
+    expect(plan.bufferAmt).toBe(0);
+    expect(plan.bufferPct).toBe(0);
+    expect(plan).toEqual(computeSalaryPlan({ ...base, expenseBufferPct: 0 }));
+  });
+
+  it('deducts the buffer after expenses without merging it into them', () => {
+    const plain = computeSalaryPlan(base);
+    const plan = computeSalaryPlan({ ...base, expenseBufferPct: 10 });
+    expect(plan.expensesAmt).toBe(2000);
+    expect(plan.bufferAmt).toBe(200);
+    expect(plan.bufferPct).toBeCloseTo(200 / 8000);
+    expect(plan.emergencyFundGoal).toBe(plain.emergencyFundGoal);
+    expect(plan.investmentAmt + plan.savingsAmt).toBeCloseTo(
+      plain.investmentAmt + plain.savingsAmt - 200
+    );
+  });
+
+  it('counts an over-large buffer toward the shortfall', () => {
+    const plan = computeSalaryPlan({
+      ...base,
+      salary: 3000,
+      expenses: 2000,
+      expenseBufferPct: 50,
+    });
+    expect(plan.householdShortfallAmt).toBeGreaterThan(0);
+    expect(plan.savingsAmt).toBe(0);
+  });
+
+  it('ignores a negative buffer', () => {
+    expect(computeSalaryPlan({ ...base, expenseBufferPct: -5 }).bufferAmt).toBe(
+      0
+    );
   });
 });

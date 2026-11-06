@@ -1,9 +1,9 @@
 'use client';
 
-import { ProgressBar } from '@/components/widgets/progress-bar';
 import { useAmountVisibility } from '@/features/privacy';
 import { formatSGD } from '@/lib/utils/currency';
 import { useState, type ReactNode } from 'react';
+import { PlannerDonut } from './planner-donut';
 
 export interface FlowSegment {
   key: string;
@@ -23,8 +23,8 @@ interface PlannerFlowProps {
 }
 
 /**
- * Take-home waterfall: one stacked bar from net to expenses, insurance, giving,
- * household, savings and investment, with the amounts in a legend below.
+ * Take-home split: a donut of expenses, insurance, giving, household, savings
+ * and investment, with the amounts in a legend below.
  */
 export function PlannerFlow({ net, segments, stateLine }: PlannerFlowProps) {
   const { mask } = useAmountVisibility();
@@ -40,18 +40,15 @@ export function PlannerFlow({ net, segments, stateLine }: PlannerFlowProps) {
           {mask(formatSGD(net))}
         </span>
       </div>
-      <div
-        role="img"
-        aria-label="How your monthly take-home is allocated"
-        className="bg-muted h-4 w-full overflow-hidden rounded-full"
-      >
-        <ProgressBar
-          segments={visible.map((segment) => ({
-            pct: (segment.amount / total) * 100,
-            color: segment.color,
-          }))}
-        />
-      </div>
+      <PlannerDonut
+        slices={visible}
+        total={total}
+        ariaLabel={`How your monthly take-home is allocated: ${visible
+          .map(
+            (segment) => `${segment.label} ${(segment.pct * 100).toFixed(1)}%`
+          )
+          .join(', ')}`}
+      />
       <p className="text-sm font-medium" data-testid="planner-state-line">
         {stateLine}
       </p>

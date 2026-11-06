@@ -212,7 +212,7 @@ it('hydrates all four server datasets into the real overview without fetching th
     api.getExpenses,
   ])
     expect(read).toHaveBeenCalledOnce();
-  fireEvent.change(screen.getAllByRole('spinbutton')[1], {
+  fireEvent.change(screen.getAllByRole('spinbutton')[0], {
     target: { value: '1000' },
   });
   expect(screen.getByText('Custom')).toBeTruthy();
@@ -241,9 +241,7 @@ it('keeps planner inputs unavailable after an upstream error and restores calcul
   fireEvent.click(retryButton);
   expect(await screen.findByText('Net (after CPF)')).toBeTruthy();
   expect(screen.getByText('$4,000.00')).toBeTruthy();
-  expect((screen.getAllByRole('spinbutton')[0] as HTMLInputElement).value).toBe(
-    '5000'
-  );
+  expect(screen.getByTestId('planner-salary').textContent).toContain('$5,000');
   expect(api.getExpenses).toHaveBeenCalledTimes(3);
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
@@ -351,9 +349,7 @@ async function enterPlannerEdits() {
     target: { value: '50' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Overview' }));
-  fireEvent.change(await screen.findByLabelText('Gross Salary'), {
-    target: { value: '8000' },
-  });
+  await screen.findByText('Gross Salary');
   fireEvent.click(screen.getByRole('button', { name: 'Investments' }));
   await screen.findByText('SG Stocks');
   return client;
@@ -376,7 +372,7 @@ it('connects calculated market budgets to real ticker allocation edits without p
   );
 });
 
-it('keeps planner salary and allocation edits after a snapshot read is retried', async () => {
+it('keeps planner allocation edits after a snapshot read is retried', async () => {
   const client = await enterPlannerEdits();
   api.getSnapshots.mockRejectedValueOnce(new Error('offline'));
   await client.invalidateQueries({ queryKey: ['snapshots'] });
@@ -385,15 +381,13 @@ it('keeps planner salary and allocation edits after a snapshot read is retried',
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
   );
-  expect(
-    (screen.getByLabelText('Gross Salary') as HTMLInputElement).value
-  ).toBe('8000');
+  expect(screen.getByTestId('planner-salary').textContent).toContain('$5,000');
   fireEvent.click(screen.getByText('Investments'));
   expect(getAllocationInput('AAPL', 'US Stocks').value).toBe('50');
   expect(getAllocationInput('DBS', 'SG Stocks').value).toBe('100');
 });
 
-it('keeps planner salary and allocation edits after an expense read is retried', async () => {
+it('keeps planner allocation edits after an expense read is retried', async () => {
   const client = await enterPlannerEdits();
   api.getExpenses.mockRejectedValue(new Error('offline'));
   await client.invalidateQueries({ queryKey: ['expenses'] });
@@ -404,9 +398,7 @@ it('keeps planner salary and allocation edits after an expense read is retried',
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
   );
-  expect(
-    (screen.getByLabelText('Gross Salary') as HTMLInputElement).value
-  ).toBe('8000');
+  expect(screen.getByTestId('planner-salary').textContent).toContain('$5,000');
   fireEvent.click(screen.getByText('Investments'));
   expect(getAllocationInput('DBS', 'SG Stocks').value).toBe('100');
 });

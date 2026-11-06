@@ -43,6 +43,7 @@ export const plannerSettingsSchema = z.object({
   allowanceEnabled: z.boolean(),
   allowancePct: z.number().min(0).max(100),
   householdHorizonMonths: z.number().int().min(1).max(120).optional(),
+  expenseBufferPct: z.number().min(0).max(100).optional(),
 });
 
 // Bounds apply only to saved snapshots, not the live planner contract.

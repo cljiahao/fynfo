@@ -36,7 +36,7 @@ export interface RecentAvgExpense {
 export function calcRecentAvgExpense(
   expenses: ExpenseData[] | undefined,
   now: Date,
-  months = 6
+  months = 12
 ): RecentAvgExpense {
   if (!expenses?.length || months <= 0) return { average: 0, monthsUsed: 0 };
   const monthKey = (y: number, m: number) =>
@@ -72,6 +72,8 @@ export interface SalaryPlanInput {
   householdMonthlyDeduction?: number;
   /** Caller's share of goals due within the horizon; default 0. */
   householdReserve?: number;
+  /** Extra cushion on top of expenses, as a percent of expenses; default 0. */
+  expenseBufferPct?: number;
 }
 
 export interface SalaryPlan {
@@ -102,6 +104,8 @@ export interface SalaryPlan {
   savingsGap: number;
   investmentPaused: boolean;
   householdShortfallAmt: number;
+  bufferPct: number;
+  bufferAmt: number;
 }
 
 /**
@@ -128,6 +132,8 @@ export function computeSalaryPlan(input: SalaryPlanInput): SalaryPlan {
     input.householdMonthlyDeduction ?? 0
   );
   const householdReserve = Math.max(0, input.householdReserve ?? 0);
+  const bufferInputPct = Math.max(0, input.expenseBufferPct ?? 0);
+  const bufferAmt = (expenses * bufferInputPct) / 100;
 
   const netAfterCpf = salary * 0.8;
 
@@ -142,11 +148,19 @@ export function computeSalaryPlan(input: SalaryPlanInput): SalaryPlan {
   const householdPct =
     netAfterCpf > 0 ? householdMonthlyDeduction / netAfterCpf : 0;
 
+  const bufferPct = netAfterCpf > 0 ? bufferAmt / netAfterCpf : 0;
+
   const usedPct =
-    expensesPct + insurancePct + tithePct + allowancePct + householdPct;
+    expensesPct +
+    bufferPct +
+    insurancePct +
+    tithePct +
+    allowancePct +
+    householdPct;
   const available =
     netAfterCpf -
     expenses -
+    bufferAmt -
     netAfterCpf * (insurancePct + tithePct + allowancePct) -
     householdMonthlyDeduction;
   const cappedPct = Math.max(1 - usedPct, 0);
@@ -209,6 +223,8 @@ export function computeSalaryPlan(input: SalaryPlanInput): SalaryPlan {
     savingsGap: Math.max(0, savingsTarget - goalsFunded),
     investmentPaused: reserveGap > 0,
     householdShortfallAmt: Math.max(0, -available),
+    bufferPct,
+    bufferAmt,
   };
 }
 

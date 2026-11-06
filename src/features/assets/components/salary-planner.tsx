@@ -13,12 +13,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryContent } from '@/components/widgets';
 import { useExpenses } from '@/features/expenses';
 import { useSalaryRecords } from '@/features/salary';
+import { PAGE_ROUTES } from '@/lib/constants/routes';
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DEFAULT_HOUSEHOLD_HORIZON_MONTHS } from '../constants';
 import { useExpensesOverride } from '../hooks/use-expenses-override';
@@ -67,6 +67,7 @@ const DEFAULT_SETTINGS: PlannerSettingsData = {
   allowanceEnabled: false,
   allowancePct: 5,
   householdHorizonMonths: DEFAULT_HOUSEHOLD_HORIZON_MONTHS,
+  expenseBufferPct: 0,
 };
 
 export function SalaryPlanner(props: SalaryPlannerProps) {
@@ -123,7 +124,7 @@ export function SalaryPlanner(props: SalaryPlannerProps) {
   ) : null;
 
   const latestSalary = salaryRecords?.[salaryRecords.length - 1];
-  const recentAvg = calcRecentAvgExpense(expenses, new Date(), 6);
+  const recentAvg = calcRecentAvgExpense(expenses, new Date(), 12);
 
   return (
     <>
@@ -133,7 +134,7 @@ export function SalaryPlanner(props: SalaryPlannerProps) {
       >
         <SalaryPlannerInner
           {...props}
-          initialSalary={latestSalary?.salary ?? 0}
+          salary={latestSalary?.salary ?? 0}
           initialSettings={savedSettings ?? DEFAULT_SETTINGS}
           recentAvg={recentAvg}
         />
@@ -145,22 +146,21 @@ export function SalaryPlanner(props: SalaryPlannerProps) {
 function SalaryPlannerInner({
   snapshot,
   onPlannerValuesChange,
-  initialSalary,
+  salary,
   initialSettings,
   recentAvg,
 }: SalaryPlannerProps & {
-  initialSalary: number;
+  salary: number;
   initialSettings: PlannerSettingsData;
   recentAvg: RecentAvgExpense;
 }) {
-  const { canReveal, getHideEpoch, mask, hidden } = useAmountVisibility();
+  const { canReveal, getHideEpoch, mask } = useAmountVisibility();
   const upsertSettings = useUpsertPlannerSettings();
   const mutateRef = useRef(upsertSettings.mutate);
   useEffect(() => {
     mutateRef.current = upsertSettings.mutate;
   });
 
-  const [salary, setSalary] = useState(initialSalary);
   const { override: expensesOverride, setOverride: setExpensesOverride } =
     useExpensesOverride();
   const averageExpenses = Math.round(recentAvg.average);
@@ -176,6 +176,7 @@ function SalaryPlannerInner({
     tithePctInput: initialSettings.tithePct,
     allowanceEnabled: initialSettings.allowanceEnabled,
     allowancePctInput: initialSettings.allowancePct,
+    expenseBufferPct: initialSettings.expenseBufferPct ?? 0,
   });
   const {
     emergencyMonths,
@@ -185,6 +186,7 @@ function SalaryPlannerInner({
     tithePctInput,
     allowanceEnabled,
     allowancePctInput,
+    expenseBufferPct,
   } = settings;
 
   // Debounced auto-save using ref to avoid unstable dependency
@@ -222,6 +224,7 @@ function SalaryPlannerInner({
       allowanceEnabled,
       allowancePct: allowancePctInput,
       householdHorizonMonths,
+      expenseBufferPct,
     });
   }, [
     emergencyMonths,
@@ -231,6 +234,7 @@ function SalaryPlannerInner({
     tithePctInput,
     allowanceEnabled,
     allowancePctInput,
+    expenseBufferPct,
     debouncedSave,
   ]);
 
@@ -266,6 +270,7 @@ function SalaryPlannerInner({
     currentBonds,
     householdMonthlyDeduction,
     householdReserve,
+    expenseBufferPct,
   });
   const { investmentAmt, emergencyFundGoal, warChestGoal } = plan;
 
@@ -292,6 +297,17 @@ function SalaryPlannerInner({
       pct: plan.expensesPct,
       color: chartColor(8),
     },
+    ...(plan.bufferAmt > 0
+      ? [
+          {
+            key: 'buffer',
+            label: `Buffer ${expenseBufferPct}%`,
+            amount: plan.bufferAmt,
+            pct: plan.bufferPct,
+            color: chartColor(10),
+          },
+        ]
+      : []),
     {
       key: 'insurance',
       label: 'Insurance',
@@ -403,21 +419,21 @@ function SalaryPlannerInner({
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <Label htmlFor="planner-salary" className="text-xs">
-                Gross Salary
-              </Label>
-              <Input
-                disabled={hidden}
-                id="planner-salary"
-                type="number"
-                min="0"
-                placeholder="0"
-                className="h-8 text-sm"
-                value={hidden ? '' : salary || ''}
-                onChange={(e) =>
-                  canReveal() && setSalary(Number(e.target.value) || 0)
-                }
-              />
+              <p className="text-xs font-medium">Gross Salary</p>
+              <p
+                className="text-sm font-semibold tabular-nums"
+                data-testid="planner-salary"
+              >
+                {salary > 0 ? mask(formatSGD(salary)) : 'No salary record'}
+              </p>
+              <Link
+                href={PAGE_ROUTES.SALARY}
+                className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-2"
+              >
+                {salary > 0
+                  ? 'From your latest salary record'
+                  : 'Add a salary record'}
+              </Link>
             </div>
             <PlannerExpensesField
               value={expenses}

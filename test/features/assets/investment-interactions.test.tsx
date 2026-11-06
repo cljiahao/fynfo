@@ -263,6 +263,7 @@ it('uses salary and expenses to calculate goals and saves changed optional deduc
         allowanceEnabled: true,
         allowancePct: 7,
         householdHorizonMonths: 24,
+        expenseBufferPct: 0,
       }),
     { timeout: 2000 }
   );
@@ -273,10 +274,7 @@ it('uses salary and expenses to calculate goals and saves changed optional deduc
       expenses: 1000,
     })
   );
-  fireEvent.change(screen.getByLabelText('Gross Salary'), {
-    target: { value: '' },
-  });
-  expect(screen.getByText('Enter salary to see allocation')).toBeTruthy();
+  expect(screen.getByTestId('planner-salary')).toHaveTextContent('$5,000');
 });
 
 it('clears investment budgets when USD conversion is unavailable while keeping basic inputs', async () => {

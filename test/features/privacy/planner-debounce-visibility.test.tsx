@@ -77,7 +77,7 @@ async function mountPlanner() {
       </AmountVisibilityProvider>
     </QueryClientProvider>
   );
-  await screen.findByLabelText('Gross Salary');
+  await screen.findByText('Gross Salary');
   fireEvent.click(screen.getByRole('button', { name: 'Adjust settings' }));
   const input = screen.getByLabelText('Emergency Fund (months)');
   vi.useFakeTimers();
@@ -124,6 +124,7 @@ describe('actual salary planner delayed-save visibility', () => {
     expect(api.upsertPlannerSettings).toHaveBeenCalledWith({
       ...settings,
       householdHorizonMonths: 24,
+      expenseBufferPct: 0,
       emergencyMonths: 5,
     });
   });
