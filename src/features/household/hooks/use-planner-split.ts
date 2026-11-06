@@ -3,6 +3,7 @@
 import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getPlannerSplit, setPlannerSplit } from '../actions/planner-actions';
+import { refreshPlannerCommitment } from './use-planner-commitment';
 
 export const PLANNER_SPLIT_KEY = ['household-planner-split'] as const;
 
@@ -20,6 +21,10 @@ export function useSetPlannerSplit() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: setPlannerSplit,
-    onSuccess: () => refreshQueriesAfterMutation(qc, PLANNER_SPLIT_KEY),
+    onSuccess: () =>
+      Promise.all([
+        refreshQueriesAfterMutation(qc, PLANNER_SPLIT_KEY),
+        refreshPlannerCommitment(qc),
+      ]),
   });
 }

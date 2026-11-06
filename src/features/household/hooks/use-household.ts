@@ -1,7 +1,12 @@
 'use client';
 
 import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import {
   addContribution,
   addGoalItem,
@@ -30,6 +35,7 @@ import {
   deleteSpending,
   getSpaces,
 } from '../actions/spending-actions';
+import { refreshPlannerCommitment } from './use-planner-commitment';
 
 export const HOUSEHOLD_KEY = ['household'] as const;
 export const GOALS_KEY = ['household-goals'] as const;
@@ -53,6 +59,13 @@ export function useGoals(enabled: boolean) {
   });
 }
 
+function refreshGoalsAndCommitment(qc: QueryClient): Promise<void> {
+  return Promise.all([
+    refreshQueriesAfterMutation(qc, GOALS_KEY),
+    refreshPlannerCommitment(qc),
+  ]).then(() => undefined);
+}
+
 export function useCreateHousehold() {
   const qc = useQueryClient();
   return useMutation({
@@ -61,6 +74,7 @@ export function useCreateHousehold() {
       void refreshQueriesAfterMutation(qc, HOUSEHOLD_KEY);
       void refreshQueriesAfterMutation(qc, GOALS_KEY);
       void refreshQueriesAfterMutation(qc, SPACES_KEY);
+      void refreshPlannerCommitment(qc);
     },
   });
 }
@@ -73,6 +87,7 @@ export function useUnlockHousehold() {
       void refreshQueriesAfterMutation(qc, HOUSEHOLD_KEY);
       void refreshQueriesAfterMutation(qc, GOALS_KEY);
       void refreshQueriesAfterMutation(qc, SPACES_KEY);
+      void refreshPlannerCommitment(qc);
     },
   });
 }
@@ -89,6 +104,7 @@ export function useAcceptInvite() {
       void refreshQueriesAfterMutation(qc, HOUSEHOLD_KEY);
       void refreshQueriesAfterMutation(qc, GOALS_KEY);
       void refreshQueriesAfterMutation(qc, SPACES_KEY);
+      void refreshPlannerCommitment(qc);
     },
   });
 }
@@ -97,7 +113,7 @@ export function useCreateGoal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: createGoal,
-    onSuccess: () => refreshQueriesAfterMutation(qc, GOALS_KEY),
+    onSuccess: () => refreshGoalsAndCommitment(qc),
   });
 }
 
@@ -105,7 +121,7 @@ export function useAddContribution() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: addContribution,
-    onSuccess: () => refreshQueriesAfterMutation(qc, GOALS_KEY),
+    onSuccess: () => refreshGoalsAndCommitment(qc),
   });
 }
 
@@ -113,7 +129,7 @@ export function useDeleteGoal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: deleteGoal,
-    onSuccess: () => refreshQueriesAfterMutation(qc, GOALS_KEY),
+    onSuccess: () => refreshGoalsAndCommitment(qc),
   });
 }
 
@@ -121,7 +137,7 @@ function useGoalsMutation<T>(mutationFn: (input: T) => Promise<void>) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn,
-    onSuccess: () => refreshQueriesAfterMutation(qc, GOALS_KEY),
+    onSuccess: () => refreshGoalsAndCommitment(qc),
   });
 }
 
@@ -143,7 +159,7 @@ export function useSaveGoal() {
   return useMutation({
     mutationFn: saveGoal,
     onSuccess: (result) => {
-      if (result.ok) return refreshQueriesAfterMutation(qc, GOALS_KEY);
+      if (result.ok) return refreshGoalsAndCommitment(qc);
     },
   });
 }

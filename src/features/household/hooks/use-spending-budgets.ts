@@ -7,6 +7,7 @@ import {
   getSpendingBudgets,
   setCategoryBudget,
 } from '../actions/budget-actions';
+import { refreshPlannerCommitment } from './use-planner-commitment';
 
 export const BUDGETS_KEY = ['household-spending-budgets'] as const;
 
@@ -23,7 +24,11 @@ export function useSetCategoryBudget() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: setCategoryBudget,
-    onSuccess: () => refreshQueriesAfterMutation(qc, BUDGETS_KEY),
+    onSuccess: () =>
+      Promise.all([
+        refreshQueriesAfterMutation(qc, BUDGETS_KEY),
+        refreshPlannerCommitment(qc),
+      ]),
   });
 }
 
@@ -31,6 +36,10 @@ export function useDeleteCategoryBudget() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: deleteCategoryBudget,
-    onSuccess: () => refreshQueriesAfterMutation(qc, BUDGETS_KEY),
+    onSuccess: () =>
+      Promise.all([
+        refreshQueriesAfterMutation(qc, BUDGETS_KEY),
+        refreshPlannerCommitment(qc),
+      ]),
   });
 }

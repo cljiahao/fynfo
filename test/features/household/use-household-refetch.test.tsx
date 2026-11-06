@@ -53,12 +53,12 @@ describe('delete mutations resolve only after the refetch', () => {
   it.each(CASES)('%s', async (_name, useHook) => {
     const client = new QueryClient();
     let finishRefetch: () => void = () => undefined;
-    const invalidate = vi.spyOn(client, 'invalidateQueries').mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          finishRefetch = resolve;
-        })
-    );
+    const gate = new Promise<void>((resolve) => {
+      finishRefetch = resolve;
+    });
+    const invalidate = vi
+      .spyOn(client, 'invalidateQueries')
+      .mockImplementation(() => gate);
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     );

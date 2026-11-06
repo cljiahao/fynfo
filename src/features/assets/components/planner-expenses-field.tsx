@@ -54,11 +54,15 @@ export function PlannerExpensesField({
         placeholder="0"
         className="h-8 text-sm"
         value={hidden ? '' : value || ''}
-        onChange={(e) => canReveal() && onChange(Number(e.target.value) || 0)}
+        onChange={(e) => {
+          if (!canReveal()) return;
+          if (e.target.value === '') onReset();
+          else onChange(Number(e.target.value) || 0);
+        }}
       />
       <div className="text-muted-foreground flex min-h-6 items-center gap-1 text-xs">
         <span>{expensesSourceLabel(monthsUsed, isCustom)}</span>
-        {isCustom && average > 0 && (
+        {isCustom && (
           <Button
             type="button"
             variant="link"
@@ -67,7 +71,8 @@ export function PlannerExpensesField({
             disabled={hidden}
             onClick={() => canReveal() && onReset()}
           >
-            Reset to average ({mask(formatSGD(average))})
+            Reset to average
+            {average > 0 && ` (${mask(formatSGD(average))})`}
           </Button>
         )}
       </div>
