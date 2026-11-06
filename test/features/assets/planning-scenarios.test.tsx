@@ -38,7 +38,14 @@ vi.mock('@/features/assets/hooks/use-planner-settings', () => ({
 }));
 vi.mock('@/features/salary/hooks/use-salary', () => ({
   useSalaryRecords: () => ({
-    data: [{ salary: 5000 }],
+    data: [
+      {
+        id: '2026-01',
+        salary: 5000,
+        recurring: 5000,
+        lines: [{ id: 's', type: 'salary', label: 'Salary', amount: 5000 }],
+      },
+    ],
     isLoading: false,
     isError: false,
   }),

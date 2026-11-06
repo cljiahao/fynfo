@@ -148,8 +148,8 @@ export function MonthlyReview() {
                     </Link>
                     <p className="text-muted-foreground mt-1 text-xs">
                       {review.incomeRecorded
-                        ? 'Salary record available'
-                        : 'No salary record for this month'}
+                        ? 'Income record available'
+                        : 'No income record for this month'}
                     </p>
                   </li>
                   <li>

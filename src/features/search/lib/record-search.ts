@@ -13,6 +13,12 @@ import type {
   SearchSource,
 } from '../types';
 
+const INCOME_TYPE_LABELS = {
+  salary: 'Salary',
+  bonus: 'Bonus',
+  one_time: 'One-time',
+} as const;
+
 function excerpt(value: string): string {
   return value.length > SEARCH_EXCERPT_LIMIT
     ? `${value.slice(0, SEARCH_EXCERPT_LIMIT)}…`
@@ -81,11 +87,22 @@ export function searchPersonalRecords(
     ),
     salary: collect(
       histories.salary,
-      (record) => includes(record.id),
+      (record) =>
+        includes(record.id) ||
+        record.lines.some((line) =>
+          includes(line.label, line.type, INCOME_TYPE_LABELS[line.type])
+        ),
       (record, index) => ({
         key: `salary-${index}`,
-        label: `Salary · ${record.id}`,
-        context: 'Recorded month',
+        label: `Salary · ${record.id} · ${record.lines.length} ${
+          record.lines.length === 1 ? 'line' : 'lines'
+        }`,
+        context:
+          excerpt(
+            record.lines.find((line) =>
+              includes(line.label, line.type, INCOME_TYPE_LABELS[line.type])
+            )?.label ?? ''
+          ) || 'Recorded month',
         href: PAGE_ROUTES.SALARY,
         action: 'Open Salary',
       }),

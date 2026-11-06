@@ -34,12 +34,13 @@ export function MonthlyReviewSources({
           review.sources.income.map((record) => (
             <p key={record.month} className="tabular-nums">
               Salary: {mask(formatSGD(record.salaryCents / 100))} · Bonus:{' '}
-              {mask(formatSGD(record.bonusCents / 100))}
+              {mask(formatSGD(record.bonusCents / 100))} · One-time:{' '}
+              {mask(formatSGD(record.oneTimeCents / 100))}
             </p>
           ))
         ) : (
           <p className="text-muted-foreground">
-            No salary record for this month
+            No income record for this month
           </p>
         )}
       </div>

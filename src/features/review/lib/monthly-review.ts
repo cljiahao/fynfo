@@ -19,8 +19,9 @@ export function buildMonthlyReview(
     .filter((record) => record.id === period)
     .map((record) => ({
       month: record.id,
-      salaryCents: Math.round(record.salary * 100),
+      salaryCents: Math.round(record.recurring * 100),
       bonusCents: Math.round(record.bonus * 100),
+      oneTimeCents: Math.round(record.oneTime * 100),
     }));
   const spending = expenses
     .filter((record) => record.date.slice(0, 7) === period)
@@ -53,7 +54,8 @@ export function buildMonthlyReview(
   return {
     grossIncome:
       income.reduce(
-        (sum, record) => sum + record.salaryCents + record.bonusCents,
+        (sum, record) =>
+          sum + record.salaryCents + record.bonusCents + record.oneTimeCents,
         0
       ) / 100,
     personalSpending: invalidSplit

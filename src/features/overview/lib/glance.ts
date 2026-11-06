@@ -79,15 +79,21 @@ export interface SalaryGlance {
   latestBonus: { amount: number; month: string } | null;
 }
 
+function isSalaryLine(line: SalaryData['lines'][number]): boolean {
+  return line.type === 'salary';
+}
+
 export function salaryGlance(salary: SalaryData[]): SalaryGlance | undefined {
-  const sorted = sortedById(salary);
+  const all = sortedById(salary);
+  // One-time-only months carry no recurring pay, so they would read as a 100% drop.
+  const sorted = all.filter((record) => record.lines.some(isSalaryLine));
   const latest = sorted.at(-1);
   if (!latest) return undefined;
   const cutoff = shiftMonth(latest.id, -12);
   const yearAgo = sorted.findLast((record) => record.id <= cutoff);
   const yearPct =
-    yearAgo && yearAgo.salary > 0
-      ? ((latest.salary - yearAgo.salary) / yearAgo.salary) * 100
+    yearAgo && yearAgo.recurring > 0
+      ? ((latest.recurring - yearAgo.recurring) / yearAgo.recurring) * 100
       : null;
   let sinceMonth = latest.id;
   let inRun = true;
@@ -95,19 +101,19 @@ export function salaryGlance(salary: SalaryData[]): SalaryGlance | undefined {
   for (let i = sorted.length - 1; i > 0; i--) {
     const current = sorted[i];
     const before = sorted[i - 1];
-    if (inRun && current.salary === latest.salary) {
-      if (before.salary === latest.salary) sinceMonth = before.id;
+    if (inRun && current.recurring === latest.recurring) {
+      if (before.recurring === latest.recurring) sinceMonth = before.id;
       else inRun = false;
     }
-    if (current.salary > before.salary && before.salary > 0) {
+    if (current.recurring > before.recurring && before.recurring > 0) {
       lastRaise = {
-        pct: ((current.salary - before.salary) / before.salary) * 100,
+        pct: ((current.recurring - before.recurring) / before.recurring) * 100,
         month: current.id,
       };
       break;
     }
   }
-  const bonus = sorted.findLast((record) => record.bonus > 0);
+  const bonus = all.findLast((record) => record.bonus > 0);
   return {
     latest,
     yearPct,

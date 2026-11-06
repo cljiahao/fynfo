@@ -16,7 +16,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryContent } from '@/components/widgets';
 import { useExpenses } from '@/features/expenses';
-import { useSalaryRecords } from '@/features/salary';
+import { trailingTwelveMonths, useSalaryRecords } from '@/features/salary';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -123,7 +123,13 @@ export function SalaryPlanner(props: SalaryPlannerProps) {
     </Card>
   ) : null;
 
-  const latestSalary = salaryRecords?.[salaryRecords.length - 1];
+  const latestSalary = salaryRecords?.findLast((record) =>
+    record.lines.some((line) => line.type === 'salary')
+  );
+  const lastRecord = salaryRecords?.at(-1);
+  const otherIncome = lastRecord
+    ? trailingTwelveMonths(salaryRecords ?? [], lastRecord.id)
+    : { bonus: 0, oneTime: 0 };
   const recentAvg = calcRecentAvgExpense(expenses, new Date(), 12);
 
   return (
@@ -134,7 +140,8 @@ export function SalaryPlanner(props: SalaryPlannerProps) {
       >
         <SalaryPlannerInner
           {...props}
-          salary={latestSalary?.salary ?? 0}
+          salary={latestSalary?.recurring ?? 0}
+          otherIncome={otherIncome}
           initialSettings={savedSettings ?? DEFAULT_SETTINGS}
           recentAvg={recentAvg}
         />
@@ -147,10 +154,12 @@ function SalaryPlannerInner({
   snapshot,
   onPlannerValuesChange,
   salary,
+  otherIncome,
   initialSettings,
   recentAvg,
 }: SalaryPlannerProps & {
   salary: number;
+  otherIncome: { bonus: number; oneTime: number };
   initialSettings: PlannerSettingsData;
   recentAvg: RecentAvgExpense;
 }) {
@@ -434,6 +443,16 @@ function SalaryPlannerInner({
                   ? 'From your latest salary record'
                   : 'Add a salary record'}
               </Link>
+              {(otherIncome.bonus > 0 || otherIncome.oneTime > 0) && (
+                <p
+                  className="text-muted-foreground text-xs"
+                  data-testid="planner-other-income"
+                >
+                  Last 12 months, not planned: bonus{' '}
+                  {mask(formatSGD(otherIncome.bonus))} · one-time{' '}
+                  {mask(formatSGD(otherIncome.oneTime))}
+                </p>
+              )}
             </div>
             <PlannerExpensesField
               value={expenses}

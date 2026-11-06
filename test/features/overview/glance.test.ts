@@ -5,6 +5,7 @@ import {
   spendingGlance,
   topCategories,
 } from '@/features/overview/lib/glance';
+import { toSalaryData } from '@/features/salary/lib/income-aggregates';
 import { expect, it } from 'vitest';
 import { salaryRow } from '../../helpers/salary-fixture';
 
@@ -136,4 +137,21 @@ it('counts gap months as zero and caps the span at 12 months', () => {
 
 it('shifts a year back across the boundary', () => {
   expect(shiftMonth('2026-01', -12)).toBe('2025-01');
+});
+
+it('measures year change and raises on recurring pay, ignoring one-time lines', () => {
+  const withExtras = (id: string, recurring: number, extra: number) =>
+    toSalaryData(id, [
+      { id: `${id}-s`, type: 'salary', label: 'Acme', amount: recurring },
+      { id: `${id}-o`, type: 'one_time', label: 'Refund', amount: extra },
+    ]);
+  const result = salaryGlance([
+    withExtras('2025-10', 4000, 0),
+    withExtras('2026-10', 4400, 9000),
+    toSalaryData('2026-11', [
+      { id: 'x', type: 'one_time', label: 'Gift', amount: 500 },
+    ]),
+  ]);
+  expect(result?.latest.id).toBe('2026-10');
+  expect(result?.yearPct).toBeCloseTo(10);
 });

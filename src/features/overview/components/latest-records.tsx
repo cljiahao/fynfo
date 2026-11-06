@@ -213,7 +213,7 @@ export function LatestRecords({
       href: PAGE_ROUTES.SALARY,
       source: 'salary',
       retry: retrySalary,
-      value: pay ? money(pay.latest.salary) : 'Not recorded',
+      value: pay ? money(pay.latest.recurring) : 'Not recorded',
       line: payLine,
       detail: payDetail,
     },

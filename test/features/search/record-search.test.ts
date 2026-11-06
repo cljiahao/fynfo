@@ -1,3 +1,4 @@
+import { toSalaryData } from '@/features/salary/lib/income-aggregates';
 import { searchPersonalRecords } from '@/features/search/lib/record-search';
 import type { SearchHistories } from '@/features/search/types';
 import { expect, it } from 'vitest';
@@ -128,7 +129,7 @@ it('caps every source at four, detects only additional matches and preserves sou
     20
   );
   expect(groups.snapshots.results[0].label).toBe('Snapshot · 2026-06');
-  expect(groups.salary.results[0].label).toBe('Salary · 2026-06');
+  expect(groups.salary.results[0].label).toBe('Salary · 2026-06 · 1 line');
   expect(groups.expenses.results[0].label).toBe('Synthetic 0');
   const four = searchPersonalRecords('2026', {
     ...many,
@@ -174,4 +175,20 @@ it('keeps legacy category/type text searchable without crashing other sources', 
   expect(searchPersonalRecords('broker', legacy).trades.results).toHaveLength(
     1
   );
+});
+
+it('matches salary months by line label and type and shows the line count', () => {
+  const salary = [
+    toSalaryData('2026-05', [
+      { id: 'a', type: 'salary', label: 'Globex Pte', amount: 3000 },
+      { id: 'b', type: 'one_time', label: 'Refund', amount: 50 },
+    ]),
+  ];
+  const search = (term: string) =>
+    searchPersonalRecords(term, { ...histories, salary }).salary.results;
+  expect(search('globex')[0].label).toBe('Salary · 2026-05 · 2 lines');
+  expect(search('globex')[0].context).toBe('Globex Pte');
+  expect(search('one_time')).toHaveLength(1);
+  expect(search('one-time')).toHaveLength(1);
+  expect(search('bonus')).toHaveLength(0);
 });

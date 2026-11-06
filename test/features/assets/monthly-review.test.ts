@@ -1,5 +1,6 @@
 import type { ExpenseData } from '@/features/expenses';
 import { buildMonthlyReview } from '@/features/review/lib/monthly-review';
+import { toSalaryData } from '@/features/salary/lib/income-aggregates';
 import { expect, it } from 'vitest';
 import { salaryRow } from '../../helpers/salary-fixture';
 
@@ -117,7 +118,7 @@ it('qualifies each contributing personal amount and exact source values', () => 
   expect(review.grossIncome).toBe(0.22);
   expect(review.personalSpending).toBeNull();
   expect(review.sources.income).toEqual([
-    { month: '2026-01', salaryCents: 11, bonusCents: 11 },
+    { month: '2026-01', salaryCents: 11, bonusCents: 11, oneTimeCents: 0 },
   ]);
   expect(review.sources.expenses.map((row) => row.personalCents)).toEqual([
     800,
@@ -147,4 +148,21 @@ it('preserves existing legacy self-expense arithmetic rather than reclassifying 
   );
   expect(review.personalSpending).toBe(-1);
   expect(review.sources.expenses[0].personalCents).toBe(-100);
+});
+
+it('counts every income line type toward the month income', () => {
+  const review = buildMonthlyReview(
+    '2026-03',
+    [],
+    [
+      toSalaryData('2026-03', [
+        { id: 'a', type: 'salary', label: 'Acme', amount: 3000 },
+        { id: 'b', type: 'bonus', label: 'Bonus', amount: 500 },
+        { id: 'c', type: 'one_time', label: 'Refund', amount: 120.5 },
+      ]),
+    ],
+    []
+  );
+  expect(review.grossIncome).toBe(3620.5);
+  expect(review.incomeRecorded).toBe(true);
 });

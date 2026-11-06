@@ -84,7 +84,7 @@ it('distinguishes zero-valued recorded income and balances from absent spending 
   mountReview();
   const steps = await openSteps();
   expect(
-    within(steps).getByText('Salary record available')
+    within(steps).getByText('Income record available')
   ).toBeInTheDocument();
   expect(
     within(steps).getByText('Snapshot available for this month')
@@ -102,7 +102,7 @@ it('offers existing routes when no selected-month records exist', async () => {
   mountReview();
   const steps = await openSteps();
   expect(
-    within(steps).getByText('No salary record for this month')
+    within(steps).getByText('No income record for this month')
   ).toBeInTheDocument();
   expect(
     within(steps).getByText('No snapshot for this month')
@@ -170,7 +170,7 @@ it('recomputes selected-month availability using cached histories without extra 
   });
   const steps = screen.getByRole('list', { name: 'Monthly review steps' });
   expect(
-    within(steps).getByText('No salary record for this month')
+    within(steps).getByText('No income record for this month')
   ).toBeInTheDocument();
   expect(
     within(steps).getByText('No expenses recorded for this month')
@@ -213,7 +213,7 @@ it('hides steps on read failure and retries only the failed source', async () =>
   ).not.toBeInTheDocument();
   await userEvent.click(retry);
   expect(
-    within(await openSteps()).getByText('Salary record available')
+    within(await openSteps()).getByText('Income record available')
   ).toBeInTheDocument();
   expect(api.getSalaryRecords).toHaveBeenCalledTimes(2);
   expect(api.getSnapshots).toHaveBeenCalledOnce();
@@ -241,9 +241,7 @@ it('opens the named disclosure with keyboard and tabs through the existing revie
 });
 
 it('explains exact contributing values without exposing split names', async () => {
-  api.getSalaryRecords.mockResolvedValue([
-    { ...income, salary: 100.1, bonus: 0.2 },
-  ]);
+  api.getSalaryRecords.mockResolvedValue([salaryRow('2026-01', 100.1, 0.2)]);
   api.getSnapshots.mockResolvedValue([
     {
       ...snapshot,
@@ -273,7 +271,9 @@ it('explains exact contributing values without exposing split names', async () =
   await openSteps();
   const sources = screen.getByRole('region', { name: 'Contributing records' });
   expect(
-    within(sources).getByText('Salary: $100.10 · Bonus: $0.20')
+    within(sources).getByText(
+      'Salary: $100.10 · Bonus: $0.20 · One-time: $0.00'
+    )
   ).toBeInTheDocument();
   expect(
     within(sources).getByText(
