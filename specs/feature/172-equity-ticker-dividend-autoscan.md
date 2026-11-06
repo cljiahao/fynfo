@@ -112,3 +112,11 @@ constitution_overrides: []
 - [ ] Q4: Are the dedupe window (-3/+60 days) and tolerance (max(0.02, 2%)) acceptable? Tighter risks duplicates, looser risks hiding real dividends. — Owner: Clarence — A:
 - [ ] Q5: Should auto-added dividends be visibly marked (badge or "estimated" note) for review? Not included unless requested. — Owner: Clarence — A:
 - [ ] Q6: Does `salary-form.tsx` need the shared input? Include only if the leading-zero symptom reproduces. — Owner: implementer — A:
+
+## Amendment 2026-11-06: trade modal ticker row full width
+
+Owner-approved in chat on 2026-11-06. Status is unchanged.
+
+- **Problem**: the Ticker combobox shared a 2-column grid row with the Buy/Sell Action buttons, so the "New ticker" and "Market" fields shown by "Add new ticker" were each a quarter of the modal width.
+- **Change**: Ticker gets its own full-width row in `trade-form.tsx` and Action moves to its own row below it. The Action buttons stay full width (`flex-1`). Behavior, ids, labels, keyboard handling and validation are unchanged; the popover width follows the input (`--radix-popover-trigger-width`).
+- **Acceptance**: New ticker and Market each take half the modal width; the ticker field and Action buttons are not in the same grid row (`test/features/equity/trade-form-layout.test.tsx`); existing equity tests pass.

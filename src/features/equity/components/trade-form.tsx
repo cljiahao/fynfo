@@ -252,8 +252,8 @@ export function TradeFormDialog({
           className="space-y-4"
         >
           <fieldset disabled={hidden} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="space-y-4">
+              <div className="space-y-2" data-testid="trade-ticker-row">
                 <Label htmlFor={`${fieldId}-ticker`}>Ticker</Label>
                 <TickerCombobox
                   id={`${fieldId}-ticker`}
@@ -264,7 +264,7 @@ export function TradeFormDialog({
                   error={form.formState.errors.market?.message}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-testid="trade-action-row">
                 <Label>Action</Label>
                 <div className="flex gap-2">
                   <Button
