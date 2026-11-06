@@ -11,6 +11,10 @@ import { useId, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { BUDGET_EXISTS, BUDGET_SUGGESTION_MONTHS } from '../constants';
 import {
+  usePlannerSplit,
+  useSetPlannerSplit,
+} from '../hooks/use-planner-split';
+import {
   useDeleteCategoryBudget,
   useSetCategoryBudget,
 } from '../hooks/use-spending-budgets';
@@ -19,8 +23,10 @@ import {
   suggestedBudget,
   type CategoryOption,
 } from '../lib/spending-stats';
+import { myPctFor, overrideFor, parsePct } from '../split-utils';
 import type { SharedSpendingEntry, SpendingBudget } from '../types';
 import { CategoryPicker } from './category-picker';
+import { SplitPicker } from './split-picker';
 
 /**
  * Sets or edits one category's monthly budget. The suggestion fills the
@@ -52,6 +58,21 @@ export function BudgetField({
     existing ? String(existing.monthlyAmount) : ''
   );
   const [error, setError] = useState('');
+  const plannerSplit = usePlannerSplit();
+  const saveSplit = useSetPlannerSplit();
+  const [splitEdit, setSplitEdit] = useState<string | null>(null);
+  const splitData = plannerSplit.data;
+  const splitText =
+    splitEdit ??
+    (splitData
+      ? String(
+          myPctFor(
+            splitData,
+            existing ? splitData.budgetOverrides[existing.id] : undefined
+          )
+        )
+      : '');
+  const splitPct = parsePct(splitText);
   const category = fixedCategory ?? typedCategory;
   const suggestion = category.trim()
     ? suggestedBudget(entries, category, currentMonth)
@@ -64,6 +85,7 @@ export function BudgetField({
     const value = parseFloat(amount);
     if (!category.trim()) return setError('Enter a category');
     if (!value || value <= 0) return setError('Enter an amount above 0');
+    if (splitData && splitPct === null) return setError('Enter a valid split');
     setError('');
     setBudget.mutate(
       {
@@ -72,7 +94,22 @@ export function BudgetField({
         monthlyAmount: value,
       },
       {
-        onSuccess: onDone,
+        onSuccess: (budgetId) => {
+          // A new budget is seeded with the default split; an edited one only when changed.
+          const override =
+            splitData && splitPct !== null
+              ? overrideFor(splitData, splitPct)
+              : null;
+          if (override && (!existing || splitEdit !== null))
+            saveSplit.mutate(
+              { budgetId, override },
+              {
+                onError: () =>
+                  toast.error('Could not save the budget split, try again'),
+              }
+            );
+          onDone();
+        },
         onError: (err) =>
           setError(
             err.message === BUDGET_EXISTS
@@ -151,6 +188,13 @@ export function BudgetField({
           </Button>
         )}
       </div>
+      {splitData && (
+        <SplitPicker
+          label="Your share of this budget"
+          value={splitText}
+          onChange={setSplitEdit}
+        />
+      )}
       {suggestion !== null && (
         <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
           Average of the last {BUDGET_SUGGESTION_MONTHS} months:{' '}

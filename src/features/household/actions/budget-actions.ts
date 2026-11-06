@@ -58,8 +58,8 @@ export async function getSpendingBudgets(): Promise<SpendingBudget[]> {
   return readBudgets(await requireHouseholdContext());
 }
 
-/** Creates a category budget, or updates one when `id` is given. */
-export async function setCategoryBudget(input: unknown): Promise<void> {
+/** Creates a category budget, or updates one when `id` is given; returns its id. */
+export async function setCategoryBudget(input: unknown): Promise<string> {
   const data = parseOrThrow(
     setCategoryBudgetSchema,
     input,
@@ -99,17 +99,19 @@ export async function setCategoryBudget(input: unknown): Promise<void> {
     if (!rows || rows.length === 0) {
       throw new AppError('NOT_FOUND', 'Budget not found');
     }
-    return;
+    return data.id;
   }
 
+  const id = randomUUID();
   const { error } = await supabase.from('household_spending_budgets').insert({
-    id: randomUUID(),
+    id,
     household_id: householdId,
     category,
     monthly_amount: monthlyAmount,
     created_by: userId,
   });
   throwIfSupabaseError(error, 'household budget create');
+  return id;
 }
 
 /** Deletes one category budget (RLS scoped). */

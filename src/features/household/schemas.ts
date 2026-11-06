@@ -132,6 +132,7 @@ export type SetCategoryBudgetInput = z.infer<typeof setCategoryBudgetSchema>;
 
 const PCT = z.number().int().min(0).max(100);
 const MAX_GOAL_OVERRIDES = 500;
+const MAX_BUDGET_OVERRIDES = 500;
 
 // A split always covers exactly the two household members and totals 100.
 const pctMapSchema = z
@@ -152,13 +153,21 @@ export const plannerSplitSchema = z
       .refine((all) => Object.keys(all).length <= MAX_GOAL_OVERRIDES, {
         message: 'too many goal overrides',
       }),
+    // Blobs saved before per-budget splits have no key, so it defaults to empty.
+    budgetOverrides: z
+      .record(z.uuid(), pctMapSchema)
+      .refine((all) => Object.keys(all).length <= MAX_BUDGET_OVERRIDES, {
+        message: 'too many budget overrides',
+      })
+      .default({}),
   })
   .refine(
-    ({ members, goalOverrides }) => {
+    ({ members, goalOverrides, budgetOverrides }) => {
       const ids = Object.keys(members).sort().join();
-      return Object.values(goalOverrides).every(
-        (map) => Object.keys(map).sort().join() === ids
-      );
+      return [
+        ...Object.values(goalOverrides),
+        ...Object.values(budgetOverrides),
+      ].every((map) => Object.keys(map).sort().join() === ids);
     },
     {
       message: 'overrides must cover the same two members',
@@ -173,6 +182,7 @@ export type PlannerSplitInput = z.infer<typeof plannerSplitSchema>;
 export const plannerSplitUpdateSchema = z.union([
   z.object({ members: pctMapSchema }),
   z.object({ goalId: z.uuid(), override: pctMapSchema.nullable() }),
+  z.object({ budgetId: z.uuid(), override: pctMapSchema.nullable() }),
 ]);
 
 export type PlannerSplitUpdateInput = z.infer<typeof plannerSplitUpdateSchema>;

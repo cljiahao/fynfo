@@ -66,6 +66,19 @@ async function readGoalIds({ supabase }: Context): Promise<Set<string>> {
   return new Set(rows.map((row) => row.id));
 }
 
+async function readBudgetIds({ supabase }: Context): Promise<Set<string>> {
+  const rows = await readAllRows<{ id: string }>(
+    (from, to) =>
+      supabase
+        .from('household_spending_budgets')
+        .select('id', { count: 'exact' })
+        .order('id', { ascending: true })
+        .range(from, to),
+    'household budget ids read'
+  );
+  return new Set(rows.map((row) => row.id));
+}
+
 // Overrides live inside ciphertext, so no foreign key can drop them.
 function pruneOverrides(
   overrides: Record<string, Record<string, number>>,
@@ -74,6 +87,15 @@ function pruneOverrides(
   return Object.fromEntries(
     Object.entries(overrides).filter(([goalId]) => goalIds.has(goalId))
   );
+}
+
+function withOverride(
+  overrides: Record<string, Record<string, number>>,
+  id: string,
+  override: Record<string, number> | null
+): Record<string, Record<string, number>> {
+  const { [id]: _replaced, ...others } = overrides;
+  return override ? { ...others, [id]: override } : others;
 }
 
 type StoredSplit = Omit<PlannerSplit, 'isDefault' | 'userId'>;
@@ -112,8 +134,8 @@ async function readStoredRow(
 /**
  * Reads the agreed split. With no saved row, or one saved for a different
  * roster, it returns 50/50 flagged `isDefault`, so "never set" and "set to
- * 50/50" stay distinguishable. Overrides for goals that no longer exist are
- * dropped.
+ * 50/50" stay distinguishable. Overrides for goals and budgets that no
+ * longer exist are dropped.
  */
 export async function getPlannerSplit(): Promise<PlannerSplit> {
   const ctx = await requireHouseholdContext();
@@ -126,14 +148,19 @@ export async function getPlannerSplit(): Promise<PlannerSplit> {
     return {
       members: evenSplit(memberIds),
       goalOverrides: {},
+      budgetOverrides: {},
       isDefault: true,
       userId,
     };
 
-  const goalIds = await readGoalIds(ctx);
+  const [goalIds, budgetIds] = await Promise.all([
+    readGoalIds(ctx),
+    readBudgetIds(ctx),
+  ]);
   return {
     members: stored.members,
     goalOverrides: pruneOverrides(stored.goalOverrides, goalIds),
+    budgetOverrides: pruneOverrides(stored.budgetOverrides, budgetIds),
     isDefault: false,
     userId,
   };
@@ -141,7 +168,7 @@ export async function getPlannerSplit(): Promise<PlannerSplit> {
 
 /**
  * Applies a partial edit to the stored split: a members edit keeps stored
- * overrides, an override edit touches only its goal key. Merging server-side
+ * overrides, an override edit touches only its goal or budget key. Merging server-side
  * means a stale client cache cannot discard the partner's newer changes.
  */
 export async function setPlannerSplit(input: unknown): Promise<void> {
@@ -166,25 +193,43 @@ export async function setPlannerSplit(input: unknown): Promise<void> {
   const current: StoredSplit =
     stored && sameIds(Object.keys(stored.members), memberIds)
       ? stored
-      : { members: evenSplit(memberIds), goalOverrides: {} };
+      : {
+          members: evenSplit(memberIds),
+          goalOverrides: {},
+          budgetOverrides: {},
+        };
 
-  let merged: StoredSplit;
+  let merged: StoredSplit = current;
   if ('members' in data) {
-    merged = { members: data.members, goalOverrides: current.goalOverrides };
-  } else {
-    const { [data.goalId]: _replaced, ...others } = current.goalOverrides;
+    merged = { ...current, members: data.members };
+  } else if ('goalId' in data) {
     merged = {
-      members: current.members,
-      goalOverrides: data.override
-        ? { ...others, [data.goalId]: data.override }
-        : others,
+      ...current,
+      goalOverrides: withOverride(
+        current.goalOverrides,
+        data.goalId,
+        data.override
+      ),
+    };
+  } else {
+    merged = {
+      ...current,
+      budgetOverrides: withOverride(
+        current.budgetOverrides,
+        data.budgetId,
+        data.override
+      ),
     };
   }
 
-  const goalIds = await readGoalIds(ctx);
+  const [goalIds, budgetIds] = await Promise.all([
+    readGoalIds(ctx),
+    readBudgetIds(ctx),
+  ]);
   const split: StoredSplit = {
     members: merged.members,
     goalOverrides: pruneOverrides(merged.goalOverrides, goalIds),
+    budgetOverrides: pruneOverrides(merged.budgetOverrides, budgetIds),
   };
 
   const { error } = await supabase.from('household_planner_settings').upsert(
@@ -241,7 +286,10 @@ export async function getPlannerCommitment(
       remaining: goal.remaining,
       targetDate: goal.targetDate,
     })),
-    budgets: budgets.map((budget) => budget.monthlyAmount),
+    budgets: budgets.map((budget) => ({
+      id: budget.id,
+      monthlyAmount: budget.monthlyAmount,
+    })),
     split,
     callerUserId: split.userId,
     horizonMonths,

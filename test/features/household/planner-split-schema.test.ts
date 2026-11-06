@@ -1,4 +1,7 @@
-import { plannerSplitSchema } from '@/features/household/schemas';
+import {
+  plannerSplitSchema,
+  plannerSplitUpdateSchema,
+} from '@/features/household/schemas';
 import { parsePct } from '@/features/household/split-utils';
 import { describe, expect, it } from 'vitest';
 
@@ -48,6 +51,37 @@ describe('plannerSplitSchema', () => {
     expect(withOverride({ [A]: 20, [B]: 80 })).toBe(true);
     expect(withOverride({ [A]: 20, [B]: 70 })).toBe(false);
     expect(withOverride({ [A]: 20, [C]: 80 })).toBe(false);
+  });
+});
+
+describe('plannerSplitSchema budget overrides', () => {
+  const members = { [A]: 50, [B]: 50 };
+
+  it('defaults budgetOverrides to empty for blobs saved without them', () => {
+    const parsed = plannerSplitSchema.parse({ members, goalOverrides: {} });
+    expect(parsed.budgetOverrides).toEqual({});
+  });
+
+  it('validates budget overrides like goal overrides', () => {
+    const withBudget = (override: Record<string, number>) =>
+      ok({ members, goalOverrides: {}, budgetOverrides: { [GOAL]: override } });
+    expect(withBudget({ [A]: 0, [B]: 100 })).toBe(true);
+    expect(withBudget({ [A]: 20, [B]: 70 })).toBe(false);
+    expect(withBudget({ [A]: 20, [C]: 80 })).toBe(false);
+  });
+});
+
+describe('plannerSplitUpdateSchema', () => {
+  const override = { [A]: 40, [B]: 60 };
+
+  it('accepts a budget override edit and a clear', () => {
+    expect(
+      plannerSplitUpdateSchema.safeParse({ budgetId: GOAL, override }).success
+    ).toBe(true);
+    expect(
+      plannerSplitUpdateSchema.safeParse({ budgetId: GOAL, override: null })
+        .success
+    ).toBe(true);
   });
 });
 

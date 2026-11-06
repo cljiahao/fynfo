@@ -13,6 +13,8 @@ const HOUSEHOLD_ID = '7d1c6c0e-1f0a-4f55-8d0e-0a8e4b7a0c11';
 const LIVE_GOAL = '44444444-4444-4444-8444-444444444444';
 const OTHER_GOAL = '66666666-6666-4666-8666-666666666666';
 const DELETED_GOAL = '55555555-5555-4555-8555-555555555555';
+const LIVE_BUDGET = '77777777-7777-4777-8777-777777777777';
+const DELETED_BUDGET = '88888888-8888-4888-8888-888888888888';
 
 let supabase: ReturnType<typeof makeFakeSupabase>['client'];
 const order: string[] = [];
@@ -35,6 +37,7 @@ function setSupabase(opts: FakeSupabaseOptions = {}) {
         { household_id: HOUSEHOLD_ID, user_id: PARTNER },
       ],
       household_goals: [{ id: LIVE_GOAL }],
+      household_spending_budgets: [{ id: LIVE_BUDGET }],
       household_planner_settings: null,
       ...opts.selectDataByTable,
     },
@@ -60,8 +63,45 @@ describe('getPlannerSplit', () => {
     expect(await getPlannerSplit()).toEqual({
       members: { [ME]: 50, [PARTNER]: 50 },
       goalOverrides: {},
+      budgetOverrides: {},
       isDefault: true,
       userId: ME,
+    });
+  });
+
+  it('reads a blob saved before budget overrides existed as empty ones', async () => {
+    setSupabase({
+      selectDataByTable: {
+        household_planner_settings: storedSplit({
+          members: { [ME]: 60, [PARTNER]: 40 },
+          goalOverrides: {},
+        }),
+      },
+    });
+    const { getPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    const split = await getPlannerSplit();
+    expect(split.isDefault).toBe(false);
+    expect(split.budgetOverrides).toEqual({});
+  });
+
+  it('hides overrides of deleted budgets', async () => {
+    setSupabase({
+      selectDataByTable: {
+        household_planner_settings: storedSplit({
+          members: { [ME]: 50, [PARTNER]: 50 },
+          goalOverrides: {},
+          budgetOverrides: {
+            [LIVE_BUDGET]: { [ME]: 0, [PARTNER]: 100 },
+            [DELETED_BUDGET]: { [ME]: 10, [PARTNER]: 90 },
+          },
+        }),
+      },
+    });
+    const { getPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    expect((await getPlannerSplit()).budgetOverrides).toEqual({
+      [LIVE_BUDGET]: { [ME]: 0, [PARTNER]: 100 },
     });
   });
 
@@ -132,6 +172,7 @@ describe('getPlannerSplit', () => {
     expect(await getPlannerSplit()).toEqual({
       members: { [ME]: 50, [PARTNER]: 50 },
       goalOverrides: {},
+      budgetOverrides: {},
       isDefault: true,
       userId: ME,
     });
@@ -145,6 +186,9 @@ describe('setPlannerSplit', () => {
     goalOverrides: {
       [LIVE_GOAL]: { [ME]: 80, [PARTNER]: 20 },
       [OTHER_GOAL]: { [ME]: 10, [PARTNER]: 90 },
+    },
+    budgetOverrides: {
+      [LIVE_BUDGET]: { [ME]: 25, [PARTNER]: 75 },
     },
   };
   const withStored = () =>
@@ -170,7 +214,11 @@ describe('setPlannerSplit', () => {
     expect(row.household_id).toBe(HOUSEHOLD_ID);
     expect(row.created_by).toBe(ME);
     expect(row.split).not.toContain(ME);
-    expect(written(fake)).toEqual({ ...valid, goalOverrides: {} });
+    expect(written(fake)).toEqual({
+      ...valid,
+      goalOverrides: {},
+      budgetOverrides: {},
+    });
   });
 
   it('keeps stored goal overrides on a members-only edit', async () => {
@@ -181,7 +229,45 @@ describe('setPlannerSplit', () => {
     expect(written(fake)).toEqual({
       members: valid.members,
       goalOverrides: stored.goalOverrides,
+      budgetOverrides: stored.budgetOverrides,
     });
+  });
+
+  it('updates only the edited budget, leaving goal overrides alone', async () => {
+    const fake = withStored();
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await setPlannerSplit({
+      budgetId: LIVE_BUDGET,
+      override: { [ME]: 0, [PARTNER]: 100 },
+    });
+    expect(written(fake)).toEqual({
+      ...stored,
+      budgetOverrides: { [LIVE_BUDGET]: { [ME]: 0, [PARTNER]: 100 } },
+    });
+  });
+
+  it('clears one budget override and prunes deleted budgets on write', async () => {
+    const fake = setSupabase({
+      selectDataByTable: {
+        household_planner_settings: storedSplit({
+          ...stored,
+          budgetOverrides: {
+            [LIVE_BUDGET]: { [ME]: 25, [PARTNER]: 75 },
+            [DELETED_BUDGET]: { [ME]: 0, [PARTNER]: 100 },
+          },
+        }),
+      },
+    });
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await setPlannerSplit(valid);
+    expect(Object.keys(written(fake).budgetOverrides)).toEqual([LIVE_BUDGET]);
+    await setPlannerSplit({ budgetId: LIVE_BUDGET, override: null });
+    const last = JSON.parse(
+      decryptPayload((fake.calls.upsert[1] as { split: string }).split, KH)
+    );
+    expect(last.budgetOverrides).toEqual({});
   });
 
   it('updates only the edited goal and keeps members and other overrides', async () => {
@@ -198,6 +284,7 @@ describe('setPlannerSplit', () => {
         [LIVE_GOAL]: { [ME]: 30, [PARTNER]: 70 },
         [OTHER_GOAL]: stored.goalOverrides[OTHER_GOAL],
       },
+      budgetOverrides: stored.budgetOverrides,
     });
   });
 
@@ -209,6 +296,7 @@ describe('setPlannerSplit', () => {
     expect(written(fake)).toEqual({
       members: stored.members,
       goalOverrides: { [OTHER_GOAL]: stored.goalOverrides[OTHER_GOAL] },
+      budgetOverrides: stored.budgetOverrides,
     });
   });
 

@@ -28,10 +28,15 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { GOAL_ITEM_LIMIT, GOAL_TEMPLATES } from '../constants';
 import { useSaveGoal } from '../hooks/use-household';
+import {
+  usePlannerSplit,
+  useSetPlannerSplit,
+} from '../hooks/use-planner-split';
 import { computeGoalDelta, type DraftItem } from '../lib/goal-delta';
 import { saveGoalSchema } from '../schemas';
+import { myPctFor, overrideFor, parsePct } from '../split-utils';
 import type { HouseholdGoal } from '../types';
-import { GoalSplitOverride } from './goal-split-override';
+import { GoalSplitField } from './goal-split-override';
 
 interface GoalEditorSheetProps {
   open: boolean;
@@ -133,6 +138,9 @@ function GoalEditorForm({
 }) {
   const { hidden, mask, canReveal } = useAmountVisibility();
   const save = useSaveGoal();
+  const plannerSplit = usePlannerSplit();
+  const saveSplit = useSetPlannerSplit();
+  const [splitEdit, setSplitEdit] = useState<string | null>(null);
   const form = useForm<FormValues>({ defaultValues: seed(goal) });
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -144,6 +152,13 @@ function GoalEditorForm({
   const [errors, setErrors] = useState<Errors>({});
   const [failed, setFailed] = useState(false);
   const [template, setTemplate] = useState('');
+  const splitData = plannerSplit.data;
+  const splitText =
+    splitEdit ??
+    (splitData
+      ? String(myPctFor(splitData, splitData.goalOverrides[goalId]))
+      : '');
+  const splitPct = parsePct(splitText);
 
   const applyTemplate = (key: string) => {
     if (!canReveal()) return;
@@ -160,6 +175,7 @@ function GoalEditorForm({
 
   const review = form.handleSubmit((values) => {
     if (!canReveal()) return;
+    if (splitData && splitPct === null) return;
     const parsed = saveGoalSchema.safeParse({ ...toDraft(values), goalId });
     if (!parsed.success) {
       const next: Errors = {};
@@ -174,6 +190,17 @@ function GoalEditorForm({
     setStage('review');
   });
 
+  // A new goal is seeded with the default split; an edited one only when changed.
+  const persistSplit = () => {
+    const override =
+      splitData && splitPct !== null ? overrideFor(splitData, splitPct) : null;
+    if (!override || (goal && splitEdit === null)) return;
+    saveSplit.mutate(
+      { goalId, override },
+      { onError: () => toast.error('Could not save the goal split, try again') }
+    );
+  };
+
   const confirm = () => {
     if (!canReveal()) return;
     const values = form.getValues();
@@ -182,6 +209,7 @@ function GoalEditorForm({
       {
         onSuccess: (result) => {
           if (result.ok) {
+            persistSplit();
             toast.success(goal ? 'Goal updated' : 'Goal created');
             onDone();
             return;
@@ -412,7 +440,9 @@ function GoalEditorForm({
             Add item
           </Button>
         </fieldset>
-        {goal && <GoalSplitOverride goalId={goal.id} />}
+        {splitData && (
+          <GoalSplitField value={splitText} onChange={setSplitEdit} />
+        )}
       </div>
       <SheetFooter>
         <Button type="button" variant="outline" onClick={onDone}>

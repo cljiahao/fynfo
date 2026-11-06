@@ -39,7 +39,7 @@ function SplitForm({ split }: { split: PlannerSplit }) {
       aria-label="Household split"
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="font-medium">Household split</p>
+        <p className="font-medium">Default split for new items</p>
         {split.isDefault && (
           <span className="text-muted-foreground text-xs">
             Default 50/50, not set yet
@@ -47,8 +47,9 @@ function SplitForm({ split }: { split: PlannerSplit }) {
         )}
       </div>
       <p className="text-muted-foreground text-sm">
-        How household goals and budgets are shared in each planner. Your partner
-        sees any change you make here.
+        The split each new goal or budget starts with. Existing items keep their
+        own split, set in their form. Your partner sees any change you make
+        here.
       </p>
       <div className="flex items-end gap-3">
         <div className="space-y-1.5">

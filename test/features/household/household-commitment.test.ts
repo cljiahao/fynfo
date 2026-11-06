@@ -12,11 +12,15 @@ const PARTNER = 'partner';
 
 const split = (
   mePct = 60,
-  goalOverrides: CommitmentSplit['goalOverrides'] = {}
+  goalOverrides: CommitmentSplit['goalOverrides'] = {},
+  budgetOverrides: CommitmentSplit['budgetOverrides'] = {}
 ): CommitmentSplit => ({
   members: { [ME]: mePct, [PARTNER]: 100 - mePct },
   goalOverrides,
+  budgetOverrides,
 });
+
+const budget = (id: string, monthlyAmount: number) => ({ id, monthlyAmount });
 
 const goal = (
   over: Partial<CommitmentGoal> & { id: string }
@@ -29,7 +33,7 @@ const goal = (
 const run = (
   goals: CommitmentGoal[],
   opts: {
-    budgets?: number[];
+    budgets?: { id: string; monthlyAmount: number }[];
     split?: CommitmentSplit;
     horizonMonths?: number;
   } = {}
@@ -125,13 +129,22 @@ describe('computeHouseholdCommitment', () => {
         }),
       }
     );
-    expect(r.goals.map((g) => g.amount)).toEqual([1000, 0, 600]);
+    expect(r.goals.map((g) => g.amount)).toEqual([1000, 600]);
     expect(r.reserve).toBeCloseTo(1600);
   });
 
-  it('uses the default split for budgets, never a goal override', () => {
+  it('leaves a goal with a 0% share out of the lines entirely', () => {
+    const r = run([goal({ id: 'none' })], {
+      split: split(60, { none: { [ME]: 0, [PARTNER]: 100 } }),
+    });
+    expect(r.goals).toEqual([]);
+    expect(r.excluded).toEqual([]);
+    expect(r.reserve).toBe(0);
+  });
+
+  it('uses the default split for budgets without an override, never a goal override', () => {
     const r = run([goal({ id: 'g', targetDate: null })], {
-      budgets: [200, 300],
+      budgets: [budget('a', 200), budget('b', 300)],
       split: split(60, { g: { [ME]: 10, [PARTNER]: 90 } }),
     });
     expect(r.budgets).toEqual({
@@ -142,11 +155,48 @@ describe('computeHouseholdCommitment', () => {
     expect(r.monthlyDeduction).toBeCloseTo(300);
   });
 
+  it('applies per-budget splits, skipping a 0% budget', () => {
+    const r = run([], {
+      budgets: [budget('a', 200), budget('b', 300), budget('c', 500)],
+      split: split(
+        60,
+        {},
+        {
+          a: { [ME]: 100, [PARTNER]: 0 },
+          b: { [ME]: 0, [PARTNER]: 100 },
+        }
+      ),
+    });
+    expect(r.budgets.monthlyTotal).toBe(1000);
+    expect(r.budgets.monthlyShare).toBeCloseTo(200 + 0 + 300);
+    expect(r.budgets.share).toBeCloseTo(0.5);
+    expect(r.monthlyDeduction).toBeCloseTo(500);
+  });
+
+  it('mixes per-goal and per-budget splits in one commitment', () => {
+    const r = run(
+      [
+        goal({ id: 'g1', targetDate: '2031-11-04', remaining: 6000 }),
+        goal({ id: 'g2', targetDate: '2031-11-04', remaining: 6000 }),
+      ],
+      {
+        budgets: [budget('a', 100)],
+        split: split(
+          60,
+          { g1: { [ME]: 0, [PARTNER]: 100 } },
+          { a: { [ME]: 50, [PARTNER]: 50 } }
+        ),
+      }
+    );
+    expect(r.goals.map((g) => g.goalId)).toEqual(['g2']);
+    expect(r.monthlyDeduction).toBeCloseTo((0.6 * 6000) / 60 + 50);
+  });
+
   it('adds budget share on top of goal pace', () => {
     const r = run(
       [goal({ id: 'g', targetDate: '2031-11-04', remaining: 6000 })],
       {
-        budgets: [100],
+        budgets: [budget('a', 100)],
       }
     );
     expect(r.monthlyDeduction).toBeCloseTo((0.6 * 6000) / 60 + 60);
@@ -154,7 +204,11 @@ describe('computeHouseholdCommitment', () => {
 
   it('falls back to a 50/50 share when the caller is not in the split', () => {
     const r = run([goal({ id: 'g' })], {
-      split: { members: { x: 70, y: 30 }, goalOverrides: {} },
+      split: {
+        members: { x: 70, y: 30 },
+        goalOverrides: {},
+        budgetOverrides: {},
+      },
     });
     expect(r.reserve).toBeCloseTo(500);
   });

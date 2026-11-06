@@ -5,6 +5,7 @@ type PctMap = Record<string, number>;
 export interface CommitmentSplit {
   members: PctMap;
   goalOverrides: Record<string, PctMap>;
+  budgetOverrides: Record<string, PctMap>;
 }
 
 export interface CommitmentGoal {
@@ -13,10 +14,14 @@ export interface CommitmentGoal {
   targetDate: string | null;
 }
 
+export interface CommitmentBudget {
+  id: string;
+  monthlyAmount: number;
+}
+
 export interface CommitmentInput {
   goals: CommitmentGoal[];
-  /** Monthly amount of each household spending budget. */
-  budgets: number[];
+  budgets: CommitmentBudget[];
   split: CommitmentSplit;
   callerUserId: string;
   horizonMonths: number;
@@ -68,10 +73,23 @@ export function goalShare(
   );
 }
 
+/** Caller's fraction of one budget: its override when present, else the default. */
+export function budgetShare(
+  split: CommitmentSplit,
+  budgetId: string,
+  userId: string
+): number {
+  return (
+    pctToFraction(split.budgetOverrides[budgetId], userId) ??
+    defaultShare(split, userId)
+  );
+}
+
 /**
  * Splits the caller's household obligations into a reserve (goals due within
  * the horizon or overdue) and a monthly deduction (longer-dated goals paced
  * over their remaining months, plus the caller's share of spending budgets).
+ * Goals and budgets where the caller's share is 0% are left out entirely.
  * Each goal lands in exactly one bucket so nothing is counted twice.
  */
 export function computeHouseholdCommitment(
@@ -86,6 +104,7 @@ export function computeHouseholdCommitment(
 
   for (const goal of goals) {
     const share = goalShare(split, goal.id, callerUserId);
+    if (share === 0) continue;
     const remaining = Math.max(0, goal.remaining);
     const { targetDate } = goal;
 
@@ -127,16 +146,26 @@ export function computeHouseholdCommitment(
     }
   }
 
-  const budgetShare = defaultShare(split, callerUserId);
-  const monthlyTotal = budgets.reduce((sum, b) => sum + b, 0);
-  const budgetMonthly = budgetShare * monthlyTotal;
+  const monthlyTotal = budgets.reduce((sum, b) => sum + b.monthlyAmount, 0);
+  const budgetMonthly = budgets.reduce(
+    (sum, b) => sum + budgetShare(split, b.id, callerUserId) * b.monthlyAmount,
+    0
+  );
   monthlyDeduction += budgetMonthly;
+  const aggregateShare =
+    monthlyTotal > 0
+      ? budgetMonthly / monthlyTotal
+      : defaultShare(split, callerUserId);
 
   return {
     reserve,
     monthlyDeduction,
     goals: lines,
-    budgets: { monthlyTotal, share: budgetShare, monthlyShare: budgetMonthly },
+    budgets: {
+      monthlyTotal,
+      share: aggregateShare,
+      monthlyShare: budgetMonthly,
+    },
     excluded,
   };
 }
