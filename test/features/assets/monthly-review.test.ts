@@ -1,6 +1,7 @@
 import type { ExpenseData } from '@/features/expenses';
 import { buildMonthlyReview } from '@/features/review/lib/monthly-review';
 import { expect, it } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 
 it('uses exact calendar months, minor units and personal shared-expense amounts', () => {
   const expense: ExpenseData = {
@@ -25,10 +26,7 @@ it('uses exact calendar months, minor units and personal shared-expense amounts'
         entries: [{ category: 'savings', account: 'Fixture', amount: 120.2 }],
       },
     ],
-    [
-      { id: '2026-01', salary: 5000.1, bonus: 0.2 },
-      { id: '2025-12', salary: 99999, bonus: 0 },
-    ],
+    [salaryRow('2026-01', 5000.1, 0.2), salaryRow('2025-12', 99999, 0)],
     [expense, { ...expense, id: 'outside', date: '2026-02-01' }]
   );
   expect(review).toMatchObject({
@@ -92,7 +90,7 @@ it('qualifies each contributing personal amount and exact source values', () => 
   const review = buildMonthlyReview(
     '2026-01',
     [],
-    [{ id: '2026-01', salary: 0.105, bonus: 0.105 }],
+    [salaryRow('2026-01', 0.105, 0.105)],
     [
       {
         id: 'good',

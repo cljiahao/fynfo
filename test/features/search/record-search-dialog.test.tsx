@@ -29,6 +29,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import { useEffect } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 
 const api = vi.hoisted(() => ({
   getSnapshots: vi.fn(),
@@ -351,11 +352,9 @@ it('renders at most twenty escaped matches with honest record destinations and b
     }))
   );
   api.getSalaryRecords.mockResolvedValue(
-    Array.from({ length: 6 }, (_, index) => ({
-      id: `2026-0${index + 1}`,
-      salary: 0,
-      bonus: 0,
-    }))
+    Array.from({ length: 6 }, (_, index) =>
+      salaryRow(`2026-0${index + 1}`, 0, 0)
+    )
   );
   api.getExpenses.mockResolvedValue(
     Array.from({ length: 6 }, (_, index) => ({

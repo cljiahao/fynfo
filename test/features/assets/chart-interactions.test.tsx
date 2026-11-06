@@ -10,6 +10,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 
 beforeEach(() => {
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
@@ -128,10 +129,7 @@ it('filters real asset chart series and restores their legend entry', async () =
 it('renders cumulative earnings as a third salary series and formats month and axis labels', async () => {
   const { container, rerender } = render(
     <SalaryChart
-      records={[
-        { id: '2026-01', salary: 1000, bonus: 500 },
-        { id: '2026-02', salary: 2000, bonus: 0 },
-      ]}
+      records={[salaryRow('2026-01', 1000, 500), salaryRow('2026-02', 2000, 0)]}
     />
   );
   await waitFor(

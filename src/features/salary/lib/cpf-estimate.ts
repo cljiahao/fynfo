@@ -45,7 +45,7 @@ export function employeeCpf(
 
 /** Recorded-year AW limit is provisional until all employer OW is known. */
 export function estimateRecordedCpf(
-  records: SalaryData[],
+  records: Pick<SalaryData, 'id' | 'salary' | 'bonus'>[],
   year: number
 ): number | null {
   if (ordinaryWageCeiling(year, 1) === null) return null;

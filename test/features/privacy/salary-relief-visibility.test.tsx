@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 const api = vi.hoisted(() => ({
   getProfile: vi.fn(),
   upsertProfile: vi.fn(),
@@ -51,9 +52,7 @@ it('conceals selected monetary relief tiers and counts while preserving fixed as
     <QueryClientProvider client={client}>
       <AmountVisibilityProvider>
         <AmountVisibilityToggle />
-        <SalarySummary
-          records={[{ id: `${year}-01`, salary: 5000, bonus: 0 }]}
-        />
+        <SalarySummary records={[salaryRow(`${year}-01`, 5000, 0)]} />
       </AmountVisibilityProvider>
     </QueryClientProvider>
   );

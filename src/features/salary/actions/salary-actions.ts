@@ -2,83 +2,147 @@
 
 import { requireActionContext } from '@/lib/action-guard';
 import { encryptPayload } from '@/lib/crypto';
-import { decryptNumber } from '@/lib/crypto-fields';
+import { decryptNumber, decryptOptionalString } from '@/lib/crypto-fields';
 import { throwIfSupabaseError } from '@/lib/errors';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { YYYY_MM } from '@/lib/zod-utils';
 import { randomUUID } from 'crypto';
-import { salaryDataSchema } from '../schemas';
-import type { SalaryData } from '../types';
+import { mergeSalaryMonths, summarizeMonth } from '../lib/income-aggregates';
+import { salaryMonthSchema } from '../schemas';
+import type { IncomeLine, IncomeLineType, SalaryData } from '../types';
+
+interface LineRow {
+  id: string;
+  month: string;
+  type: IncomeLineType;
+  label: string;
+  amount: string;
+  position: number;
+}
+
+interface LegacyRow {
+  month: string;
+  salary: string;
+  bonus: string | null;
+}
+
+function decryptLine(
+  row: LineRow,
+  dek: Buffer
+): IncomeLine & { month: string; position: number } {
+  return {
+    id: row.id,
+    month: row.month,
+    position: row.position,
+    type: row.type,
+    label: decryptOptionalString(row.label, dek),
+    amount: decryptNumber(row.amount, dek),
+  };
+}
+
+function toMonths(
+  lineRows: LineRow[],
+  legacyRows: LegacyRow[],
+  dek: Buffer
+): SalaryData[] {
+  const lines = lineRows
+    .map((row) => decryptLine(row, dek))
+    .sort((a, b) => a.position - b.position);
+  const legacy = legacyRows.map((row) => ({
+    month: row.month,
+    salary: decryptNumber(row.salary, dek),
+    bonus: row.bonus ? decryptNumber(row.bonus, dek) : 0,
+  }));
+  return mergeSalaryMonths(lines, legacy);
+}
 
 export async function getSalaryRecords(): Promise<SalaryData[]> {
   const { userId, dek, supabase } = await requireActionContext();
 
-  const data = await readAllRows(
-    (from, to) =>
-      supabase
-        .from('salary_records')
-        .select('month, salary, bonus', { count: 'exact' })
-        .eq('user_id', userId)
-        .order('month', { ascending: true })
-        .order('id', { ascending: true })
-        .range(from, to),
-    'salary read'
-  );
+  const [lineRows, legacyRows] = await Promise.all([
+    readAllRows<LineRow>(
+      (from, to) =>
+        supabase
+          .from('salary_income_lines')
+          .select('id, month, type, label, amount, position', {
+            count: 'exact',
+          })
+          .eq('user_id', userId)
+          .order('month', { ascending: true })
+          .order('position', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+      'salary lines read'
+    ),
+    readAllRows<LegacyRow>(
+      (from, to) =>
+        supabase
+          .from('salary_records')
+          .select('month, salary, bonus', { count: 'exact' })
+          .eq('user_id', userId)
+          .order('month', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+      'salary read'
+    ),
+  ]);
 
-  return Promise.all(
-    (data || []).map(async (r) => ({
-      id: r.month,
-      salary: await decryptNumber(r.salary, dek),
-      bonus: await decryptNumber(r.bonus, dek),
-    }))
-  );
+  return toMonths(lineRows, legacyRows, dek);
 }
 
 export async function getSalaryRecord(id: string): Promise<SalaryData | null> {
   parseOrThrow(YYYY_MM, id, 'salary.read.month');
   const { userId, dek, supabase } = await requireActionContext();
 
-  const { data, error } = await supabase
-    .from('salary_records')
-    .select('month, salary, bonus')
-    .eq('user_id', userId)
-    .eq('month', id)
-    .maybeSingle();
-
-  throwIfSupabaseError(error, 'salary record read');
-  if (!data) return null;
-
-  return {
-    id: data.month,
-    salary: await decryptNumber(data.salary, dek),
-    bonus: await decryptNumber(data.bonus, dek),
-  };
-}
-
-export async function upsertSalaryRecord(data: SalaryData): Promise<void> {
-  parseOrThrow(salaryDataSchema, data, 'salary.upsert.input');
-  const { userId, dek, supabase } = await requireActionContext();
-
-  const [encSalary, encBonus] = await Promise.all([
-    encryptPayload(data.salary.toString(), dek),
-    encryptPayload(data.bonus.toString(), dek),
+  const [lines, legacy] = await Promise.all([
+    supabase
+      .from('salary_income_lines')
+      .select('id, month, type, label, amount, position')
+      .eq('user_id', userId)
+      .eq('month', id)
+      .order('position', { ascending: true })
+      .order('id', { ascending: true }),
+    supabase
+      .from('salary_records')
+      .select('month, salary, bonus')
+      .eq('user_id', userId)
+      .eq('month', id)
+      .maybeSingle(),
   ]);
 
-  const { error } = await supabase.from('salary_records').upsert(
-    {
-      id: randomUUID(),
-      user_id: userId,
-      month: data.id,
-      salary: encSalary,
-      bonus: encBonus,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      onConflict: 'user_id, month',
-      ignoreDuplicates: false,
-    }
+  throwIfSupabaseError(lines.error, 'salary lines read');
+  throwIfSupabaseError(legacy.error, 'salary record read');
+
+  const months = toMonths(
+    (lines.data ?? []) as LineRow[],
+    legacy.data ? [legacy.data as LegacyRow] : [],
+    dek
   );
+  return months[0] ?? null;
+}
+
+export async function upsertSalaryRecord(input: unknown): Promise<void> {
+  const month = parseOrThrow(salaryMonthSchema, input, 'salary.upsert.input');
+  const { dek, supabase } = await requireActionContext();
+
+  const summary = summarizeMonth(month.lines);
+  const encSalary = encryptPayload(summary.recurring.toString(), dek);
+  const encBonus = encryptPayload(summary.bonus.toString(), dek);
+  const lines = month.lines.map((line, position) => ({
+    id: randomUUID(),
+    type: line.type,
+    label: encryptPayload(line.label, dek),
+    amount: encryptPayload(line.amount.toString(), dek),
+    position,
+  }));
+
+  const { error } = await supabase.rpc('replace_salary_month', {
+    p_month: month.id,
+    p_lines: lines,
+    p_salary: encSalary,
+    p_bonus: encBonus,
+  });
 
   throwIfSupabaseError(error, 'salary write');
 }
@@ -87,11 +151,19 @@ export async function deleteSalaryRecord(id: string): Promise<void> {
   parseOrThrow(YYYY_MM, id, 'salary.delete.month');
   const { userId, supabase } = await requireActionContext();
 
-  const { error } = await supabase
+  // The legacy row goes first: if the second delete fails, remaining lines
+  // still win on read, whereas the reverse order would resurrect the legacy row.
+  const legacy = await supabase
     .from('salary_records')
     .delete()
     .eq('user_id', userId)
     .eq('month', id);
+  throwIfSupabaseError(legacy.error, 'salary write');
 
-  throwIfSupabaseError(error, 'salary write');
+  const lines = await supabase
+    .from('salary_income_lines')
+    .delete()
+    .eq('user_id', userId)
+    .eq('month', id);
+  throwIfSupabaseError(lines.error, 'salary write');
 }

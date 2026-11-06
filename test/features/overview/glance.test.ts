@@ -6,6 +6,7 @@ import {
   topCategories,
 } from '@/features/overview/lib/glance';
 import { expect, it } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 
 const sum = (entries: { amount: number }[]) =>
   entries.reduce((total, entry) => total + entry.amount, 0);
@@ -56,9 +57,9 @@ it('compares the latest snapshot with the one before it regardless of order', ()
 
 it('derives year change, last raise and bonus from salary history', () => {
   const result = salaryGlance([
-    { id: '2025-10', salary: 4000, bonus: 0 },
-    { id: '2026-04', salary: 4400, bonus: 1000 },
-    { id: '2026-10', salary: 4400, bonus: 0 },
+    salaryRow('2025-10', 4000, 0),
+    salaryRow('2026-04', 4400, 1000),
+    salaryRow('2026-10', 4400, 0),
   ]);
   expect(result?.yearPct).toBeCloseTo(10);
   expect(result?.lastRaise?.month).toBe('2026-04');
@@ -68,7 +69,7 @@ it('derives year change, last raise and bonus from salary history', () => {
 });
 
 it('has no year change without a record a year back', () => {
-  const result = salaryGlance([{ id: '2026-10', salary: 4000, bonus: 0 }]);
+  const result = salaryGlance([salaryRow('2026-10', 4000, 0)]);
   expect(result?.yearPct).toBeNull();
   expect(result?.lastRaise).toBeNull();
   expect(result?.sinceMonth).toBe('2026-10');

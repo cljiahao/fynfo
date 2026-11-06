@@ -17,6 +17,7 @@ import {
   screen,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 
 const state = vi.hoisted(() => ({
   profile: vi.fn(),
@@ -169,7 +170,7 @@ const NONEMPTY: ExportData = {
       splits: [{ person: 'Fixture person', amount: 5.25, settled: false }],
     },
   ],
-  salary: [{ id: '2026-01', salary: 5000.25, bonus: 100.5 }],
+  salary: [salaryRow('2026-01', 5000.25, 100.5)],
   taxReliefs: [{ year: 2026, reliefKey: 'fixture-relief', amount: 100.25 }],
   trades: [
     {

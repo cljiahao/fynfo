@@ -1,6 +1,7 @@
 import { searchPersonalRecords } from '@/features/search/lib/record-search';
 import type { SearchHistories } from '@/features/search/types';
 import { expect, it } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 
 const histories: SearchHistories = {
   snapshots: [
@@ -11,7 +12,7 @@ const histories: SearchHistories = {
       ],
     },
   ],
-  salary: [{ id: '2026-01', salary: 100, bonus: 0 }],
+  salary: [salaryRow('2026-01', 100, 0)],
   expenses: [
     {
       id: 'expense',

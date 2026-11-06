@@ -16,6 +16,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 
 const api = vi.hoisted(() => ({
   getSnapshots: vi.fn(),
@@ -40,7 +41,7 @@ const snapshot: SnapshotData = {
   id: '2026-01',
   entries: [{ category: 'savings', account: 'Synthetic account', amount: 0 }],
 };
-const income: SalaryData = { id: '2026-01', salary: 0, bonus: 0 };
+const income: SalaryData = salaryRow('2026-01', 0, 0);
 let client: QueryClient;
 
 beforeEach(() => {

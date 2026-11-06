@@ -35,6 +35,7 @@ import {
 } from '@testing-library/react';
 import { StrictMode, useLayoutEffect } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 
 const api = vi.hoisted(() => ({
   getOverviewReads: vi.fn(),
@@ -368,7 +369,7 @@ it('uses a fresh failed-only subset retry rather than replaying ready source out
     .mockResolvedValue({
       salary: Promise.resolve({
         ok: true,
-        data: [{ id: '2026-01', salary: 5, bonus: 0 }],
+        data: [salaryRow('2026-01', 5, 0)],
       }),
     });
   mount();
@@ -383,9 +384,7 @@ it('uses a fresh failed-only subset retry rather than replaying ready source out
     [['snapshots', 'salary', 'planner', 'expenses', 'trades']],
     [['salary']],
   ]);
-  expect(client.getQueryData(['salary'])).toEqual([
-    { id: '2026-01', salary: 5, bonus: 0 },
-  ]);
+  expect(client.getQueryData(['salary'])).toEqual([salaryRow('2026-01', 5, 0)]);
 });
 it('cancels an old salary outcome before a post-write subset refresh', async () => {
   const old = deferred<{ ok: true; data: [] }>();
@@ -400,16 +399,14 @@ it('cancels an old salary outcome before a post-write subset refresh', async () 
     .mockResolvedValue({
       salary: Promise.resolve({
         ok: true,
-        data: [{ id: '2026-02', salary: 9, bonus: 0 }],
+        data: [salaryRow('2026-02', 9, 0)],
       }),
     });
   mount();
   await screen.findByText('assets ready');
   await act(async () => refreshQueriesAfterMutation(client, ['salary']));
   await act(async () => old.resolve({ ok: true, data: [] }));
-  expect(client.getQueryData(['salary'])).toEqual([
-    { id: '2026-02', salary: 9, bonus: 0 },
-  ]);
+  expect(client.getQueryData(['salary'])).toEqual([salaryRow('2026-02', 9, 0)]);
   expect(api.getOverviewReads.mock.calls).toEqual([
     [['snapshots', 'salary', 'planner', 'expenses', 'trades']],
     [['salary']],

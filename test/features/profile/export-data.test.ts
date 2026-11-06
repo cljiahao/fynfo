@@ -6,6 +6,7 @@ import {
   type ExportData,
 } from '@/features/profile/lib/export-data';
 import { describe, expect, it } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 
 const empty: ExportData = {
   profile: null,
@@ -32,7 +33,7 @@ describe('buildExportEnvelope', () => {
   it('carries all eleven personal domains through unchanged', () => {
     const data: ExportData = {
       ...empty,
-      salary: [{ id: '2026-01', salary: 5000, bonus: 0 }],
+      salary: [salaryRow('2026-01', 5000, 0)],
       taxReliefs: [{ year: 2026, reliefKey: 'cpf', amount: 1000 }],
     };
     const env = buildExportEnvelope(data, 'now');

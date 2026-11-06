@@ -5,6 +5,7 @@ import {
   ordinaryWageCeiling,
 } from '@/features/salary/lib/cpf-estimate';
 import { describe, expect, it } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 
 describe('full-rate age55-and-below CPF planning model', () => {
   it.each([
@@ -27,9 +28,9 @@ describe('full-rate age55-and-below CPF planning model', () => {
     expect(ordinaryWageCeiling(2023, 8)).toBe(6000);
     expect(ordinaryWageCeiling(2023, 9)).toBe(6300);
     expect(estimateAnnualCpf(84000, 0, 2023)).toBe(14640);
-    expect(
-      estimateRecordedCpf([{ id: '2026-01', salary: 20000, bonus: 0 }], 2026)
-    ).toBe(1600);
+    expect(estimateRecordedCpf([salaryRow('2026-01', 20000, 0)], 2026)).toBe(
+      1600
+    );
   });
   it('matches CPF Board AW example16, including wage bands after AW exhaustion', () => {
     const bonuses = [
@@ -53,16 +54,11 @@ describe('full-rate age55-and-below CPF planning model', () => {
     expect(ordinaryWageCeiling(2026, 13)).toBeNull();
     expect(
       estimateRecordedCpf(
-        [
-          { id: '2026-01', salary: 0, bonus: 0 },
-          { id: '2026-01', salary: 0, bonus: 0 },
-        ],
+        [salaryRow('2026-01', 0, 0), salaryRow('2026-01', 0, 0)],
         2026
       )
     ).toBeNull();
-    expect(
-      estimateRecordedCpf([{ id: '2026-13', salary: 0, bonus: 0 }], 2026)
-    ).toBeNull();
+    expect(estimateRecordedCpf([salaryRow('2026-13', 0, 0)], 2026)).toBeNull();
     expect(employeeCpf(Infinity, 0, 8000)).toBeNull();
     expect(employeeCpf(-1, 0, 8000)).toBeNull();
     expect(employeeCpf(Number.MAX_VALUE, Number.MAX_VALUE, 8000)).toBeNull();

@@ -87,7 +87,23 @@ const expense = z
       total <= cents
     );
   }, 'Invalid expense split allocation.');
-const salary = z.strictObject({ id: month, salary: amount, bonus: amount });
+const incomeLine = z.strictObject({
+  id: identity,
+  type: z.enum(['salary', 'bonus', 'one_time']),
+  label: identity,
+  amount: positive,
+});
+// Exports carry the income lines and derived totals next to the legacy fields;
+// files from before income lines have only id, salary and bonus.
+const salary = z.strictObject({
+  id: month,
+  salary: amount,
+  bonus: amount,
+  lines: z.array(incomeLine).max(20).optional(),
+  recurring: amount.optional(),
+  oneTime: amount.optional(),
+  total: amount.optional(),
+});
 const relief = z.strictObject({
   year: z.number().int().min(0).max(9999),
   reliefKey: identity,

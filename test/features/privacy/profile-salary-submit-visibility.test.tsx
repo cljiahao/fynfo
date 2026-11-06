@@ -16,6 +16,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { salaryRow, savedMonth } from '../../helpers/salary-fixture';
 const api = vi.hoisted(() => ({
   getProfile: vi.fn(),
   upsertProfile: vi.fn(),
@@ -79,11 +80,7 @@ beforeEach(() => {
     residencyStatus: 'resident',
   });
   api.upsertProfile.mockResolvedValue(undefined);
-  api.getSalaryRecord.mockResolvedValue({
-    id: '2026-01',
-    salary: 1234.56,
-    bonus: 0,
-  });
+  api.getSalaryRecord.mockResolvedValue(salaryRow('2026-01', 1234.56, 0));
   api.upsertSalaryRecord.mockResolvedValue(undefined);
 });
 afterEach(() => {
@@ -197,10 +194,6 @@ describe('actual profile and salary submit visibility boundaries', () => {
     expect(input).toHaveValue(5432.1);
     fireEvent.submit(form);
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
-    expect(save).toHaveBeenCalledWith({
-      id: '2026-01',
-      salary: 5432.1,
-      bonus: 0,
-    });
+    expect(save).toHaveBeenCalledWith(savedMonth('2026-01', 5432.1, 0));
   });
 });

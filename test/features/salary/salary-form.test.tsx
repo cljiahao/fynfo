@@ -2,10 +2,13 @@
 import { SalaryFormDialog } from '@/features/salary/components/salary-form';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-const state = vi.hoisted(() => ({
-  refetch: vi.fn(),
-  record: { id: '2026-01', salary: 100, bonus: 0 },
-}));
+const state = await vi.hoisted(async () => {
+  const { salaryRow } = await import('../../helpers/salary-fixture');
+  return {
+    refetch: vi.fn(),
+    record: salaryRow('2026-01', 100, 0),
+  };
+});
 vi.mock('@/features/salary/hooks/use-salary', () => ({
   useSalaryRecord: () => ({
     data: state.record,

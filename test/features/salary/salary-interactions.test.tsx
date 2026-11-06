@@ -17,6 +17,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { salaryRow, savedMonth } from '../../helpers/salary-fixture';
 
 const actions = vi.hoisted(() => ({
   getSalaryRecords: vi.fn(),
@@ -65,9 +66,7 @@ it('uses saved SRS relief in both projected salary tax displays', async () => {
     residencyStatus: 'resident',
   });
   actions.getTaxReliefs.mockResolvedValue([{ reliefKey: 'srs', amount: 100 }]);
-  const records = [
-    { id: `${new Date().getFullYear()}-01`, salary: 5000, bonus: 0 },
-  ];
+  const records = [salaryRow(`${new Date().getFullYear()}-01`, 5000, 0)];
   mount(
     <>
       <section aria-label="Summary cards">
@@ -125,8 +124,8 @@ it('keeps salary dialog label targets distinct across mounted instances', () => 
 describe('salary recording through real forms and queries', () => {
   it('prefills a new record with the latest salary and leaves bonus blank', async () => {
     actions.getSalaryRecords.mockResolvedValue([
-      { id: '2026-01', salary: 4000, bonus: 0 },
-      { id: '2026-02', salary: 4200, bonus: 500 },
+      salaryRow('2026-01', 4000, 0),
+      salaryRow('2026-02', 4200, 500),
     ]);
     mount(<SalaryFormDialog open onOpenChange={vi.fn()} />);
     await waitFor(() =>
@@ -138,9 +137,7 @@ describe('salary recording through real forms and queries', () => {
   });
 
   it('warns that saving a new record replaces an existing month', async () => {
-    actions.getSalaryRecords.mockResolvedValue([
-      { id: '2026-02', salary: 4200, bonus: 0 },
-    ]);
+    actions.getSalaryRecords.mockResolvedValue([salaryRow('2026-02', 4200, 0)]);
     mount(<SalaryFormDialog open onOpenChange={vi.fn()} />);
     fireEvent.change(screen.getByLabelText('Month'), {
       target: { value: '2026-02' },
@@ -160,9 +157,7 @@ describe('salary recording through real forms and queries', () => {
     actions.getProfile.mockResolvedValue(null);
     mount(
       <>
-        <SalarySummaryCards
-          records={[{ id: '2026-01', salary: 5000, bonus: 0 }]}
-        />
+        <SalarySummaryCards records={[salaryRow('2026-01', 5000, 0)]} />
         <SalarySummary records={[]} />
       </>
     );
@@ -217,11 +212,9 @@ describe('salary recording through real forms and queries', () => {
     fireEvent.change(inputs[1], { target: { value: '300' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
-      expect(actions.upsertSalaryRecord).toHaveBeenCalledWith({
-        id: '2026-03',
-        salary: 5000.25,
-        bonus: 300,
-      })
+      expect(actions.upsertSalaryRecord).toHaveBeenCalledWith(
+        savedMonth('2026-03', 5000.25, 300)
+      )
     );
     expect(close).not.toHaveBeenCalled();
     expect(
@@ -233,11 +226,7 @@ describe('salary recording through real forms and queries', () => {
   });
 
   it('loads an edit without allowing the month to change and retains the form after a failed write', async () => {
-    actions.getSalaryRecord.mockResolvedValue({
-      id: '2026-02',
-      salary: 4000,
-      bonus: 100,
-    });
+    actions.getSalaryRecord.mockResolvedValue(salaryRow('2026-02', 4000, 100));
     actions.upsertSalaryRecord.mockRejectedValue(new Error('offline'));
     const close = vi.fn();
     mount(<SalaryFormDialog open editId="2026-02" onOpenChange={close} />);
@@ -254,11 +243,9 @@ describe('salary recording through real forms and queries', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Update' }));
     await waitFor(() =>
-      expect(actions.upsertSalaryRecord).toHaveBeenCalledWith({
-        id: '2026-02',
-        salary: 4000,
-        bonus: 0,
-      })
+      expect(actions.upsertSalaryRecord).toHaveBeenCalledWith(
+        savedMonth('2026-02', 4000, 0)
+      )
     );
     await waitFor(() =>
       expect(
@@ -274,7 +261,7 @@ describe('salary recording through real forms and queries', () => {
   it('retries a failed record read before displaying editable amounts', async () => {
     actions.getSalaryRecord
       .mockRejectedValueOnce(new Error('offline'))
-      .mockResolvedValue({ id: '2026-01', salary: 2500, bonus: 0 });
+      .mockResolvedValue(salaryRow('2026-01', 2500, 0));
     mount(<SalaryFormDialog open editId="2026-01" onOpenChange={vi.fn()} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
     await waitFor(() =>
@@ -285,11 +272,13 @@ describe('salary recording through real forms and queries', () => {
   });
 
   it('paginates latest first, edits the selected row, and refreshes history after confirmed deletion', async () => {
-    let records: SalaryData[] = Array.from({ length: 11 }, (_, i) => ({
-      id: `2026-${String(i + 1).padStart(2, '0')}`,
-      salary: 1000 + i,
-      bonus: i === 10 ? 500 : 0,
-    }));
+    let records: SalaryData[] = Array.from({ length: 11 }, (_, i) =>
+      salaryRow(
+        `2026-${String(i + 1).padStart(2, '0')}`,
+        1000 + i,
+        i === 10 ? 500 : 0
+      )
+    );
     actions.getSalaryRecords.mockImplementation(async () => records);
     actions.deleteSalaryRecord.mockImplementation(async (id: string) => {
       records = records.filter((r) => r.id !== id);
@@ -409,9 +398,7 @@ describe('salary calculations and relief controls', () => {
     });
     mount(
       <SalarySummary
-        records={[
-          { id: `${new Date().getFullYear()}-01`, salary: 5000, bonus: 0 },
-        ]}
+        records={[salaryRow(`${new Date().getFullYear()}-01`, 5000, 0)]}
       />
     );
     await screen.findByText('Estimated Annual');
@@ -436,13 +423,11 @@ describe('salary calculations and relief controls', () => {
       <>
         <SalarySummaryCards
           records={[
-            { id: `${year - 1}-12`, salary: 99999, bonus: 99999 },
-            { id: `${year}-01`, salary: 5000, bonus: 1000 },
+            salaryRow(`${year - 1}-12`, 99999, 99999),
+            salaryRow(`${year}-01`, 5000, 1000),
           ]}
         />
-        <SalarySummary
-          records={[{ id: `${year}-01`, salary: 5000, bonus: 1000 }]}
-        />
+        <SalarySummary records={[salaryRow(`${year}-01`, 5000, 1000)]} />
       </>
     );
     expect(screen.getByText('$6,000')).toBeTruthy();
@@ -518,9 +503,7 @@ describe('salary calculations and relief controls', () => {
 
 it('calculates recorded CPF per month rather than annualising the OW ceiling', async () => {
   const year = new Date().getFullYear();
-  mount(
-    <SalarySummary records={[{ id: `${year}-01`, salary: 20000, bonus: 0 }]} />
-  );
+  mount(<SalarySummary records={[salaryRow(`${year}-01`, 20000, 0)]} />);
   const title = await screen.findByText(`Recorded YTD (${year})`);
   const card = title.closest('[data-slot="card"]');
   expect(card).not.toBeNull();
@@ -536,10 +519,8 @@ it('preserves gross income when the CPF rules for a future year are unsupported'
   try {
     mount(
       <>
-        <SalarySummary records={[{ id: '2030-01', salary: 5000, bonus: 0 }]} />
-        <SalarySummaryCards
-          records={[{ id: '2030-01', salary: 5000, bonus: 0 }]}
-        />
+        <SalarySummary records={[salaryRow('2030-01', 5000, 0)]} />
+        <SalarySummaryCards records={[salaryRow('2030-01', 5000, 0)]} />
       </>
     );
     expect(
@@ -556,8 +537,8 @@ it('preserves gross income when the CPF rules for a future year are unsupported'
 it('withholds projected tax as well as recorded estimates for duplicate salary months', async () => {
   const year = new Date().getFullYear();
   const records = [
-    { id: `${year}-01`, salary: 5000, bonus: 0 },
-    { id: `${year}-01`, salary: 5000, bonus: 0 },
+    salaryRow(`${year}-01`, 5000, 0),
+    salaryRow(`${year}-01`, 5000, 0),
   ];
   mount(
     <>
@@ -576,9 +557,7 @@ it('withholds overflowing income projections rather than formatting infinity', a
   const year = new Date().getFullYear();
   mount(
     <SalarySummaryCards
-      records={[
-        { id: `${year}-01`, salary: Number.MAX_VALUE, bonus: Number.MAX_VALUE },
-      ]}
+      records={[salaryRow(`${year}-01`, Number.MAX_VALUE, Number.MAX_VALUE)]}
     />
   );
   await screen.findByText('CPF estimate unavailable');
@@ -588,9 +567,7 @@ it('withholds overflowing income projections rather than formatting infinity', a
 
 describe('saved relief readiness across salary displays', () => {
   function displays() {
-    const records = [
-      { id: `${new Date().getFullYear()}-01`, salary: 5000, bonus: 0 },
-    ];
+    const records = [salaryRow(`${new Date().getFullYear()}-01`, 5000, 0)];
     actions.getProfile.mockResolvedValue({
       birthYear: 1990,
       isNsman: false,
@@ -710,9 +687,7 @@ describe('saved relief readiness across salary displays', () => {
 
   it('does not suppress non-resident estimates for an irrelevant relief failure', async () => {
     actions.getTaxReliefs.mockRejectedValue(new Error('fixture'));
-    const records = [
-      { id: `${new Date().getFullYear()}-01`, salary: 5000, bonus: 0 },
-    ];
+    const records = [salaryRow(`${new Date().getFullYear()}-01`, 5000, 0)];
     actions.getProfile.mockResolvedValue({
       birthYear: 1990,
       isNsman: false,

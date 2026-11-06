@@ -10,7 +10,7 @@ import {
   upsertSalaryRecord,
 } from '../actions/salary-actions';
 import { SALARY_KEY } from '../constants';
-import type { SalaryData } from '../types';
+import type { SalaryMonth } from '../types';
 
 export { SALARY_KEY } from '../constants';
 
@@ -35,7 +35,7 @@ export function useSalaryRecord(id: string) {
 export function useUpsertSalary() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: SalaryData) => upsertSalaryRecord(data),
+    mutationFn: (data: SalaryMonth) => upsertSalaryRecord(data),
     onSuccess: () => {
       void refreshQueriesAfterMutation(queryClient, SALARY_KEY);
     },

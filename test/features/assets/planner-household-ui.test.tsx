@@ -11,6 +11,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 
 const api = vi.hoisted(() => ({
   getSalaryRecords: vi.fn(),
@@ -92,9 +93,7 @@ function mount() {
 
 beforeEach(() => {
   window.localStorage.clear();
-  api.getSalaryRecords.mockResolvedValue([
-    { id: '2026-01', salary: 5000, bonus: 0 },
-  ]);
+  api.getSalaryRecords.mockResolvedValue([salaryRow('2026-01', 5000, 0)]);
   api.getExpenses.mockResolvedValue([
     expense('a', 1, 1000),
     expense('b', 2, 1000),

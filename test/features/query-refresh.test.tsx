@@ -50,6 +50,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { salaryRow } from '../helpers/salary-fixture';
 
 const api = vi.hoisted(() => ({
   getSnapshots: vi.fn(),
@@ -95,7 +96,7 @@ vi.mock('@/features/household/actions/household-actions', () => api);
 vi.mock('@/features/household/actions/goal-actions', () => api);
 
 const snapshot = { id: '2026-01', entries: [] };
-const salary = { id: '2026-01', salary: 100, bonus: 0 };
+const salary = salaryRow('2026-01', 100, 0);
 const planner = {
   emergencyMonths: 3,
   warChestMonths: 3,

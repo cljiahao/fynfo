@@ -4,6 +4,7 @@ import type {
   OverviewReadOutcome,
 } from '@/features/overview/types';
 import { expect, it, vi } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -41,15 +42,13 @@ it('starts fresh duplicate-key cohorts and does not let old finalizers consume l
     .mockResolvedValue({
       salary: Promise.resolve({
         ok: true,
-        data: [{ id: '2026-02', salary: 5, bonus: 0 }],
+        data: [salaryRow('2026-02', 5, 0)],
       }),
     });
   const transport = createOverviewReadCohorts(action);
   const first = transport.read('salary', new AbortController().signal);
   const second = transport.read('salary', new AbortController().signal);
-  await expect(second).resolves.toEqual([
-    { id: '2026-02', salary: 5, bonus: 0 },
-  ]);
+  await expect(second).resolves.toEqual([salaryRow('2026-02', 5, 0)]);
   old.resolve({ ok: true, data: [] });
   await expect(first).resolves.toEqual([]);
   await expect(

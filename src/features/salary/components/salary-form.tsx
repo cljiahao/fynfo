@@ -22,6 +22,7 @@ import {
   useSalaryRecords,
   useUpsertSalary,
 } from '../hooks/use-salary';
+import type { IncomeLine } from '../types';
 
 interface SalaryFormValues {
   id: string;
@@ -102,10 +103,29 @@ export function SalaryFormDialog({
       return;
     }
     try {
+      const salary = Number(values.salary) || 0;
+      const bonus = Number(values.bonus) || 0;
+      const lines: IncomeLine[] = [];
+      if (salary > 0)
+        lines.push({
+          id: 'salary',
+          type: 'salary',
+          label: 'Salary',
+          amount: salary,
+        });
+      if (bonus > 0)
+        lines.push({
+          id: 'bonus',
+          type: 'bonus',
+          label: 'Bonus',
+          amount: bonus,
+        });
+      // The two-field form cannot edit one-time lines, so keep them as saved.
+      const oneTime =
+        existing?.lines.filter((line) => line.type === 'one_time') ?? [];
       await upsert.mutateAsync({
         id: values.id,
-        salary: Number(values.salary) || 0,
-        bonus: Number(values.bonus) || 0,
+        lines: [...lines, ...oneTime],
       });
       toast.success(`Salary for ${values.id} saved`);
       onOpenChange(false);

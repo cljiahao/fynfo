@@ -18,12 +18,16 @@ import {
 } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { savedMonth } from '../../helpers/salary-fixture';
 
-const state = vi.hoisted(() => ({
-  save: vi.fn().mockResolvedValue(undefined),
-  remove: vi.fn().mockResolvedValue(undefined),
-  records: [{ id: '2026-01', salary: 12345.67, bonus: 789.12 }],
-}));
+const state = await vi.hoisted(async () => {
+  const { salaryRow } = await import('../../helpers/salary-fixture');
+  return {
+    save: vi.fn().mockResolvedValue(undefined),
+    remove: vi.fn().mockResolvedValue(undefined),
+    records: [salaryRow('2026-01', 12345.67, 789.12)],
+  };
+});
 vi.mock('@/features/salary/hooks/use-salary', () => ({
   useSalaryRecord: () => ({
     data: state.records[0],
@@ -81,11 +85,9 @@ it('conceals an open salary draft without discarding it and prevents direct form
   expect(salary.value).toBe('23456.78');
   fireEvent.submit(form);
   await waitFor(() =>
-    expect(state.save).toHaveBeenCalledWith({
-      id: '2026-01',
-      salary: 23456.78,
-      bonus: 789.12,
-    })
+    expect(state.save).toHaveBeenCalledWith(
+      savedMonth('2026-01', 23456.78, 789.12)
+    )
   );
 });
 

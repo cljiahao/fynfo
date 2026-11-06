@@ -13,6 +13,7 @@ import {
   within,
 } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 
 afterEach(() => {
   cleanup();
@@ -28,10 +29,7 @@ it('shows newest recorded periods regardless of order, using the Singapore month
         { id: '2026-09', entries: [] },
         { id: '2026-01', entries: [] },
       ]}
-      salary={[
-        { id: '2026-10', salary: 100, bonus: 0 },
-        { id: '2026-08', salary: 100, bonus: 0 },
-      ]}
+      salary={[salaryRow('2026-10', 100, 0), salaryRow('2026-08', 100, 0)]}
       expenses={['2026-09-23', '2026-09-01'].map((date) => ({
         id: date,
         date,
@@ -78,9 +76,9 @@ it('shows change lines and opens details on tap', () => {
         },
       ]}
       salary={[
-        { id: '2025-10', salary: 4000, bonus: 0 },
-        { id: '2026-04', salary: 4400, bonus: 1000 },
-        { id: '2026-10', salary: 4400, bonus: 0 },
+        salaryRow('2025-10', 4000, 0),
+        salaryRow('2026-04', 4400, 1000),
+        salaryRow('2026-10', 4400, 0),
       ]}
       expenses={[
         {
@@ -206,7 +204,7 @@ it('summarizes this Singapore month using personal shares and masks every moneta
             ],
           },
         ]}
-        salary={[{ id: '2026-10', salary: 4567, bonus: 200 }]}
+        salary={[salaryRow('2026-10', 4567, 200)]}
         expenses={[
           {
             id: 'a',

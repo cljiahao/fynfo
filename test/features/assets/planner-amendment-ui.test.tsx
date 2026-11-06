@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 
 const api = vi.hoisted(() => ({
   getSalaryRecords: vi.fn(),
@@ -73,8 +74,8 @@ function mount() {
 beforeEach(() => {
   window.localStorage.clear();
   api.getSalaryRecords.mockResolvedValue([
-    { id: '2026-01', salary: 4000, bonus: 0 },
-    { id: '2026-02', salary: 5000, bonus: 0 },
+    salaryRow('2026-01', 4000, 0),
+    salaryRow('2026-02', 5000, 0),
   ]);
   api.getExpenses.mockResolvedValue([lastMonthExpense()]);
   api.getPlannerSettings.mockResolvedValue(SETTINGS);

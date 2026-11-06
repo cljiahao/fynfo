@@ -25,6 +25,7 @@ import { cleanup, render, renderHook, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeFakeSupabase } from '../helpers/fake-supabase';
+import { salaryRow } from '../helpers/salary-fixture';
 
 const boundary = vi.hoisted(() => ({
   context: vi.fn(),
@@ -52,10 +53,7 @@ vi.mock('@/lib/recharts', () => ({
 }));
 afterEach(cleanup);
 beforeEach(() => vi.clearAllMocks());
-const records = [
-  { id: '0000-01', salary: 100, bonus: 20 },
-  { id: '2026-02', salary: 200, bonus: 30 },
-];
+const records = [salaryRow('0000-01', 100, 20), salaryRow('2026-02', 200, 30)];
 const snapshots: SnapshotData[] = records.map((r) => ({
   id: r.id,
   entries: [{ category: 'savings', account: 'Synthetic', amount: r.salary }],
@@ -202,7 +200,10 @@ it('preserves raw legacy snapshot and salary read/delete targets with inert boun
         entries: [],
       },
     },
-    selectData: { month: '0000-01', salary: '100', bonus: '20' },
+    selectDataByTable: {
+      salary_income_lines: [],
+      salary_records: { month: '0000-01', salary: '100', bonus: '20' },
+    },
   });
   boundary.context.mockResolvedValue({
     userId: 'synthetic-owner',
@@ -214,7 +215,11 @@ it('preserves raw legacy snapshot and salary read/delete targets with inert boun
     snapshotId: 'synthetic-snapshot',
     revision: '1',
   });
-  expect(await getSalaryRecord('0000-01')).toEqual(records[0]);
+  expect(await getSalaryRecord('0000-01')).toMatchObject({
+    id: '0000-01',
+    salary: 100,
+    bonus: 20,
+  });
   await deleteSnapshot('0000-01', {
     snapshotId: 'synthetic-snapshot',
     revision: '1',

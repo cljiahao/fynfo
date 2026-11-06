@@ -18,21 +18,28 @@ describe('complete flat encrypted histories', () => {
       salary,
       bonus,
     }));
-    const fake = makeFakeSupabase({ selectData: rows, apiMaxRows: 125 });
+    const fake = makeFakeSupabase({
+      selectDataByTable: { salary_income_lines: [], salary_records: rows },
+      apiMaxRows: 125,
+    });
     supabase = fake.client;
     const { getSalaryRecords } =
       await import('@/features/salary/actions/salary-actions');
     const result = await getSalaryRecords();
     expect(result).toHaveLength(1203);
-    expect(result.at(-1)).toEqual({
+    expect(result.find((r) => r.id === 'month-1202')).toMatchObject({
       id: 'month-1202',
       salary: 123.45,
       bonus: 0,
     });
-    expect(fake.calls.queries).toHaveLength(10);
+    expect(fake.calls.queries).toHaveLength(11);
     for (const query of fake.calls.queries) {
       expect(query.eq).toEqual([{ column: 'user_id', value: 'fixture-user' }]);
-      expect(query.order.map(({ column }) => column)).toEqual(['month', 'id']);
+      expect(query.order.map(({ column }) => column)).toEqual(
+        query.table === 'salary_records'
+          ? ['month', 'id']
+          : ['month', 'position', 'id']
+      );
     }
   });
 

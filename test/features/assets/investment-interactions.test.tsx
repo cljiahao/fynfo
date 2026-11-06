@@ -16,6 +16,7 @@ import {
   within,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { salaryRow } from '../../helpers/salary-fixture';
 const external = vi.hoisted(() => ({
   getTrades: vi.fn(),
   fetchStockPrices: vi.fn(),
@@ -195,9 +196,7 @@ it('hides an investment breakdown for a zero monthly budget', () => {
 });
 
 it('uses salary and expenses to calculate goals and saves changed optional deductions after debounce', async () => {
-  external.getSalaryRecords.mockResolvedValue([
-    { id: '2026-01', salary: 5000, bonus: 0 },
-  ]);
+  external.getSalaryRecords.mockResolvedValue([salaryRow('2026-01', 5000, 0)]);
   const changed = vi.fn();
   mount(
     <SalaryPlanner
