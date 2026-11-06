@@ -272,6 +272,20 @@ describe('useSalaryYtdStats', () => {
     expect(withOneTime.estAnnualBonus).toBe(0);
   });
 
+  it('applies the ordinary wage ceiling per employer', () => {
+    const single = stats([month(id(1), [line('1', 'salary', 'Acme', 12000)])]);
+    const split = stats([
+      month(id(1), [
+        line('1', 'salary', 'Acme', 6000),
+        line('2', 'salary', 'Globex', 6000),
+      ]),
+    ]);
+    expect(single.trueSummary?.totalCpf).toBeGreaterThan(0);
+    expect(split.trueSummary?.totalCpf).toBeGreaterThan(
+      single.trueSummary?.totalCpf ?? 0
+    );
+  });
+
   it('taxes one-time income without adding CPF for it', () => {
     const base = stats([month(id(1), [line('1', 'salary', 'Acme', 5000)])]);
     const withOneTime = stats([
