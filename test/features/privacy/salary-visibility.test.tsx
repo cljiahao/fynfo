@@ -1,4 +1,4 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   AmountVisibilityProvider,

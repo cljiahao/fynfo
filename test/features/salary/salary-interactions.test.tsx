@@ -1,4 +1,4 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 import { SalaryFormDialog } from '@/features/salary/components/salary-form';
 import { SalarySummary } from '@/features/salary/components/salary-summary';
 import { SalarySummaryCards } from '@/features/salary/components/salary-summary-cards';

@@ -1,4 +1,4 @@
-﻿import { useProfile } from '@/features/profile';
+import { useProfile } from '@/features/profile';
 import { estimateAnnualCpf, estimateRecordedCpf } from '../lib/cpf-estimate';
 import {
   calculateTaxSummary,

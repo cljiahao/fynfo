@@ -125,7 +125,7 @@ export function SalarySummaryCards({
                   : null,
               ]
                 .filter(Boolean)
-                .join(' � ')
+                .join(' · ')
             : `No records for ${currentYear}`
         }
       />
