@@ -394,3 +394,22 @@ it('keeps a scenario with overflowing displayed percentages unavailable without 
   expect(screen.queryByText(/Infinity/)).toBeNull();
   expect(state.create).not.toHaveBeenCalled();
 });
+describe('saved scenarios explainer', () => {
+  it('opens the explainer from a separate button without expanding the section', async () => {
+    mount(
+      <SalaryPlanner
+        snapshot={{ id: '2026-10', entries: [] }}
+        onPlannerValuesChange={vi.fn()}
+      />
+    );
+    const info = screen.getByRole('button', { name: 'About saved scenarios' });
+    const disclosure = screen.getByRole('button', { name: /Saved scenarios/ });
+    expect(disclosure).not.toContainElement(info);
+    fireEvent.click(info);
+    expect(
+      await screen.findByText(/never change your real salary/)
+    ).toBeVisible();
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    expect(state.get).not.toHaveBeenCalled();
+  });
+});

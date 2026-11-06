@@ -3,7 +3,13 @@
 import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Info } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useScenarioMutations, useScenarios } from '../hooks/use-scenarios';
 import type { SalaryPlanInput } from '../lib/salary-plan';
@@ -106,19 +112,40 @@ export function PlanningScenarios({
   };
   return (
     <section className="space-y-3 border-t pt-4" aria-label="Saved scenarios">
-      <Button
-        variant="ghost"
-        className="w-full justify-between"
-        ref={disclosureRef}
-        aria-expanded={expanded}
-        aria-controls="saved-scenarios-content"
-        onClick={() => setExpanded(!expanded)}
-      >
-        Saved scenarios{' '}
-        <span className="text-muted-foreground text-xs">
-          Private · up to 10
-        </span>
-      </Button>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          className="flex-1 justify-between"
+          ref={disclosureRef}
+          aria-expanded={expanded}
+          aria-controls="saved-scenarios-content"
+          onClick={() => setExpanded(!expanded)}
+        >
+          Saved scenarios{' '}
+          <span className="text-muted-foreground text-xs">
+            Private · up to 10
+          </span>
+        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              aria-label="About saved scenarios"
+            >
+              <Info className="size-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="text-sm">
+            Save the planner&apos;s current inputs (salary, expenses, allocation
+            %) as a named what-if plan, then reopen or compare it later.
+            Scenarios are snapshots only: they never change your real salary,
+            expense or asset records. Stored encrypted in your personal vault;
+            your household partner can&apos;t see them.
+          </PopoverContent>
+        </Popover>
+      </div>
       {expanded && (
         <div id="saved-scenarios-content" className="space-y-3">
           <p className="text-muted-foreground text-sm">
