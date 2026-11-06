@@ -50,15 +50,76 @@ it('shows newest recorded periods regardless of order, using the Singapore month
       retryExpenses={() => {}}
     />
   );
-  expect(screen.getByText('Latest: Sept 2026')).toBeTruthy();
-  expect(screen.getByText('Latest: Oct 2026')).toBeTruthy();
-  expect(screen.getByText('Last expense: 23 Sept 2026')).toBeTruthy();
-  expect(screen.getAllByText('Earlier than this month')).toHaveLength(1);
+  expect(screen.queryByText(/Latest:/)).toBeNull();
+  expect(screen.queryByText('Earlier than this month')).toBeNull();
   expect(
-    screen.getByRole('link', { name: 'Recorded spending' }).getAttribute('href')
+    screen
+      .getByRole('link', { name: 'Spending this month' })
+      .getAttribute('href')
   ).toBe('/dashboard/expenses');
 });
 
+it('shows change lines and opens details on tap', () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-10-15T00:00:00Z'));
+  render(
+    <LatestRecords
+      snapshots={[
+        {
+          id: '2026-09',
+          entries: [{ category: 'savings', account: 'A', amount: 1000 }],
+        },
+        {
+          id: '2026-10',
+          entries: [
+            { category: 'savings', account: 'A', amount: 1000 },
+            { category: 'stocks', account: 'B', amount: 500 },
+          ],
+        },
+      ]}
+      salary={[
+        { id: '2025-10', salary: 4000, bonus: 0 },
+        { id: '2026-04', salary: 4400, bonus: 1000 },
+        { id: '2026-10', salary: 4400, bonus: 0 },
+      ]}
+      expenses={[
+        {
+          id: 'p',
+          date: '2026-09-02',
+          amount: 600,
+          item: 'x',
+          info: '',
+          type: 'food_drink',
+          splitType: 'self',
+          splits: [],
+        },
+        {
+          id: 'c',
+          date: '2026-10-02',
+          amount: 900,
+          item: 'x',
+          info: '',
+          type: 'food_drink',
+          splitType: 'self',
+          splits: [],
+        },
+      ]}
+      assetsState="ready"
+      salaryState="ready"
+      expensesState="ready"
+      retryAssets={() => {}}
+      retrySalary={() => {}}
+      retryExpenses={() => {}}
+    />
+  );
+  expect(screen.getByText(/▲ \$500 since last snapshot/)).toBeTruthy();
+  expect(screen.getByText('▲ 10% vs a year ago')).toBeTruthy();
+  expect(screen.getByText(/▲ \$300 vs 12-month average/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Salary details' }));
+  expect(screen.getByText('Last raise')).toBeTruthy();
+  expect(screen.getByText('+10% · Apr 2026')).toBeTruthy();
+  expect(screen.getByText(/\$1,000 · Apr 2026/)).toBeTruthy();
+});
 it('distinguishes pending, failed and empty reads without exposing stale dates', () => {
   const retry = vi.fn();
   render(

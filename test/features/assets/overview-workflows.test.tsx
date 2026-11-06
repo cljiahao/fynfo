@@ -140,7 +140,7 @@ it('keeps assets pending without zero cards while the salary row is ready', asyn
       <DashboardOverview />
     </QueryClientProvider>
   );
-  expect(await screen.findByText('Current Salary')).toBeTruthy();
+  expect(await screen.findByText('Salary')).toBeTruthy();
   expect(screen.getByRole('status', { name: 'Loading assets' })).toBeTruthy();
   expect(screen.queryByText('Total Assets')).toBeNull();
   expect(screen.queryByText('Investment Breakdown')).toBeNull();
@@ -184,18 +184,18 @@ it('keeps a failed salary summary unavailable while loaded assets remain visible
   );
   const retry = await screen.findByRole('button', { name: 'Try again' });
   expect(screen.getByText('Total Assets')).toBeTruthy();
-  expect(screen.queryByText('Current Salary')).toBeNull();
+  expect(screen.queryByText('Salary')).toBeNull();
   expect(screen.queryByText('Investment Breakdown')).toBeNull();
   expect(screen.queryByText('private salary detail')).toBeNull();
   fireEvent.click(retry);
-  expect(await screen.findByText('Current Salary')).toBeTruthy();
+  expect(await screen.findByText('Salary')).toBeTruthy();
   expect(api.getSalaryRecords).toHaveBeenCalledTimes(2);
 });
 
 it('hydrates all four server datasets into the real overview without fetching them again on mount', async () => {
   const page = await getPrefetchedOverview();
   render(<Providers>{page}</Providers>);
-  expect(await screen.findByText('Current Salary')).toBeTruthy();
+  expect(await screen.findByText('Salary')).toBeTruthy();
   expect(screen.getAllByText('$15,000')).toHaveLength(1);
   expect(
     screen.getByRole('link', { name: 'Add Snapshot' }).getAttribute('href')
@@ -274,7 +274,7 @@ it('reviews a selected month using existing records and hides failed review tota
       <DashboardOverview />
     </QueryClientProvider>
   );
-  await screen.findByText('Current Salary');
+  await screen.findByText('Salary');
   fireEvent.click(screen.getByRole('button', { name: 'Review month' }));
   fireEvent.change(screen.getByLabelText('Month'), {
     target: { value: '2026-01' },
