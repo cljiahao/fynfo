@@ -66,3 +66,6 @@ BEGIN
     updated_at = EXCLUDED.updated_at;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.replace_salary_month(text, jsonb, text, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.replace_salary_month(text, jsonb, text, text) TO authenticated;
