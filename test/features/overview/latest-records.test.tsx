@@ -273,3 +273,80 @@ it('does not turn invalid shared allocations into a plausible spending amount', 
   );
   expect(screen.getByText('Check shared splits')).toBeTruthy();
 });
+
+it('closes the details popover with Escape after hover or tap opened it', () => {
+  render(
+    <LatestRecords
+      snapshots={[
+        {
+          id: '2026-10',
+          entries: [{ category: 'savings', account: 'A', amount: 1000 }],
+        },
+      ]}
+      assetsState="ready"
+      salaryState="ready"
+      expensesState="ready"
+      retryAssets={() => {}}
+      retrySalary={() => {}}
+      retryExpenses={() => {}}
+    />
+  );
+  const trigger = screen.getByRole('button', { name: 'Total Assets details' });
+  fireEvent.pointerEnter(trigger, { pointerType: 'mouse' });
+  expect(screen.getByText('Snapshot')).toBeTruthy();
+  fireEvent.keyDown(document.activeElement ?? document.body, {
+    key: 'Escape',
+  });
+  expect(screen.queryByText('Snapshot')).toBeNull();
+  fireEvent.click(trigger);
+  expect(screen.getByText('Snapshot')).toBeTruthy();
+  fireEvent.keyDown(document.activeElement ?? document.body, {
+    key: 'Escape',
+  });
+  expect(screen.queryByText('Snapshot')).toBeNull();
+});
+
+it('compares the headline spending with the average using the same figure', () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-10-15T00:00:00Z'));
+  const base = { item: 'x', info: '', type: 'other' as const };
+  render(
+    <LatestRecords
+      assetsState="ready"
+      salaryState="ready"
+      expensesState="ready"
+      retryAssets={() => {}}
+      retrySalary={() => {}}
+      retryExpenses={() => {}}
+      expenses={[
+        {
+          ...base,
+          id: 'p',
+          date: '2026-09-02',
+          amount: 100,
+          splitType: 'self',
+          splits: [],
+        },
+        {
+          ...base,
+          id: 'c',
+          date: '2026-10-02',
+          amount: 400,
+          splitType: 'shared',
+          splits: [{ person: 'Other', amount: 100, settled: false }],
+        },
+        {
+          ...base,
+          id: 'i',
+          date: '2026-10-03',
+          amount: 5000,
+          type: 'insurance',
+          splitType: 'self',
+          splits: [],
+        },
+      ]}
+    />
+  );
+  expect(screen.getByText('$300')).toBeTruthy();
+  expect(screen.getByText(/▲ \$200 vs 12-month average/)).toBeTruthy();
+});

@@ -20,6 +20,11 @@ export function shiftMonth(period: string, delta: number): string {
   return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
 }
 
+function monthIndex(period: string): number {
+  const [year, month] = period.split('-').map(Number);
+  return year * 12 + month;
+}
+
 function roundCents(value: number): number {
   return Math.round(value * 100) / 100;
 }
@@ -124,7 +129,7 @@ function userAmount(expense: ExpenseData): number {
 export interface SpendingGlance {
   /** Counted personal spending in the month. */
   total: number;
-  /** Average over the previous 12 months that have data; null with none. */
+  /** Monthly average over up to 12 full months since the first expense; null with no history. */
   average: number | null;
   categories: CategoryAmount[];
   lastExpenseDate: string | undefined;
@@ -139,11 +144,13 @@ export function spendingGlance(
   const monthTotals = new Map<string, number>();
   const categoryTotals = new Map<string, number>();
   let lastExpenseDate: string | undefined;
+  let firstKey: string | undefined;
   for (const expense of expenses) {
+    if (!isCountedInExpenseTotals(expense.type)) continue;
     const day = expense.date.slice(0, 10);
     if (!lastExpenseDate || day > lastExpenseDate) lastExpenseDate = day;
-    if (!isCountedInExpenseTotals(expense.type)) continue;
     const key = expense.date.slice(0, 7);
+    if (key < month && (!firstKey || key < firstKey)) firstKey = key;
     if (key < windowStart || key > month) continue;
     const amount = userAmount(expense);
     monthTotals.set(key, (monthTotals.get(key) ?? 0) + amount);
@@ -154,12 +161,17 @@ export function spendingGlance(
       );
     }
   }
-  const past = [...monthTotals].filter(([key]) => key < month);
+  const pastTotal = [...monthTotals]
+    .filter(([key]) => key < month)
+    .reduce((sum, [, v]) => sum + v, 0);
+  // Gap months count as zero so a sparse history is not inflated; the
+  // divisor matches the planner's recent-average expense.
+  const monthsSpan = firstKey
+    ? Math.min(12, monthIndex(month) - monthIndex(firstKey))
+    : 0;
   return {
     total: roundCents(monthTotals.get(month) ?? 0),
-    average: past.length
-      ? roundCents(past.reduce((sum, [, v]) => sum + v, 0) / past.length)
-      : null,
+    average: monthsSpan > 0 ? roundCents(pastTotal / monthsSpan) : null,
     categories: [...categoryTotals]
       .filter(([, amount]) => amount > 0)
       .sort((a, b) => b[1] - a[1])

@@ -12,14 +12,24 @@ import {
   type AssetCategory,
   type SnapshotData,
 } from '@/features/assets';
-import { EXPENSE_TYPE_LABELS, type ExpenseData } from '@/features/expenses';
+import {
+  EXPENSE_TYPE_LABELS,
+  isCountedInExpenseTotals,
+  type ExpenseData,
+} from '@/features/expenses';
 import { useAmountVisibility } from '@/features/privacy';
 import { buildMonthlyReview } from '@/features/review';
 import type { SalaryData } from '@/features/salary';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import { formatSGDWhole } from '@/lib/utils/currency';
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent,
+  type ReactNode,
+} from 'react';
 import {
   salaryGlance,
   snapshotGlance,
@@ -76,7 +86,14 @@ export function LatestRecords({
   const pay = salaryState === 'ready' ? salaryGlance(salary ?? []) : undefined;
   const spending =
     expensesState === 'ready'
-      ? buildMonthlyReview(currentMonth, [], [], expenses ?? [])
+      ? buildMonthlyReview(
+          currentMonth,
+          [],
+          [],
+          (expenses ?? []).filter((expense) =>
+            isCountedInExpenseTotals(expense.type)
+          )
+        )
       : null;
   const spend =
     expensesState === 'ready'
@@ -133,7 +150,9 @@ export function LatestRecords({
   ) : null;
 
   const spendDiff =
-    spend && spend.average !== null ? spend.total - spend.average : null;
+    spend && spend.average !== null && spending?.personalSpending != null
+      ? spending.personalSpending - spend.average
+      : null;
   const spendLine =
     spending?.personalSpending === null
       ? 'Some splits exceed the amount'
@@ -273,7 +292,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 }
 
 // Hover previews the detail for mouse users; a click or tap pins it so touch
-// and keyboard users get the same content.
+// and keyboard users get the same content. Escape and outside clicks close it.
 function GlanceFigure({
   label,
   value,
@@ -285,7 +304,21 @@ function GlanceFigure({
   line: string;
   detail: ReactNode;
 }) {
-  const [state, setState] = useState({ open: false, byHover: false });
+  const [pinned, setPinned] = useState(false);
+  const [hovering, setHovering] = useState(false);
+  const leaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(leaveTimer.current), []);
+  const hoverStart = (event: PointerEvent<HTMLElement>) => {
+    if (event.pointerType !== 'mouse') return;
+    clearTimeout(leaveTimer.current);
+    setHovering(true);
+  };
+  // The delay lets the pointer cross the gap between trigger and content.
+  const hoverEnd = (event: PointerEvent<HTMLElement>) => {
+    if (event.pointerType !== 'mouse') return;
+    clearTimeout(leaveTimer.current);
+    leaveTimer.current = setTimeout(() => setHovering(false), 150);
+  };
   const body = (
     <>
       <span className="block text-2xl font-semibold break-words tabular-nums">
@@ -297,32 +330,31 @@ function GlanceFigure({
   if (!detail) return <div>{body}</div>;
   return (
     <Popover
-      open={state.open}
-      onOpenChange={(next) =>
-        setState((current) =>
-          !next && current.byHover
-            ? { open: true, byHover: false }
-            : { open: next, byHover: false }
-        )
-      }
+      open={pinned || hovering}
+      onOpenChange={(next) => {
+        if (next) return;
+        clearTimeout(leaveTimer.current);
+        setPinned(false);
+        setHovering(false);
+      }}
     >
       <PopoverTrigger asChild>
         <button
           type="button"
           aria-label={`${label} details`}
           className="focus-visible:ring-ring block w-full rounded-sm text-left focus-visible:ring-2 focus-visible:outline-hidden"
-          onPointerEnter={(event) => {
-            if (event.pointerType === 'mouse')
-              setState((current) =>
-                current.open ? current : { open: true, byHover: true }
-              );
+          onClick={(event) => {
+            event.preventDefault();
+            clearTimeout(leaveTimer.current);
+            if (pinned) {
+              setPinned(false);
+              setHovering(false);
+            } else {
+              setPinned(true);
+            }
           }}
-          onPointerLeave={(event) => {
-            if (event.pointerType === 'mouse')
-              setState((current) =>
-                current.byHover ? { open: false, byHover: false } : current
-              );
-          }}
+          onPointerEnter={hoverStart}
+          onPointerLeave={hoverEnd}
         >
           {body}
         </button>
@@ -331,6 +363,8 @@ function GlanceFigure({
         align="start"
         className="w-64 space-y-1 p-3"
         onOpenAutoFocus={(event) => event.preventDefault()}
+        onPointerEnter={hoverStart}
+        onPointerLeave={hoverEnd}
       >
         <dl className="space-y-1">{detail}</dl>
       </PopoverContent>

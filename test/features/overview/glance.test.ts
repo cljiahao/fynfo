@@ -90,7 +90,13 @@ it('averages the previous months, using personal shares and top categories', () 
         splits: [{ person: 'P', amount: 40, settled: false }],
       },
       { ...base, id: '4', date: '2026-10-05', amount: 30, type: 'groceries' },
-      { ...base, id: '5', date: '2024-01-01', amount: 9999, type: 'groceries' },
+      {
+        ...base,
+        id: '5',
+        date: '2026-10-09',
+        amount: 500,
+        type: 'insurance',
+      },
     ],
     '2026-10'
   );
@@ -105,4 +111,28 @@ it('averages the previous months, using personal shares and top categories', () 
 
 it('reports no average without earlier months', () => {
   expect(spendingGlance([], '2026-10').average).toBeNull();
+});
+
+it('counts gap months as zero and caps the span at 12 months', () => {
+  const base = { item: 'x', info: '', splitType: 'self' as const, splits: [] };
+  const gap = spendingGlance(
+    [
+      { ...base, id: '1', date: '2026-06-01', amount: 300, type: 'other' },
+      { ...base, id: '2', date: '2026-09-01', amount: 300, type: 'other' },
+    ],
+    '2026-10'
+  );
+  expect(gap.average).toBe(150);
+  const old = spendingGlance(
+    [
+      { ...base, id: '1', date: '2024-01-01', amount: 9999, type: 'other' },
+      { ...base, id: '2', date: '2026-09-01', amount: 1200, type: 'other' },
+    ],
+    '2026-10'
+  );
+  expect(old.average).toBe(100);
+});
+
+it('shifts a year back across the boundary', () => {
+  expect(shiftMonth('2026-01', -12)).toBe('2025-01');
 });
