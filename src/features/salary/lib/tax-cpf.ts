@@ -121,24 +121,28 @@ export function calculateTaxSummary(
   year: number,
   profile: TaxProfileContext = DEFAULT_PROFILE,
   additionalReliefs: number = 0,
-  cpfOverride?: number
+  cpfOverride?: number,
+  annualOneTime: number = 0
 ): TaxSummary | null {
-  const grossAnnual = annualSalary + annualBonus;
+  const grossAnnual = annualSalary + annualBonus + annualOneTime;
   const isNonResident = profile.residencyStatus === 'non_resident';
 
   const totalCpf =
-    cpfOverride ?? calculateAnnualCpf(annualSalary, grossAnnual, year);
+    cpfOverride ??
+    calculateAnnualCpf(annualSalary, annualSalary + annualBonus, year);
   if (
     totalCpf === null ||
     ![
       annualSalary,
       annualBonus,
+      annualOneTime,
       additionalReliefs,
       grossAnnual,
       totalCpf,
     ].every(Number.isFinite) ||
     annualSalary < 0 ||
     annualBonus < 0 ||
+    annualOneTime < 0 ||
     additionalReliefs < 0 ||
     totalCpf < 0
   )

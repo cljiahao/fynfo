@@ -3,7 +3,8 @@ import {
   CPF_EMPLOYEE_RATE,
   CPF_ORDINARY_WAGE_CEILINGS,
 } from '../constants';
-import type { SalaryData } from '../types';
+import type { IncomeLine, SalaryData } from '../types';
+import { recurringByEmployer, summarizeMonth } from './income-aggregates';
 
 export function ordinaryWageCeiling(
   year: number,
@@ -43,9 +44,45 @@ export function employeeCpf(
   return Number.isFinite(contribution) ? Math.floor(contribution) : null;
 }
 
-/** Recorded-year AW limit is provisional until all employer OW is known. */
+export type CpfMonthInput = Pick<SalaryData, 'id' | 'salary' | 'bonus'> & {
+  lines?: readonly IncomeLine[];
+};
+
+interface MonthWages {
+  employers: number[];
+  bonus: number;
+}
+
+/** Months without lines (legacy rows, annual projection) are one unnamed employer. */
+function monthWages(record: CpfMonthInput): MonthWages | null {
+  if (record.lines && record.lines.length > 0) {
+    if (
+      !record.lines.every(
+        (line) => Number.isFinite(line.amount) && line.amount >= 0
+      )
+    )
+      return null;
+    const summary = summarizeMonth(record.lines);
+    return {
+      employers: [...recurringByEmployer(record.lines).values()],
+      bonus: summary.bonus,
+    };
+  }
+  if (
+    ![record.salary, record.bonus].every(Number.isFinite) ||
+    record.salary < 0 ||
+    record.bonus < 0
+  )
+    return null;
+  return { employers: [record.salary], bonus: record.bonus };
+}
+
+/**
+ * Recorded-year AW limit is provisional until all employer OW is known.
+ * The OW ceiling applies to each employer separately; one-time lines carry no CPF.
+ */
 export function estimateRecordedCpf(
-  records: Pick<SalaryData, 'id' | 'salary' | 'bonus'>[],
+  records: readonly CpfMonthInput[],
   year: number
 ): number | null {
   if (ordinaryWageCeiling(year, 1) === null) return null;
@@ -57,15 +94,11 @@ export function estimateRecordedCpf(
     if (!match || Number(match[1]) !== year || seen.has(record.id)) return null;
     seen.add(record.id);
     const ceiling = ordinaryWageCeiling(year, Number(match[2]));
-    if (
-      ceiling === null ||
-      ![record.salary, record.bonus].every(Number.isFinite) ||
-      record.salary < 0 ||
-      record.bonus < 0
-    )
-      return null;
-    ordinaryTotal += Math.min(record.salary, ceiling);
-    rows.push({ ...record, ceiling });
+    const wages = monthWages(record);
+    if (ceiling === null || wages === null) return null;
+    for (const amount of wages.employers)
+      ordinaryTotal += Math.min(amount, ceiling);
+    rows.push({ id: record.id, ceiling, ...wages });
   }
   if (!Number.isFinite(ordinaryTotal)) return null;
   let additionalRemaining = Math.max(
@@ -76,14 +109,20 @@ export function estimateRecordedCpf(
   for (const row of rows.sort((a, b) => a.id.localeCompare(b.id))) {
     const additional = Math.min(row.bonus, additionalRemaining);
     additionalRemaining -= additional;
-    const contribution = employeeCpf(
-      row.salary,
-      additional,
-      row.ceiling,
-      row.bonus
-    );
-    if (contribution === null) return null;
-    contributionTotal += contribution;
+    // AW has no employer link, so it rides on the largest employer's wage band.
+    const employers = row.employers.length > 0 ? [...row.employers] : [0];
+    const lead = employers.indexOf(Math.max(...employers));
+    for (let index = 0; index < employers.length; index += 1) {
+      const isLead = index === lead;
+      const contribution = employeeCpf(
+        employers[index],
+        isLead ? additional : 0,
+        row.ceiling,
+        isLead ? row.bonus : 0
+      );
+      if (contribution === null) return null;
+      contributionTotal += contribution;
+    }
   }
   return Number.isFinite(contributionTotal) ? contributionTotal : null;
 }

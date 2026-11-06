@@ -254,6 +254,24 @@ describe('calculateTaxSummary', () => {
     expect(result.totalCpf).toBe(14400);
   });
 
+  it('adds one-time income to gross without CPF', () => {
+    const withoutOneTime = calculateTaxSummary(60000, 12000, 2026);
+    const result = calculateTaxSummary(
+      60000,
+      12000,
+      2026,
+      undefined,
+      0,
+      undefined,
+      9000
+    );
+    expect(result.grossAnnual).toBe(81000);
+    expect(result.totalCpf).toBe(withoutOneTime.totalCpf);
+    expect(result.chargeableIncome).toBe(
+      withoutOneTime.chargeableIncome + 9000
+    );
+  });
+
   it('includes additional reliefs in chargeable income calculation', () => {
     const result = calculateTaxSummary(72000, 0, 2026, undefined, 5000);
     expect(result.additionalReliefs).toBe(5000);

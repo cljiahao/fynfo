@@ -55,6 +55,13 @@ describe('buildExportEnvelope', () => {
   });
 });
 
+it('serializes income lines and re-reads them intact', () => {
+  const month = salaryRow('2026-01', 5000, 1000);
+  const env = buildExportEnvelope({ ...empty, salary: [month] }, 'now');
+  const parsed = JSON.parse(serializeExport(env)) as typeof env;
+  expect(parsed.data.salary[0].lines).toEqual(month.lines);
+});
+
 it('exports version 5 dividend values without loss', () => {
   const data: ExportData = {
     ...empty,

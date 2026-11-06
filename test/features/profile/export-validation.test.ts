@@ -187,6 +187,45 @@ function review(mutator: (file: Fixture) => void) {
   return reviewExportJson(JSON.stringify(file));
 }
 
+describe('income lines in exports', () => {
+  it('accepts the new lines shape and legacy rows in the same file', () => {
+    const file = sample();
+    file.data.salary = [
+      {
+        id: '2026-01',
+        salary: 9000,
+        bonus: 2000,
+        lines: [
+          { id: 'a', type: 'salary', label: 'Acme', amount: 5000 },
+          { id: 'b', type: 'salary', label: 'Beta', amount: 4000 },
+          { id: 'c', type: 'bonus', label: 'AWS', amount: 2000 },
+          { id: 'd', type: 'one_time', label: 'Freelance', amount: 500 },
+        ],
+        recurring: 9000,
+        oneTime: 500,
+        total: 11500,
+      },
+      { id: '2026-02', salary: 5000, bonus: 0 },
+    ] as unknown as typeof file.data.salary;
+    const result = reviewExportJson(JSON.stringify(file));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.summary.counts.salary).toBe(2);
+  });
+
+  it('rejects an unknown line type', () => {
+    const file = sample();
+    file.data.salary = [
+      {
+        id: '2026-01',
+        salary: 1,
+        bonus: 0,
+        lines: [{ id: 'a', type: 'tip', label: 'x', amount: 1 }],
+      },
+    ] as unknown as typeof file.data.salary;
+    expect(reviewExportJson(JSON.stringify(file)).ok).toBe(false);
+  });
+});
+
 describe('local export read contract', () => {
   it('summarizes all nine nonempty domains without returning confidential values', () => {
     const result = reviewExportJson(fixture);
