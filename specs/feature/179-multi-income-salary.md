@@ -2,12 +2,12 @@
 id: '179'
 slug: multi-income-salary
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-06
 approved: 2026-11-06 # YYYY-MM-DD, set on approval
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # no PR (direct to main), set on shipped
+shipped: 2026-11-06 # YYYY-MM-DD, set on impl merge
+impl_pr: 'direct to main: ac49352, 10a7d03, d357614, 2ff5fcc, a82fa19, d6867cc, 9d0c1c0' # no PR (direct to main), set on shipped
 supersedes:
 constitution_satisfies:
   - '§2.1'
