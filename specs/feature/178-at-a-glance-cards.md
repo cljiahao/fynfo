@@ -2,12 +2,12 @@
 id: '178'
 slug: at-a-glance-cards
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-06
 approved: 2026-11-06 # YYYY-MM-DD, set on approval
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # no PR (direct to main); commit shas recorded per slice
+shipped: 2026-11-06 # YYYY-MM-DD, set on impl merge
+impl_pr: none (direct to main); commits 19c8605, a162f5a # no PR (direct to main)
 supersedes:
 constitution_satisfies:
   - '§2.4'
