@@ -16,13 +16,50 @@ import {
   PaginationControls,
 } from '@/components/widgets';
 import { formatSGD } from '@/lib/utils/currency';
-import { Pencil, Trash2, Wallet } from 'lucide-react';
-import { useState } from 'react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Pencil,
+  Trash2,
+  Wallet,
+} from 'lucide-react';
+import { Fragment, useState } from 'react';
 import { toast } from 'sonner';
 import { useDeleteSalary, useSalaryRecords } from '../hooks/use-salary';
+import { recurringByEmployer } from '../lib/income-aggregates';
+import type { IncomeLineType, SalaryData } from '../types';
 
 interface SalaryTableProps {
   onEdit?: (id: string) => void;
+}
+
+const TYPE_LABELS: Record<IncomeLineType, string> = {
+  salary: 'Salary',
+  bonus: 'Bonus',
+  one_time: 'One-time',
+};
+
+/**
+ * Months whose salary lines differ from the previous recorded month's, by
+ * employer (normalized label) or amount. Months without salary lines are
+ * skipped so a bonus-only month is not read as a pay change.
+ */
+export function salaryChangedMonths(
+  records: readonly SalaryData[]
+): Set<string> {
+  const changed = new Set<string>();
+  for (let i = 1; i < records.length; i += 1) {
+    const current = recurringByEmployer(records[i].lines);
+    if (current.size === 0) continue;
+    const previous = recurringByEmployer(records[i - 1].lines);
+    const same =
+      current.size === previous.size &&
+      [...current].every(
+        ([employer, amount]) => previous.get(employer) === amount
+      );
+    if (!same) changed.add(records[i].id);
+  }
+  return changed;
 }
 
 function SalaryActionButtons({
@@ -91,6 +128,8 @@ export function SalaryTable({ onEdit }: SalaryTableProps) {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(10);
 
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  const changed = salaryChangedMonths(records ?? []);
   const reversed = [...(records ?? [])].reverse();
   const paged = reversed.slice(page * pageSize, (page + 1) * pageSize);
 
@@ -98,7 +137,7 @@ export function SalaryTable({ onEdit }: SalaryTableProps) {
     <Card>
       <CardHeader>
         <CardTitle>Salary History</CardTitle>
-        <CardDescription>All monthly salary records</CardDescription>
+        <CardDescription>All monthly income records</CardDescription>
       </CardHeader>
       <CardContent>
         {hidden && (
@@ -120,32 +159,86 @@ export function SalaryTable({ onEdit }: SalaryTableProps) {
                 <thead>
                   <tr className="border-b">
                     <th className="py-2 text-left font-medium">Month</th>
-                    <th className="py-2 text-center font-medium">
-                      Gross Salary
-                    </th>
+                    <th className="py-2 text-center font-medium">Recurring</th>
                     <th className="py-2 text-center font-medium">Bonus</th>
+                    <th className="py-2 text-center font-medium">One-time</th>
                     <th className="py-2 text-center font-medium">Total</th>
                     <th className="py-2 text-center font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paged.map((r) => (
-                    <tr key={r.id} className="border-b last:border-0">
-                      <td className="py-2 font-medium">{r.id}</td>
-                      <td className="py-2 text-center tabular-nums">
-                        {mask(formatSGD(r.salary))}
-                      </td>
-                      <td className="py-2 text-center tabular-nums">
-                        {mask(r.bonus > 0 ? formatSGD(r.bonus) : '-')}
-                      </td>
-                      <td className="py-2 text-center font-semibold tabular-nums">
-                        {mask(formatSGD(r.salary + r.bonus))}
-                      </td>
-                      <td className="py-2 text-center">
-                        <SalaryActionButtons id={r.id} onEdit={onEdit} />
-                      </td>
-                    </tr>
-                  ))}
+                  {paged.map((r) => {
+                    const isOpen = expanded.has(r.id);
+                    return (
+                      <Fragment key={r.id}>
+                        <tr className="border-b last:border-0">
+                          <td className="py-2 font-medium">
+                            <button
+                              type="button"
+                              className="flex items-center gap-1"
+                              aria-expanded={isOpen}
+                              aria-label={`${isOpen ? 'Hide' : 'Show'} income lines for ${r.id}`}
+                              onClick={() =>
+                                setExpanded((prev) => {
+                                  const next = new Set(prev);
+                                  if (!next.delete(r.id)) next.add(r.id);
+                                  return next;
+                                })
+                              }
+                            >
+                              {isOpen ? (
+                                <ChevronDown className="size-4" />
+                              ) : (
+                                <ChevronRight className="size-4" />
+                              )}
+                              {r.id}
+                            </button>
+                            {changed.has(r.id) && (
+                              <span
+                                className="bg-muted text-muted-foreground ml-1 rounded px-1.5 py-0.5 text-xs font-medium"
+                                title="Salary amount or employer differs from the previous month"
+                              >
+                                Salary changed
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 text-center tabular-nums">
+                            {mask(formatSGD(r.recurring))}
+                          </td>
+                          <td className="py-2 text-center tabular-nums">
+                            {mask(r.bonus > 0 ? formatSGD(r.bonus) : '-')}
+                          </td>
+                          <td className="py-2 text-center tabular-nums">
+                            {mask(r.oneTime > 0 ? formatSGD(r.oneTime) : '-')}
+                          </td>
+                          <td className="py-2 text-center font-semibold tabular-nums">
+                            {mask(formatSGD(r.total))}
+                          </td>
+                          <td className="py-2 text-center">
+                            <SalaryActionButtons id={r.id} onEdit={onEdit} />
+                          </td>
+                        </tr>
+                        {isOpen &&
+                          r.lines.map((line) => (
+                            <tr
+                              key={line.id}
+                              className="text-muted-foreground border-b text-xs last:border-0"
+                            >
+                              <td className="py-1 pl-6">
+                                {TYPE_LABELS[line.type]}
+                              </td>
+                              <td className="py-1 text-center" colSpan={3}>
+                                {mask(line.label)}
+                              </td>
+                              <td className="py-1 text-center tabular-nums">
+                                {mask(formatSGD(line.amount))}
+                              </td>
+                              <td />
+                            </tr>
+                          ))}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

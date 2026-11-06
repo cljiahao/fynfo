@@ -42,10 +42,11 @@ vi.mock('@/lib/recharts', () => ({
   CHART_AXIS_TICK_PROPS: {},
   CHART_TOOLTIP_PROPS: {},
   ResponsiveContainer: ({ children }: { children: ReactNode }) => children,
-  LineChart: ({ data }: { data: unknown }) => (
+  ComposedChart: ({ data }: { data: unknown }) => (
     <pre data-testid="salary-data">{JSON.stringify(data)}</pre>
   ),
   Line: () => null,
+  Bar: () => null,
   Legend: () => null,
   Tooltip: () => null,
   XAxis: () => null,
@@ -79,11 +80,18 @@ describe('legacy month chart data', () => {
     ).toEqual([
       {
         month: '0000-01 (invalid month)',
-        salary: 100,
+        recurring: 100,
         bonus: 20,
+        oneTime: 0,
         cumulative: 120,
       },
-      { month: 'Feb 2026', salary: 200, bonus: 30, cumulative: 350 },
+      {
+        month: 'Feb 2026',
+        recurring: 200,
+        bonus: 30,
+        oneTime: 0,
+        cumulative: 350,
+      },
     ]);
     expect(records).toEqual(original);
   });

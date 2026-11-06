@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import { SalaryFormDialog } from '@/features/salary/components/salary-form';
 import { SalarySummary } from '@/features/salary/components/salary-summary';
 import { SalarySummaryCards } from '@/features/salary/components/salary-summary-cards';
@@ -87,16 +87,16 @@ it('uses saved SRS relief in both projected salary tax displays', async () => {
   expect(actions.getTaxReliefs).toHaveBeenCalledTimes(1);
 });
 
-it.each(['Gross Salary', 'Bonus'])(
-  'associates salary %s with its numeric input and label focus',
-  async (name) => {
-    mount(<SalaryFormDialog open onOpenChange={vi.fn()} />);
-    const input = screen.getByRole('spinbutton', { name });
-    await userEvent.click(screen.getByText(name, { selector: 'label' }));
-    expect(input).toHaveFocus();
-    expect(screen.getByLabelText('Month')).toBeEnabled();
-  }
-);
+it('associates the month label with its input and names each line field', async () => {
+  mount(<SalaryFormDialog open onOpenChange={vi.fn()} />);
+  const month = screen.getByLabelText('Month');
+  await userEvent.click(screen.getByText('Month', { selector: 'label' }));
+  expect(month).toHaveFocus();
+  expect(
+    screen.getByRole('spinbutton', { name: 'Line 1 amount' })
+  ).toBeEnabled();
+  expect(screen.getByRole('textbox', { name: 'Line 1 label' })).toBeEnabled();
+});
 
 it('keeps salary dialog label targets distinct across mounted instances', () => {
   mount(
@@ -108,7 +108,7 @@ it('keeps salary dialog label targets distinct across mounted instances', () => 
   const dialogs = screen.getAllByRole('dialog', { hidden: true });
   const ids: string[] = [];
   for (const dialog of dialogs) {
-    for (const name of ['Month', 'Gross Salary', 'Bonus']) {
+    for (const name of ['Month']) {
       const label = within(dialog).getByText(name, { selector: 'label' });
       const target = label.getAttribute('for');
       expect(target).toBeTruthy();
@@ -117,12 +117,12 @@ it('keeps salary dialog label targets distinct across mounted instances', () => 
       ids.push(target!);
     }
   }
-  expect(ids).toHaveLength(6);
-  expect(new Set(ids).size).toBe(6);
+  expect(ids).toHaveLength(2);
+  expect(new Set(ids).size).toBe(2);
 });
 
 describe('salary recording through real forms and queries', () => {
-  it('prefills a new record with the latest salary and leaves bonus blank', async () => {
+  it('prefills a new record with the latest salary lines and drops bonus lines', async () => {
     actions.getSalaryRecords.mockResolvedValue([
       salaryRow('2026-01', 4000, 0),
       salaryRow('2026-02', 4200, 500),
@@ -130,10 +130,15 @@ describe('salary recording through real forms and queries', () => {
     mount(<SalaryFormDialog open onOpenChange={vi.fn()} />);
     await waitFor(() =>
       expect(
-        screen.getByRole('spinbutton', { name: 'Gross Salary' })
+        screen.getByRole('spinbutton', { name: 'Line 1 amount' })
       ).toHaveValue(4200)
     );
-    expect(screen.getByRole('spinbutton', { name: 'Bonus' })).toHaveValue(null);
+    expect(screen.getByRole('textbox', { name: 'Line 1 label' })).toHaveValue(
+      'Salary'
+    );
+    expect(
+      screen.queryByRole('spinbutton', { name: 'Line 2 amount' })
+    ).toBeNull();
   });
 
   it('warns that saving a new record replaces an existing month', async () => {
@@ -207,6 +212,7 @@ describe('salary recording through real forms and queries', () => {
     fireEvent.change(screen.getByLabelText('Month'), {
       target: { value: '2026-03' },
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Add line' }));
     const inputs = screen.getAllByRole('spinbutton');
     fireEvent.change(inputs[0], { target: { value: '5000.25' } });
     fireEvent.change(inputs[1], { target: { value: '300' } });

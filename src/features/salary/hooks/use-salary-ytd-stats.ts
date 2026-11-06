@@ -1,5 +1,5 @@
-import { useProfile } from '@/features/profile';
-import { estimateRecordedCpf } from '../lib/cpf-estimate';
+﻿import { useProfile } from '@/features/profile';
+import { estimateAnnualCpf, estimateRecordedCpf } from '../lib/cpf-estimate';
 import {
   calculateTaxSummary,
   type TaxProfileContext,
@@ -25,6 +25,7 @@ export interface SalaryYtdStats {
   monthsRecorded: number;
   ytdSalary: number;
   ytdBonus: number;
+  ytdOneTime: number;
   estAnnualSalary: number;
   estAnnualBonus: number;
   estSummary: TaxSummary | null;
@@ -69,31 +70,52 @@ export function useSalaryYtdStats(records: SalaryData[]): SalaryYtdStats {
   const currentYearRecords = records.filter((r) =>
     r.id.startsWith(`${currentYear}-`)
   );
-  const monthsRecorded = currentYearRecords.length;
-  const ytdSalary = currentYearRecords.reduce((s, r) => s + r.salary, 0);
+  // A month holding only one-time income says nothing about the recurring run
+  // rate, so it must not dilute the annual estimate.
+  const incomeMonths = currentYearRecords.filter((r) =>
+    r.lines.some((line) => line.type !== 'one_time')
+  );
+  const monthsRecorded = incomeMonths.length;
+  const ytdSalary = currentYearRecords.reduce((s, r) => s + r.recurring, 0);
   const ytdBonus = currentYearRecords.reduce((s, r) => s + r.bonus, 0);
+  const ytdOneTime = currentYearRecords.reduce((s, r) => s + r.oneTime, 0);
   const estAnnualSalary =
     monthsRecorded > 0 ? (ytdSalary / monthsRecorded) * 12 : 0;
   const estAnnualBonus =
     monthsRecorded > 0 ? (ytdBonus / monthsRecorded) * 12 : 0;
 
-  const recordedCpf = estimateRecordedCpf(currentYearRecords, currentYear);
+  const recordedCpf = estimateRecordedCpf(
+    currentYearRecords.map((r) => ({
+      id: r.id,
+      salary: r.recurring,
+      bonus: r.bonus,
+    })),
+    currentYear
+  );
+  // One-time income is taxable but earns no CPF, so it joins the gross figure
+  // while the CPF override stays computed from recurring and bonus only.
+  const estCpf = estimateAnnualCpf(
+    estAnnualSalary,
+    estAnnualBonus,
+    currentYear
+  );
   const estSummary =
-    recordedCpf === null || reliefState !== 'ready'
+    recordedCpf === null || estCpf === null || reliefState !== 'ready'
       ? null
       : calculateTaxSummary(
           estAnnualSalary,
-          estAnnualBonus,
+          estAnnualBonus + ytdOneTime,
           currentYear,
           taxProfile,
-          additionalReliefsTotal
+          additionalReliefsTotal,
+          estCpf
         );
   const trueSummary =
     recordedCpf === null || reliefState !== 'ready'
       ? null
       : calculateTaxSummary(
           ytdSalary,
-          ytdBonus,
+          ytdBonus + ytdOneTime,
           currentYear,
           taxProfile,
           additionalReliefsTotal,
@@ -116,6 +138,7 @@ export function useSalaryYtdStats(records: SalaryData[]): SalaryYtdStats {
     monthsRecorded,
     ytdSalary,
     ytdBonus,
+    ytdOneTime,
     estAnnualSalary,
     estAnnualBonus,
     estSummary,

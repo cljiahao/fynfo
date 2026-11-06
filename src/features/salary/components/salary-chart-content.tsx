@@ -11,11 +11,12 @@ import {
 } from '@/components/ui/card';
 import { EmptyState } from '@/components/widgets';
 import {
+  Bar,
   CHART_AXIS_TICK_PROPS,
   CHART_TOOLTIP_PROPS,
+  ComposedChart,
   Legend,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -31,10 +32,35 @@ interface SalaryChartProps {
 }
 
 const ALL_LABELS: Record<string, string> = {
-  salary: 'Gross Salary',
+  recurring: 'Recurring salary',
   bonus: 'Bonus',
+  oneTime: 'One-time',
   cumulative: 'Cumulative Total',
 };
+
+export interface SalaryChartPoint {
+  month: string;
+  recurring: number;
+  bonus: number;
+  oneTime: number;
+  cumulative: number;
+}
+
+export function buildSalaryChartData(
+  records: readonly SalaryData[]
+): SalaryChartPoint[] {
+  let cumulative = 0;
+  return records.map((r) => {
+    cumulative += r.total;
+    return {
+      month: formatRecordedMonth(r.id),
+      recurring: r.recurring,
+      bonus: r.bonus,
+      oneTime: r.oneTime,
+      cumulative,
+    };
+  });
+}
 
 export function SalaryChart({ records }: SalaryChartProps) {
   const { hidden } = useAmountVisibility();
@@ -44,7 +70,8 @@ export function SalaryChart({ records }: SalaryChartProps) {
         <CardHeader>
           <CardTitle>Salary Growth</CardTitle>
           <CardDescription>
-            Monthly salary, bonus, and cumulative earnings
+            Monthly recurring salary, bonus, one-time income and cumulative
+            earnings
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -64,7 +91,8 @@ export function SalaryChart({ records }: SalaryChartProps) {
         <CardHeader>
           <CardTitle>Salary Growth</CardTitle>
           <CardDescription>
-            Monthly salary, bonus, and cumulative earnings
+            Monthly recurring salary, bonus, one-time income and cumulative
+            earnings
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -79,31 +107,21 @@ export function SalaryChart({ records }: SalaryChartProps) {
     );
   }
 
-  const chartData = records.reduce<
-    { month: string; salary: number; bonus: number; cumulative: number }[]
-  >((acc, r) => {
-    const prev = acc.length > 0 ? acc[acc.length - 1].cumulative : 0;
-    acc.push({
-      month: formatRecordedMonth(r.id),
-      salary: r.salary,
-      bonus: r.bonus,
-      cumulative: prev + r.salary + r.bonus,
-    });
-    return acc;
-  }, []);
+  const chartData = buildSalaryChartData(records);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Salary Growth</CardTitle>
         <CardDescription>
-          Monthly salary, bonus, and cumulative earnings
+          Monthly recurring salary, bonus, one-time income and cumulative
+          earnings
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[350px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
+            <ComposedChart data={chartData}>
               <XAxis
                 dataKey="month"
                 fontSize={12}
@@ -138,23 +156,23 @@ export function SalaryChart({ records }: SalaryChartProps) {
               <Legend
                 formatter={(value: string) => ALL_LABELS[value] ?? value}
               />
-              <Line
+              <Bar
                 yAxisId="left"
-                type="monotone"
-                dataKey="salary"
-                stroke="var(--chart-1)"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-                activeDot={{ r: 5 }}
+                dataKey="recurring"
+                stackId="income"
+                fill="var(--chart-1)"
               />
-              <Line
+              <Bar
                 yAxisId="left"
-                type="monotone"
                 dataKey="bonus"
-                stroke="var(--chart-3)"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-                activeDot={{ r: 5 }}
+                stackId="income"
+                fill="var(--chart-3)"
+              />
+              <Bar
+                yAxisId="left"
+                dataKey="oneTime"
+                stackId="income"
+                fill="var(--chart-4)"
               />
               <Line
                 yAxisId="right"
@@ -166,7 +184,7 @@ export function SalaryChart({ records }: SalaryChartProps) {
                 dot={false}
                 activeDot={{ r: 4 }}
               />
-            </LineChart>
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </CardContent>

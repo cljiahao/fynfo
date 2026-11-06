@@ -72,6 +72,7 @@ function SummaryColumn({
   onOpenReliefs,
   months = 12,
   incomeLabel = 'Projected annual gross',
+  breakdown,
 }: {
   title: string;
   subtitle: string;
@@ -80,6 +81,7 @@ function SummaryColumn({
   onOpenReliefs: () => void;
   months?: number;
   incomeLabel?: string;
+  breakdown: { recurring: number; bonus: number; oneTime: number };
 }) {
   return (
     <Card>
@@ -95,6 +97,28 @@ function SummaryColumn({
           variant="bold"
           indent
         />
+        <Row
+          label="Recurring salary"
+          value={formatSGD(breakdown.recurring)}
+          variant="muted"
+          indent
+        />
+        {breakdown.bonus > 0 && (
+          <Row
+            label="Bonus"
+            value={formatSGD(breakdown.bonus)}
+            variant="muted"
+            indent
+          />
+        )}
+        {breakdown.oneTime > 0 && (
+          <Row
+            label="One-time income"
+            value={formatSGD(breakdown.oneTime)}
+            variant="muted"
+            indent
+          />
+        )}
 
         <Separator className="my-2" />
 
@@ -211,6 +235,11 @@ export function SalarySummary({ records }: SalarySummaryProps) {
     currentYear,
     currentYearRecords,
     monthsRecorded,
+    ytdSalary,
+    ytdBonus,
+    ytdOneTime,
+    estAnnualSalary,
+    estAnnualBonus,
     estSummary,
     trueSummary,
     profileState,
@@ -293,6 +322,11 @@ export function SalarySummary({ records }: SalarySummaryProps) {
               : 'No salary data for this year'
           }
           summary={estSummary}
+          breakdown={{
+            recurring: estAnnualSalary,
+            bonus: estAnnualBonus,
+            oneTime: ytdOneTime,
+          }}
           reliefItems={reliefItems}
           onOpenReliefs={() => {
             if (canReveal()) setReliefDialogOpen(true);
@@ -304,6 +338,11 @@ export function SalarySummary({ records }: SalarySummaryProps) {
           incomeLabel="Recorded gross income"
           months={monthsRecorded}
           summary={trueSummary}
+          breakdown={{
+            recurring: ytdSalary,
+            bonus: ytdBonus,
+            oneTime: ytdOneTime,
+          }}
           reliefItems={reliefItems}
           onOpenReliefs={() => {
             if (canReveal()) setReliefDialogOpen(true);
@@ -314,10 +353,11 @@ export function SalarySummary({ records }: SalarySummaryProps) {
       <p className="text-muted-foreground mt-3 text-xs">
         CPF assumes age 55 and below and full employee rates; eligibility and
         PR-stage rates are not established. Annual projections spread average
-        recorded salary and bonus across 12 months. Recorded-year Additional
-        Wage ceilings remain provisional until all employer wages are known.
-        Resident personal reliefs, including CPF, are capped at SGD 80,000. Tax
-        is before rebates, eligible deductions and special exemptions.
+        recorded salary and bonus across 12 months; one-time income is counted
+        as recorded and attracts no CPF. Recorded-year Additional Wage ceilings
+        remain provisional until all employer wages are known. Resident personal
+        reliefs, including CPF, are capped at SGD 80,000. Tax is before rebates,
+        eligible deductions and special exemptions.
       </p>
 
       {hidden && (

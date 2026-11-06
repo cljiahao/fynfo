@@ -12,28 +12,65 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { format } from 'date-fns/format';
-import { Loader2 } from 'lucide-react';
-import { useEffect, useId, type FormEvent } from 'react';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useId, useMemo, type FormEvent } from 'react';
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import {
   useSalaryRecord,
   useSalaryRecords,
   useUpsertSalary,
 } from '../hooks/use-salary';
-import type { IncomeLine } from '../types';
+import {
+  MAX_INCOME_LABEL,
+  MAX_INCOME_LINES,
+  salaryMonthSchema,
+} from '../schemas';
+import type { IncomeLine, IncomeLineType } from '../types';
+
+interface LineValues {
+  type: IncomeLineType;
+  label: string;
+  amount: number | string;
+}
 
 interface SalaryFormValues {
   id: string;
-  salary: number;
-  bonus: number;
+  lines: LineValues[];
 }
 
 interface SalaryFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editId?: string;
+}
+
+const TYPE_OPTIONS: { value: IncomeLineType; label: string }[] = [
+  { value: 'salary', label: 'Salary' },
+  { value: 'bonus', label: 'Bonus' },
+  { value: 'one_time', label: 'One-time' },
+];
+
+const DEFAULT_LABEL: Record<IncomeLineType, string> = {
+  salary: 'Salary',
+  bonus: 'Bonus',
+  one_time: 'One-time',
+};
+
+function blankLine(type: IncomeLineType = 'salary'): LineValues {
+  return { type, label: DEFAULT_LABEL[type], amount: '' };
+}
+
+function toLineValues(lines: readonly IncomeLine[]): LineValues[] {
+  return lines.map(({ type, label, amount }) => ({ type, label, amount }));
 }
 
 export function SalaryFormDialog({
@@ -51,47 +88,57 @@ export function SalaryFormDialog({
   } = useSalaryRecord(editId ?? '');
   const records = useSalaryRecords();
   const upsert = useUpsertSalary();
-  // Records are ordered by month, so the last one is the latest salary.
-  const latestSalary = records.data?.at(-1)?.salary;
+
+  // Records are ordered by month, so the last one is the latest. A raise then
+  // means editing one prefilled amount instead of retyping every line.
+  const prefillKey = useMemo(
+    () =>
+      JSON.stringify(
+        toLineValues(
+          records.data
+            ?.at(-1)
+            ?.lines.filter((line) => line.type === 'salary') ?? []
+        )
+      ),
+    [records.data]
+  );
 
   const defaultMonth = format(new Date(), 'yyyy-MM');
 
   const form = useForm<SalaryFormValues>({
     defaultValues: {
       id: editId ?? defaultMonth,
-      salary: '' as unknown as number,
-      bonus: '' as unknown as number,
+      lines: [blankLine()],
     },
+  });
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'lines',
+    keyName: 'key',
   });
 
   useEffect(() => {
     if (existing && editId) {
-      form.reset({
-        id: existing.id,
-        salary: existing.salary,
-        bonus: existing.bonus,
-      });
+      form.reset({ id: existing.id, lines: toLineValues(existing.lines) });
     }
   }, [existing, editId, form]);
 
   useEffect(() => {
-    if (open && !editId) {
-      form.reset({
-        id: defaultMonth,
-        salary: '' as unknown as number,
-        bonus: '' as unknown as number,
-      });
+    if (!open && !editId) {
+      form.reset({ id: defaultMonth, lines: [blankLine()] });
     }
   }, [open, editId, form, defaultMonth]);
 
-  // Salary rarely changes month to month; start a new record from the latest
-  // one, but never overwrite a value the user has already typed.
+  // Never overwrite lines the user has already started editing.
   useEffect(() => {
-    if (!open || editId || latestSalary === undefined) return;
-    if (form.getFieldState('salary').isDirty) return;
-    if (String(form.getValues('salary')) !== '') return;
-    form.setValue('salary', latestSalary);
-  }, [open, editId, form, latestSalary]);
+    if (!open || editId) return;
+    if (form.getFieldState('lines', form.formState).isDirty) return;
+    const prefill = JSON.parse(prefillKey) as LineValues[];
+    form.reset({
+      id: form.getValues('id'),
+      lines: prefill.length > 0 ? prefill : [blankLine()],
+    });
+  }, [open, editId, form, prefillKey]);
 
   const selectedMonth = useWatch({ control: form.control, name: 'id' });
   const replacesExisting =
@@ -102,31 +149,25 @@ export function SalaryFormDialog({
       toast.info('Show amounts before saving salary');
       return;
     }
+    const lines = values.lines
+      .filter((line) => String(line.amount).trim() !== '')
+      .map((line, index) => ({
+        id: `${line.type}-${index}`,
+        type: line.type,
+        label: line.label.trim(),
+        amount: Number(line.amount),
+      }));
+    const parsed = salaryMonthSchema.safeParse({ id: values.id, lines });
+    if (!parsed.success) {
+      toast.error(
+        lines.length === 0
+          ? 'Add at least one income line'
+          : (parsed.error.issues[0]?.message ?? 'Check the income lines')
+      );
+      return;
+    }
     try {
-      const salary = Number(values.salary) || 0;
-      const bonus = Number(values.bonus) || 0;
-      const lines: IncomeLine[] = [];
-      if (salary > 0)
-        lines.push({
-          id: 'salary',
-          type: 'salary',
-          label: 'Salary',
-          amount: salary,
-        });
-      if (bonus > 0)
-        lines.push({
-          id: 'bonus',
-          type: 'bonus',
-          label: 'Bonus',
-          amount: bonus,
-        });
-      // The two-field form cannot edit one-time lines, so keep them as saved.
-      const oneTime =
-        existing?.lines.filter((line) => line.type === 'one_time') ?? [];
-      await upsert.mutateAsync({
-        id: values.id,
-        lines: [...lines, ...oneTime],
-      });
+      await upsert.mutateAsync(parsed.data);
       toast.success(`Salary for ${values.id} saved`);
       onOpenChange(false);
     } catch {
@@ -152,7 +193,7 @@ export function SalaryFormDialog({
         <DialogHeader>
           <DialogTitle>{editId ? 'Edit' : 'New'} Salary Record</DialogTitle>
           <DialogDescription>
-            Record your monthly salary and bonus
+            Record your monthly salary, bonus and one-time income
           </DialogDescription>
         </DialogHeader>
 
@@ -191,51 +232,111 @@ export function SalaryFormDialog({
               )}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor={fieldId + '-salary'}>Gross Salary</Label>
-                <Controller
-                  name="salary"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      id={fieldId + '-salary'}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder={hidden ? 'Hidden' : '0.00'}
-                      disabled={hidden}
-                      value={hidden ? '' : field.value}
-                      onChange={(event) => {
-                        if (canReveal()) field.onChange(event.target.value);
-                      }}
-                    />
-                  )}
-                />
+            <div className="space-y-3">
+              <div className="flex-between">
+                <Label>Income lines</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={hidden || fields.length >= MAX_INCOME_LINES}
+                  onClick={() => append(blankLine('bonus'))}
+                >
+                  <Plus className="mr-1 size-4" />
+                  Add line
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor={fieldId + '-bonus'}>Bonus</Label>
-                <Controller
-                  name="bonus"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      id={fieldId + '-bonus'}
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder={hidden ? 'Hidden' : '0.00'}
-                      disabled={hidden}
-                      value={hidden ? '' : field.value}
-                      onChange={(event) => {
-                        if (canReveal()) field.onChange(event.target.value);
-                      }}
-                    />
-                  )}
-                />
-              </div>
+              {fields.map((field, index) => (
+                <div
+                  key={field.key}
+                  className="grid grid-cols-[7.5rem_1fr_7rem_auto] items-center gap-2"
+                >
+                  <Controller
+                    name={`lines.${index}.type`}
+                    control={form.control}
+                    render={({ field: typeField }) => (
+                      <Select
+                        disabled={hidden}
+                        value={typeField.value}
+                        onValueChange={(value) => {
+                          if (!canReveal()) return;
+                          const next = value as IncomeLineType;
+                          const label = form.getValues(`lines.${index}.label`);
+                          typeField.onChange(next);
+                          if (
+                            label === '' ||
+                            label === DEFAULT_LABEL[typeField.value]
+                          )
+                            form.setValue(
+                              `lines.${index}.label`,
+                              DEFAULT_LABEL[next],
+                              { shouldDirty: true }
+                            );
+                        }}
+                      >
+                        <SelectTrigger aria-label={`Line ${index + 1} type`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <Controller
+                    name={`lines.${index}.label`}
+                    control={form.control}
+                    render={({ field: labelField }) => (
+                      <Input
+                        {...labelField}
+                        aria-label={`Line ${index + 1} label`}
+                        maxLength={MAX_INCOME_LABEL}
+                        placeholder={hidden ? 'Hidden' : 'Employer or source'}
+                        disabled={hidden}
+                        value={hidden ? '' : labelField.value}
+                        onChange={(event) => {
+                          if (canReveal())
+                            labelField.onChange(event.target.value);
+                        }}
+                      />
+                    )}
+                  />
+                  <Controller
+                    name={`lines.${index}.amount`}
+                    control={form.control}
+                    render={({ field: amountField }) => (
+                      <Input
+                        {...amountField}
+                        aria-label={`Line ${index + 1} amount`}
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder={hidden ? 'Hidden' : '0.00'}
+                        disabled={hidden}
+                        value={hidden ? '' : amountField.value}
+                        onChange={(event) => {
+                          if (canReveal())
+                            amountField.onChange(event.target.value);
+                        }}
+                      />
+                    )}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Remove line ${index + 1}`}
+                    disabled={hidden || fields.length <= 1}
+                    onClick={() => remove(index)}
+                  >
+                    <Trash2 className="text-destructive size-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
 
             <div className="flex justify-end gap-3">

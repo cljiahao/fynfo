@@ -30,6 +30,7 @@ export function SalarySummaryCards({
     monthsRecorded,
     ytdSalary,
     ytdBonus,
+    ytdOneTime,
     estSummary,
     profileState,
     reliefState,
@@ -47,7 +48,7 @@ export function SalarySummaryCards({
       <StatCard
         compact={compact}
         label="Current Salary"
-        value={mask(latest ? formatIncome(latest.salary) : '-')}
+        value={mask(latest ? formatIncome(latest.recurring) : '-')}
         icon={Banknote}
         hint={latest?.id ?? 'No records'}
       />
@@ -112,11 +113,19 @@ export function SalarySummaryCards({
       <StatCard
         compact={compact}
         label="YTD Income"
-        value={mask(formatIncome(ytdSalary + ytdBonus))}
+        value={mask(formatIncome(ytdSalary + ytdBonus + ytdOneTime))}
         icon={Calculator}
         hint={
           currentYearRecords.length > 0
-            ? `${currentYearRecords.length} month(s) in ${currentYear}`
+            ? [
+                `${currentYearRecords.length} month(s) in ${currentYear}`,
+                ytdBonus > 0 ? `Bonus ${mask(formatIncome(ytdBonus))}` : null,
+                ytdOneTime > 0
+                  ? `One-time ${mask(formatIncome(ytdOneTime))}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' � ')
             : `No records for ${currentYear}`
         }
       />

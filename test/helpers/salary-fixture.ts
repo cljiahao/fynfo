@@ -27,14 +27,19 @@ export function savedMonth(id: string, salary: number, bonus: number) {
   const lines: IncomeLine[] = [];
   if (salary > 0) {
     lines.push({
-      id: 'salary',
+      id: 'salary-0',
       type: 'salary',
       label: 'Salary',
       amount: salary,
     });
   }
   if (bonus > 0) {
-    lines.push({ id: 'bonus', type: 'bonus', label: 'Bonus', amount: bonus });
+    lines.push({
+      id: `bonus-${lines.length}`,
+      type: 'bonus',
+      label: 'Bonus',
+      amount: bonus,
+    });
   }
   return { id, lines };
 }

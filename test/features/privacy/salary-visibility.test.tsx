@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   AmountVisibilityProvider,
@@ -59,7 +59,7 @@ it('conceals an open salary draft without discarding it and prevents direct form
       <SalaryFormDialog open editId="2026-01" onOpenChange={vi.fn()} />
     </AmountVisibilityProvider>
   );
-  const salary = screen.getByLabelText('Gross Salary') as HTMLInputElement;
+  const salary = screen.getByLabelText('Line 1 amount') as HTMLInputElement;
   await waitFor(() => expect(salary.value).toBe('12345.67'));
   fireEvent.change(salary, { target: { value: '23456.78' } });
   fireEvent.click(
@@ -67,7 +67,7 @@ it('conceals an open salary draft without discarding it and prevents direct form
   );
   expect(salary.value).toBe('');
   expect(salary.disabled).toBe(true);
-  expect(screen.getByLabelText('Bonus')).toHaveProperty('value', '');
+  expect(screen.getByLabelText('Line 2 amount')).toHaveProperty('value', '');
   expect(document.body.textContent).not.toContain('23456.78');
   const form = salary.closest('form');
   if (!form) throw new Error('Expected salary form');
@@ -105,7 +105,7 @@ it('conceals salary table totals and blocks editing and deletion while preservin
   );
   expect(document.body.textContent).not.toContain('12,345.67');
   expect(document.body.textContent).not.toContain('789.12');
-  expect(screen.getAllByText('Hidden')).toHaveLength(3);
+  expect(screen.getAllByText('Hidden')).toHaveLength(4);
   fireEvent.click(screen.getByRole('button', { name: 'Edit salary record' }));
   fireEvent.click(screen.getByRole('button', { name: 'Delete salary record' }));
   expect(edit).not.toHaveBeenCalled();

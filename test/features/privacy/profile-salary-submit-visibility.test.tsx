@@ -109,7 +109,7 @@ async function mountForm(domain: Domain) {
       </AmountVisibilityProvider>
     </QueryClientProvider>
   );
-  const label = domain === 'profile' ? 'Birth Year' : 'Gross Salary';
+  const label = domain === 'profile' ? 'Birth Year' : 'Line 1 amount';
   const input = await screen.findByLabelText(label);
   await waitFor(() =>
     expect(input).toHaveValue(domain === 'profile' ? 1990 : 1234.56)

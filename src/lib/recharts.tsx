@@ -18,6 +18,7 @@ export {
   Bar,
   BarChart,
   Cell,
+  ComposedChart,
   LabelList,
   Legend,
   Line,

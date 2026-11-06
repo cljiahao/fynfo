@@ -126,16 +126,17 @@ it('filters real asset chart series and restores their legend entry', async () =
   );
 });
 
-it('renders cumulative earnings as a third salary series and formats month and axis labels', async () => {
+it('renders stacked recurring, bonus and one-time bars with a cumulative line and formats month and axis labels', async () => {
   const { container, rerender } = render(
     <SalaryChart
       records={[salaryRow('2026-01', 1000, 500), salaryRow('2026-02', 2000, 0)]}
     />
   );
   await waitFor(
-    () => expect(container.querySelectorAll('.recharts-line')).toHaveLength(3),
+    () => expect(container.querySelectorAll('.recharts-line')).toHaveLength(1),
     { timeout: 5000 }
   );
+  expect(container.querySelectorAll('.recharts-bar')).toHaveLength(3);
   expect(screen.getByText('Cumulative Total')).toBeTruthy();
   expect(screen.getByText('Jan 2026')).toBeTruthy();
   expect(screen.getByText('Feb 2026')).toBeTruthy();
@@ -150,6 +151,7 @@ it('renders cumulative earnings as a third salary series and formats month and a
   rerender(<SalaryChart records={[]} />);
   expect(screen.getByText('No salary records yet')).toBeTruthy();
   expect(container.querySelectorAll('.recharts-line')).toHaveLength(0);
+  expect(container.querySelectorAll('.recharts-bar')).toHaveLength(0);
 });
 
 it('draws only recognized positive CPF accounts and formats the chart amounts', async () => {
