@@ -455,3 +455,149 @@ one after the other, in either order, never in parallel.
 - [x] Q8: Should a budget in a category whose goal already exists be netted out?
       Proposed default: no, goals and budgets are independent lines. Owner:
       Clarence. A: No netting; goals and budgets are independent lines. (owner, 2026-11-06, recommended default).
+
+## Amendment 2026-11-06 (round 2)
+
+Owner (Clarence) approved this amendment in chat on 2026-11-06 ("Yes, go ahead").
+Status stays `approved`. Sections above stay as written; where this amendment
+changes them, the superseded text is listed here and wins over the older text.
+
+### Superseded by this amendment
+
+- Expenses window of 6 full months (Problem 2, Acceptance, Q5): now 12 full
+  months. The current partial month is still excluded.
+- Planner breakdown as one stacked `ProgressBar` (`planner-flow.tsx:3,48`): now a
+  donut chart.
+- Gross salary seeded once into `useState` (`salary-planner.tsx:163`): now derived.
+- The household-wide split applying to every goal and budget (`defaultShare`,
+  `household-commitment.ts:54-56,130`): now only the default for new items.
+
+### A1. Planner breakdown donut
+
+- Replace the stacked bar in `PlannerFlow` with a Recharts donut (`PieChart` +
+  `Pie` with `innerRadius`, one `Cell` per segment, `fill` from
+  `FlowSegment.color`, which is already `chartColor(n)` = `var(--cat-n)`).
+  Recharts is already a dependency and is re-exported from `src/lib/recharts.tsx`;
+  copy the existing donut in `planner-results-content.tsx:80-115`. No inline
+  `style` props (`§3.2`); colours go through the `fill` prop.
+- Keep the legend list with amounts, percentages and the expandable details
+  unchanged. The legend is the text equivalent of the chart.
+- Accessibility: the chart wrapper has `role="img"` and an `aria-label` that
+  summarises the split (for example "Take-home split: expenses 42%, savings 30%,
+  investment 28%"). The label carries percentages only, never amounts, so it is
+  safe when amounts are masked.
+- The donut centre shows net take-home (masked). No tooltip is required; the
+  legend carries the detail, which keeps it usable on touch.
+
+### A2. Expense average of 12 months
+
+`calcRecentAvgExpense(expenses, new Date(), 12)` at `salary-planner.tsx:126`.
+Copy that names the window ("6 months") changes to 12. Only months in the window
+that have data are averaged (unchanged helper behaviour).
+
+### A3. Gross salary derived from the latest salary record
+
+- Decision: the planner shows gross salary as a read-only display derived from
+  the latest salary record (`salaryRecords[last].salary`), with a link to the
+  Salary page. The editable input and the seed-once `useState(initialSalary)`
+  (`salary-planner.tsx:163`) are removed; the input in
+  `planner-inputs.tsx:47-59` becomes a display row. Scenarios remain the place
+  for what-if salaries, so no temporary override with reset is added. Rationale:
+  two sources of truth for salary is the same staleness problem fixed for
+  expenses.
+- Salary is derived on every render from the query data, so a new salary record
+  updates the plan without a remount. With no salary record the plan shows 0 and
+  prompts to add one on the Salary page.
+- Saved scenarios keep their own stored salary and still load and compute
+  identically.
+
+### A4. Optional expense buffer
+
+- A percentage (0 to 100, default 0) that adds a planning cushion on top of the
+  expenses figure. It is not baked into the average and does not alter the
+  override. When greater than 0 the planner shows its own line "Buffer N% · $X"
+  (X = expenses figure times N%, masked), counted as part of expenses in
+  `computeSalaryPlan`. At 0 nothing is shown and results are identical to today.
+- Storage: `planner_settings` holds the other planner settings as plaintext
+  columns (`household_horizon_months`, added at
+  `supabase/migrations/20261106000176_household_planner_split.sql:39`), so the
+  buffer follows suit. A new migration adds
+  `planner_settings.expense_buffer_pct NUMERIC NOT NULL DEFAULT 0` with a 0 to
+  100 check, idempotent and forward-only like the 176 S1 migration. The owner
+  applies it. Matching edits: `PlannerSettingsData` (`assets/types.ts:52`),
+  `plannerSettingsSchema` (`assets/schemas.ts:38`, optional so older payloads
+  still validate), `PlannerSettingsValues` and the sheet
+  (`planner-settings-sheet.tsx:20`), and the debounced save in
+  `salary-planner.tsx`.
+- Not stored per browser: unlike the expenses override it is a setting the owner
+  expects on every device.
+
+### A5. Per-goal and per-budget split
+
+- Each household goal and each household spending budget carries its own split.
+  Presets: 50/50, Custom % (my share, partner gets the rest), Just me (100/0),
+  Just partner (0/100). The household-wide split (`PlannerSplit.members`)
+  becomes only the default that pre-fills a new goal or budget; changing it later
+  does not rewrite items that already have a split.
+- Items where my share is 0% are excluded from my commitment (a share of 0
+  contributes 0 and is listed under "excluded").
+- What exists today:
+  - Goal overrides: `PlannerSplit.goalOverrides`, keyed by goal id then member
+    id (`household/types.ts:117-121`), validated by `plannerSplitSchema`
+    (`schemas.ts:147-167`, cap `MAX_GOAL_OVERRIDES = 500` at `:134`), edited via
+    `setPlannerSplit({ goalId, override })` (`schemas.ts:173-178`,
+    `actions/planner-actions.ts:147`) and the UI in
+    `household/components/goal-split-override.tsx` (used from
+    `goal-editor-sheet.tsx`). `goalShare` reads the override, else the default
+    (`lib/household-commitment.ts:59-68`).
+  - Budgets have no override. All budgets share `defaultShare` as one
+    `budgetShare` (`household-commitment.ts:130-133`), and `SpendingBudget` is
+    `{ id, category, monthlyAmount }` (`household/types.ts:111`).
+- Storage decision: no migration. The split is one encrypted JSON blob
+  (`household_planner_settings.split`, ciphertext under `K_h`; migration
+  `20261106000176_household_planner_split.sql:12-16`) validated only by Zod. Add
+  `budgetOverrides: Record<budgetId, Record<memberId, number>>` to
+  `PlannerSplit` and `plannerSplitSchema` (default `{}` so stored blobs without it
+  still parse), extend `plannerSplitUpdateSchema` with `{ budgetId, override }`,
+  extend `pruneOverrides` to drop overrides for deleted budgets, and extend
+  `setPlannerSplit` to merge the budget key server-side like goal edits. Budget
+  overrides count toward the same 500-entry cap.
+- `computeHouseholdCommitment` computes each budget's share individually instead
+  of one aggregate; the `budgets` output keeps `monthlyTotal` and `monthlyShare`
+  as sums and adds a per-budget line list so the UI can show each. With no budget
+  overrides the sums equal today's values.
+- UI: extract a shared split-preset control from `goal-split-override.tsx`, used
+  by the goal editor and by a new control on each budget row. Either member may
+  edit (Q2). Both members see the same per-item split.
+- Out of scope: income-proportional automatic split. It needs both salaries, and
+  personal vaults are zero-knowledge, so the partner cannot read the owner's
+  salary and the household space must not learn it (`§1.1`, `§5.1`). Members type
+  the agreed percentage instead.
+- Rationale: couples split costs 50/50, proportionally to income, or by
+  yours/mine/ours, with hybrids that differ per category. A per-item choice
+  covers all of these without the app needing income data.
+
+### Constitution check (amendment)
+
+- Satisfies: `§1.1`, `§2.1` (budget overrides stay inside the encrypted blob),
+  `§2.3` (`setPlannerSplit` keeps `requireHouseholdContext()`), `§2.4`, `§2.5`
+  (the donut is a client component under the existing planner boundary), `§3.1`
+  and `§3.2` (Recharts already present; no inline styles; no new dependency),
+  `§5.1`, `§5.1a`.
+- Overrides: none. The only migration (`expense_buffer_pct`) is additive,
+  idempotent and applied by the owner.
+
+### Acceptance (amendment)
+
+- [ ] Donut renders every non-zero segment with `chartColor` fills; legend, amounts, percentages and expansion unchanged; chart has an `aria-label`; masked amounts never appear in the chart or its label
+- [ ] Expense average uses 12 full months and excludes the current month
+- [ ] Gross salary tracks the latest salary record with no editable input; scenarios unchanged
+- [ ] Buffer 0 gives output deep-equal to today's; N above 0 adds the "Buffer N% · $X" line and raises expenses by N%
+- [ ] Each goal and budget can be set to 50/50, custom, just me or just partner; 0% share items are excluded; stored blobs without `budgetOverrides` still parse; a deleted budget's override is pruned
+- [ ] With no budget overrides the commitment output equals today's
+- [ ] Tests cover the new Zod fields, the server-side merge in `setPlannerSplit`, per-budget commitment and the buffer in `computeSalaryPlan`
+
+### Open questions (amendment)
+
+- [x] Q8: Keep gross salary as a what-if override with reset, or read-only? A: Read-only display linking to Salary. (owner, 2026-11-06, recommended default).
+- [x] Q9: Buffer stored in the database or per browser? A: Database column `expense_buffer_pct`; the owner applies the migration. (owner, 2026-11-06, recommended default).
