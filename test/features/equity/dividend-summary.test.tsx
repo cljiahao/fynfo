@@ -17,8 +17,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({
   getDividends: vi.fn(),
+  getTrades: vi.fn(),
   fetchExchangeRate: vi.fn(),
 }));
+vi.mock('@/features/equity/actions/equity-actions', () => api);
 vi.mock('@/features/equity/actions/dividend-actions', () => api);
 vi.mock('@/features/equity/actions/price-actions', () => api);
 
@@ -53,7 +55,7 @@ function HideButton() {
   return <button onClick={hideAmounts}>Hide</button>;
 }
 
-function mount() {
+function mount(props: { monthlyExpenses?: number | null } = {}) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -61,7 +63,7 @@ function mount() {
     <QueryClientProvider client={client}>
       <AmountVisibilityProvider>
         <HideButton />
-        <DividendSummary />
+        <DividendSummary {...props} />
       </AmountVisibilityProvider>
     </QueryClientProvider>
   );
@@ -70,6 +72,7 @@ function mount() {
 beforeEach(() => {
   vi.resetAllMocks();
   api.fetchExchangeRate.mockResolvedValue(1.3);
+  api.getTrades.mockResolvedValue([]);
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -167,4 +170,58 @@ it('shows skeletons while pending', () => {
     screen.getByRole('status', { name: 'Loading dividends' })
   ).toBeTruthy();
   expect(screen.queryByText('Dividends earned')).toBeNull();
+});
+
+const recent = (month: number) => {
+  const d = new Date();
+  d.setMonth(d.getMonth() - month);
+  return d.toISOString().slice(0, 10);
+};
+const tickers = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG'];
+const manyRows: DividendData[] = tickers.map((ticker, i) => ({
+  id: ticker,
+  date: recent(1),
+  ticker,
+  amount: 1200 - i * 100,
+  currency: 'SGD',
+}));
+const trade = {
+  id: 't1',
+  date: '2020-01-01',
+  ticker: 'AAA',
+  type: 'BUY',
+  shares: 100,
+  price: 10,
+  fees: 0,
+  market: 'SG',
+  currency: 'SGD',
+};
+
+it('shows average per month, ticker shares, Other bucket and the estimate', async () => {
+  api.getDividends.mockResolvedValue(manyRows);
+  api.getTrades.mockResolvedValue([trade]);
+  mount();
+  expect(await screen.findByText('Average per month')).toBeTruthy();
+  expect(await screen.findByText('Other (2)')).toBeTruthy();
+  expect(screen.getByText('AAA')).toBeTruthy();
+  expect(screen.getByText(/Estimate: assumes the last 12 months/)).toBeTruthy();
+  expect(screen.getByText(/SGD .* · USD/)).toBeTruthy();
+  expect(screen.getByText(/vs prior 12 months/)).toBeTruthy();
+});
+
+it('renders a dash for tickers without a yield on cost', async () => {
+  api.getDividends.mockResolvedValue(manyRows);
+  mount();
+  await screen.findByText('Other (2)');
+  expect(screen.getAllByText('Yield on cost —').length).toBeGreaterThan(0);
+});
+
+it('shows coverage only when monthly expenses are positive', async () => {
+  api.getDividends.mockResolvedValue(manyRows);
+  mount({ monthlyExpenses: 2000 });
+  expect(await screen.findByText(/of planned monthly expenses/)).toBeTruthy();
+  cleanup();
+  mount({ monthlyExpenses: 0 });
+  await screen.findByText('Average per month');
+  expect(screen.queryByText(/of planned monthly expenses/)).toBeNull();
 });

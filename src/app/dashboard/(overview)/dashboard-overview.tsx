@@ -167,7 +167,7 @@ function DashboardOverviewContent() {
 
                   <InvestmentAllocation budgets={marketBudgets} />
 
-                  <DividendSummary />
+                  <DividendSummary monthlyExpenses={plannerValues.expenses} />
                 </QueryContent>
               </>
             ),
