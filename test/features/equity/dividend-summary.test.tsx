@@ -106,6 +106,26 @@ it('masks figures and the chart when amounts are hidden', async () => {
   expect(screen.getByText('Distribution chart hidden')).toBeTruthy();
 });
 
+it('shows the yearly chart by default and the monthly chart after switching', async () => {
+  api.getDividends.mockResolvedValue(rows);
+  mount();
+  await screen.findByText('Dividends earned');
+  fireEvent.click(screen.getByRole('button', { name: 'Hide' }));
+  const yearly = screen.getByRole('tab', { name: 'Yearly' });
+  const monthly = screen.getByRole('tab', { name: 'Monthly' });
+  expect(
+    screen.getByRole('tablist', { name: 'Dividend chart period' })
+  ).toBeTruthy();
+  expect(yearly.getAttribute('aria-selected')).toBe('true');
+  expect(screen.getByText('Distribution chart hidden')).toBeTruthy();
+  expect(screen.queryByText('Monthly distribution chart hidden')).toBeNull();
+  fireEvent.mouseDown(monthly, { button: 0, ctrlKey: false });
+  expect(
+    await screen.findByText('Monthly distribution chart hidden')
+  ).toBeTruthy();
+  expect(screen.queryByText('Distribution chart hidden')).toBeNull();
+});
+
 it('shows Unavailable and a status note when USD rows lack a valid rate', async () => {
   api.getDividends.mockResolvedValue([usdRow]);
   api.fetchExchangeRate.mockRejectedValue(new Error('rate down'));

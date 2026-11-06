@@ -305,3 +305,12 @@ record shas in `impl_pr`.
       chart. — Owner: Clarence — A: 12-month bar chart plus the existing 5-year chart; no toggle. (owner, 2026-11-06, recommended default).
 - [x] Q: Drop the SGD vs USD split as proposed, or keep it as one caption line?
       — Owner: Clarence — A: Keep the SGD vs USD split as a single caption line under the total, masked like the other amounts. (owner, 2026-11-06, recommended default).
+
+## Amendment 2026-11-06: chart period toggle
+
+Owner (Clarence) approved in chat on 2026-11-06, superseding the earlier "no toggle" answer.
+
+- The dividend card shows one chart area with a Yearly | Monthly toggle (`src/components/ui/tabs.tsx`) instead of stacking the 12-month and per-year charts.
+- Yearly is the default; the choice is not persisted. Each chart keeps its existing props.
+- The toggle is labelled "Dividend chart period" with tabs "Yearly" and "Monthly".
+- Acceptance: a component test covers default Yearly and switching to Monthly; the §3 gates pass.

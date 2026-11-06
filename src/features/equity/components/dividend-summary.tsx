@@ -2,6 +2,7 @@
 
 import { DashboardError } from '@/components/layout/dashboard-error';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatCard } from '@/components/widgets';
 import { useAmountVisibility } from '@/features/privacy';
 import { formatSGDWhole } from '@/lib/utils/currency';
@@ -151,18 +152,26 @@ export function DividendSummary({ monthlyExpenses }: DividendSummaryProps) {
         )}
       </div>
       {summary !== null && (
-        <DividendMonthlyChart
-          dividends={rows}
-          usdSgdRate={convRate}
-          asOf={asOf}
-        />
-      )}
-      {summary !== null && (
-        <DividendIncomeChart
-          dividends={rows}
-          usdSgdRate={usdSgdRate ?? 1}
-          years={CHART_YEARS}
-        />
+        <Tabs defaultValue="yearly">
+          <TabsList aria-label="Dividend chart period">
+            <TabsTrigger value="yearly">Yearly</TabsTrigger>
+            <TabsTrigger value="monthly">Monthly</TabsTrigger>
+          </TabsList>
+          <TabsContent value="yearly">
+            <DividendIncomeChart
+              dividends={rows}
+              usdSgdRate={usdSgdRate ?? 1}
+              years={CHART_YEARS}
+            />
+          </TabsContent>
+          <TabsContent value="monthly">
+            <DividendMonthlyChart
+              dividends={rows}
+              usdSgdRate={convRate}
+              asOf={asOf}
+            />
+          </TabsContent>
+        </Tabs>
       )}
       {summary !== null && (
         <DividendBreakdownPanel
