@@ -69,6 +69,20 @@ describe('plannerSplitSchema budget overrides', () => {
     expect(withBudget({ [A]: 20, [B]: 70 })).toBe(false);
     expect(withBudget({ [A]: 20, [C]: 80 })).toBe(false);
   });
+
+  it('caps the number of budget overrides at 500', () => {
+    const overrides = (count: number) =>
+      Object.fromEntries(
+        Array.from({ length: count }, (_, i) => [
+          `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
+          { [A]: 50, [B]: 50 },
+        ])
+      );
+    const withCount = (count: number) =>
+      ok({ members, goalOverrides: {}, budgetOverrides: overrides(count) });
+    expect(withCount(500)).toBe(true);
+    expect(withCount(501)).toBe(false);
+  });
 });
 
 describe('plannerSplitUpdateSchema', () => {

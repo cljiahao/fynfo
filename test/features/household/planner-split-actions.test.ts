@@ -198,19 +198,19 @@ describe('setPlannerSplit', () => {
         household_planner_settings: storedSplit(stored),
       },
     });
+  const writes = (fake: ReturnType<typeof setSupabase>) =>
+    [...fake.calls.insert, ...fake.calls.update] as Array<{ split: string }>;
   const written = (fake: ReturnType<typeof setSupabase>) =>
-    JSON.parse(
-      decryptPayload((fake.calls.upsert[0] as { split: string }).split, KH)
-    );
+    JSON.parse(decryptPayload(writes(fake)[0].split, KH));
 
-  it('encrypts under K_h and upserts one row per household', async () => {
+  it('encrypts under K_h and inserts the first row per household', async () => {
     const fake = setSupabase();
     const { setPlannerSplit } =
       await import('@/features/household/actions/planner-actions');
     await setPlannerSplit(valid);
 
     expect(fake.calls.from).toContain('household_planner_settings');
-    const row = fake.calls.upsert[0] as Record<string, string>;
+    const row = fake.calls.insert[0] as Record<string, string>;
     expect(row.household_id).toBe(HOUSEHOLD_ID);
     expect(row.created_by).toBe(ME);
     expect(row.split).not.toContain(ME);
@@ -264,9 +264,7 @@ describe('setPlannerSplit', () => {
     await setPlannerSplit(valid);
     expect(Object.keys(written(fake).budgetOverrides)).toEqual([LIVE_BUDGET]);
     await setPlannerSplit({ budgetId: LIVE_BUDGET, override: null });
-    const last = JSON.parse(
-      decryptPayload((fake.calls.upsert[1] as { split: string }).split, KH)
-    );
+    const last = JSON.parse(decryptPayload(writes(fake)[1].split, KH));
     expect(last.budgetOverrides).toEqual({});
   });
 
@@ -327,7 +325,7 @@ describe('setPlannerSplit', () => {
       'not signed in'
     );
     expect(order).toEqual(['guard']);
-    expect(fake.calls.upsert).toHaveLength(0);
+    expect(writes(fake)).toHaveLength(0);
   });
 
   it('rejects invalid input before any database access', async () => {
@@ -338,7 +336,7 @@ describe('setPlannerSplit', () => {
       setPlannerSplit({ members: { [ME]: 60, [PARTNER]: 60 } })
     ).rejects.toThrow('invalid input');
     expect(fake.calls.from).toHaveLength(0);
-    expect(fake.calls.upsert).toHaveLength(0);
+    expect(writes(fake)).toHaveLength(0);
   });
 
   it('rejects ids that are not the two household members', async () => {
@@ -348,7 +346,7 @@ describe('setPlannerSplit', () => {
     await expect(
       setPlannerSplit({ members: { [ME]: 50, [STRANGER]: 50 } })
     ).rejects.toThrow('both household members');
-    expect(fake.calls.upsert).toHaveLength(0);
+    expect(writes(fake)).toHaveLength(0);
   });
 
   it('rejects a write while the partner has not joined', async () => {
@@ -360,11 +358,95 @@ describe('setPlannerSplit', () => {
     const { setPlannerSplit } =
       await import('@/features/household/actions/planner-actions');
     await expect(setPlannerSplit(valid)).rejects.toThrow('both household');
-    expect(fake.calls.upsert).toHaveLength(0);
+    expect(writes(fake)).toHaveLength(0);
+  });
+
+  it('conditions the update on the version it read', async () => {
+    const fake = withStored();
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await setPlannerSplit(valid);
+    const query = fake.calls.queries.find((q) => q.operation === 'update');
+    expect(query?.eq.map((e) => e.column)).toEqual([
+      'household_id',
+      'updated_at',
+    ]);
+  });
+
+  it('re-reads and re-merges when the partner wrote first', async () => {
+    const fake = setSupabase({
+      selectDataByTable: {
+        household_goals: [{ id: LIVE_GOAL }, { id: OTHER_GOAL }],
+        household_planner_settings: storedSplit(stored),
+      },
+      updateResult: (call) => ({ data: call === 0 ? [] : [{}], error: null }),
+    });
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await setPlannerSplit(valid);
+    expect(fake.calls.update).toHaveLength(2);
+    expect(
+      fake.calls.queries.filter(
+        (q) =>
+          q.table === 'household_planner_settings' && q.operation === 'read'
+      )
+    ).toHaveLength(2);
+  });
+
+  it('gives up with an opaque error after three lost races', async () => {
+    const fake = setSupabase({
+      selectDataByTable: {
+        household_planner_settings: storedSplit(stored),
+      },
+      updateResult: () => ({ data: [], error: null }),
+    });
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await expect(setPlannerSplit(valid)).rejects.toThrow('same time');
+    expect(fake.calls.update).toHaveLength(3);
+  });
+
+  it('retries when a concurrent first insert wins', async () => {
+    const fake = setSupabase({
+      insertError: { message: 'duplicate', code: '23505' },
+    });
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await expect(setPlannerSplit(valid)).rejects.toThrow('same time');
+    expect(fake.calls.insert).toHaveLength(3);
+  });
+
+  it('rejects a merged split that exceeds the override limit', async () => {
+    const many = Object.fromEntries(
+      Array.from({ length: 500 }, (_, i) => [
+        `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`,
+        { [ME]: 50, [PARTNER]: 50 },
+      ])
+    );
+    const ids = Object.keys(many);
+    const fake = setSupabase({
+      selectDataByTable: {
+        household_goals: [...ids.map((id) => ({ id })), { id: LIVE_GOAL }],
+        household_planner_settings: storedSplit({
+          members: stored.members,
+          goalOverrides: many,
+          budgetOverrides: {},
+        }),
+      },
+    });
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await expect(
+      setPlannerSplit({
+        goalId: LIVE_GOAL,
+        override: { [ME]: 10, [PARTNER]: 90 },
+      })
+    ).rejects.toThrow('allowed size');
+    expect(writes(fake)).toHaveLength(0);
   });
 
   it('surfaces an opaque error on a write failure', async () => {
-    setSupabase({ upsertError: { message: 'relation leaked_table denied' } });
+    setSupabase({ insertError: { message: 'relation leaked_table denied' } });
     const { setPlannerSplit } =
       await import('@/features/household/actions/planner-actions');
     const failure = setPlannerSplit(valid);

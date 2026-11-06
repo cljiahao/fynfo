@@ -25,6 +25,12 @@ export interface FakeSupabaseOptions {
   upsertError?: { message: string; code?: string } | null;
   upsertData?: unknown;
   insertError?: { message: string; code?: string } | null;
+  // Per-call result of `update().eq().select()`; when set, update resolves to
+  // it instead of the read result (lets a test simulate a lost-update race).
+  updateResult?: (call: number) => {
+    data: unknown;
+    error: { message: string; code?: string } | null;
+  };
   // RPC results keyed by function name (e.g. accept_household_invite).
   rpcData?: Record<string, unknown>;
   rpcError?: Record<string, { message: string; code?: string }>;
@@ -155,8 +161,16 @@ export function makeFakeSupabase(opts: FakeSupabaseOptions = {}) {
       },
       update: (payload: unknown) => {
         query.operation = 'update';
+        const call = calls.update.length;
         calls.update.push(payload);
-        return builder;
+        if (!opts.updateResult) return builder;
+        const res = opts.updateResult(call);
+        const chain: Record<string, unknown> = {
+          eq: () => chain,
+          select: () => chain,
+          then: (resolve: (v: unknown) => unknown) => resolve(res),
+        };
+        return chain;
       },
       delete: () => {
         query.operation = 'delete';

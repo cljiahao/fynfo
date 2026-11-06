@@ -155,6 +155,11 @@ describe('computeHouseholdCommitment', () => {
     expect(r.monthlyDeduction).toBeCloseTo(300);
   });
 
+  it('falls back to the default share when budgets total zero', () => {
+    const r = run([], { budgets: [], split: split(60) });
+    expect(r.budgets).toEqual({ monthlyTotal: 0, share: 0.6, monthlyShare: 0 });
+  });
+
   it('applies per-budget splits, skipping a 0% budget', () => {
     const r = run([], {
       budgets: [budget('a', 200), budget('b', 300), budget('c', 500)],

@@ -80,6 +80,32 @@ describe('setCategoryBudget', () => {
     expect(decryptPayload(row.monthly_amount, KH)).toBe('250');
   });
 
+  it('returns the id of the created budget, as stored', async () => {
+    const fake = setSupabase();
+    const { setCategoryBudget } =
+      await import('@/features/household/actions/budget-actions');
+    const id = await setCategoryBudget({ category: 'Fun', monthlyAmount: 10 });
+    expect(id).toMatch(/^[0-9a-f-]{36}$/);
+    expect((fake.calls.insert[0] as { id: string }).id).toBe(id);
+  });
+
+  it('returns the existing id when updating a budget', async () => {
+    setSupabase({
+      selectDataByTable: {
+        household_spending_budgets: [budgetRow(BUDGET_ID, 'Groceries', 300)],
+      },
+    });
+    const { setCategoryBudget } =
+      await import('@/features/household/actions/budget-actions');
+    expect(
+      await setCategoryBudget({
+        id: BUDGET_ID,
+        category: 'Groceries',
+        monthlyAmount: 320,
+      })
+    ).toBe(BUDGET_ID);
+  });
+
   it('runs the auth guard before any database access', async () => {
     const fake = setSupabase();
     const { setCategoryBudget } =

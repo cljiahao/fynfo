@@ -17,6 +17,9 @@ import { getSpendingBudgets } from './budget-actions';
 import { getGoals } from './goal-actions';
 import { getHousehold } from './household-actions';
 
+const MAX_WRITE_ATTEMPTS = 3;
+const UNIQUE_VIOLATION = '23505';
+
 type Context = Awaited<ReturnType<typeof requireHouseholdContext>>;
 
 interface Roster {
@@ -118,17 +121,30 @@ function parseStored(ciphertext: string, kh: Buffer): StoredSplit {
   }
 }
 
-async function readStoredRow(
+interface StoredRow {
+  split: string;
+  updatedAt: string;
+}
+
+async function readStoredRowVersioned(
   { supabase }: Context,
   householdId: string
-): Promise<string | null> {
+): Promise<StoredRow | null> {
   const { data, error } = await supabase
     .from('household_planner_settings')
-    .select('split')
+    .select('split, updated_at')
     .eq('household_id', householdId)
     .maybeSingle();
   throwIfSupabaseError(error, 'household planner read');
-  return (data as { split: string } | null)?.split ?? null;
+  const row = data as { split: string; updated_at: string } | null;
+  return row ? { split: row.split, updatedAt: row.updated_at } : null;
+}
+
+async function readStoredRow(
+  ctx: Context,
+  householdId: string
+): Promise<string | null> {
+  return (await readStoredRowVersioned(ctx, householdId))?.split ?? null;
 }
 
 /**
@@ -188,60 +204,85 @@ export async function setPlannerSplit(input: unknown): Promise<void> {
   )
     throw new AppError('VALIDATION', 'Split must cover both household members');
 
-  const ciphertext = await readStoredRow(ctx, householdId);
-  const stored = ciphertext ? parseStored(ciphertext, kh) : null;
-  const current: StoredSplit =
-    stored && sameIds(Object.keys(stored.members), memberIds)
-      ? stored
-      : {
-          members: evenSplit(memberIds),
-          goalOverrides: {},
-          budgetOverrides: {},
-        };
-
-  let merged: StoredSplit = current;
-  if ('members' in data) {
-    merged = { ...current, members: data.members };
-  } else if ('goalId' in data) {
-    merged = {
-      ...current,
-      goalOverrides: withOverride(
-        current.goalOverrides,
-        data.goalId,
-        data.override
-      ),
-    };
-  } else {
-    merged = {
-      ...current,
-      budgetOverrides: withOverride(
-        current.budgetOverrides,
-        data.budgetId,
-        data.override
-      ),
-    };
-  }
-
   const [goalIds, budgetIds] = await Promise.all([
     readGoalIds(ctx),
     readBudgetIds(ctx),
   ]);
-  const split: StoredSplit = {
-    members: merged.members,
-    goalOverrides: pruneOverrides(merged.goalOverrides, goalIds),
-    budgetOverrides: pruneOverrides(merged.budgetOverrides, budgetIds),
-  };
 
-  const { error } = await supabase.from('household_planner_settings').upsert(
-    {
-      household_id: householdId,
-      split: encryptPayload(JSON.stringify(split), kh),
-      created_by: userId,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'household_id' }
+  // The blob is one row, so a partner's near-simultaneous edit would be
+  // overwritten by a blind upsert. Writes are conditional on the version read.
+  for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt += 1) {
+    const row = await readStoredRowVersioned(ctx, householdId);
+    const stored = row ? parseStored(row.split, kh) : null;
+    const current: StoredSplit =
+      stored && sameIds(Object.keys(stored.members), memberIds)
+        ? stored
+        : {
+            members: evenSplit(memberIds),
+            goalOverrides: {},
+            budgetOverrides: {},
+          };
+
+    let merged: StoredSplit;
+    if ('members' in data) {
+      merged = { ...current, members: data.members };
+    } else if ('goalId' in data) {
+      merged = {
+        ...current,
+        goalOverrides: withOverride(
+          current.goalOverrides,
+          data.goalId,
+          data.override
+        ),
+      };
+    } else {
+      merged = {
+        ...current,
+        budgetOverrides: withOverride(
+          current.budgetOverrides,
+          data.budgetId,
+          data.override
+        ),
+      };
+    }
+
+    const split: StoredSplit = {
+      members: merged.members,
+      goalOverrides: pruneOverrides(merged.goalOverrides, goalIds),
+      budgetOverrides: pruneOverrides(merged.budgetOverrides, budgetIds),
+    };
+    const checked = plannerSplitSchema.safeParse(split);
+    if (!checked.success)
+      throw new AppError('VALIDATION', 'Split exceeds the allowed size');
+
+    const ciphertext = encryptPayload(JSON.stringify(split), kh);
+    if (!row) {
+      const { error } = await supabase
+        .from('household_planner_settings')
+        .insert({
+          household_id: householdId,
+          split: ciphertext,
+          created_by: userId,
+        });
+      if (error?.code === UNIQUE_VIOLATION) continue;
+      throwIfSupabaseError(error, 'household planner write');
+      return;
+    }
+
+    const { data: updated, error } = await supabase
+      .from('household_planner_settings')
+      .update({ split: ciphertext, updated_at: new Date().toISOString() })
+      .eq('household_id', householdId)
+      .eq('updated_at', row.updatedAt)
+      .select('household_id');
+    throwIfSupabaseError(error, 'household planner write');
+    if ((updated as unknown[] | null)?.length === 0) continue;
+    return;
+  }
+  throw new AppError(
+    'DB_ERROR',
+    'The split was changed at the same time, please retry'
   );
-  throwIfSupabaseError(error, 'household planner write');
 }
 
 function emptyCommitment(state: 'none' | 'locked'): PlannerCommitment {

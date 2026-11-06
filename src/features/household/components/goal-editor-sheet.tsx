@@ -191,14 +191,15 @@ function GoalEditorForm({
   });
 
   // A new goal is seeded with the default split; an edited one only when changed.
-  const persistSplit = () => {
+  const persistSplit = async () => {
     const override =
       splitData && splitPct !== null ? overrideFor(splitData, splitPct) : null;
     if (!override || (goal && splitEdit === null)) return;
-    saveSplit.mutate(
-      { goalId, override },
-      { onError: () => toast.error('Could not save the goal split, try again') }
-    );
+    try {
+      await saveSplit.mutateAsync({ goalId, override });
+    } catch {
+      toast.error('Could not save the split, edit the goal to set it again');
+    }
   };
 
   const confirm = () => {
@@ -207,9 +208,9 @@ function GoalEditorForm({
     save.mutate(
       { ...toDraft(values), goalId },
       {
-        onSuccess: (result) => {
+        onSuccess: async (result) => {
           if (result.ok) {
-            persistSplit();
+            await persistSplit();
             toast.success(goal ? 'Goal updated' : 'Goal created');
             onDone();
             return;

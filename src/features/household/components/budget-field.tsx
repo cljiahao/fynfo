@@ -94,20 +94,20 @@ export function BudgetField({
         monthlyAmount: value,
       },
       {
-        onSuccess: (budgetId) => {
+        onSuccess: async (budgetId) => {
           // A new budget is seeded with the default split; an edited one only when changed.
           const override =
             splitData && splitPct !== null
               ? overrideFor(splitData, splitPct)
               : null;
           if (override && (!existing || splitEdit !== null))
-            saveSplit.mutate(
-              { budgetId, override },
-              {
-                onError: () =>
-                  toast.error('Could not save the budget split, try again'),
-              }
-            );
+            try {
+              await saveSplit.mutateAsync({ budgetId, override });
+            } catch {
+              toast.error(
+                'Could not save the split, edit the budget to set it again'
+              );
+            }
           onDone();
         },
         onError: (err) =>
