@@ -2,12 +2,12 @@
 id: '180'
 slug: goal-add-item-dialog
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-07
 approved: 2026-11-07 # owner Clarence, chat, scope = this change only
-shipped:
-impl_pr:
+shipped: 2026-11-07
+impl_pr: 'none (direct to main), 8b957a8'
 supersedes:
 constitution_satisfies:
   - '§2.4'
