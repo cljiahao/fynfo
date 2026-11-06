@@ -2,10 +2,10 @@
 id: '179'
 slug: multi-income-salary
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-06
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-06 # YYYY-MM-DD, set on approval
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # no PR (direct to main), set on shipped
 supersedes:
@@ -335,7 +335,7 @@ The owner applies the migration after slice 1 lands and before slice 2 ships.
 
 ## Open questions
 
-- [ ] Q: Is synthesize-on-read acceptable instead of a one-shot backfill? — Owner: Clarence — A:
-- [ ] Q: Dual-write the legacy `salary`/`bonus` columns for rollback safety, or stop writing them once lines exist? — Owner: Clarence — A:
-- [ ] Q: Maximum 20 lines per month and 60-character labels: right limits? — Owner: Clarence — A:
-- [ ] Q: Should the monthly review count `total` (all lines) as income, as proposed, or recurring only? — Owner: Clarence — A:
+- [x] Q: Is synthesize-on-read acceptable instead of a one-shot backfill? — Owner: Clarence — A: Yes, synthesize-on-read accepted (Clarence, 2026-11-06).
+- [x] Q: Dual-write the legacy `salary`/`bonus` columns for rollback safety, or stop writing them once lines exist? — Owner: Clarence — A: Keep dual-writing legacy salary/bonus (Clarence, 2026-11-06).
+- [x] Q: Maximum 20 lines per month and 60-character labels: right limits? — Owner: Clarence — A: 20 lines and 60 characters accepted (Clarence, 2026-11-06).
+- [x] Q: Should the monthly review count `total` (all lines) as income, as proposed, or recurring only? — Owner: Clarence — A: Count total, all lines (Clarence, 2026-11-06).
