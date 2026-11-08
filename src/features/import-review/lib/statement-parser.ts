@@ -13,12 +13,14 @@ import type {
   StatementLineBox,
   StatementPeriod,
 } from '../types';
+import { getStatementLayout } from './statement-layouts';
+import {
+  DATE_PREFIX,
+  groupDateRows,
+  MONEY,
+} from './statement-layouts/patterns';
 
 const calendar = z.iso.date();
-const DATE_PREFIX =
-  /^(\d{1,2})(?:[ /-](\d{1,2})|\s+([A-Za-z]{3,9}))(?:[ /-](\d{4}))?\s+/;
-const MONEY =
-  /(?:SGD|S\$|USD|US\$|\$)?\s*[+-]?\(?\d[\d,.]*\.\d+\)?(?:\s*(?:CR|DR))?/gi;
 
 function groupPositionedText(items: PositionedStatementText[]) {
   if (items.length > STATEMENT_LIMITS.textItems)
@@ -335,56 +337,25 @@ export function parseStatementLines(
     /(?:SGD|S\$)\s*(?:BILLED|AMOUNT)|(?:BILLED|AMOUNT)\s*(?:SGD|S\$)|SGD\s+BILLED/i.test(
       text
     );
-  const uobPages = new Set<number>();
-  if (bank === 'uob') {
-    for (const page of new Set(lines.map((line) => line.page))) {
-      const pageText = lines
-        .filter((line) => line.page === page)
-        .map((line) => line.text)
-        .join(' ')
-        .replace(/\s+/g, ' ');
-      // PDF text can place both "Date" labels on a second header line.
-      if (
-        /Post(?: Date)? Trans(?: Date)? Description of Transaction Transaction Amount(?: Date Date)? SGD\b/i.test(
-          pageText
-        )
-      )
-        uobPages.add(page);
-    }
-  }
-  const groups: StatementLine[][] = [];
-  for (const line of lines) {
-    if (
-      /^(?:OPENING BALANCE|CLOSING BALANCE|TOTAL BALANCE|TOTAL\b|TRANSACTION DATE|STATEMENT PERIOD|DESCRIPTION\b|SYNTHETIC\b)/i.test(
-        line.text
-      ) &&
-      !DATE_PREFIX.test(line.text)
-    )
-      continue;
-    if (DATE_PREFIX.test(line.text)) groups.push([line]);
-    else {
-      const preceding = groups.at(-1);
-      if (
-        preceding &&
-        preceding[0].page === line.page &&
-        (!MONEY.test(preceding.map((item) => item.text).join(' ')) ||
-          (uobPages.has(line.page) &&
-            /^(?:Ref\s*No\s*:|[A-Z]{3}\s+[\d,.]+(?:\s*(?:CR|DR))?$)/i.test(
-              line.text.trim()
-            ))) &&
-        line.text.trim()
-      )
-        preceding.push(line);
-      MONEY.lastIndex = 0;
-    }
-  }
+  const layout = getStatementLayout(bank);
+  const claimedPages = layout?.detect(lines) ?? new Set<number>();
+  const unclaimed = lines.filter((line) => !claimedPages.has(line.page));
+  const order = new Map(lines.map((line, index) => [line, index]));
+  const groups = [
+    ...(layout?.groupRows(lines, claimedPages) ?? []),
+    ...groupDateRows(unclaimed),
+  ].sort(
+    (left, right) =>
+      (order.get(left[0]) as number) - (order.get(right[0]) as number)
+  );
   const rows = groups.map((source) => {
-    const uobColumns = uobPages.has(source[0].page);
+    const claimed = claimedPages.has(source[0].page);
     return qualifyRow(
       source,
       period,
-      (uobPages.size === 0 && billedSgd) || uobColumns,
-      uobColumns
+      (claimedPages.size === 0 && billedSgd) ||
+        (claimed && Boolean(layout?.columns.billedSgd)),
+      claimed && Boolean(layout?.columns.twoDate)
     );
   });
   if (!rows.length)

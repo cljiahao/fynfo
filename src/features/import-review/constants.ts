@@ -1,6 +1,11 @@
 export const STATEMENT_BANKS = [
   { value: 'uob', label: 'UOB', identity: /\bUOB\b|UNITED OVERSEAS BANK/i },
-  { value: 'dbs', label: 'DBS', identity: /\bDBS\b|\bPOSB\b/i },
+  {
+    value: 'dbs',
+    label: 'DBS',
+    // PayLah! wallet statements also name DBS Bank but need their own layout.
+    identity: /^(?![\s\S]*PayLah!)[\s\S]*(?:\bDBS\b|\bPOSB\b)/i,
+  },
   { value: 'hsbc', label: 'HSBC', identity: /\bHSBC\b/i },
   { value: 'citibank', label: 'Citibank', identity: /\bCITI(?:BANK)?\b/i },
 ] as const;
