@@ -35,7 +35,7 @@ const importedExpenseBaseSchema = z.strictObject({
     )
     .max(50)
     .optional(),
-  bank: z.enum(['uob', 'dbs', 'hsbc', 'citibank']),
+  bank: z.enum(['uob', 'dbs', 'hsbc', 'citibank', 'paylah']),
   period: z.strictObject({ from: z.iso.date(), to: z.iso.date() }),
   suggestedClassification: kindSchema,
   classification: z.literal('expense'),
@@ -98,7 +98,7 @@ export type ImportExpenseOutcome = {
 
 export function buildImportNote(value: ImportedExpenseInput): string {
   return [
-    `Statement source: ${value.bank.toUpperCase()} · ${value.period.from} to ${value.period.to}`,
+    `Statement source: ${value.bank === 'paylah' ? 'DBS PayLah' : value.bank.toUpperCase()} · ${value.period.from} to ${value.period.to}`,
     `Suggested classification: ${value.suggestedClassification}; reviewed: ${value.classification}`,
     ...value.source.map(
       (line) => `Page ${line.page}, line ${line.line}: ${line.text}`

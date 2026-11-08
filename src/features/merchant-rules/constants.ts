@@ -5,7 +5,13 @@ export const MERCHANT_RULE_LIMITS = {
   ciphertextBytes: 262_144,
 } as const;
 
-export const MERCHANT_BANKS = ['uob', 'dbs', 'hsbc', 'citibank'] as const;
+export const MERCHANT_BANKS = [
+  'uob',
+  'dbs',
+  'hsbc',
+  'citibank',
+  'paylah',
+] as const;
 export const MERCHANT_MATCH_MODES = ['exact', 'phrase', 'starts'] as const;
 
 export const MERCHANT_MATCH_MODE_LABELS = {

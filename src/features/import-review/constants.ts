@@ -1,5 +1,13 @@
 export const STATEMENT_BANKS = [
   { value: 'uob', label: 'UOB', identity: /\bUOB\b|UNITED OVERSEAS BANK/i },
+  // Checked ahead of DBS: PayLah! statements also name DBS Bank Ltd.
+  {
+    value: 'paylah',
+    label: 'DBS PayLah',
+    identity: /PayLah!/i,
+    // DBS card statements can mention PayLah! in a merchant line.
+    exclude: /AMOUNT\s*\(S\$\)/i,
+  },
   {
     value: 'dbs',
     label: 'DBS',
