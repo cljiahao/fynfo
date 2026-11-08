@@ -145,12 +145,13 @@ describe('DBS credit card layout', () => {
     expect(renamed.every((row) => row.status !== 'candidate')).toBe(true);
   });
 
-  it('does not claim DBS PayLah statements as card statements', () => {
+  it('does not claim DBS PayLah wallet statements as card statements', () => {
     expect(() =>
       parseStatementLines(
         pages([
-          'PayLah! STATEMENT',
           'DBS Bank Ltd',
+          'STATEMENT DATE MOBILE NUMBER WALLET ACCOUNT',
+          'Total Balance Carried Forward: 99.99 CR',
           HEADER,
           '20 DEC EXAMPLE MARKET 12.50',
         ]),
@@ -158,5 +159,26 @@ describe('DBS credit card layout', () => {
         period
       )
     ).toThrow('The selected bank could not be identified');
+  });
+
+  it('still parses card rows that mention PayLah or start with digits', () => {
+    const parsed = parseStatementLines(
+      pages([
+        'DBS TEST CARD',
+        HEADER,
+        '20 DEC DBS PAYLAH! TOP-UP 50.00',
+        '21 DEC 7-ELEVEN 3.20',
+        '22 DEC 1234 STORE 4.00',
+      ]),
+      'dbs',
+      period
+    );
+    expect(parsed[0].description).toBe('DBS PAYLAH! TOP-UP');
+    expect(parsed[1].description).toBe('7-ELEVEN');
+    expect(parsed.map((row) => [row.date, row.amount])).toEqual([
+      ['2025-12-20', '50.00'],
+      ['2025-12-21', '3.20'],
+      ['', '4.00'],
+    ]);
   });
 });

@@ -329,7 +329,10 @@ export function parseStatementLines(
     throw new Error('Statement text limit');
   const text = lines.map((line) => line.text).join('\n');
   const identity = STATEMENT_BANKS.find((entry) => entry.value === bank);
-  if (!identity?.identity.test(text))
+  if (
+    !identity?.identity.test(text) ||
+    ('exclude' in identity && identity.exclude.test(text))
+  )
     throw new Error(
       'The selected bank could not be identified in this text PDF.'
     );

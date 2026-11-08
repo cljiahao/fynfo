@@ -5,7 +5,7 @@ const HEADER = /\bDATE\s+DESCRIPTION\s+AMOUNT\s*\(S\$\)/i;
 // Card rows carry no year. A trailing year marks the page-1 summary line, and
 // the payment slip is bare digits, so neither may start a row.
 const ROW_START =
-  /^\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b(?!\s+\d{4}\b)\s+\S/i;
+  /^\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b(?!\s+(?:19|20)\d{2}\b)\s+\S/i;
 const SUMMARY_HEADER = /^STATEMENT DATE\b.*\bCREDIT LIMIT\b/i;
 const REFERENCE = /^REF NO\s*:/i;
 const BOUNDARY =
