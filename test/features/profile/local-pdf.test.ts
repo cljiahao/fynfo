@@ -8,6 +8,12 @@ const mocks = vi.hoisted(() => ({
   workerDestroy: vi.fn(),
   terminate: vi.fn(),
   cancel: vi.fn(),
+  loadRecognizer: vi.fn(),
+  ocrPages: vi.fn(),
+}));
+vi.mock('@/features/import-review/lib/statement-ocr', () => ({
+  loadTesseractRecognizer: mocks.loadRecognizer,
+  ocrStatementPages: mocks.ocrPages,
 }));
 vi.mock('pdfjs-dist', () => ({
   PDFWorker: { create: () => ({ destroy: mocks.workerDestroy }) },
@@ -39,6 +45,7 @@ beforeEach(() => {
       items: [
         { str: 'UOB', transform: [1, 0, 0, 1, 10, 200] },
         { str: 'SGD 2.00', transform: [1, 0, 0, 1, 100, 200] },
+        { str: 'ref', transform: [1, 0, 0, 1, 200, 200] },
       ],
     })),
     cleanup: vi.fn(),
@@ -73,8 +80,8 @@ it('uses local bytes/resources and disables annotations while extracting positio
     })
   );
   expect(await session.extract()).toEqual([
-    { page: 1, line: 1, text: 'UOB SGD 2.00' },
-    { page: 2, line: 1, text: 'UOB SGD 2.00' },
+    { page: 1, line: 1, text: 'UOB SGD 2.00 ref' },
+    { page: 2, line: 1, text: 'UOB SGD 2.00 ref' },
   ]);
   const canvas = globalThis.document.createElement('canvas');
   await session.render(1, canvas);
@@ -202,6 +209,7 @@ it('renders at a requested width within limits and paints a highlight band over 
   page.getTextContent.mockResolvedValue({
     items: [
       { str: 'HEADER', transform: [1, 0, 0, 1, 10, 700], height: 10 },
+      { str: 'p1', transform: [1, 0, 0, 1, 200, 700], height: 10 },
       { str: '01 OCT SHOP 2.00', transform: [1, 0, 0, 1, 10, 400], height: 10 },
     ],
   });
@@ -263,5 +271,40 @@ it('renders off-screen and leaves the visible canvas alone when superseded', asy
   await expect(first).rejects.toThrow('Cancelled');
   expect(canvas.width).toBe(900);
   expect(drawImage).toHaveBeenCalledTimes(1);
+  session.destroy();
+});
+it('reads image-only pages through OCR with a longer deadline and releases the engine', async () => {
+  page.getTextContent.mockResolvedValue({ items: [] });
+  const recognizer = { recognize: vi.fn(), terminate: vi.fn(async () => {}) };
+  mocks.loadRecognizer.mockResolvedValue(recognizer);
+  mocks.ocrPages.mockResolvedValue([
+    [
+      { text: 'DBS', x: 10, y: 700, height: 10 },
+      { text: 'SGD', x: 100, y: 700, height: 10 },
+    ],
+    [{ text: 'Page2', x: 10, y: 700, height: 10 }],
+  ]);
+  const session = await openLocalStatementPdf(
+    new ArrayBuffer(4),
+    new AbortController().signal
+  );
+  const onProgress = vi.fn();
+  expect(await session.extract({ onProgress })).toEqual([
+    { page: 1, line: 1, text: 'DBS SGD' },
+    { page: 2, line: 1, text: 'Page2' },
+  ]);
+  expect(mocks.ocrPages).toHaveBeenCalledWith(
+    expect.objectContaining({ pageCount: 2, recognizer, onProgress })
+  );
+  expect(recognizer.terminate).toHaveBeenCalledTimes(1);
+  session.destroy();
+});
+it('skips OCR when the text layer has enough items', async () => {
+  const session = await openLocalStatementPdf(
+    new ArrayBuffer(4),
+    new AbortController().signal
+  );
+  await session.extract();
+  expect(mocks.loadRecognizer).not.toHaveBeenCalled();
   session.destroy();
 });

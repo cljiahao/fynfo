@@ -97,6 +97,7 @@ const eslintConfig = defineConfig([
     'build/**',
     'coverage/**',
     'public/pdfjs/**',
+    'public/ocr/**',
     'next-env.d.ts',
     // Harness scripts have a separate permission-protected review surface.
     '.claude/**',

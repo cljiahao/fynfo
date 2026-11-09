@@ -13,8 +13,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeFakeSupabase } from '../../helpers/fake-supabase';
 
 const key = Buffer.alloc(32, 7);
-const mocks = vi.hoisted(() => ({ context: vi.fn() }));
+const mocks = vi.hoisted(() => ({ context: vi.fn(), limit: vi.fn() }));
 vi.mock('@/lib/action-guard', () => ({ requireActionContext: mocks.context }));
+vi.mock('@/integrations/services/security-rpc', () => ({
+  consumeRateLimit: mocks.limit,
+}));
 const input: ImportedExpenseInput = {
   id: 'a3610806-7c64-4a2a-9a3d-1842d82c993d',
   date: '2026-10-01',
@@ -27,7 +30,10 @@ const input: ImportedExpenseInput = {
   classification: 'expense',
   source: [{ page: 1, line: 3, text: '01 OCT ORIGINAL MARKET SGD 12.30' }],
 };
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.limit.mockResolvedValue(true);
+});
 function setup(options: Parameters<typeof makeFakeSupabase>[0] = {}) {
   const fake = makeFakeSupabase(options);
   mocks.context.mockResolvedValue({
@@ -496,5 +502,45 @@ describe('ranged expense read', () => {
     await expect(
       getExpensesInRange('not-a-date', '2026-10-01')
     ).rejects.toThrow();
+  });
+});
+describe('statement import rate limit', () => {
+  it('consumes 10 calls per 60 seconds keyed by user after the vault context', async () => {
+    setup();
+    await insertImportedExpenses([input]);
+    expect(mocks.limit).toHaveBeenCalledExactlyOnceWith(
+      'statement_import:synthetic-owner',
+      10,
+      60
+    );
+    expect(mocks.context.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.limit.mock.invocationCallOrder[0]
+    );
+  });
+  it('refuses over the limit with an opaque error and performs no insert', async () => {
+    const fake = setup();
+    mocks.limit.mockResolvedValue(false);
+    await expect(insertImportedExpenses([input])).rejects.toMatchObject({
+      code: 'RATE_LIMITED',
+      message: 'Too many imports. Try again later.',
+    });
+    expect(fake.calls.from).toEqual([]);
+    expect(fake.calls.rpc).toEqual([]);
+  });
+  it('fails closed without leaking limiter detail when the limiter errors', async () => {
+    const fake = setup();
+    mocks.limit.mockRejectedValue(new Error('relation consume_rate_limit'));
+    const failure = await insertImportedExpenses([input]).catch(
+      (error: unknown) => error
+    );
+    expect(failure).toMatchObject({ code: 'INTERNAL' });
+    expect(String((failure as Error).message)).not.toContain('relation');
+    expect(fake.calls.from).toEqual([]);
+  });
+  it('does not consume the limiter for invalid input or a locked vault', async () => {
+    expect(await insertImportedExpenses([])).toEqual([]);
+    mocks.context.mockRejectedValue(new Error('Vault is locked'));
+    await insertImportedExpenses([input]);
+    expect(mocks.limit).not.toHaveBeenCalled();
   });
 });

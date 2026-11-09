@@ -101,6 +101,10 @@ function StatementReviewBody({
   >(null);
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState<{
+    page: number;
+    total: number;
+  } | null>(null);
   const [error, setError] = useState('');
   const [rows, setRows] = useState<StatementCandidate[]>([]);
   const [page, setPage] = useState(1);
@@ -202,6 +206,7 @@ function StatementReviewBody({
     session.current = null;
     setPdf(null);
     setBusy(false);
+    setOcrProgress(null);
     setRows([]);
     setError('');
     setDetectedBasis(null);
@@ -255,7 +260,11 @@ function StatementReviewBody({
         return;
       }
       session.current = opened;
-      const lines = await opened.extract();
+      const lines = await opened.extract({
+        onProgress(page, total) {
+          if (isCurrentExtraction()) setOcrProgress({ page, total });
+        },
+      });
       if (!isCurrentExtraction()) {
         discardOpenedPdf();
         return;
@@ -287,11 +296,14 @@ function StatementReviewBody({
       if (isCurrentExtraction()) {
         session.current = null;
         setError(
-          'This PDF or layout could not be extracted. Check the bank and period. Use an unprotected text PDF; image-only and unsupported layouts need manual entry.'
+          'This PDF or layout could not be extracted. Check the bank and period. Use an unprotected PDF; unsupported layouts need manual entry.'
         );
       }
     } finally {
-      if (current === generation.current) setBusy(false);
+      if (current === generation.current) {
+        setBusy(false);
+        setOcrProgress(null);
+      }
     }
   }
 
@@ -704,7 +716,10 @@ function StatementReviewBody({
             {error && <p className="text-destructive text-sm">{error}</p>}
             {busy && (
               <p className="text-muted-foreground text-sm">
-                Reading locally. You can clear this review to cancel.
+                {ocrProgress
+                  ? `Reading page ${ocrProgress.page} of ${ocrProgress.total} locally. `
+                  : 'Reading locally. '}
+                You can clear this review to cancel.
               </p>
             )}
           </div>

@@ -48,6 +48,14 @@ export const STATEMENT_LIMITS = {
   pixels: 4_000_000,
   deadlineMs: 45_000,
 } as const;
+/** Scanned statements need per-page recognition, so they get a longer budget
+ * than text PDFs, which keep `STATEMENT_LIMITS.deadlineMs`. */
+export const OCR_DEADLINE_MS = 120_000;
+/** Fewer text items than this across the whole PDF means there is no usable
+ * text layer, so the pages are read by OCR instead. */
+export const OCR_MIN_TEXT_ITEMS = 5;
+/** Render scale for OCR: about 300 dpi, before the pixel cap is applied. */
+export const OCR_RENDER_SCALE = 300 / 72;
 export const STATEMENT_MONTHS = [
   'jan',
   'feb',

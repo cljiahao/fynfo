@@ -3,6 +3,7 @@ out/
 build/
 node_modules/
 public/pdfjs/
+public/ocr/
 coverage/
 pnpm-lock.yaml
 .claude/harness.json

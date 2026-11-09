@@ -3,14 +3,26 @@ import type {
   PDFDocumentProxy,
   RenderTask,
 } from 'pdfjs-dist';
-import { STATEMENT_LIMITS } from '../constants';
-import type { StatementLine, StatementLineBox } from '../types';
+import {
+  OCR_DEADLINE_MS,
+  OCR_RENDER_SCALE,
+  STATEMENT_LIMITS,
+} from '../constants';
+import type {
+  PositionedStatementText,
+  StatementLine,
+  StatementLineBox,
+} from '../types';
+import { needsOcr } from './statement-ocr-items';
 import {
   positionedStatementLineBoxes,
   positionedStatementLines,
 } from './statement-parser';
 
 const RESOURCE_ROOT = '/pdfjs/6.4.299/';
+export interface StatementExtractOptions {
+  onProgress?(page: number, total: number): void;
+}
 export interface StatementRenderOptions {
   /** Target canvas width in device pixels; still capped by the render limits. */
   width?: number;
@@ -24,13 +36,34 @@ export interface StatementHighlightBand {
 }
 export interface LocalStatementPdf {
   pageCount: number;
-  extract(): Promise<StatementLine[]>;
+  /** `onProgress` fires only for scanned PDFs, once per page being read. */
+  extract(options?: StatementExtractOptions): Promise<StatementLine[]>;
   render(
     page: number,
     canvas: HTMLCanvasElement,
     options?: StatementRenderOptions
   ): Promise<StatementHighlightBand | null>;
   destroy(): void;
+}
+
+/** Caps a requested scale by canvas edge and pixel limits. */
+function renderScale(
+  base: { width: number; height: number },
+  requested: number
+): number {
+  if (
+    !Number.isFinite(base.width) ||
+    !Number.isFinite(base.height) ||
+    base.width <= 0 ||
+    base.height <= 0
+  )
+    throw new Error('Unsupported page dimensions');
+  return Math.min(
+    requested,
+    8192 / base.width,
+    8192 / base.height,
+    Math.sqrt(STATEMENT_LIMITS.pixels / (base.width * base.height))
+  );
 }
 
 /** Local bytes + same-origin resources only. No viewer, scripting, attachment,
@@ -48,6 +81,7 @@ export async function openLocalStatementPdf(
   let loading: PDFDocumentLoadingTask | undefined;
   let document: PDFDocumentProxy | undefined;
   let renderTask: RenderTask | undefined;
+  let terminateOcr: (() => Promise<void>) | undefined;
   let active = true;
   let renderGeneration = 0;
   function destroy() {
@@ -55,6 +89,7 @@ export async function openLocalStatementPdf(
     active = false;
     renderGeneration++;
     renderTask?.cancel();
+    void terminateOcr?.().catch(() => undefined);
     void loading?.destroy().catch(() => undefined);
     worker.destroy();
     port.terminate();
@@ -88,12 +123,12 @@ export async function openLocalStatementPdf(
     const lineBoxes = new Map<number, StatementLineBox[]>();
     return {
       pageCount: pdf.numPages,
-      async extract() {
-        const deadline = setTimeout(destroy, STATEMENT_LIMITS.deadlineMs);
+      async extract({ onProgress } = {}) {
+        let deadline = setTimeout(destroy, STATEMENT_LIMITS.deadlineMs);
         try {
           let characters = 0;
           let itemCount = 0;
-          const lines: StatementLine[] = [];
+          const pageItems: PositionedStatementText[][] = [];
           for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
             if (!active) throw new Error('Cancelled');
             const page = await pdf.getPage(pageNumber);
@@ -120,11 +155,56 @@ export async function openLocalStatementPdf(
               itemCount > STATEMENT_LIMITS.textItems
             )
               throw new Error('Statement text limit');
-            lines.push(...positionedStatementLines(items, pageNumber));
-            lineBoxes.set(pageNumber, positionedStatementLineBoxes(items));
+            pageItems.push(items);
             page.cleanup();
           }
+          if (needsOcr(itemCount)) {
+            clearTimeout(deadline);
+            deadline = setTimeout(destroy, OCR_DEADLINE_MS);
+            const { loadTesseractRecognizer, ocrStatementPages } =
+              await import('./statement-ocr');
+            const recognizer = await loadTesseractRecognizer();
+            terminateOcr = () => recognizer.terminate();
+            if (!active) throw new Error('Cancelled');
+            try {
+              pageItems.splice(
+                0,
+                pageItems.length,
+                ...(await ocrStatementPages({
+                  pageCount: pdf.numPages,
+                  recognizer,
+                  isActive: () => active,
+                  onProgress,
+                  async renderPage(pageNumber) {
+                    const page = await pdf.getPage(pageNumber);
+                    const base = page.getViewport({ scale: 1 });
+                    const scale = renderScale(base, OCR_RENDER_SCALE);
+                    const viewport = page.getViewport({ scale });
+                    const canvas = globalThis.document.createElement('canvas');
+                    canvas.width = Math.floor(viewport.width);
+                    canvas.height = Math.floor(viewport.height);
+                    renderTask = page.render({
+                      canvas,
+                      viewport,
+                      annotationMode: pdfjs.AnnotationMode.DISABLE,
+                    });
+                    await renderTask.promise;
+                    page.cleanup();
+                    return { canvas, scale, heightPoints: base.height };
+                  },
+                }))
+              );
+            } finally {
+              terminateOcr = undefined;
+              await recognizer.terminate().catch(() => undefined);
+            }
+          }
           if (!active) throw new Error('Cancelled');
+          const lines: StatementLine[] = [];
+          pageItems.forEach((items, index) => {
+            lines.push(...positionedStatementLines(items, index + 1));
+            lineBoxes.set(index + 1, positionedStatementLineBoxes(items));
+          });
           return lines;
         } finally {
           clearTimeout(deadline);
@@ -139,23 +219,11 @@ export async function openLocalStatementPdf(
         if (!active || currentRender !== renderGeneration)
           throw new Error('Cancelled');
         const base = page.getViewport({ scale: 1 });
-        if (
-          !Number.isFinite(base.width) ||
-          !Number.isFinite(base.height) ||
-          base.width <= 0 ||
-          base.height <= 0
-        )
-          throw new Error('Unsupported page dimensions');
         const requested =
           options.width && Number.isFinite(options.width) && options.width > 0
             ? options.width / base.width
             : 1.5;
-        const scale = Math.min(
-          requested,
-          8192 / base.width,
-          8192 / base.height,
-          Math.sqrt(STATEMENT_LIMITS.pixels / (base.width * base.height))
-        );
+        const scale = renderScale(base, requested);
         const viewport = page.getViewport({ scale });
         // pdf.js paints on an opaque canvas, so resizing the visible one shows
         // black until the page is drawn. Render off-screen, then copy.

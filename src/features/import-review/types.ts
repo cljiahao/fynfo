@@ -40,6 +40,8 @@ export interface PositionedStatementText {
   x: number;
   y: number;
   height?: number;
+  /** 0-100 recognition confidence; absent for text-layer items. */
+  confidence?: number;
 }
 export interface StatementLineBox {
   y: number;
