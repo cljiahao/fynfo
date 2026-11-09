@@ -25,6 +25,9 @@ export interface OcrStatementPagesOptions {
   recognizer: OcrRecognizer;
   isActive(): boolean;
   onProgress?(page: number, total: number): void;
+  /** Items and characters OCR may add, the share of the text limits that the
+   * text layer has not used; exceeding it fails like an oversized text PDF. */
+  budget?: { items: number; characters: number };
 }
 
 /** Pages run one at a time: a single worker keeps memory flat on phones. */
@@ -34,8 +37,11 @@ export async function ocrStatementPages({
   recognizer,
   isActive,
   onProgress,
+  budget,
 }: OcrStatementPagesOptions): Promise<PositionedStatementText[][]> {
   const pages: PositionedStatementText[][] = [];
+  let items = 0;
+  let characters = 0;
   for (const [index, page] of pageNumbers.entries()) {
     if (!isActive()) throw new Error('Cancelled');
     onProgress?.(index + 1, pageNumbers.length);
@@ -43,7 +49,12 @@ export async function ocrStatementPages({
     try {
       const lines = await recognizer.recognize(image.canvas);
       if (!isActive()) throw new Error('Cancelled');
-      pages.push(ocrLinesToItems(lines, image.scale, image.heightPoints));
+      const pageItems = ocrLinesToItems(lines, image.scale, image.heightPoints);
+      items += pageItems.length;
+      characters += pageItems.reduce((sum, item) => sum + item.text.length, 0);
+      if (budget && (items > budget.items || characters > budget.characters))
+        throw new Error('Statement text limit');
+      pages.push(pageItems);
     } finally {
       image.canvas.width = 0;
     }

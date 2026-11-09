@@ -447,3 +447,49 @@ it('terminates an engine that finishes loading after destroy', async () => {
   await vi.waitFor(() => expect(recognizer.terminate).toHaveBeenCalledTimes(1));
   expect(mocks.ocrPages).not.toHaveBeenCalled();
 });
+
+it('does not wait for a hung engine shutdown after OCR finishes', async () => {
+  page.getTextContent.mockResolvedValue({ items: [] });
+  const recognizer = {
+    recognize: vi.fn(),
+    terminate: vi.fn(() => new Promise<void>(() => {})),
+  };
+  mocks.loadRecognizer.mockResolvedValue(recognizer);
+  mocks.ocrPages.mockResolvedValue([[], []]);
+  const session = await openSession();
+  await expect(session.extract()).resolves.toEqual([]);
+  expect(recognizer.terminate).toHaveBeenCalled();
+  session.destroy();
+});
+
+it('hands OCR only the text budget the text layer has not used', async () => {
+  page.getTextContent.mockResolvedValue({ items: [] });
+  mocks.loadRecognizer.mockResolvedValue({
+    recognize: vi.fn(),
+    terminate: vi.fn(async () => {}),
+  });
+  mocks.ocrPages.mockResolvedValue([[], []]);
+  const session = await openSession();
+  await session.extract();
+  expect(mocks.ocrPages).toHaveBeenCalledWith(
+    expect.objectContaining({
+      budget: {
+        items: STATEMENT_LIMITS.textItems,
+        characters: STATEMENT_LIMITS.characters,
+      },
+    })
+  );
+  session.destroy();
+});
+
+it('surfaces the text limit error when OCR exceeds its budget', async () => {
+  page.getTextContent.mockResolvedValue({ items: [] });
+  mocks.loadRecognizer.mockResolvedValue({
+    recognize: vi.fn(),
+    terminate: vi.fn(async () => {}),
+  });
+  mocks.ocrPages.mockRejectedValue(new Error('Statement text limit'));
+  const session = await openSession();
+  await expect(session.extract()).rejects.toThrow('Statement text limit');
+  session.destroy();
+});

@@ -21,6 +21,8 @@ interface ImportActionBarProps {
   eligibleCount: number;
   onSelectAll: () => void;
   onNextDuplicate: () => void;
+  /** OCR rows whose total does not reconcile: no bulk selection. */
+  selectAllBlocked?: boolean;
 }
 
 /** One primary action for the current step, with the reason beside it. */
@@ -29,6 +31,7 @@ export function ImportActionBar({
   eligibleCount,
   onSelectAll,
   onNextDuplicate,
+  selectAllBlocked = false,
 }: ImportActionBarProps) {
   const { hidden } = useAmountVisibility();
   const attempts = Object.values(save.attempts);
@@ -55,16 +58,18 @@ export function ImportActionBar({
       run: save.continueBatch,
     };
   } else if (selected === 0) {
-    status = eligibleCount
-      ? 'Select the expenses to import.'
-      : 'No expenses left to select in this view.';
+    status = selectAllBlocked
+      ? 'Parsed rows do not match the statement total. Select rows one at a time after checking them.'
+      : eligibleCount
+        ? 'Select the expenses to import.'
+        : 'No expenses left to select in this view.';
     action = {
       label:
         eligibleCount > IMPORT_SAVE_LIMIT
           ? `Select next ${IMPORT_SAVE_LIMIT} expenses`
           : `Select all ${plural(eligibleCount, 'expense')}`,
       run: onSelectAll,
-      disabled: eligibleCount === 0,
+      disabled: eligibleCount === 0 || selectAllBlocked,
     };
   } else if (selected > IMPORT_SAVE_LIMIT) {
     status = `Select up to ${IMPORT_SAVE_LIMIT} purchases at a time to continue.`;

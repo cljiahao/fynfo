@@ -28,6 +28,7 @@ import {
   STATEMENT_REVIEW_STATUS_LABELS,
 } from '../constants';
 import type { useStatementSave } from '../hooks/use-statement-save';
+import { isLowConfidenceRow } from '../lib/statement-guards';
 import type { getStatementReview } from '../lib/statement-parser';
 import type { StatementBank, StatementCandidate } from '../types';
 
@@ -222,6 +223,35 @@ export function StatementRowCard({
           )}
         </div>
       )}
+      {!hidden && isLowConfidenceRow(row) && (
+        <div className="border-warning bg-warning-subtle space-y-2 rounded-md border p-3 text-sm">
+          <p className="text-warning-strong font-medium">
+            Check against statement: this row was read with low confidence (
+            {Math.round(row.confidence ?? 0)}%).
+          </p>
+          {save.isConfirmed(row.id) ? (
+            <p className="text-muted-foreground">
+              Confirmed against the statement. You can now select this row.
+            </p>
+          ) : (
+            <>
+              <p className="text-muted-foreground">
+                Use Compare source to check the date, description and amount,
+                correct any misread digit, then confirm.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={save.busy || save.locked(row.id)}
+                onClick={() => save.confirmRow(row)}
+              >
+                Confirm row matches statement
+              </Button>
+            </>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="order-1 flex flex-wrap items-center gap-2 text-xs">
           <span className="text-muted-foreground font-medium tabular-nums">
@@ -271,7 +301,12 @@ export function StatementRowCard({
                     type="checkbox"
                     className="accent-primary size-4"
                     aria-label={`Select expense from page ${row.source[0].page}, line ${row.source[0].line}`}
-                    disabled={!input || save.busy}
+                    disabled={
+                      !input ||
+                      save.busy ||
+                      (!save.selection.includes(row.id) &&
+                        save.needsConfirmation(row))
+                    }
                     checked={save.selection.includes(row.id)}
                     onChange={() => save.toggle(row)}
                   />

@@ -9,6 +9,8 @@ export interface StatementLine {
   page: number;
   line: number;
   text: string;
+  /** Lowest word confidence on the line (0-100); absent for text-layer lines. */
+  confidence?: number;
 }
 export type StatementClassification =
   | 'expense'
@@ -34,6 +36,13 @@ export interface StatementCandidate {
   isSummary: boolean;
   status: 'candidate' | 'unresolved' | 'excluded';
   issues: string[];
+  /** Lowest line confidence across the row's source (0-100); OCR rows only. */
+  confidence?: number;
+}
+/** A statement total and the rows (by first-line id) it should add up to. */
+export interface StatementTotalBlock {
+  totalCents: number;
+  rowIds: string[];
 }
 export interface PositionedStatementText {
   text: string;

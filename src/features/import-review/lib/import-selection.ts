@@ -33,7 +33,8 @@ export function createImportInput(
     splits: row.splits?.length ? row.splits : undefined,
     bank,
     period,
-    source: row.source,
+    // Confidence is review-only metadata; the save schema accepts no extra keys.
+    source: row.source.map(({ page, line, text }) => ({ page, line, text })),
     suggestedClassification: row.suggestedClassification,
     classification: row.classification,
   });

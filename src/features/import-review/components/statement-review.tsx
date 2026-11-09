@@ -52,20 +52,30 @@ import { useStatementSave } from '../hooks/use-statement-save';
 import type { LocalStatementPdf } from '../lib/local-pdf';
 import { applyRulesToStatement } from '../lib/merchant-rules';
 import {
+  isLowConfidenceRow,
+  reconcileStatement,
+} from '../lib/statement-guards';
+import {
   getStatementReview,
   parseStatementLines,
+  statementTotalBlocks,
   validStatementPeriod,
 } from '../lib/statement-parser';
 import {
   detectStatementPeriod,
   type DetectedStatementPeriod,
 } from '../lib/statement-period';
-import type { StatementBank, StatementCandidate } from '../types';
+import type {
+  StatementBank,
+  StatementCandidate,
+  StatementTotalBlock,
+} from '../types';
 import { ImportActionBar } from './import-action-bar';
 import { ImportComplete } from './import-complete';
 import { ImportOutcome } from './import-outcome';
 import { ImportProgressOverlay } from './import-progress-overlay';
 import { RestoreMerchantDialog } from './restore-merchant-dialog';
+import { StatementReconciliationNotice } from './statement-reconciliation-notice';
 import { StatementRowCard, type ReviewedRow } from './statement-row-card';
 import { StatementSourceForm } from './statement-source-form';
 import { StatementViewer } from './statement-viewer';
@@ -107,6 +117,7 @@ function StatementReviewBody({
   } | null>(null);
   const [error, setError] = useState('');
   const [rows, setRows] = useState<StatementCandidate[]>([]);
+  const [totalBlocks, setTotalBlocks] = useState<StatementTotalBlock[]>([]);
   const [page, setPage] = useState(1);
   const [pageCount, setPageCount] = useState(0);
   const [view, setView] = useState<'statement' | 'extracted'>('extracted');
@@ -208,6 +219,7 @@ function StatementReviewBody({
     setBusy(false);
     setOcrProgress(null);
     setRows([]);
+    setTotalBlocks([]);
     setError('');
     setDetectedBasis(null);
     setPageCount(0);
@@ -286,6 +298,7 @@ function StatementReviewBody({
       setTo(period.to);
       setDetectedBasis(detected?.basis ?? null);
       setRows(candidates);
+      setTotalBlocks(statementTotalBlocks(lines, bank));
       setSelected(candidates[0]?.id ?? '');
       setPage(candidates[0]?.source[0].page ?? 1);
       setPageCount(opened.pageCount);
@@ -501,8 +514,11 @@ function StatementReviewBody({
     currentRowPage * STATEMENT_ROWS_PER_PAGE,
     (currentRowPage + 1) * STATEMENT_ROWS_PER_PAGE
   );
+  const reconciliation = reconcileStatement(rows, totalBlocks);
+  const selectAllBlocked = reconciliation.status === 'mismatch';
   const eligibleRows = filteredRows.filter(
     (row) =>
+      !isLowConfidenceRow(row) &&
       !save.isRemoved(row.id) &&
       !save.locked(row.id) &&
       save.resolutionFor(row.id) !== 'skip' &&
@@ -902,6 +918,7 @@ function StatementReviewBody({
                 )}
               </section>
             </div>
+            <StatementReconciliationNotice reconciliation={reconciliation} />
             <ImportOutcome
               save={save}
               rowNumber={(key) => rowNumbers.get(key) ?? 0}
@@ -909,7 +926,10 @@ function StatementReviewBody({
             <ImportActionBar
               save={save}
               eligibleCount={Math.min(eligibleRows.length, IMPORT_SAVE_LIMIT)}
-              onSelectAll={() => save.selectExpenses(eligibleRows)}
+              selectAllBlocked={selectAllBlocked}
+              onSelectAll={() =>
+                selectAllBlocked ? undefined : save.selectExpenses(eligibleRows)
+              }
               onNextDuplicate={nextDuplicate}
             />
           </>

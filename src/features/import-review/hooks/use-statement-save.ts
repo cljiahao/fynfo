@@ -21,6 +21,7 @@ import {
   withoutRemoved,
 } from '../lib/import-selection';
 import { withImportDeadline } from '../lib/request-deadline';
+import { isLowConfidenceRow } from '../lib/statement-guards';
 import type {
   DuplicateMatch,
   DuplicateResolution,
@@ -82,6 +83,8 @@ export function useStatementSave(
   const [attempts, setAttempts] = useState<Record<string, Attempt>>({});
   const [selection, setSelection] = useState<string[]>([]);
   const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
+  // Low-confidence OCR rows the user has compared with the statement image.
+  const [confirmed, setConfirmed] = useState<ReadonlySet<string>>(new Set());
   // Input JSON per row at its last successful duplicate check.
   const [checks, setChecks] = useState<Record<string, string>>({});
   const [savedMatches, setSavedMatches] = useState<Record<string, SavedMatch>>(
@@ -215,6 +218,15 @@ export function useStatementSave(
     pending.length === 0 &&
     matched.every(({ row }) => resolutions[row.id] === 'keep');
 
+  function needsConfirmation(row: StatementCandidate) {
+    return isLowConfidenceRow(row) && !confirmed.has(row.id);
+  }
+  function confirmRow(row: StatementCandidate) {
+    if (!privacy.canReveal() || running.current || attemptsRef.current[row.id])
+      return;
+    if (isLowConfidenceRow(row))
+      setConfirmed((current) => new Set(current).add(row.id));
+  }
   function toggle(row: StatementCandidate) {
     if (!privacy.canReveal() || running.current || attemptsRef.current[row.id])
       return;
@@ -222,6 +234,7 @@ export function useStatementSave(
       setSelection(selection.filter((key) => key !== row.id));
       return;
     }
+    if (needsConfirmation(row)) return;
     setSelection([...selection, row.id]);
     if (resolutions[row.id] === 'skip') {
       const next = { ...resolutions };
@@ -236,6 +249,7 @@ export function useStatementSave(
         !removed.has(row.id) &&
         !attemptsRef.current[row.id] &&
         resolutions[row.id] !== 'skip' &&
+        !isLowConfidenceRow(row) &&
         inputFor(row) !== null
     );
     setSelection(eligible.slice(0, IMPORT_SAVE_LIMIT).map((row) => row.id));
@@ -251,6 +265,11 @@ export function useStatementSave(
       const { [row.id]: _dropped, ...rest } = record;
       return rest;
     };
+    setConfirmed((current) => {
+      const next = new Set(current);
+      next.delete(row.id);
+      return next;
+    });
     setResolutions(drop);
     setChecks(drop);
     setSavedMatches(drop);
@@ -552,6 +571,7 @@ export function useStatementSave(
     updateAttempts({});
     setSelection([]);
     setRemoved(new Set());
+    setConfirmed(new Set());
     setChecks({});
     setSavedMatches({});
     setResolutions({});
@@ -613,6 +633,9 @@ export function useStatementSave(
     remove,
     restore,
     isRemoved: (key: string) => removed.has(key),
+    needsConfirmation,
+    isConfirmed: (key: string) => confirmed.has(key),
+    confirmRow,
     removedCount: removed.size,
     selectExpenses,
     clearSelection,

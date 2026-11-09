@@ -154,3 +154,52 @@ it('never references a CDN OCR URL', () => {
   );
   expect(offenders).toEqual([]);
 });
+
+function pageWith(words: number) {
+  return async () => [
+    {
+      words: Array.from({ length: words }, (_, index) =>
+        word('ab', index * 10, 0, index * 10 + 8, 10)
+      ),
+    },
+  ];
+}
+
+const budgetOptions = {
+  pageNumbers: [1],
+  renderPage: async () => ({
+    canvas: stubCanvas(),
+    scale: 1,
+    heightPoints: 100,
+  }),
+  isActive: () => true,
+};
+
+it('rejects OCR output over the item budget with the text limit error', async () => {
+  await expect(
+    ocrStatementPages({
+      ...budgetOptions,
+      recognizer: { recognize: pageWith(4), terminate: vi.fn() },
+      budget: { items: 3, characters: 1000 },
+    })
+  ).rejects.toThrow('Statement text limit');
+});
+
+it('rejects OCR output over the character budget', async () => {
+  await expect(
+    ocrStatementPages({
+      ...budgetOptions,
+      recognizer: { recognize: pageWith(4), terminate: vi.fn() },
+      budget: { items: 100, characters: 7 },
+    })
+  ).rejects.toThrow('Statement text limit');
+});
+
+it('accepts OCR output exactly at the budget', async () => {
+  const pages = await ocrStatementPages({
+    ...budgetOptions,
+    recognizer: { recognize: pageWith(4), terminate: vi.fn() },
+    budget: { items: 4, characters: 8 },
+  });
+  expect(pages[0]).toHaveLength(4);
+});

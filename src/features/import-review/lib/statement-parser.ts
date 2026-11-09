@@ -12,6 +12,7 @@ import type {
   StatementLine,
   StatementLineBox,
   StatementPeriod,
+  StatementTotalBlock,
 } from '../types';
 import { getStatementLayout } from './statement-layouts';
 import {
@@ -41,15 +42,28 @@ export function positionedStatementLines(
   items: PositionedStatementText[],
   page: number
 ): StatementLine[] {
-  return groupPositionedText(items).map((line, index) => ({
-    page,
-    line: index + 1,
-    text: line.items
-      .sort((left, right) => left.x - right.x)
-      .map((item) => item.text)
-      .join(' ')
-      .trim(),
-  }));
+  return groupPositionedText(items).map((line, index) => {
+    const confidences = line.items.flatMap((item) =>
+      typeof item.confidence === 'number' ? [item.confidence] : []
+    );
+    return {
+      page,
+      line: index + 1,
+      text: line.items
+        .sort((left, right) => left.x - right.x)
+        .map((item) => item.text)
+        .join(' ')
+        .trim(),
+      ...(confidences.length ? { confidence: Math.min(...confidences) } : {}),
+    };
+  });
+}
+
+function minConfidence(source: StatementLine[]): number | undefined {
+  const values = source.flatMap((line) =>
+    typeof line.confidence === 'number' ? [line.confidence] : []
+  );
+  return values.length ? Math.min(...values) : undefined;
 }
 
 /** Baseline and text height per line, indexed like positionedStatementLines. */
@@ -308,6 +322,8 @@ function qualifyRow(
       );
     if (!description) row.issues.push('Description is missing.');
   }
+  const confidence = minConfidence(source);
+  if (confidence !== undefined) row.confidence = confidence;
   row.status = getStatementReview(row, period).status;
   return row;
 }
@@ -386,4 +402,20 @@ export function parseStatementLines(
     } else seen.set(key, row);
   }
   return rows;
+}
+
+/** Statement totals exposed by the bank's layout, keyed to row ids. Empty when
+ * the layout has no total to check against. */
+export function statementTotalBlocks(
+  lines: StatementLine[],
+  bank: StatementBank
+): StatementTotalBlock[] {
+  const layout = getStatementLayout(bank);
+  if (!layout?.blockTotals) return [];
+  return layout
+    .blockTotals(lines, layout.detect(lines))
+    .map(({ totalCents, rowStarts }) => ({
+      totalCents,
+      rowIds: rowStarts.map((line) => `${line.page}:${line.line}`),
+    }));
 }

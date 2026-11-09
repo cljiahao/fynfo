@@ -54,6 +54,9 @@ export const OCR_DEADLINE_MS = 120_000;
 /** Fewer text items than this across the whole PDF means there is no usable
  * text layer, so the pages are read by OCR instead. */
 export const OCR_MIN_TEXT_ITEMS = 5;
+/** OCR rows below this confidence must be checked against the statement image
+ * and confirmed one by one before they can be imported. */
+export const OCR_CONFIDENCE_THRESHOLD = 80;
 /** Render scale for OCR: about 300 dpi, before the pixel cap is applied. */
 export const OCR_RENDER_SCALE = 300 / 72;
 export const STATEMENT_MONTHS = [

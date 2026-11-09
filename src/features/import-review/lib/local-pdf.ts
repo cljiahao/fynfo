@@ -200,6 +200,10 @@ export async function openLocalStatementPdf(
                 },
                 isActive: () => active,
                 onProgress,
+                budget: {
+                  items: STATEMENT_LIMITS.textItems - itemCount,
+                  characters: STATEMENT_LIMITS.characters - characters,
+                },
                 async renderPage(pageNumber) {
                   const page = await pdf.getPage(pageNumber);
                   const base = page.getViewport({ scale: 1 });
@@ -223,7 +227,8 @@ export async function openLocalStatementPdf(
               });
             } finally {
               terminateOcr = undefined;
-              await recognizer.terminate().catch(() => undefined);
+              // Not awaited: a terminate that hangs must not hang extract.
+              void recognizer.terminate().catch(() => undefined);
             }
           }
           if (!active) throw new Error('Cancelled');

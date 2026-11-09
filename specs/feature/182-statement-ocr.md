@@ -282,6 +282,45 @@ exactly. Alternatives considered:
    synthetic fixtures; update spec 181's HSBC section and
    `statement-variants.json`; mark shipped.
 
+## Implementation notes
+
+### Slice 2: accuracy guards
+
+- **Scope of the guards**: confidence flags and total reconciliation apply to
+  OCR-sourced rows only. A row is OCR-sourced when its lines carry a confidence;
+  text-PDF rows never do, so their review looks and behaves as before. The
+  existing DBS, Citi, UOB and PayLah layouts are not opted into totals; they
+  show the "Total not checked" note on a scan and change nothing on a text PDF.
+  The HSBC layout in slice 3 supplies its total through the hook below.
+- **Confidence**: a row's confidence is the minimum word confidence across the
+  lines that make up the row (date, description and amount words). It is
+  optional on `StatementLine` and `StatementCandidate`. The threshold is
+  `OCR_CONFIDENCE_THRESHOLD` (80): 79 is flagged, 80 is not. Confidence never
+  changes `qualifyRow` status, so OCR cannot loosen validation.
+- **Confirm flow**: a flagged row shows "Check against statement", starts
+  unticked, is skipped by select all, and its checkbox stays disabled until the
+  user presses "Confirm row matches statement". The existing "Compare source"
+  zoom and highlight view is reused. The confirmation is in memory only and is
+  cleared on remove and reset. Confidence is stripped before the import payload,
+  since `importedExpenseSchema.source` is strict.
+- **Layout hook**: `StatementLayout.blockTotals?(lines, claimedPages)` returns
+  `{ totalCents, rowStarts }[]`, the printed total of each block and the first
+  line of each row it covers. It is optional; a layout without it reports
+  nothing to compare.
+- **Reconciliation**: computed live from the current rows, so correcting an
+  amount re-evaluates it. Equal sums show nothing. A difference shows a warning
+  with the statement total, rows total and difference (hidden when amounts are
+  hidden) and disables select all, leaving per-row selection. No total shows
+  "Total not checked". A row with no amount counts as zero, so an unreadable row
+  surfaces as a mismatch.
+- **Carried over from slice 1**: OCR output is capped by the share of
+  `STATEMENT_LIMITS.textItems` and `characters` that the text layer has not used,
+  failing with the existing `Statement text limit` error. The OCR engine's
+  `terminate()` runs in `finally` as `void ... .catch(...)`, so a hung shutdown
+  cannot hang extraction.
+- **Tests**: the OCR engine is never run in vitest; tests use the injected
+  recogniser stub and the existing `ocrStatementPages` and `local-pdf` mocks.
+
 ## Open questions
 
 - [x] Q: Approve the three named packages as the dependency set? — Owner:
