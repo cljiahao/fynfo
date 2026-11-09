@@ -134,7 +134,17 @@ try {
     );
     for (const block of data.blocks ?? [])
       for (const paragraph of block.paragraphs)
-        for (const line of paragraph.lines)
+        for (const line of paragraph.lines) {
+          // One baseline per line (median word bottom), matching the app's
+          // mapper so the dump shows the same grouping.
+          const bottoms = line.words
+            .map((word) => word.bbox.y1)
+            .sort((a, b) => a - b);
+          const mid = Math.floor(bottoms.length / 2);
+          const baselinePx =
+            bottoms.length % 2
+              ? bottoms[mid]
+              : (bottoms[mid - 1] + bottoms[mid]) / 2;
           for (const word of line.words) {
             const b = word.bbox;
             const row = [
@@ -144,11 +154,12 @@ try {
               b.x1,
               b.y1,
               (b.x0 * sx).toFixed(1),
-              (heightPoints - b.y1 * sy).toFixed(1),
+              (heightPoints - baselinePx * sy).toFixed(1),
               word.confidence.toFixed(0),
             ];
             process.stdout.write(`${row.join('\t')}\n`);
           }
+        }
     page.cleanup();
   }
 } finally {

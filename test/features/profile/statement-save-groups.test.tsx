@@ -249,3 +249,25 @@ it('marks only the edited row stale and rechecks just that row', async () => {
   expect(api.read).toHaveBeenCalledTimes(2);
   client.clear();
 });
+it.each([
+  ['rate_limited', 'Not saved: too many imports, retry'],
+  ['unavailable', 'Not saved: import unavailable, retry'],
+] as const)(
+  'labels rows refused as %s not_saved, retryable and never unconfirmed',
+  async (reason, text) => {
+    api.save.mockImplementationOnce(async (inputs: ImportedExpenseInput[]) =>
+      inputs.map(({ id }) => ({ id, status: 'not_saved', reason }))
+    );
+    const { result, client } = fixture(3);
+    await act(() => result.current.compare());
+    await act(() => result.current.save());
+    expect(
+      Object.values(result.current.attempts).map((attempt) => attempt.status)
+    ).toEqual(['not_saved', 'not_saved', 'not_saved']);
+    expect(result.current.message).toContain(text);
+    const [key] = Object.keys(result.current.attempts);
+    await act(() => result.current.retry(key));
+    expect(result.current.attempts[key].status).toBe('confirmed');
+    client.clear();
+  }
+);

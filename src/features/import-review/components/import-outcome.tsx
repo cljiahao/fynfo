@@ -27,9 +27,16 @@ export function ImportOutcome({
   const confirmed = entries.filter(
     ([, attempt]) => attempt.status === 'confirmed'
   );
+  function outcomeLabel(attempt: Attempt) {
+    if (attempt.status === 'not_saved' && attempt.reason === 'rate_limited')
+      return 'Not saved: too many imports, retry';
+    if (attempt.status === 'not_saved' && attempt.reason === 'unavailable')
+      return 'Not saved: import unavailable, retry';
+    return IMPORT_OUTCOME_LABELS[attempt.status];
+  }
   function label(key: string, attempt: Attempt) {
     const source = attempt.input.source[0];
-    return `Row #${rowNumber(key)} · page ${source.page}, line ${source.line} · ${attempt.input.description} · SGD ${(attempt.input.cents / 100).toFixed(2)}: ${IMPORT_OUTCOME_LABELS[attempt.status]}`;
+    return `Row #${rowNumber(key)} · page ${source.page}, line ${source.line} · ${attempt.input.description} · SGD ${(attempt.input.cents / 100).toFixed(2)}: ${outcomeLabel(attempt)}`;
   }
   return (
     <section

@@ -34,6 +34,17 @@ type Attempt = {
   status: ImportExpenseOutcome['status'] | 'not_started' | 'pending';
   reason?: ImportExpenseOutcome['reason'];
 };
+function notSavedMessage(
+  reasons: (ImportExpenseOutcome['reason'] | undefined)[]
+): string {
+  if (reasons.includes('rate_limited'))
+    return 'Not saved: too many imports, retry in a minute.';
+  if (reasons.includes('unavailable'))
+    return 'Not saved: import unavailable, retry.';
+  if (reasons.includes('access'))
+    return 'Saving was blocked. Check that you are signed in and your vault is unlocked, then retry the same expenses.';
+  return 'This group was not saved. Retry the same expenses, or cancel rejected attempts to correct their details.';
+}
 type SavedMatch = Extract<DuplicateMatch, { kind: 'saved' }>;
 export type ImportActivity = 'check' | 'save' | 'verify';
 type SaveRun = { keys: string[]; group: number; groups: number };
@@ -439,11 +450,7 @@ export function useStatementSave(
           break;
         }
         if (group.some(([key]) => next[key].status === 'not_saved')) {
-          setMessage(
-            group.some(([key]) => next[key].reason === 'access')
-              ? 'Saving was blocked. Check that you are signed in and your vault is unlocked, then retry the same expenses.'
-              : 'This group was not saved. Retry the same expenses, or cancel rejected attempts to correct their details.'
-          );
+          setMessage(notSavedMessage(group.map(([key]) => next[key].reason)));
           break;
         }
       }

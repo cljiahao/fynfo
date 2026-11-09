@@ -13,7 +13,8 @@ import type {
   StatementLine,
   StatementLineBox,
 } from '../types';
-import { needsOcr } from './statement-ocr-items';
+import type { OcrRecognizer } from './statement-ocr';
+import { countTextItems, needsOcr } from './statement-ocr-items';
 import {
   positionedStatementLineBoxes,
   positionedStatementLines,
@@ -84,9 +85,18 @@ export async function openLocalStatementPdf(
   let terminateOcr: (() => Promise<void>) | undefined;
   let active = true;
   let renderGeneration = 0;
+  let stopOcr: () => void = () => undefined;
+  // tesseract.js never settles a pending recognize() once its worker is
+  // terminated, so OCR work races this promise to fail promptly on destroy or
+  // deadline.
+  const cancelled = new Promise<never>((_, reject) => {
+    stopOcr = () => reject(new Error('Cancelled'));
+  });
+  cancelled.catch(() => undefined);
   function destroy() {
     if (!active) return;
     active = false;
+    stopOcr();
     renderGeneration++;
     renderTask?.cancel();
     void terminateOcr?.().catch(() => undefined);
@@ -158,42 +168,59 @@ export async function openLocalStatementPdf(
             pageItems.push(items);
             page.cleanup();
           }
-          if (needsOcr(itemCount)) {
+          const ocrPages = pageItems.flatMap((items, index) =>
+            needsOcr(countTextItems(items)) ? [index + 1] : []
+          );
+          if (ocrPages.length) {
             clearTimeout(deadline);
             deadline = setTimeout(destroy, OCR_DEADLINE_MS);
-            const { loadTesseractRecognizer, ocrStatementPages } =
-              await import('./statement-ocr');
-            const recognizer = await loadTesseractRecognizer();
-            terminateOcr = () => recognizer.terminate();
-            if (!active) throw new Error('Cancelled');
+            const engine = import('./statement-ocr').then((module) =>
+              module.loadTesseractRecognizer()
+            );
+            let recognizer: OcrRecognizer;
             try {
-              pageItems.splice(
-                0,
-                pageItems.length,
-                ...(await ocrStatementPages({
-                  pageCount: pdf.numPages,
-                  recognizer,
-                  isActive: () => active,
-                  onProgress,
-                  async renderPage(pageNumber) {
-                    const page = await pdf.getPage(pageNumber);
-                    const base = page.getViewport({ scale: 1 });
-                    const scale = renderScale(base, OCR_RENDER_SCALE);
-                    const viewport = page.getViewport({ scale });
-                    const canvas = globalThis.document.createElement('canvas');
-                    canvas.width = Math.floor(viewport.width);
-                    canvas.height = Math.floor(viewport.height);
-                    renderTask = page.render({
-                      canvas,
-                      viewport,
-                      annotationMode: pdfjs.AnnotationMode.DISABLE,
-                    });
-                    await renderTask.promise;
-                    page.cleanup();
-                    return { canvas, scale, heightPoints: base.height };
-                  },
-                }))
-              );
+              recognizer = await Promise.race([engine, cancelled]);
+            } catch (error) {
+              // The engine may still finish loading after a cancel; never leak it.
+              void engine
+                .then((late) => late.terminate())
+                .catch(() => undefined);
+              throw error;
+            }
+            terminateOcr = () => recognizer.terminate();
+            try {
+              if (!active) throw new Error('Cancelled');
+              const { ocrStatementPages } = await import('./statement-ocr');
+              const results = await ocrStatementPages({
+                pageNumbers: ocrPages,
+                recognizer: {
+                  recognize: (image) =>
+                    Promise.race([recognizer.recognize(image), cancelled]),
+                  terminate: () => recognizer.terminate(),
+                },
+                isActive: () => active,
+                onProgress,
+                async renderPage(pageNumber) {
+                  const page = await pdf.getPage(pageNumber);
+                  const base = page.getViewport({ scale: 1 });
+                  const scale = renderScale(base, OCR_RENDER_SCALE);
+                  const viewport = page.getViewport({ scale });
+                  const canvas = globalThis.document.createElement('canvas');
+                  canvas.width = Math.floor(viewport.width);
+                  canvas.height = Math.floor(viewport.height);
+                  renderTask = page.render({
+                    canvas,
+                    viewport,
+                    annotationMode: pdfjs.AnnotationMode.DISABLE,
+                  });
+                  await renderTask.promise;
+                  page.cleanup();
+                  return { canvas, scale, heightPoints: base.height };
+                },
+              });
+              ocrPages.forEach((pageNumber, index) => {
+                pageItems[pageNumber - 1] = results[index];
+              });
             } finally {
               terminateOcr = undefined;
               await recognizer.terminate().catch(() => undefined);

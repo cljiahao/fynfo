@@ -93,7 +93,7 @@ export const importedExpenseSchema = importedExpenseBaseSchema
 export type ImportExpenseOutcome = {
   id: string;
   status: 'confirmed' | 'not_saved' | 'unconfirmed' | 'conflict';
-  reason?: 'access' | 'rejected';
+  reason?: 'access' | 'rejected' | 'rate_limited' | 'unavailable';
 };
 
 export function buildImportNote(value: ImportedExpenseInput): string {

@@ -3,7 +3,6 @@
 import { consumeRateLimit } from '@/integrations/services/security-rpc';
 import { requireActionContext } from '@/lib/action-guard';
 import { encryptPayload } from '@/lib/crypto';
-import { AppError } from '@/lib/errors/app-error';
 import { logger } from '@/lib/logger';
 import { withDeadline } from '@/lib/with-deadline';
 import { randomUUID } from 'crypto';
@@ -22,14 +21,15 @@ import {
 import { sameExpenseValues } from '../lib/reuse-draft';
 import { getExpenses } from './expense-actions';
 
-const IMPORT_RATE_LIMIT_MAX = 10;
+const IMPORT_RATE_LIMIT_MAX = 30;
 const IMPORT_RATE_LIMIT_WINDOW_SECONDS = 60;
 
 /** Fails closed: an unavailable limiter refuses the save like an exhausted one. */
-async function enforceImportRateLimit(userId: string): Promise<void> {
-  let allowed: boolean;
+async function importRateLimitRefusal(
+  userId: string
+): Promise<'rate_limited' | 'unavailable' | null> {
   try {
-    allowed = await withDeadline(
+    const allowed = await withDeadline(
       consumeRateLimit(
         `statement_import:${userId}`,
         IMPORT_RATE_LIMIT_MAX,
@@ -37,12 +37,11 @@ async function enforceImportRateLimit(userId: string): Promise<void> {
       ),
       IMPORT_SERVER_STEP_TIMEOUT_MS
     );
+    return allowed ? null : 'rate_limited';
   } catch {
     logger.error('statement import rate limiter unavailable');
-    throw new AppError('INTERNAL', 'Import is unavailable. Try again later.');
+    return 'unavailable';
   }
-  if (!allowed)
-    throw new AppError('RATE_LIMITED', 'Too many imports. Try again later.');
 }
 
 /** Insert-only: unknown outcomes never overwrite a subsequently edited expense. */
@@ -120,7 +119,13 @@ export async function insertImportedExpenses(
       requireActionContext(),
       IMPORT_SERVER_STEP_TIMEOUT_MS
     );
-    await enforceImportRateLimit(userId);
+    const refusal = await importRateLimitRefusal(userId);
+    if (refusal)
+      return values.map(({ id }) => ({
+        id,
+        status: 'not_saved',
+        reason: refusal,
+      }));
     const records = await Promise.all(
       values.map(async (value) => {
         const [item, info, amount] = await Promise.all([
@@ -193,9 +198,7 @@ export async function insertImportedExpenses(
         ? { id, status: 'not_saved', reason: 'rejected' }
         : { id, status: 'unconfirmed' }
     );
-  } catch (error) {
-    // Refusals are not outcomes: the caller must see that nothing was attempted.
-    if (error instanceof AppError) throw error;
+  } catch {
     return values.map(({ id }) =>
       sent
         ? { id, status: 'unconfirmed' }

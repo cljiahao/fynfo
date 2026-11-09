@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
-import { STATEMENT_LIMITS } from '@/features/import-review/constants';
+import {
+  OCR_DEADLINE_MS,
+  OCR_MIN_TEXT_ITEMS,
+  STATEMENT_LIMITS,
+} from '@/features/import-review/constants';
 import { openLocalStatementPdf } from '@/features/import-review/lib/local-pdf';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
@@ -46,6 +50,8 @@ beforeEach(() => {
         { str: 'UOB', transform: [1, 0, 0, 1, 10, 200] },
         { str: 'SGD 2.00', transform: [1, 0, 0, 1, 100, 200] },
         { str: 'ref', transform: [1, 0, 0, 1, 200, 200] },
+        { str: 'r2', transform: [1, 0, 0, 1, 300, 200] },
+        { str: 'r3', transform: [1, 0, 0, 1, 400, 200] },
       ],
     })),
     cleanup: vi.fn(),
@@ -80,8 +86,8 @@ it('uses local bytes/resources and disables annotations while extracting positio
     })
   );
   expect(await session.extract()).toEqual([
-    { page: 1, line: 1, text: 'UOB SGD 2.00 ref' },
-    { page: 2, line: 1, text: 'UOB SGD 2.00 ref' },
+    { page: 1, line: 1, text: 'UOB SGD 2.00 ref r2 r3' },
+    { page: 2, line: 1, text: 'UOB SGD 2.00 ref r2 r3' },
   ]);
   const canvas = globalThis.document.createElement('canvas');
   await session.render(1, canvas);
@@ -210,6 +216,9 @@ it('renders at a requested width within limits and paints a highlight band over 
     items: [
       { str: 'HEADER', transform: [1, 0, 0, 1, 10, 700], height: 10 },
       { str: 'p1', transform: [1, 0, 0, 1, 200, 700], height: 10 },
+      { str: 'p2', transform: [1, 0, 0, 1, 300, 700], height: 10 },
+      { str: 'p3', transform: [1, 0, 0, 1, 400, 700], height: 10 },
+      { str: 'p4', transform: [1, 0, 0, 1, 500, 700], height: 10 },
       { str: '01 OCT SHOP 2.00', transform: [1, 0, 0, 1, 10, 400], height: 10 },
     ],
   });
@@ -294,7 +303,7 @@ it('reads image-only pages through OCR with a longer deadline and releases the e
     { page: 2, line: 1, text: 'Page2' },
   ]);
   expect(mocks.ocrPages).toHaveBeenCalledWith(
-    expect.objectContaining({ pageCount: 2, recognizer, onProgress })
+    expect.objectContaining({ pageNumbers: [1, 2], onProgress })
   );
   expect(recognizer.terminate).toHaveBeenCalledTimes(1);
   session.destroy();
@@ -307,4 +316,134 @@ it('skips OCR when the text layer has enough items', async () => {
   await session.extract();
   expect(mocks.loadRecognizer).not.toHaveBeenCalled();
   session.destroy();
+});
+
+const textItems = (count: number) => ({
+  items: Array.from({ length: count }, (_, index) => ({
+    str: `t${index}`,
+    transform: [1, 0, 0, 1, 10 * index, 200],
+  })),
+});
+async function openSession() {
+  return openLocalStatementPdf(
+    new ArrayBuffer(4),
+    new AbortController().signal
+  );
+}
+function stalledOcr() {
+  const recognizer = {
+    recognize: vi.fn(() => new Promise<never>(() => {})),
+    terminate: vi.fn(async () => {}),
+  };
+  mocks.loadRecognizer.mockResolvedValue(recognizer);
+  mocks.ocrPages.mockImplementation(
+    async ({
+      recognizer: wrapped,
+    }: {
+      recognizer: { recognize(image: unknown): Promise<unknown> };
+    }) => {
+      await wrapped.recognize({});
+      return [];
+    }
+  );
+  return recognizer;
+}
+
+it('reads only the pages whose text layer is sparse', async () => {
+  page.getTextContent
+    .mockResolvedValueOnce(textItems(OCR_MIN_TEXT_ITEMS))
+    .mockResolvedValueOnce(textItems(0));
+  mocks.loadRecognizer.mockResolvedValue({
+    recognize: vi.fn(),
+    terminate: vi.fn(async () => {}),
+  });
+  mocks.ocrPages.mockResolvedValue([
+    [{ text: 'scanned', x: 10, y: 700, height: 10 }],
+  ]);
+  const session = await openSession();
+  const lines = await session.extract();
+  expect(mocks.ocrPages).toHaveBeenCalledWith(
+    expect.objectContaining({ pageNumbers: [2] })
+  );
+  expect(lines.filter((line) => line.page === 1)).toHaveLength(1);
+  expect(lines.find((line) => line.page === 2)?.text).toBe('scanned');
+  session.destroy();
+});
+
+it('still reads a multi-page scan that keeps a one-item footer on each page', async () => {
+  page.getTextContent.mockResolvedValue(textItems(1));
+  mocks.loadRecognizer.mockResolvedValue({
+    recognize: vi.fn(),
+    terminate: vi.fn(async () => {}),
+  });
+  mocks.ocrPages.mockResolvedValue([[], []]);
+  const session = await openSession();
+  await session.extract();
+  expect(mocks.ocrPages).toHaveBeenCalledWith(
+    expect.objectContaining({ pageNumbers: [1, 2] })
+  );
+  session.destroy();
+});
+
+it('does not count whitespace-only items as page text', async () => {
+  page.getTextContent.mockResolvedValue({
+    items: Array.from({ length: 8 }, () => ({
+      str: ' ',
+      transform: [1, 0, 0, 1, 0, 0],
+    })),
+  });
+  mocks.loadRecognizer.mockResolvedValue({
+    recognize: vi.fn(),
+    terminate: vi.fn(async () => {}),
+  });
+  mocks.ocrPages.mockResolvedValue([[], []]);
+  const session = await openSession();
+  await session.extract();
+  expect(mocks.loadRecognizer).toHaveBeenCalledTimes(1);
+  session.destroy();
+});
+
+it('rejects and terminates the engine when destroyed while recognising', async () => {
+  page.getTextContent.mockResolvedValue({ items: [] });
+  const recognizer = stalledOcr();
+  const session = await openSession();
+  const extracting = session.extract();
+  const outcome = expect(extracting).rejects.toThrow('Cancelled');
+  await vi.waitFor(() => expect(recognizer.recognize).toHaveBeenCalled());
+  session.destroy();
+  await outcome;
+  expect(recognizer.terminate).toHaveBeenCalled();
+});
+
+it('rejects and terminates the engine when the OCR deadline fires', async () => {
+  vi.useFakeTimers();
+  page.getTextContent.mockResolvedValue({ items: [] });
+  const recognizer = stalledOcr();
+  const session = await openSession();
+  const extracting = session.extract();
+  const outcome = expect(extracting).rejects.toThrow('Cancelled');
+  await vi.advanceTimersByTimeAsync(OCR_DEADLINE_MS + 1);
+  await outcome;
+  expect(recognizer.terminate).toHaveBeenCalled();
+});
+
+it('terminates an engine that finishes loading after destroy', async () => {
+  page.getTextContent.mockResolvedValue({ items: [] });
+  let finishLoad!: (value: unknown) => void;
+  mocks.loadRecognizer.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finishLoad = resolve;
+      })
+  );
+  const recognizer = { recognize: vi.fn(), terminate: vi.fn(async () => {}) };
+  const session = await openSession();
+  const extracting = session.extract();
+  const outcome = expect(extracting).rejects.toThrow('Cancelled');
+  await vi.waitFor(() => expect(mocks.loadRecognizer).toHaveBeenCalled());
+  session.destroy();
+  await outcome;
+  finishLoad(recognizer);
+  await vi.waitFor(() => expect(recognizer.terminate).toHaveBeenCalledTimes(1));
+  expect(mocks.ocrPages).not.toHaveBeenCalled();
 });

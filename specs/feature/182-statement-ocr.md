@@ -144,17 +144,26 @@ OCR will misread digits, so wrong numbers must not save silently.
 `insertImportedExpenses` in
 `src/features/expenses/actions/import-expense-actions.ts` is the server action
 that persists imported statement rows. Checked on `origin/main`: it has no rate
-limit today. This spec adds one, per user: 10 calls per 60 seconds, key
+limit today. This spec adds one, per user: 30 calls per 60 seconds (amended
+2026-11-10, was 10), key
 `statement_import:<userId>`, using `consumeRateLimit` from
 `src/integrations/services/security-rpc.ts` (the limiter `src/app/api/vault/route.ts`
 uses for vault reset). The check runs after `requireUserId()` and
-`getVaultDekSession()` and before any DB access. Over the limit it throws
-`AppError('RATE_LIMITED', ...)` with an opaque message (`AGENTS.md` §4, no
-Postgres or limiter detail); a limiter outage is logged server-side and also
-refused (fail closed), as in the vault route. Constitution: `§2.3` guard order,
+`getVaultDekSession()` and before any DB access. Over the limit the action does
+not throw: it returns a per-row outcome `not_saved` with reason `rate_limited`
+for every row, and the client shows "Not saved: too many imports, retry" while
+keeping each row retryable. A limiter outage or timeout is logged server-side
+and refused the same way (fail closed, nothing written) with reason
+`unavailable` ("Not saved: import unavailable, retry"). No Postgres or limiter
+detail reaches the client (`AGENTS.md` §4). Constitution: `§2.3` guard order,
 `§5.1` (the same abuse protection as the vault PIN/DEK surface); `CONSTITUTION.md`
 has no dedicated rate-limit section, so no other section is cited. Raising the
 cap later needs a spec amendment.
+
+Amendment note (2026-11-10, owner decision): the limit is 30 calls per 60
+seconds per user, and a refused call returns `not_saved` rows with a retry
+message instead of throwing, so a refused group is never shown as
+`unconfirmed`. The approval status is unchanged.
 
 ### HSBC layout
 
@@ -188,8 +197,10 @@ ever extractable. This is a deliberate implementation step, not a guess here:
   keeps it out of the test graph). A manual run on the owner's real statement
   covers the real engine.
 - Rate limit (regression test): `insertImportedExpenses` calls the limiter, a
-  call over the limit returns the opaque error and performs no insert, and a
-  limiter failure fails closed. The limiter is stubbed.
+  call over the limit returns `not_saved`/`rate_limited` rows and performs no
+  insert, and a limiter error or timeout returns `not_saved`/`unavailable`
+  (fail closed). The limiter is stubbed. A hook test checks a refused row is
+  labelled `not_saved`, not `unconfirmed`, and stays retryable.
 - A test that no source file references a CDN OCR URL (jsDelivr, tessdata
   hosts), and that the copy script lists the expected `public/ocr/` files.
 
@@ -229,8 +240,9 @@ exactly. Alternatives considered:
 - [ ] `pnpm test:ci` green; new tests cover the coordinate mapper, confidence
       flagging, reconciliation, detection threshold, the injected-stub OCR path
       and the import rate limit
-- [ ] `insertImportedExpenses` is limited to 10 calls per minute per user via
-      `consumeRateLimit`; over-limit returns an opaque error (regression test)
+- [ ] `insertImportedExpenses` is limited to 30 calls per minute per user via
+      `consumeRateLimit` (owner approved 2026-11-10); over-limit returns
+      `not_saved` rows with a retry message, no DB write (regression test)
 - [ ] OCR deadline is 120 s; text PDFs still use 45 s
 - [ ] The dump script prints to stdout only; no real statement output in the diff
 - [ ] `pnpm build` green; `public/ocr/` is generated and gitignored

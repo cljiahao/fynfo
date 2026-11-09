@@ -1,8 +1,9 @@
 import { OCR_MIN_TEXT_ITEMS } from '@/features/import-review/constants';
 import { ocrStatementPages } from '@/features/import-review/lib/statement-ocr';
 import {
+  countTextItems,
   needsOcr,
-  ocrWordsToItems,
+  ocrLinesToItems,
 } from '@/features/import-review/lib/statement-ocr-items';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -30,29 +31,66 @@ it('routes sparse text layers to OCR only below the threshold', () => {
   expect(needsOcr(OCR_MIN_TEXT_ITEMS)).toBe(false);
 });
 
+it('counts only items with visible text', () => {
+  expect(
+    countTextItems([
+      { text: 'a' },
+      { text: '  ' },
+      { text: '' },
+      { text: 'b ' },
+    ])
+  ).toBe(2);
+});
+
 it('converts canvas pixels to PDF points and keeps confidence', () => {
-  expect(ocrWordsToItems([word(' SGD ', 200, 100, 300, 140)], 2, 800)).toEqual([
-    { text: 'SGD', x: 100, y: 730, height: 20, confidence: 91 },
+  expect(
+    ocrLinesToItems([{ words: [word(' SGD ', 200, 100, 300, 140)] }], 2, 800)
+  ).toEqual([{ text: 'SGD', x: 100, y: 730, height: 20, confidence: 91 }]);
+});
+
+it('gives every word on a recognised line one baseline despite descenders', () => {
+  const line = {
+    words: [
+      word('01', 0, 100, 40, 140),
+      word('OCT', 60, 100, 120, 140),
+      word('Singapore', 140, 100, 400, 156),
+      word('12.00', 420, 100, 520, 140),
+    ],
+  };
+  const items = ocrLinesToItems([line], 1, 800);
+  expect(new Set(items.map((item) => item.y)).size).toBe(1);
+  expect(items.map((item) => item.text)).toEqual([
+    '01',
+    'OCT',
+    'Singapore',
+    '12.00',
   ]);
+  expect(items[0].y).toBe(660);
 });
 
 it('drops blank and non-finite words and rejects an invalid scale', () => {
-  const words = [word('  ', 0, 0, 1, 1), word('x', Number.NaN, 0, 1, 1)];
-  expect(ocrWordsToItems(words, 2, 800)).toEqual([]);
-  expect(ocrWordsToItems([word('a', 0, 0, 1, 1)], 0, 800)).toEqual([]);
+  const lines = [
+    { words: [word('  ', 0, 0, 1, 1), word('x', Number.NaN, 0, 1, 1)] },
+  ];
+  expect(ocrLinesToItems(lines, 2, 800)).toEqual([]);
+  expect(ocrLinesToItems([{ words: [word('a', 0, 0, 1, 1)] }], 0, 800)).toEqual(
+    []
+  );
 });
 
 function stubCanvas() {
   return { width: 100 } as unknown as HTMLCanvasElement;
 }
 
-it('recognises pages in order, reports progress and releases each canvas', async () => {
+it('recognises only the requested pages, reports progress and releases each canvas', async () => {
   const canvases: HTMLCanvasElement[] = [];
-  const recognize = vi.fn(async () => [word('A', 0, 0, 10, 10)]);
+  const rendered: number[] = [];
+  const recognize = vi.fn(async () => [{ words: [word('A', 0, 0, 10, 10)] }]);
   const onProgress = vi.fn();
   const pages = await ocrStatementPages({
-    pageCount: 2,
-    renderPage: async () => {
+    pageNumbers: [2, 5],
+    renderPage: async (pageNumber) => {
+      rendered.push(pageNumber);
       const canvas = stubCanvas();
       canvases.push(canvas);
       return { canvas, scale: 1, heightPoints: 100 };
@@ -66,6 +104,7 @@ it('recognises pages in order, reports progress and releases each canvas', async
     [1, 2],
     [2, 2],
   ]);
+  expect(rendered).toEqual([2, 5]);
   expect(canvases.map((canvas) => canvas.width)).toEqual([0, 0]);
 });
 
@@ -73,7 +112,7 @@ it('stops when the review is no longer active', async () => {
   const recognize = vi.fn(async () => []);
   await expect(
     ocrStatementPages({
-      pageCount: 3,
+      pageNumbers: [1, 2, 3],
       renderPage: async () => ({
         canvas: stubCanvas(),
         scale: 1,
