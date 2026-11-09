@@ -2,10 +2,10 @@
 id: '182'
 slug: statement-ocr
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-08
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-09 # YYYY-MM-DD, set on approval
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # no PR (direct to main), set on shipped
 supersedes:
@@ -64,8 +64,10 @@ scanned statement fails the same way today.
 After pdf.js text extraction, a document whose total text item count is zero (or
 below a small constant, e.g. fewer than 5 items across all pages) takes the OCR
 path. Text PDFs follow today's code unchanged, including their errors.
-`STATEMENT_LIMITS` (bytes, pages, pixels, deadline) still bound the OCR path;
-the 45 s deadline likely needs an OCR-specific figure (see Open questions).
+`STATEMENT_LIMITS` bytes, pages and pixels still bound the OCR path. Text PDFs
+keep the 45 s `STATEMENT_LIMITS.deadlineMs`; the OCR path uses a separate
+OCR-only deadline of 120 s, held as its own named constant beside
+`STATEMENT_LIMITS`.
 
 ### OCR engine and hosting
 
@@ -122,9 +124,10 @@ prerequisite and lands first.
 OCR will misread digits, so wrong numbers must not save silently.
 
 - Per-row confidence: a row's confidence is the minimum word confidence across
-  its date, description and amount words. Rows below a threshold constant
-  (initially 80, tuned on the owner's statement) are flagged in the review UI as
-  "check against statement" and cannot be bulk-accepted untouched. The existing
+  its date, description and amount words. Rows below a threshold constant of 80
+  are flagged in the review UI as "check against statement". Flagged rows start
+  unticked, are skipped by "select all", and may be imported only after an
+  explicit per-row confirm. The existing
   statement zoom/highlight view (`statement-zoom.ts`) shows the source line, so
   the user compares the image with the parsed value.
 - Reconciliation: where a layout exposes a statement total or sub-total, the sum
@@ -136,19 +139,39 @@ OCR will misread digits, so wrong numbers must not save silently.
   validation (no valid positive SGD billed amount) stay unresolved; OCR never
   lowers validation.
 
+### Import rate limiting
+
+`insertImportedExpenses` in
+`src/features/expenses/actions/import-expense-actions.ts` is the server action
+that persists imported statement rows. Checked on `origin/main`: it has no rate
+limit today. This spec adds one, per user: 10 calls per 60 seconds, key
+`statement_import:<userId>`, using `consumeRateLimit` from
+`src/integrations/services/security-rpc.ts` (the limiter `src/app/api/vault/route.ts`
+uses for vault reset). The check runs after `requireUserId()` and
+`getVaultDekSession()` and before any DB access. Over the limit it throws
+`AppError('RATE_LIMITED', ...)` with an opaque message (`AGENTS.md` §4, no
+Postgres or limiter detail); a limiter outage is logged server-side and also
+refused (fail closed), as in the vault route. Constitution: `§2.3` guard order,
+`§5.1` (the same abuse protection as the vault PIN/DEK surface); `CONSTITUTION.md`
+has no dedicated rate-limit section, so no other section is cited. Raising the
+cap later needs a spec amendment.
+
 ### HSBC layout
 
 No HSBC column positions, header wording or total line are known: no text was
 ever extractable. This is a deliberate implementation step, not a guess here:
 
-1. Slice 1 ships the OCR plumbing with a local-only debug dump (not committed,
-   never sent to the server) of recognised lines and boxes for the owner's real
-   statement.
-2. The owner or a builder inspects that output locally and writes REDACTED
-   layout notes into the HSBC section of spec 181 or this spec: header text,
+1. Slice 1 ships the OCR engine plus a local-only developer script (for example
+   `scripts/ocr-dump.mjs`) that takes a PDF path on the command line and prints
+   OCR word boxes (text, x/y, confidence) to stdout only. It writes no files and
+   makes no network call, and its output is never committed or pasted into the
+   repo. The owner runs it on his real statement.
+2. The owner inspects that output locally and supplies REDACTED layout notes
+   for the HSBC section of spec 181 or this spec: header text,
    column x ranges, date format, credit marker, summary lines, total line. No
    real merchant names, amounts, or card or account numbers are written down.
-3. Slice 3 builds `statement-layouts/hsbc.ts` from those notes. Fixtures are
+3. Slice 3 (the second implementation slice) builds `statement-layouts/hsbc.ts`
+   from those notes. Fixtures are
    synthetic arrays of OCR-shaped items; no real statement, image or screenshot
    enters the repo (§3.2 no PII test data).
 
@@ -164,6 +187,9 @@ ever extractable. This is a deliberate implementation step, not a guess here:
   arrays, and `tesseract.js` is never imported by tests (the dynamic import
   keeps it out of the test graph). A manual run on the owner's real statement
   covers the real engine.
+- Rate limit (regression test): `insertImportedExpenses` calls the limiter, a
+  call over the limit returns the opaque error and performs no insert, and a
+  limiter failure fails closed. The limiter is stubbed.
 - A test that no source file references a CDN OCR URL (jsDelivr, tessdata
   hosts), and that the copy script lists the expected `public/ocr/` files.
 
@@ -201,7 +227,12 @@ exactly. Alternatives considered:
 
 - [ ] `pnpm format:check`, `pnpm lint`, `pnpm typecheck` green
 - [ ] `pnpm test:ci` green; new tests cover the coordinate mapper, confidence
-      flagging, reconciliation, detection threshold and the injected-stub OCR path
+      flagging, reconciliation, detection threshold, the injected-stub OCR path
+      and the import rate limit
+- [ ] `insertImportedExpenses` is limited to 10 calls per minute per user via
+      `consumeRateLimit`; over-limit returns an opaque error (regression test)
+- [ ] OCR deadline is 120 s; text PDFs still use 45 s
+- [ ] The dump script prints to stdout only; no real statement output in the diff
 - [ ] `pnpm build` green; `public/ocr/` is generated and gitignored
 - [ ] Manual: with DevTools Network open, importing a scanned PDF makes no
       request to any origin but the app's own, and importing a text PDF loads
@@ -229,29 +260,32 @@ exactly. Alternatives considered:
 
 1. OCR plumbing: dependencies, asset copy script, `.gitignore`, lazy loader,
    detection, pixel-to-PDF mapper, injected-recogniser tests, progress and error
-   states, CSP verification, local debug dump. Measure and record asset sizes.
-2. Accuracy guards: per-row confidence flags and total reconciliation in the
-   review UI.
+   states, OCR-only 120 s deadline, CSP verification, the local-only OCR dump
+   script (stdout only; real statement output never enters the repo), and the
+   per-user rate limit on `insertImportedExpenses` with its regression test.
+   Measure and record asset sizes.
+2. Accuracy guards: per-row confidence flags (threshold 80, flagged rows
+   unticked, per-row confirm) and total reconciliation in the review UI.
 3. HSBC layout from the redacted notes (blocked until the notes exist), with
    synthetic fixtures; update spec 181's HSBC section and
    `statement-variants.json`; mark shipped.
 
 ## Open questions
 
-- [ ] Q: Approve the three named packages as the dependency set? — Owner:
-      Clarence — A: TBD
-- [ ] Q: English model variant (fast, standard or best): size against digit
+- [x] Q: Approve the three named packages as the dependency set? — Owner:
+      Clarence — A: Yes. Approved 2026-11-09: `tesseract.js` 7.0.0, `tesseract.js-core` 7.0.0 and `@tesseract.js-data/eng` 1.0.0, pinned exactly (`AGENTS.md` §0.4).
+- [x] Q: English model variant (fast, standard or best): size against digit
       accuracy; decided on the owner's real statement in slice 1. — Owner:
-      Clarence — A: TBD
-- [ ] Q: Does `workerBlobURL: false` satisfy the `'strict-dynamic'` CSP, or is a
-      `src/lib/csp.ts` change needed? — Owner: slice 1 builder — A: TBD
-- [ ] Q: HSBC column positions, header wording, credit marker and total line are
+      Clarence — A: Decided in slice 1 on the owner's real statement, by digit accuracy against size.
+- [x] Q: Does `workerBlobURL: false` satisfy the `'strict-dynamic'` CSP, or is a
+      `src/lib/csp.ts` change needed? — Owner: slice 1 builder — A: Resolved by the slice 1 builder, who verifies it and lists any `src/lib/csp.ts` change in the impl PR.
+- [x] Q: HSBC column positions, header wording, credit marker and total line are
       unknown; who inspects the local OCR output and writes the redacted notes?
-      — Owner: Clarence — A: TBD
-- [ ] Q: OCR deadline: 45 s (`STATEMENT_LIMITS.deadlineMs`) may be too short for
+      — Owner: Clarence — A: Slice 1 ships a local-only dev script that prints OCR word boxes (text, x/y, confidence) for a PDF path to stdout. Clarence runs it on his real statement and supplies redacted layout notes; slice 2 writes the HSBC parser and synthetic fixtures from them.
+- [x] Q: OCR deadline: 45 s (`STATEMENT_LIMITS.deadlineMs`) may be too short for
       a multi-page statement on a phone; use a separate OCR limit? — Owner:
-      Clarence — A: TBD
-- [ ] Q: Initial low-confidence threshold (80), and may flagged rows be accepted
-      after an explicit per-row confirm? — Owner: Clarence — A: TBD
-- [ ] Q: Does the HSBC statement print a total or sub-total usable for
-      reconciliation? — Owner: Clarence — A: TBD
+      Clarence — A: Yes. OCR gets its own 120 s limit; text PDFs keep 45 s.
+- [x] Q: Initial low-confidence threshold (80), and may flagged rows be accepted
+      after an explicit per-row confirm? — Owner: Clarence — A: Threshold 80. Flagged rows start unticked and may be imported after an explicit per-row confirm.
+- [x] Q: Does the HSBC statement print a total or sub-total usable for
+      reconciliation? — Owner: Clarence — A: Determined from the redacted notes in slice 2.
