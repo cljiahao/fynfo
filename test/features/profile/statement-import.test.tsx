@@ -189,6 +189,50 @@ const savedMatch = {
   splitType: 'self',
   splits: [],
 };
+it('saves with the detected bank, never auto, after Auto-detect', async () => {
+  mocks.extract.mockResolvedValue(
+    [
+      'DBS TEST CARDS',
+      'DATE DESCRIPTION AMOUNT (S$)',
+      'NEW TRANSACTIONS TEST USER',
+      '20 DEC INVENTED MARKET 12.50',
+    ].map((text, index) => ({ page: 1, line: index + 1, text }))
+  );
+  render(
+    <AmountVisibilityProvider>
+      <StatementReview />
+    </AmountVisibilityProvider>
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Review bank PDF' }));
+  fireEvent.change(screen.getByLabelText('Period start'), {
+    target: { value: '2025-12-15' },
+  });
+  fireEvent.change(screen.getByLabelText('Period end'), {
+    target: { value: '2026-01-14' },
+  });
+  const file = new File(['synthetic'], 'invented.pdf', {
+    type: 'application/pdf',
+  });
+  Object.defineProperty(file, 'arrayBuffer', {
+    value: async () => new ArrayBuffer(4),
+  });
+  fireEvent.change(screen.getByLabelText('Bank statement PDF'), {
+    target: { files: [file] },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Extract for review' }));
+  expect(await screen.findByText('Detected: DBS')).toBeVisible();
+  fireEvent.click(screen.getByLabelText('Select expense from page 1, line 4'));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Check 1 for duplicates' })
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Save 1 expense' })
+  );
+  expect(await screen.findByText('1 expense saved')).toBeVisible();
+  const input = mocks.insert.mock.calls[0][0] as ImportedExpenseInput;
+  expect(input.bank).toBe('dbs');
+  expect(JSON.stringify(input)).not.toContain('auto');
+});
 it('offers one primary action per step and closes on Done after a confirmed save', async () => {
   await setup();
   fireEvent.change(screen.getByLabelText('Item / Brand'), {

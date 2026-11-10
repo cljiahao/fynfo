@@ -289,12 +289,28 @@ function StatementReviewBody({
     } else {
       bank = choice;
     }
-    const candidates = parseStatementLines(stored.lines, bank, stored.period);
+    let candidates: StatementCandidate[];
+    let blocks: StatementTotalBlock[];
+    try {
+      candidates = parseStatementLines(stored.lines, bank, stored.period);
+      blocks = statementTotalBlocks(stored.lines, bank);
+    } catch {
+      // Lines and PDF are kept so another bank can be tried without re-reading.
+      setResolvedBank(null);
+      setBankDetected(false);
+      setRows([]);
+      setTotalBlocks([]);
+      setSelected('');
+      setError(
+        'The selected bank could not be identified in this PDF. Choose a different bank or use Auto-detect.'
+      );
+      return;
+    }
     setError('');
     setResolvedBank(bank);
     setBankDetected(detectedBank);
     setRows(candidates);
-    setTotalBlocks(statementTotalBlocks(stored.lines, bank));
+    setTotalBlocks(blocks);
     setSelected(candidates[0]?.id ?? '');
     setPage(candidates[0]?.source[0].page ?? 1);
     setView('extracted');
@@ -310,18 +326,7 @@ function StatementReviewBody({
     save.reset();
     setRowPage(0);
     setBankChoice(choice);
-    try {
-      presentStatement(stored, choice);
-    } catch {
-      setResolvedBank(null);
-      setBankDetected(false);
-      setRows([]);
-      setTotalBlocks([]);
-      setSelected('');
-      setError(
-        'The selected bank could not be identified in this PDF. Choose a different bank or use Auto-detect.'
-      );
-    }
+    presentStatement(stored, choice);
   }
 
   async function extract() {
@@ -898,10 +903,36 @@ function StatementReviewBody({
               </Button>
             </div>
             {resolvedBank && (
-              <p className="text-muted-foreground shrink-0 text-sm">
-                {bankDetected ? 'Detected' : 'Chosen'}:{' '}
-                {bankLabel(resolvedBank)}
-              </p>
+              <div className="flex shrink-0 items-center gap-2 text-sm">
+                <p className="text-muted-foreground">
+                  {bankDetected ? 'Detected' : 'Chosen'}:{' '}
+                  {bankLabel(resolvedBank)}
+                </p>
+                <label className="sr-only" htmlFor={`${id}-review-bank`}>
+                  Change statement bank
+                </label>
+                <select
+                  id={`${id}-review-bank`}
+                  disabled={hidden || save.busy}
+                  value={bankChoice}
+                  className="border-input bg-background h-8 rounded-md border px-2 text-sm"
+                  onChange={(event) => {
+                    if (!canReveal()) return;
+                    const value = event.target.value;
+                    changeBank(
+                      STATEMENT_BANKS.find((entry) => entry.value === value)
+                        ?.value ?? 'auto'
+                    );
+                  }}
+                >
+                  <option value="auto">Auto-detect</option>
+                  {STATEMENT_BANKS.map((entry) => (
+                    <option key={entry.value} value={entry.value}>
+                      {entry.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
             <div className="grid min-h-0 flex-1 gap-4 overflow-hidden lg:grid-cols-2">
               <section
