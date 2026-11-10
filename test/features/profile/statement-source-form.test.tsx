@@ -7,6 +7,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 
@@ -16,21 +17,24 @@ vi.mock('@/features/privacy', () => ({
 
 afterEach(cleanup);
 
-function setup(overrides: { from?: string; to?: string } = {}) {
+function setup(
+  overrides: { from?: string; to?: string; bank?: 'auto' | 'dbs' } = {}
+) {
   const onExtract = vi.fn();
+  const onBankChange = vi.fn();
   const onPeriodChange = vi.fn();
   const onUsePdfDates = vi.fn();
   const element = (manualPeriod: boolean) => (
     <StatementSourceForm
       controlId="t"
-      bank="dbs"
+      bank={overrides.bank ?? 'dbs'}
       from={overrides.from ?? ''}
       to={overrides.to ?? ''}
       manualPeriod={manualPeriod}
       detectedBasis={null}
       busy={false}
       fileName="a.pdf"
-      onBankChange={vi.fn()}
+      onBankChange={onBankChange}
       onFileChange={vi.fn()}
       onPeriodChange={onPeriodChange}
       onUsePdfDates={onUsePdfDates}
@@ -41,6 +45,7 @@ function setup(overrides: { from?: string; to?: string } = {}) {
   const view = render(element(true));
   return {
     onExtract,
+    onBankChange,
     onPeriodChange,
     onUsePdfDates,
     view,
@@ -128,4 +133,26 @@ it('clears the error after a date change', () => {
   });
   expect(onPeriodChange).toHaveBeenCalledWith('from', '2026-01-01');
   expect(screen.queryByRole('alert')).toBeNull();
+});
+
+it('lists Auto-detect first and selects it when it is the choice', () => {
+  setup({ bank: 'auto' });
+  const select = screen.getByLabelText('Statement bank');
+  expect(select).toHaveValue('auto');
+  expect(within(select).getAllByRole('option')[0]).toHaveTextContent(
+    'Auto-detect'
+  );
+});
+it('reports a picked bank and the auto choice through onBankChange', () => {
+  const { onBankChange } = setup();
+  const select = screen.getByLabelText('Statement bank');
+  fireEvent.change(select, { target: { value: 'hsbc' } });
+  expect(onBankChange).toHaveBeenLastCalledWith('hsbc');
+  fireEvent.change(select, { target: { value: 'auto' } });
+  expect(onBankChange).toHaveBeenLastCalledWith('auto');
+});
+it('shows the current hint copy', () => {
+  setup();
+  expect(screen.getByText(/Leave the bank on Auto-detect/)).toBeVisible();
+  expect(screen.queryByText(/need manual entry/)).not.toBeInTheDocument();
 });

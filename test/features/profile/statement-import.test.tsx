@@ -139,6 +139,9 @@ async function setup(client?: QueryClient) {
     )
   );
   fireEvent.click(screen.getByRole('button', { name: 'Review bank PDF' }));
+  fireEvent.change(screen.getByLabelText('Statement bank'), {
+    target: { value: 'uob' },
+  });
   fireEvent.change(screen.getByLabelText('Period start'), {
     target: { value: '2026-10-01' },
   });
