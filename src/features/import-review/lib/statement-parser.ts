@@ -46,15 +46,26 @@ export function positionedStatementLines(
     const confidences = line.items.flatMap((item) =>
       typeof item.confidence === 'number' ? [item.confidence] : []
     );
+    const sorted = line.items.sort((left, right) => left.x - right.x);
     return {
       page,
       line: index + 1,
-      text: line.items
-        .sort((left, right) => left.x - right.x)
+      text: sorted
         .map((item) => item.text)
         .join(' ')
         .trim(),
-      ...(confidences.length ? { confidence: Math.min(...confidences) } : {}),
+      ...(confidences.length
+        ? {
+            confidence: Math.min(...confidences),
+            words: sorted.map((item) => ({
+              text: item.text,
+              x: item.x,
+              ...(typeof item.confidence === 'number'
+                ? { confidence: item.confidence }
+                : {}),
+            })),
+          }
+        : {}),
     };
   });
 }

@@ -13,6 +13,19 @@ it('returns 404 for a non-admin', async () => {
   await expect(Page()).rejects.toThrow('NEXT_NOT_FOUND');
 });
 
+it('checks admin before rendering the dump component', async () => {
+  const order: string[] = [];
+  gate.requireAdmin.mockImplementation(async () => {
+    order.push('requireAdmin');
+  });
+  const { default: Page } = await import('@/app/dashboard/admin/ocr-dump/page');
+  const element = await Page();
+  order.push('rendered');
+  expect(element).toMatchObject({ type: OcrDump });
+  expect(order).toEqual(['requireAdmin', 'rendered']);
+  expect(gate.requireAdmin).toHaveBeenCalledTimes(1);
+});
+
 it('renders the dump component for an admin', async () => {
   gate.requireAdmin.mockResolvedValue(undefined);
   const { default: Page } = await import('@/app/dashboard/admin/ocr-dump/page');

@@ -344,6 +344,30 @@ exactly. Alternatives considered:
 - **Tests**: the OCR engine is never run in vitest; tests use the injected
   recogniser stub and the existing `ocrStatementPages` and `local-pdf` mocks.
 
+### Slice 3: HSBC layout
+
+- **Layout**: `statement-layouts/hsbc.ts`, registered for `hsbc`. The table
+  header `DATE DATE DESCRIPTION AMOUNT(SGD)` claims every page; rows are read
+  only between that header and the `Total Due` line, so page 2 boilerplate and
+  the address block yield no rows.
+- **Merged columns**: `StatementLine` gains optional positioned `words` for OCR
+  lines. The layout drops words at x >= 385 (the account summary), divider glyph
+  tokens, and splits glued `07Sep` tokens. A row needs two date pairs and a
+  trailing amount at x >= 300; the second pair is the row date.
+- **Credits**: a `CR` suffix is normalised to a separate `CR` word. The credit
+  row's amount stays blank like other credits; reconciliation reads the sign
+  from the source text, so credits reduce the total.
+- **Total**: `Total Due` is exposed through `blockTotals` over every row.
+  Reconciliation counts credit and payment rows (they are in the total), and
+  ignores summary rows.
+- **Confidence**: row confidence is the minimum over table-column words only.
+- **Dropped lines**: country-code continuation lines and non-row lines are
+  dropped, as in the DBS and PayLah layouts.
+- **Year**: `detectStatementPeriod` also accepts a `Statement Date` value line
+  that ends with the date, since the HSBC summary line carries other fields.
+- **Fixtures**: synthetic only, built as positioned items in
+  `test/features/profile/statement-layouts-hsbc.test.ts`.
+
 ## Open questions
 
 - [x] Q: Approve the three named packages as the dependency set? — Owner:

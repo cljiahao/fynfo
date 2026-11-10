@@ -65,9 +65,13 @@ export function detectStatementPeriod(
     );
     if (!label) continue;
     const next = lines[index + 1];
-    const value = (label[2] || (next?.page === line.page ? next.text : ''))
+    const fromNext = !label[2] && next?.page === line.page;
+    let value = (label[2] || (fromNext ? next.text : ''))
       .replace(/\s+/g, ' ')
       .trim();
+    // A value line shared with other summary fields ends with the date.
+    if (fromNext && /date/i.test(label[1]) && !isoDate(value))
+      value = value.match(new RegExp(`(${DATE_TEXT})$`))?.[1] ?? value;
     if (/period/i.test(label[1])) {
       const match = value.match(
         new RegExp(
