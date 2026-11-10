@@ -22,6 +22,7 @@ import {
 import { UndoableDeleteProvider } from '../hooks/use-undoable-delete';
 import { GoalEditorSheet } from './goal-editor-sheet';
 import { GoalList } from './goal-list';
+import { HouseholdPlanSummary } from './household-plan-summary';
 import { HouseholdSetup } from './household-setup';
 import { HouseholdSkeleton } from './household-skeleton';
 import { InvitePanel } from './invite-panel';
@@ -138,6 +139,7 @@ export function HouseholdOverview() {
               )}
               {goals.data && (
                 <>
+                  <HouseholdPlanSummary />
                   {showInvite && <InvitePanel />}
                   {household.data.memberCount === HOUSEHOLD_MEMBER_CAP && (
                     <PlannerSplitEditor />

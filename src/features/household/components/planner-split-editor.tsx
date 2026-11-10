@@ -87,11 +87,32 @@ function SplitForm({ split }: { split: PlannerSplit }) {
   );
 }
 
-/** Edits the default split between the two household members. */
+/**
+ * One line, "You pay 50%", that opens the default-split form on tap so the
+ * page stays quiet until someone wants to change it.
+ */
 export function PlannerSplitEditor() {
   const split = usePlannerSplit();
+  const [open, setOpen] = useState(false);
   if (!split.data) return null;
+  const mine = split.data.members[split.data.userId] ?? 50;
   // Remount on server change so the field follows the saved or partner-edited value.
   const key = JSON.stringify(split.data.members);
-  return <SplitForm key={key} split={split.data} />;
+  return (
+    <div className="space-y-3">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-auto px-0 py-1 font-normal"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        You pay {mine}%
+        <span className="text-muted-foreground ml-2 text-xs">
+          {open ? 'Hide split' : 'Change split'}
+        </span>
+      </Button>
+      {open && <SplitForm key={key} split={split.data} />}
+    </div>
+  );
 }

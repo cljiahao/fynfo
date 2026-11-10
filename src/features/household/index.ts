@@ -18,6 +18,7 @@ export {
   getHousehold,
   unlockHousehold,
 } from './actions/household-actions';
+export { getHouseholdPlanInput } from './actions/plan-actions';
 export {
   getPlannerCommitment,
   getPlannerSplit,
@@ -35,7 +36,11 @@ export {
   GoalDetailSkeleton,
   HouseholdOverview,
 } from './components';
+export { HouseholdRecommendations } from './components/household-recommendations';
+export { HouseholdYearTable } from './components/household-year-table';
+export { useHouseholdPlan } from './hooks/use-household-plan';
 export { usePlannerCommitment } from './hooks/use-planner-commitment';
+export { recommendationSentence } from './lib/household-recommendation-copy';
 export type {
   AcceptInviteResult,
   CreateHouseholdResult,

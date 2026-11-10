@@ -38,6 +38,21 @@ afterEach(() => {
 });
 
 describe('PlannerSplitEditor', () => {
+  it('stays collapsed behind a one-line summary until tapped', async () => {
+    external.getPlannerSplit.mockResolvedValue({
+      members: { [ME]: 60, [PARTNER]: 40 },
+      goalOverrides: {},
+      isDefault: false,
+      userId: ME,
+    });
+    renderEditor();
+    const summary = await screen.findByRole('button', { name: /you pay 60%/i });
+    expect(summary).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByLabelText(/your share/i)).not.toBeInTheDocument();
+    await userEvent.click(summary);
+    expect(screen.getByLabelText(/your share/i)).toHaveValue(60);
+  });
+
   it('shows the default state, the partner notice, and saves the new split', async () => {
     external.getPlannerSplit.mockResolvedValue({
       members: { [ME]: 50, [PARTNER]: 50 },
@@ -47,6 +62,9 @@ describe('PlannerSplitEditor', () => {
     });
     renderEditor();
 
+    await userEvent.click(
+      await screen.findByRole('button', { name: /you pay 50%/i })
+    );
     expect(await screen.findByText(/not set yet/i)).toBeInTheDocument();
     expect(screen.getByText(/your partner sees any change/i)).toBeVisible();
 
@@ -72,6 +90,9 @@ describe('PlannerSplitEditor', () => {
     });
     renderEditor();
 
+    await userEvent.click(
+      await screen.findByRole('button', { name: /you pay 50%/i })
+    );
     const field = await screen.findByLabelText(/your share/i);
     expect(screen.queryByText(/not set yet/i)).not.toBeInTheDocument();
     await userEvent.clear(field);
