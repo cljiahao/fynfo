@@ -7,7 +7,7 @@ import {
   getSpendingBudgets,
   setCategoryBudget,
 } from '../actions/budget-actions';
-import { refreshPlannerCommitment } from './use-planner-commitment';
+import { refreshPlannerCommitment } from './use-household-plan';
 
 export const BUDGETS_KEY = ['household-spending-budgets'] as const;
 

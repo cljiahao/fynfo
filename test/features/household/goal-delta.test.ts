@@ -28,6 +28,7 @@ describe('computeGoalDelta', () => {
       name: 'Frame',
       budget: 100,
       quote: null,
+      dueDate: null,
       paid: 30,
       remaining: 70,
       over: 0,
@@ -47,5 +48,27 @@ describe('computeGoalDelta', () => {
     expect(delta.removed).toBe(1);
     expect(delta.removedWithPayments).toEqual(['Frame']);
     expect(delta.committedNew).toBe(120);
+  });
+
+  it('counts a due-date-only change as changed', () => {
+    const item = {
+      id: 'i1',
+      name: 'Deposit',
+      budget: 100,
+      quote: null,
+      dueDate: '2027-01-15',
+      paid: 0,
+      remaining: 100,
+      over: 0,
+      payments: [],
+    };
+    const goal = makeGoal({ items: [item] });
+    const draft = (dueDate: string | null) => ({
+      target: 1000,
+      items: [{ id: 'i1', name: 'Deposit', budget: 100, quote: null, dueDate }],
+    });
+    expect(computeGoalDelta(goal, draft('2027-02-01')).changed).toBe(1);
+    expect(computeGoalDelta(goal, draft(null)).changed).toBe(1);
+    expect(computeGoalDelta(goal, draft('2027-01-15')).changed).toBe(0);
   });
 });

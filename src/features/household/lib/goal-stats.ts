@@ -38,6 +38,25 @@ export function monthlyPaceNeeded(
   return goal.remaining / months;
 }
 
+/**
+ * What a goal shows for its share of the monthly plan. A goal with a target
+ * date shows its slice (including zero) unless it is funded; one without a
+ * date shows a slice only when the plan schedules something for it. Without a
+ * plan figure (loading, locked, errored) nothing is shown, never a standalone
+ * pace that would disagree with the plan.
+ */
+export function goalPlanShare(
+  goal: Pick<HouseholdGoal, 'targetDate' | 'remaining'>,
+  now: Date,
+  monthly: number | null
+): number | 'past' | null {
+  const dated = monthlyPaceNeeded(goal, now);
+  if (dated === 'past') return 'past';
+  if (monthly === null) return null;
+  if (goal.targetDate) return dated === null ? null : monthly;
+  return monthly > 0 ? monthly : null;
+}
+
 export interface CumulativePoint {
   date: string;
   total: number;

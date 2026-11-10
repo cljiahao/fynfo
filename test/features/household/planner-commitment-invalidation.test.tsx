@@ -11,7 +11,7 @@ import {
   useUpdateGoalContribution,
   useUpdateGoalPayment,
 } from '@/features/household/hooks/use-household';
-import { PLANNER_COMMITMENT_KEY } from '@/features/household/hooks/use-planner-commitment';
+import { PLANNER_COMMITMENT_KEY } from '@/features/household/hooks/use-household-plan';
 import { useSetPlannerSplit } from '@/features/household/hooks/use-planner-split';
 import {
   useDeleteCategoryBudget,
@@ -62,7 +62,6 @@ vi.mock('@/features/household/actions/spending-actions', () => {
 vi.mock('@/features/household/actions/planner-actions', () => {
   const ok = vi.fn().mockResolvedValue(undefined);
   return {
-    getPlannerCommitment: ok,
     getPlannerSplit: ok,
     setPlannerSplit: ok,
   };

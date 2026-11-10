@@ -112,7 +112,7 @@ describe('with items', () => {
     );
     expect(screen.getByText('Contributed')).toBeInTheDocument();
     expect(screen.getByText('Paid')).toBeInTheDocument();
-    expect(screen.getByText('Monthly pace')).toBeInTheDocument();
+    expect(screen.getByText('Share of monthly plan')).toBeInTheDocument();
     expect(screen.getByText('burn-up chart')).toBeInTheDocument();
     expect(screen.getByText(/^You \d+% \/ Partner \d+%$/)).toBeInTheDocument();
     expect(screen.getAllByText('Venue').length).toBeGreaterThan(1);
@@ -217,9 +217,15 @@ describe('with items', () => {
         target: 10000,
         targetDate: '2027-03-01',
         items: [
-          { id: 'i1', name: 'Venue', budget: 8000, quote: null },
-          { id: 'i2', name: 'Photographer', budget: 3000, quote: null },
-          { name: 'Cake', budget: 250.5, quote: 240 },
+          { id: 'i1', name: 'Venue', budget: 8000, quote: null, dueDate: null },
+          {
+            id: 'i2',
+            name: 'Photographer',
+            budget: 3000,
+            quote: null,
+            dueDate: null,
+          },
+          { name: 'Cake', budget: 250.5, quote: 240, dueDate: null },
         ],
       });
       await waitFor(() =>
@@ -419,7 +425,7 @@ describe('amounts hidden', () => {
     expect(container.textContent).not.toMatch(/\d{1,3},\d{3}/);
     expect(container.textContent).not.toContain('Wedding');
     expect(screen.queryByRole('status')).toBeNull();
-    expect(container.textContent).toMatch(/Monthly pace\s*Hidden/);
+    expect(container.textContent).toMatch(/Share of monthly plan\s*Hidden/);
     expect(container.textContent).not.toMatch(/Past target date/);
     expect(screen.getByRole('button', { name: 'Add item' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();

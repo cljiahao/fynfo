@@ -102,9 +102,11 @@ describe('goal completion boundaries', () => {
 function Card({
   goal,
   className,
+  monthly,
 }: {
   goal: HouseholdGoal;
   className?: string;
+  monthly?: number | null;
 }) {
   return (
     <QueryClientProvider client={new QueryClient()}>
@@ -113,6 +115,7 @@ function Card({
         <UndoableDeleteProvider>
           <GoalCard
             goal={goal}
+            monthly={monthly}
             className={className}
             onContribute={vi.fn()}
             onEdit={vi.fn()}
@@ -240,10 +243,51 @@ describe('goal card dates and pace', () => {
   });
 
   it('shows the monthly pace, and masks it when amounts are hidden', () => {
-    render(<Card goal={{ ...buildGoal(1200, 0), targetDate: '2099-12-01' }} />);
-    expect(screen.getByText(/\/mo needed$/)).toBeInTheDocument();
+    render(
+      <Card
+        goal={{ ...buildGoal(1200, 0), targetDate: '2099-12-01' }}
+        monthly={2609.09}
+      />
+    );
+    expect(
+      screen.getByText('$2,609.09/mo of the monthly plan')
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
     expect(document.body.textContent).not.toMatch(/\d[\d,]*\.\d\d\/mo/);
+  });
+
+  it('shows no monthly figure until the plan is known', () => {
+    render(<Card goal={{ ...buildGoal(1200, 0), targetDate: '2099-12-01' }} />);
+    expect(screen.queryByText(/\/mo of the monthly plan/)).toBeNull();
+  });
+
+  it('shows the plan slice for a goal with no target date when the plan schedules it', () => {
+    render(<Card goal={buildGoal(1200, 0)} monthly={150} />);
+    expect(
+      screen.getByText('$150.00/mo of the monthly plan')
+    ).toBeInTheDocument();
+  });
+
+  it('shows nothing for an undated goal the plan does not schedule', () => {
+    render(<Card goal={buildGoal(1200, 0)} monthly={0} />);
+    expect(screen.queryByText(/monthly/)).toBeNull();
+  });
+
+  it('shows nothing for an undated goal while the plan is unavailable', () => {
+    render(<Card goal={buildGoal(1200, 0)} monthly={null} />);
+    expect(screen.queryByText(/monthly/)).toBeNull();
+  });
+
+  it('says plainly when nothing needs setting aside each month', () => {
+    render(
+      <Card
+        goal={{ ...buildGoal(1200, 0), targetDate: '2099-12-01' }}
+        monthly={0}
+      />
+    );
+    expect(
+      screen.getByText('Nothing to set aside monthly')
+    ).toBeInTheDocument();
   });
 
   it('says so when the target date has passed', () => {

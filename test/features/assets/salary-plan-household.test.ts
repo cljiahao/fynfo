@@ -4,6 +4,7 @@ import {
   computeSalaryPlan,
   computeShortfallImpact,
   planStateLine,
+  shortfallImpactMonths,
   type SalaryPlanInput,
 } from '@/features/assets/lib/salary-plan';
 import type { ExpenseData } from '@/features/expenses';
@@ -100,11 +101,9 @@ describe('computeSalaryPlan without household inputs', () => {
       const zero = computeSalaryPlan({
         ...input,
         householdMonthlyDeduction: 0,
-        householdReserve: 0,
       });
       expect(omitted).toMatchObject(legacy);
       expect(zero).toEqual(omitted);
-      expect(omitted.investmentPaused).toBe(false);
       expect(omitted.householdAmt).toBe(0);
     }
   );
@@ -123,42 +122,32 @@ describe('computeSalaryPlan with household inputs', () => {
     expect(p.investmentPct).toBeCloseTo(0.5);
   });
 
-  it('pauses investment and sends all surplus to savings while the reserve is unfunded', () => {
+  it.each(TABLE.map((input, i) => [i, input] as const))(
+    'ignores a stored householdReserve for table row %i',
+    (_i, input) => {
+      expect(computeSalaryPlan({ ...input, householdReserve: 5000 })).toEqual(
+        computeSalaryPlan(input)
+      );
+    }
+  );
+
+  it('no longer pauses investment or redirects surplus to savings', () => {
     const p = computeSalaryPlan({
       ...base,
       currentSavings: 6000,
       currentBonds: 18000,
       householdReserve: 5000,
     });
-    expect(p.investmentPaused).toBe(true);
-    expect(p.investmentPct).toBe(0);
-    expect(p.savingsPct).toBeCloseTo(0.6);
-    expect(p.savingsTarget).toBe(29000);
-    expect(p.savingsGap).toBe(5000);
-  });
-
-  it('counts only savings beyond emergency + war chest toward the reserve', () => {
-    const p = computeSalaryPlan({
-      ...base,
-      currentSavings: 8000,
-      currentBonds: 19000,
-      householdReserve: 5000,
-    });
-    expect(p.savingsGap).toBe(2000);
-    expect(p.investmentPaused).toBe(true);
-  });
-
-  it('resumes investing once the target is met', () => {
-    const p = computeSalaryPlan({
-      ...base,
-      currentSavings: 10000,
-      currentBonds: 19000,
-      householdReserve: 5000,
-    });
-    expect(p.investmentPaused).toBe(false);
-    expect(p.savingsGap).toBe(0);
     expect(p.savingsPct).toBe(0);
     expect(p.investmentPct).toBeCloseTo(0.6);
+  });
+
+  it('drops the reserve and pause outputs', () => {
+    const p = computeSalaryPlan({ ...base, householdReserve: 5000 });
+    expect(p).not.toHaveProperty('investmentPaused');
+    expect(p).not.toHaveProperty('householdReserve');
+    expect(p).not.toHaveProperty('savingsTarget');
+    expect(p).not.toHaveProperty('savingsGap');
   });
 
   it('reports a shortfall and zeroes savings and investment', () => {
@@ -188,18 +177,6 @@ describe('computeSalaryPlan with household inputs', () => {
 });
 
 describe('planStateLine', () => {
-  it('names the gap and target while investing is paused', () => {
-    const p = computeSalaryPlan({
-      ...base,
-      currentSavings: 6000,
-      currentBonds: 18000,
-      householdReserve: 5000,
-    });
-    expect(planStateLine(p)).toBe(
-      `Investing paused: savings ${formatSGD(5000)} short of emergency + war chest + household reserve (${formatSGD(29000)})`
-    );
-  });
-
   it('uses the legacy goal wording without a household', () => {
     const p = computeSalaryPlan(base);
     expect(planStateLine(p)).toBe(
@@ -207,15 +184,13 @@ describe('planStateLine', () => {
     );
   });
 
-  it('uses the goals-only target when the reserve is funded but goals are not', () => {
+  it('words the goals gap with a household deduction and no pause', () => {
     const p = computeSalaryPlan({
       ...base,
       currentSavings: 30000,
       currentBonds: 0,
-      householdReserve: 5000,
+      householdMonthlyDeduction: 800,
     });
-    expect(p.investmentPaused).toBe(false);
-    expect(p.goalsFulfilled).toBe(false);
     expect(planStateLine(p)).toBe(
       `Savings ${formatSGD(0)} short of emergency + war chest (${formatSGD(24000)})`
     );
@@ -441,5 +416,19 @@ describe('expense buffer', () => {
     expect(computeSalaryPlan({ ...base, expenseBufferPct: -5 }).bufferAmt).toBe(
       0
     );
+  });
+});
+
+describe('shortfallImpactMonths', () => {
+  it.each([
+    [2, 2],
+    [12, 12],
+    [30, 12],
+    [null, 12],
+    [0, 1],
+    [-5, 1],
+    [NaN, 12],
+  ])('binding %s months projects over %s months', (binding, expected) => {
+    expect(shortfallImpactMonths(binding)).toBe(expected);
   });
 });

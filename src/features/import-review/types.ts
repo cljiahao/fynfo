@@ -1,9 +1,15 @@
 import type { ExpenseSplitData } from '@/features/expenses';
 
 export type StatementBank = 'uob' | 'dbs' | 'hsbc' | 'citibank' | 'paylah';
+export type StatementBankChoice = StatementBank | 'auto';
 export interface StatementPeriod {
   from: string;
   to: string;
+}
+export interface StatementWord {
+  text: string;
+  x: number;
+  confidence?: number;
 }
 export interface StatementLine {
   page: number;
@@ -11,6 +17,9 @@ export interface StatementLine {
   text: string;
   /** Lowest word confidence on the line (0-100); absent for text-layer lines. */
   confidence?: number;
+  /** Positioned words, kept for OCR lines so a layout can split side-by-side
+   * columns that OCR merged into one line. Absent for text-layer lines. */
+  words?: StatementWord[];
 }
 export type StatementClassification =
   | 'expense'

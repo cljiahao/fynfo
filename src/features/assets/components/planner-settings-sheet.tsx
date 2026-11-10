@@ -1,7 +1,6 @@
 'use client';
 
 import { useAmountVisibility } from '@/features/privacy';
-import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,12 +14,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { HORIZON_MAX, HORIZON_MIN } from '../constants';
 
 export interface PlannerSettingsValues {
   emergencyMonths: number;
   warChestMonths: number;
-  householdHorizonMonths: number;
   titheEnabled: boolean;
   tithePctInput: number;
   allowanceEnabled: boolean;
@@ -31,60 +28,12 @@ export interface PlannerSettingsValues {
 interface PlannerSettingsSheetProps {
   values: PlannerSettingsValues;
   onChange: (patch: Partial<PlannerSettingsValues>) => void;
-  /** Hides the household horizon field for users without a household. */
-  showHorizon: boolean;
 }
 
-function HorizonField({
-  value,
-  onCommit,
-  disabled,
-}: {
-  value: number;
-  onCommit: (months: number) => void;
-  disabled: boolean;
-}) {
-  const [draft, setDraft] = useState(`${value}`);
-  return (
-    <div className="space-y-1">
-      <Label htmlFor="planner-horizon" className="text-xs">
-        Household horizon (months)
-      </Label>
-      <Input
-        id="planner-horizon"
-        type="number"
-        inputMode="numeric"
-        min={HORIZON_MIN}
-        max={HORIZON_MAX}
-        step={1}
-        disabled={disabled}
-        className="h-8 text-sm"
-        value={disabled ? '' : draft}
-        onChange={(e) => {
-          setDraft(e.target.value);
-          const months = Number(e.target.value);
-          if (
-            Number.isInteger(months) &&
-            months >= HORIZON_MIN &&
-            months <= HORIZON_MAX
-          )
-            onCommit(months);
-        }}
-        onBlur={() => setDraft(`${value}`)}
-      />
-      <p className="text-muted-foreground text-xs">
-        Shared goals due within this many months are reserved up front; later
-        ones are spread monthly.
-      </p>
-    </div>
-  );
-}
-
-/** Reserves, household horizon and giving: the settings that rarely change. */
+/** Emergency fund, war chest and giving: the settings that rarely change. */
 export function PlannerSettingsSheet({
   values,
   onChange,
-  showHorizon,
 }: PlannerSettingsSheetProps) {
   const { hidden, canReveal } = useAmountVisibility();
 
@@ -145,15 +94,6 @@ export function PlannerSettingsSheet({
               />
             </div>
           </div>
-          {showHorizon && (
-            <HorizonField
-              value={values.householdHorizonMonths}
-              disabled={hidden}
-              onCommit={(months) =>
-                canReveal() && onChange({ householdHorizonMonths: months })
-              }
-            />
-          )}
         </section>
 
         <section className="space-y-3">

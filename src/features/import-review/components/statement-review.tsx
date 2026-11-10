@@ -44,6 +44,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import {
   IMPORT_ABOUT_TEXT,
   IMPORT_STEPS,
+  STATEMENT_BANKS,
   STATEMENT_CLASSIFICATIONS,
   STATEMENT_LIMITS,
   STATEMENT_ROWS_PER_PAGE,
@@ -51,6 +52,7 @@ import {
 import { useStatementSave } from '../hooks/use-statement-save';
 import type { LocalStatementPdf } from '../lib/local-pdf';
 import { applyRulesToStatement } from '../lib/merchant-rules';
+import { detectStatementBank } from '../lib/statement-bank-detect';
 import {
   isLowConfidenceRow,
   reconcileStatement,
@@ -67,7 +69,9 @@ import {
 } from '../lib/statement-period';
 import type {
   StatementBank,
+  StatementBankChoice,
   StatementCandidate,
+  StatementLine,
   StatementTotalBlock,
 } from '../types';
 import { ImportActionBar } from './import-action-bar';
@@ -79,6 +83,28 @@ import { StatementReconciliationNotice } from './statement-reconciliation-notice
 import { StatementRowCard, type ReviewedRow } from './statement-row-card';
 import { StatementSourceForm } from './statement-source-form';
 import { StatementViewer } from './statement-viewer';
+
+interface ExtractedStatement {
+  lines: StatementLine[];
+  period: { from: string; to: string };
+  basis: DetectedStatementPeriod['basis'] | null;
+}
+
+const NO_BANK_MESSAGE =
+  'We could not tell which bank this statement is from. Choose the bank above, then extract again.';
+
+function bankLabel(bank: StatementBank) {
+  return STATEMENT_BANKS.find((entry) => entry.value === bank)?.label ?? bank;
+}
+
+function ambiguousMessage(banks: StatementBank[]) {
+  const labels = banks.map(bankLabel);
+  const named =
+    labels.length > 1
+      ? `${labels.slice(0, -1).join(', ')} or ${labels[labels.length - 1]}`
+      : (labels[0] ?? '');
+  return `This statement looks like ${named}. Choose the bank above, then extract again.`;
+}
 
 type RowFilter =
   | 'expenses'
@@ -95,6 +121,7 @@ function StatementReviewBody({
   const { hidden, mask, canReveal, getHideEpoch } = useAmountVisibility();
   const id = useId();
   const session = useRef<LocalStatementPdf | null>(null);
+  const extracted = useRef<ExtractedStatement | null>(null);
   const controller = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const list = useRef<HTMLElement>(null);
@@ -102,7 +129,9 @@ function StatementReviewBody({
     { rowId: string; decision: boolean } | { ids: string[] } | null
   >(null);
   const [pdf, setPdf] = useState<LocalStatementPdf | null>(null);
-  const [bank, setBank] = useState<StatementBank>('uob');
+  const [bankChoice, setBankChoice] = useState<StatementBankChoice>('auto');
+  const [resolvedBank, setResolvedBank] = useState<StatementBank | null>(null);
+  const [bankDetected, setBankDetected] = useState(false);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [manualPeriod, setManualPeriod] = useState(false);
@@ -132,6 +161,8 @@ function StatementReviewBody({
   const merchant = useMerchantRulebook();
   const { data: people } = useDistinctPeople();
   const [ruleDraft, setRuleDraft] = useState<MerchantRule | null>(null);
+  // Rows stay empty until a bank resolves, so the fallback is never saved.
+  const bank = resolvedBank ?? 'uob';
   const save = useStatementSave(rows, bank, { from, to });
   useEffect(() => {
     if (hidden || !canReveal() || save.busy || merchant.stage !== 'ready')
@@ -160,6 +191,7 @@ function StatementReviewBody({
       generation.current++;
       controller.current?.abort();
       session.current?.destroy();
+      extracted.current = null;
     },
     []
   );
@@ -215,9 +247,12 @@ function StatementReviewBody({
     controller.current?.abort();
     session.current?.destroy();
     session.current = null;
+    extracted.current = null;
     setPdf(null);
     setBusy(false);
     setOcrProgress(null);
+    setResolvedBank(null);
+    setBankDetected(false);
     setRows([]);
     setTotalBlocks([]);
     setError('');
@@ -226,6 +261,72 @@ function StatementReviewBody({
     setSelected('');
     setRowPage(0);
     return true;
+  }
+
+  function presentStatement(
+    stored: ExtractedStatement,
+    choice: StatementBankChoice
+  ) {
+    let bank: StatementBank;
+    let detectedBank = false;
+    if (choice === 'auto') {
+      const detection = detectStatementBank(stored.lines);
+      if (detection.status !== 'match') {
+        setResolvedBank(null);
+        setBankDetected(false);
+        setRows([]);
+        setTotalBlocks([]);
+        setSelected('');
+        setError(
+          detection.status === 'none'
+            ? NO_BANK_MESSAGE
+            : ambiguousMessage(detection.banks)
+        );
+        return;
+      }
+      bank = detection.bank;
+      detectedBank = true;
+    } else {
+      bank = choice;
+    }
+    let candidates: StatementCandidate[];
+    let blocks: StatementTotalBlock[];
+    try {
+      candidates = parseStatementLines(stored.lines, bank, stored.period);
+      blocks = statementTotalBlocks(stored.lines, bank);
+    } catch {
+      // Lines and PDF are kept so another bank can be tried without re-reading.
+      setResolvedBank(null);
+      setBankDetected(false);
+      setRows([]);
+      setTotalBlocks([]);
+      setSelected('');
+      setError(
+        'The selected bank could not be identified in this PDF. Choose a different bank or use Auto-detect.'
+      );
+      return;
+    }
+    setError('');
+    setResolvedBank(bank);
+    setBankDetected(detectedBank);
+    setRows(candidates);
+    setTotalBlocks(blocks);
+    setSelected(candidates[0]?.id ?? '');
+    setPage(candidates[0]?.source[0].page ?? 1);
+    setView('extracted');
+  }
+
+  function reparse(choice: StatementBankChoice) {
+    const stored = extracted.current;
+    if (!stored || !allowDiscard()) return;
+    setRuleDraft(null);
+    setRulesOpen(false);
+    setRestoreId(null);
+    setFilter('expenses');
+    save.reset();
+    setRowPage(0);
+    setBankChoice(choice);
+    presentStatement(stored, choice);
   }
 
   async function extract() {
@@ -293,21 +394,20 @@ function StatementReviewBody({
         );
         return;
       }
-      const candidates = parseStatementLines(lines, bank, period);
+      const stored = { lines, period, basis: detected?.basis ?? null };
+      extracted.current = stored;
       setFrom(period.from);
       setTo(period.to);
-      setDetectedBasis(detected?.basis ?? null);
-      setRows(candidates);
-      setTotalBlocks(statementTotalBlocks(lines, bank));
-      setSelected(candidates[0]?.id ?? '');
-      setPage(candidates[0]?.source[0].page ?? 1);
+      setDetectedBasis(stored.basis);
       setPageCount(opened.pageCount);
       setPdf(opened);
-      setView('extracted');
+      presentStatement(stored, bankChoice);
     } catch {
       discardOpenedPdf();
       if (isCurrentExtraction()) {
         session.current = null;
+        extracted.current = null;
+        setPdf(null);
         setError(
           'This PDF or layout could not be extracted. Check the bank and period. Use an unprotected PDF; unsupported layouts need manual entry.'
         );
@@ -414,9 +514,14 @@ function StatementReviewBody({
       )
     );
   }
-  function changeBank(next: StatementBank) {
+  function changeBank(next: StatementBankChoice) {
+    if (!canReveal()) return;
+    if (extracted.current) {
+      reparse(next);
+      return;
+    }
     if (!reset()) return;
-    setBank(next);
+    setBankChoice(next);
   }
   function changeFile(next: File | null) {
     if (!reset()) return;
@@ -744,7 +849,7 @@ function StatementReviewBody({
           <div className="min-h-0 flex-1 overflow-y-auto">
             <StatementSourceForm
               controlId={id}
-              bank={bank}
+              bank={bankChoice}
               from={from}
               to={to}
               manualPeriod={manualPeriod}
@@ -797,6 +902,38 @@ function StatementReviewBody({
                 Extracted
               </Button>
             </div>
+            {resolvedBank && (
+              <div className="flex shrink-0 items-center gap-2 text-sm">
+                <p className="text-muted-foreground">
+                  {bankDetected ? 'Detected' : 'Chosen'}:{' '}
+                  {bankLabel(resolvedBank)}
+                </p>
+                <label className="sr-only" htmlFor={`${id}-review-bank`}>
+                  Change statement bank
+                </label>
+                <select
+                  id={`${id}-review-bank`}
+                  disabled={hidden || save.busy}
+                  value={bankChoice}
+                  className="border-input bg-background h-8 rounded-md border px-2 text-sm"
+                  onChange={(event) => {
+                    if (!canReveal()) return;
+                    const value = event.target.value;
+                    changeBank(
+                      STATEMENT_BANKS.find((entry) => entry.value === value)
+                        ?.value ?? 'auto'
+                    );
+                  }}
+                >
+                  <option value="auto">Auto-detect</option>
+                  {STATEMENT_BANKS.map((entry) => (
+                    <option key={entry.value} value={entry.value}>
+                      {entry.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="grid min-h-0 flex-1 gap-4 overflow-hidden lg:grid-cols-2">
               <section
                 aria-label="Original statement"

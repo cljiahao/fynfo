@@ -13,7 +13,7 @@ const api = vi.hoisted(() => ({
   getPlannerSettings: vi.fn(),
   upsertPlannerSettings: vi.fn(),
   getScenarios: vi.fn(),
-  getPlannerCommitment: vi.fn(),
+  getHouseholdPlanInput: vi.fn(),
 }));
 vi.mock('@/features/salary/actions/salary-actions', () => ({
   getSalaryRecords: api.getSalaryRecords,
@@ -31,8 +31,8 @@ vi.mock('@/features/assets/actions/scenario-actions', () => ({
   updateScenario: vi.fn(),
   deleteScenario: vi.fn(),
 }));
-vi.mock('@/features/household/actions/planner-actions', () => ({
-  getPlannerCommitment: api.getPlannerCommitment,
+vi.mock('@/features/household/actions/plan-actions', () => ({
+  getHouseholdPlanInput: api.getHouseholdPlanInput,
 }));
 
 const SETTINGS = {
@@ -81,7 +81,7 @@ beforeEach(() => {
   api.getPlannerSettings.mockResolvedValue(SETTINGS);
   api.upsertPlannerSettings.mockResolvedValue(undefined);
   api.getScenarios.mockResolvedValue([]);
-  api.getPlannerCommitment.mockResolvedValue({ state: 'none' });
+  api.getHouseholdPlanInput.mockResolvedValue(null);
 });
 afterEach(() => {
   cleanup();

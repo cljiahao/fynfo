@@ -166,20 +166,34 @@ message instead of throwing, so a refused group is never shown as
 `unconfirmed`. The approval status is unchanged.
 
 Amendment note (2026-11-10, owner decision): the Node dump script is
-replaced by a development-only in-browser dump page at `/dev/ocr-dump`. The
+replaced by an in-browser dump page (first built development-only, since
+moved to `/dashboard/admin/ocr-dump`; see the following amendment). The
 script only OCRed embedded images and the HSBC statement body is not one, and
 the Node canvas binary needed to render pages is blocked by Windows Application
 Control; the page reuses the app's own page render, recogniser and line
 grouping and adds no dependency. It is a client component (`'use client'`)
-because it needs a file input, a canvas and a web worker. Production returns 404. The dump component is exported from the barrel as a development-gated dynamic import so production bundles do not contain it. The approval status is unchanged.
+because it needs a file input, a canvas and a web worker. The dump component is exported from the barrel as a dynamic import. The approval status is unchanged.
+
+Amendment note (2026-11-10, owner decision, given in conversation): the dump
+page moves from development-only to admin-only at `/dashboard/admin/ocr-dump`.
+It is gated by authentication plus `ADMIN_EMAILS`, exactly like the admin page,
+through the shared `requireAdmin()` gate; it fails closed (unset allowlist is a
+404 for everyone). Reason: the owner cannot sign in on localhost, so production
+is the only usable environment. The page does no database access and has no
+server action, so CONSTITUTION 2.3 (`requireUserId()` then
+`getVaultDekSession()` before DB access) has nothing to guard beyond the admin
+carve-out. The PDF is read and OCRed in the browser tab and its content never
+leaves it. The component stays a lazily loaded client-only chunk that only this
+page requests. Earlier "development-only" and "404 in production" wording is
+superseded. The approval status is unchanged.
 
 ### HSBC layout
 
 No HSBC column positions, header wording or total line are known: no text was
 ever extractable. This is a deliberate implementation step, not a guess here:
 
-1. Slice 1 ships the OCR engine plus a development-only dump page
-   (`/dev/ocr-dump`, 404 in production) where the owner picks a PDF and sees the
+1. Slice 1 ships the OCR engine plus an admin-only dump page
+   (`/dashboard/admin/ocr-dump`, 404 for non-admins) where the owner picks a PDF and sees the
    OCR word boxes from the app's own pipeline. It runs entirely in the browser
    tab: no file is written, no network call carries content, and its output is
    never committed or pasted into the repo. The owner runs it on his real
@@ -329,6 +343,36 @@ exactly. Alternatives considered:
   cannot hang extraction.
 - **Tests**: the OCR engine is never run in vitest; tests use the injected
   recogniser stub and the existing `ocrStatementPages` and `local-pdf` mocks.
+
+### Slice 3: HSBC layout
+
+- **Layout**: `statement-layouts/hsbc.ts`, registered for `hsbc`. The table
+  header `DATE DATE DESCRIPTION AMOUNT(SGD)` claims every page; rows are read
+  only between that header and the `Total Due` line, so page 2 boilerplate and
+  the address block yield no rows.
+- **Merged columns**: `StatementLine` gains optional positioned `words` for OCR
+  lines. The layout drops words at x >= 385 (the account summary), divider glyph
+  tokens, and splits glued `07Sep` tokens. A row needs two date pairs and a
+  trailing amount at x >= 300; the second pair is the row date. A line with two
+  date pairs but an unreadable amount is still a row: it is kept with an empty
+  amount and zero confidence so review flags it, and reconciliation then
+  mismatches instead of the row vanishing.
+- **Credits**: a `CR` suffix is normalised to a separate `CR` word. The credit
+  row's amount stays blank like other credits; reconciliation reads the sign
+  from the source text, so credits reduce the total.
+- **Total**: `Total Due` includes the `Previous Statement Balance`, so the block
+  total is `Total Due` minus that balance (CR is negative) over every row. No
+  total is exposed when either amount is unreadable. Both labels are matched
+  ignoring tokens left of x 130.
+  Reconciliation counts credit and payment rows (they are in the total), and
+  ignores summary rows.
+- **Confidence**: row confidence is the minimum over table-column words only.
+- **Dropped lines**: country-code continuation lines and non-row lines are
+  dropped, as in the DBS and PayLah layouts.
+- **Year**: `detectStatementPeriod` also accepts a `Statement Date` value line
+  that ends with the date, since the HSBC summary line carries other fields.
+- **Fixtures**: synthetic only, built as positioned items in
+  `test/features/profile/statement-layouts-hsbc.test.ts`.
 
 ## Open questions
 

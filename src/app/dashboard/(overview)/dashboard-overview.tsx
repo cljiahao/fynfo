@@ -55,6 +55,7 @@ function DashboardOverviewContent() {
     investmentAmount: 0,
     emergencyFundGoal: 0,
     warChestGoal: 0,
+    householdEarmark: 0,
     expenses: 0,
   });
   const [marketBudgets, setMarketBudgets] = useState<MarketBudgets | null>(
@@ -161,6 +162,7 @@ function DashboardOverviewContent() {
                     investmentAmount={plannerValues.investmentAmount}
                     emergencyFundGoal={plannerValues.emergencyFundGoal}
                     warChestGoal={plannerValues.warChestGoal}
+                    householdEarmark={plannerValues.householdEarmark}
                     snapshot={latest}
                     onBudgetsChange={handleBudgetsChange}
                   />

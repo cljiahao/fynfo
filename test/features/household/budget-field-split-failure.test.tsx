@@ -22,7 +22,6 @@ const split: PlannerSplit = {
 const planner = vi.hoisted(() => ({
   getPlannerSplit: vi.fn(),
   setPlannerSplit: vi.fn(),
-  getPlannerCommitment: vi.fn(),
 }));
 const budgets = vi.hoisted(() => ({
   setCategoryBudget: vi.fn(),
@@ -44,7 +43,6 @@ vi.mock('@/features/privacy', () => ({
 beforeEach(() => {
   vi.resetAllMocks();
   planner.getPlannerSplit.mockResolvedValue(split);
-  planner.getPlannerCommitment.mockResolvedValue(null);
   budgets.getSpendingBudgets.mockResolvedValue([]);
 });
 afterEach(cleanup);

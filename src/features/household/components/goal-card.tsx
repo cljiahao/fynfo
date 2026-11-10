@@ -18,11 +18,7 @@ import { Check, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { GOAL_DETAIL_PATH, GOAL_STATUS_LABEL } from '../constants';
-import {
-  goalCommitted,
-  goalStatus,
-  monthlyPaceNeeded,
-} from '../lib/goal-stats';
+import { goalCommitted, goalPlanShare, goalStatus } from '../lib/goal-stats';
 import type { HouseholdGoal } from '../types';
 import { ItemBreakdownBar } from './item-breakdown-bar';
 
@@ -31,6 +27,8 @@ interface GoalCardProps {
   onContribute: (goal: HouseholdGoal) => void;
   onEdit: (goal: HouseholdGoal) => void;
   onDelete: (goal: HouseholdGoal) => void;
+  /** Joint monthly figure from the household plan; absent until it is known. */
+  monthly?: number | null;
   className?: string;
 }
 
@@ -39,13 +37,14 @@ export function GoalCard({
   onContribute,
   onEdit,
   onDelete,
+  monthly = null,
   className,
 }: GoalCardProps) {
   const { hidden, mask, canReveal } = useAmountVisibility();
   const [now] = useState(() => new Date());
   const status = goalStatus(goal, now);
   const funded = status === 'funded';
-  const pace = monthlyPaceNeeded(goal, now);
+  const pace = goalPlanShare(goal, now, monthly ?? null);
 
   const overCommitted =
     goal.contributed + goalCommitted(goal) > goal.targetAmount;
@@ -164,7 +163,9 @@ export function GoalCard({
           <p className="text-muted-foreground text-xs">
             {pace === 'past'
               ? 'Past target date'
-              : `${mask(formatSGD(pace))}/mo needed`}
+              : pace === 0
+                ? 'Nothing to set aside monthly'
+                : `${mask(formatSGD(pace))}/mo of the monthly plan`}
           </p>
         )}
       </CardContent>

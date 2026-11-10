@@ -51,6 +51,8 @@ export interface GoalItem {
   budget: number;
   /** Final quote; null until the household has one. */
   quote: number | null;
+  /** ISO date (YYYY-MM-DD) this line falls due; null means the goal's date. */
+  dueDate: string | null;
   payments: GoalItemPayment[];
   paid: number;
   remaining: number;
@@ -125,35 +127,4 @@ export interface PlannerSplit {
   isDefault: boolean;
   /** The caller, so the UI can label "your share". */
   userId: string;
-}
-
-export type PlannerCommitmentState = 'none' | 'locked' | 'ready';
-
-export interface PlannerCommitmentGoal {
-  goalId: string;
-  name: string;
-  bucket: 'reserve' | 'pace' | 'excluded';
-  /** Caller's share: a one-off reserve, a monthly pace, or 0 when excluded. */
-  amount: number;
-  /** Caller's fraction (0 to 1) of this goal. */
-  share: number;
-  remaining: number;
-  reason?: 'no-date' | 'funded';
-}
-
-/** The caller's household obligations as the personal planner consumes them. */
-export interface PlannerCommitment {
-  /** `none`: not in a household. `locked`: K_h not in session, counted as 0. */
-  state: PlannerCommitmentState;
-  /** True when no split was saved and 50/50 is assumed. */
-  isDefaultSplit: boolean;
-  reserve: number;
-  monthlyDeduction: number;
-  goals: PlannerCommitmentGoal[];
-  budgets: { monthlyTotal: number; share: number; monthlyShare: number };
-  excluded: {
-    goalId: string;
-    name: string;
-    reason: 'no-date' | 'funded';
-  }[];
 }

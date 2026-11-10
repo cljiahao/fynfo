@@ -5,6 +5,10 @@ import { MarketAllocationTable } from '@/features/assets/components/market-alloc
 import { MonthlyInvestmentTable } from '@/features/assets/components/monthly-investment-table';
 import { SalaryPlanner } from '@/features/assets/components/salary-planner';
 import type { Holding } from '@/features/equity/lib/holdings';
+import {
+  AmountVisibilityProvider,
+  AmountVisibilityToggle,
+} from '@/features/privacy';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import {
@@ -15,7 +19,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { salaryRow } from '../../helpers/salary-fixture';
 const external = vi.hoisted(() => ({
   getTrades: vi.fn(),
@@ -261,7 +265,6 @@ it('uses salary and expenses to calculate goals and saves changed optional deduc
         tithePct: 10,
         allowanceEnabled: true,
         allowancePct: 7,
-        householdHorizonMonths: 24,
         expenseBufferPct: 0,
       }),
     { timeout: 2000 }
@@ -396,3 +399,55 @@ it.each(['SG', 'US'] as const)(
     );
   }
 );
+
+describe('household earmark line', () => {
+  const snapshot = {
+    id: '2026-01',
+    entries: [{ category: 'savings' as const, account: 'Bank', amount: 10000 }],
+  };
+
+  it('is hidden when nothing is earmarked', () => {
+    mount(
+      <InvestmentBreakdown
+        investmentAmount={1000}
+        emergencyFundGoal={3000}
+        warChestGoal={2000}
+        snapshot={snapshot}
+      />
+    );
+    expect(screen.queryByText(/set aside for household goals/)).toBeNull();
+  });
+
+  it('shows the earmarked amount once it is above 0', () => {
+    mount(
+      <InvestmentBreakdown
+        investmentAmount={1000}
+        emergencyFundGoal={3000}
+        warChestGoal={2000}
+        householdEarmark={1500}
+        snapshot={snapshot}
+      />
+    );
+    expect(
+      screen.getByText(/\$1,500\.00 of your spare savings is set aside/)
+    ).toBeTruthy();
+  });
+
+  it('masks the earmarked amount when amounts are hidden', () => {
+    mount(
+      <AmountVisibilityProvider>
+        <AmountVisibilityToggle />
+        <InvestmentBreakdown
+          investmentAmount={1000}
+          emergencyFundGoal={3000}
+          warChestGoal={2000}
+          householdEarmark={1500}
+          snapshot={snapshot}
+        />
+      </AmountVisibilityProvider>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    const line = screen.getByText(/of your spare savings is set aside/);
+    expect(line.textContent).not.toMatch(/1,500/);
+  });
+});

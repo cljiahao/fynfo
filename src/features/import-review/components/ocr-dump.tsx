@@ -157,6 +157,8 @@ export function OcrDump() {
       timedOut = true;
       run.abort();
     }, OCR_DEADLINE_MS);
+    let finishedPages = 0;
+    let failed = false;
     setBusy(true);
     setStatus('reading file');
     try {
@@ -167,10 +169,12 @@ export function OcrDump() {
           if (current()) setStatus(next);
         },
         (page) => {
+          finishedPages += 1;
           if (current()) setPages((existing) => [...existing, page]);
         }
       );
     } catch (failure) {
+      failed = true;
       if (controller.current === run)
         setError(
           timedOut
@@ -182,7 +186,11 @@ export function OcrDump() {
     } finally {
       clearTimeout(timer);
       if (controller.current === run) {
-        setStatus('idle');
+        setStatus(
+          failed
+            ? 'idle'
+            : `done: ${finishedPages} page${finishedPages === 1 ? '' : 's'}`
+        );
         setBusy(false);
       }
     }
@@ -199,7 +207,7 @@ export function OcrDump() {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4 px-4 py-6">
-      <h1 className="text-xl font-semibold">OCR dump (development only)</h1>
+      <h1 className="text-xl font-semibold">OCR dump</h1>
       <p className="text-muted-foreground text-sm">
         Real statement data is shown here. Everything runs in this tab and
         nothing is sent anywhere. Redact names and merchants before sharing.

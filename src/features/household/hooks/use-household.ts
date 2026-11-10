@@ -35,7 +35,7 @@ import {
   deleteSpending,
   getSpaces,
 } from '../actions/spending-actions';
-import { refreshPlannerCommitment } from './use-planner-commitment';
+import { refreshPlannerCommitment } from './use-household-plan';
 
 export const HOUSEHOLD_KEY = ['household'] as const;
 export const GOALS_KEY = ['household-goals'] as const;

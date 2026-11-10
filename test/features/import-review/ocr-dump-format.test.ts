@@ -1,7 +1,6 @@
 import {
   formatOcrDumpLines,
   formatOcrDumpWords,
-  isOcrDumpEnabled,
   maskDigits,
   type OcrDumpPage,
 } from '@/features/import-review/lib/ocr-dump-format';
@@ -46,11 +45,4 @@ it('marks a page with no words', () => {
   expect(formatOcrDumpLines([{ ...page, items: [] }], true)).toContain(
     '(no words)'
   );
-});
-
-it('enables the dump only in development', () => {
-  expect(isOcrDumpEnabled('development')).toBe(true);
-  expect(isOcrDumpEnabled('production')).toBe(false);
-  expect(isOcrDumpEnabled('test')).toBe(false);
-  expect(isOcrDumpEnabled(undefined)).toBe(false);
 });

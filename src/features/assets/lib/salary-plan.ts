@@ -1,6 +1,7 @@
 import type { ExpenseData } from '@/features/expenses';
 import { isCountedInExpenseTotals } from '@/features/expenses';
 import { formatSGD } from '@/lib/utils/currency';
+import { SHORTFALL_IMPACT_MONTHS } from '../constants';
 import type { AssetCategory, SnapshotData } from '../types';
 
 export function ceilToThousand(value: number): number {
@@ -73,9 +74,9 @@ export interface SalaryPlanInput {
   allowancePctInput: number;
   currentSavings: number;
   currentBonds: number;
-  /** Monthly household budget share plus long-dated goal pace; default 0. */
+  /** Monthly set-aside for household goals and budgets; default 0. */
   householdMonthlyDeduction?: number;
-  /** Caller's share of goals due within the horizon; default 0. */
+  /** Accepted for old scenario payloads and ignored. */
   householdReserve?: number;
   /** Extra cushion on top of expenses, as a percent of expenses; default 0. */
   expenseBufferPct?: number;
@@ -104,10 +105,6 @@ export interface SalaryPlan {
   allowanceAmt: number;
   householdPct: number;
   householdAmt: number;
-  householdReserve: number;
-  savingsTarget: number;
-  savingsGap: number;
-  investmentPaused: boolean;
   householdShortfallAmt: number;
   bufferPct: number;
   bufferAmt: number;
@@ -136,7 +133,6 @@ export function computeSalaryPlan(input: SalaryPlanInput): SalaryPlan {
     0,
     input.householdMonthlyDeduction ?? 0
   );
-  const householdReserve = Math.max(0, input.householdReserve ?? 0);
   const bufferInputPct = Math.max(0, input.expenseBufferPct ?? 0);
   const bufferAmt = (expenses * bufferInputPct) / 100;
 
@@ -180,18 +176,8 @@ export function computeSalaryPlan(input: SalaryPlanInput): SalaryPlan {
   const goalsNeeded = emergencyFundGoal + warChestGoal;
   const goalsFunded = currentSavings + currentBonds;
 
-  const savingsTarget = goalsNeeded + householdReserve;
-  // Strict all-to-savings applies only while the household reserve is
-  // unfunded, so plans without a household keep the 9-month spread.
-  const reserveGap = Math.max(
-    0,
-    householdReserve - Math.max(0, goalsFunded - goalsNeeded)
-  );
-
   if (netAfterCpf > 0) {
-    if (reserveGap > 0) {
-      savingsPct = cappedPct;
-    } else if (!goalsFulfilled && usedPct < 1) {
+    if (!goalsFulfilled && usedPct < 1) {
       const remaining = Math.max(goalsNeeded - goalsFunded, 0);
       const average = remaining / 9;
       const cappedAmount = cappedPct * netAfterCpf;
@@ -223,10 +209,6 @@ export function computeSalaryPlan(input: SalaryPlanInput): SalaryPlan {
     allowanceAmt: netAfterCpf * allowancePct,
     householdPct,
     householdAmt: householdMonthlyDeduction,
-    householdReserve,
-    savingsTarget,
-    savingsGap: Math.max(0, savingsTarget - goalsFunded),
-    investmentPaused: reserveGap > 0,
     householdShortfallAmt: Math.max(0, -available),
     bufferPct,
     bufferAmt,
@@ -235,19 +217,27 @@ export function computeSalaryPlan(input: SalaryPlanInput): SalaryPlan {
 
 /** One-line status shown above the plan; always returns text. */
 export function planStateLine(plan: SalaryPlan): string {
-  if (plan.investmentPaused) {
-    return `Investing paused: savings ${formatSGD(plan.savingsGap)} short of emergency + war chest + household reserve (${formatSGD(plan.savingsTarget)})`;
-  }
   if (!plan.goalsFulfilled) {
-    // Reserve is funded here, so only the emergency + war chest goals count.
     const short = Math.max(0, plan.goalsNeeded - plan.goalsFunded);
     return `Savings ${formatSGD(short)} short of emergency + war chest (${formatSGD(plan.goalsNeeded)})`;
   }
   return `Investing ${formatSGD(plan.investmentAmt)} a month`;
 }
 
+/**
+ * A shortfall caused by a deadline N months away stops recurring once that
+ * deadline passes, so the projection never runs longer than the binding
+ * deadline nor than the cap.
+ */
+export function shortfallImpactMonths(bindingMonths: number | null): number {
+  if (bindingMonths === null || !Number.isFinite(bindingMonths))
+    return SHORTFALL_IMPACT_MONTHS;
+  return Math.min(Math.max(1, bindingMonths), SHORTFALL_IMPACT_MONTHS);
+}
+
 export interface ShortfallImpactInput {
   shortfallPerMonth: number;
+  /** Months the shortfall repeats; callers cap it at SHORTFALL_IMPACT_MONTHS. */
   monthsHorizon: number;
   currentSavings: number;
   expenses: number;

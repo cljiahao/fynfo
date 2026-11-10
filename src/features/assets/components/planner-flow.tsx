@@ -2,12 +2,15 @@
 
 import { useAmountVisibility } from '@/features/privacy';
 import { formatSGD } from '@/lib/utils/currency';
+import { ChevronDown } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { PlannerDonut } from './planner-donut';
 
 export interface FlowSegment {
   key: string;
   label: string;
+  /** Legend text when it should differ from the donut label. */
+  rowLabel?: string;
   amount: number;
   /** Share of net take-home, as a fraction. */
   pct: number;
@@ -61,8 +64,18 @@ export function PlannerFlow({ net, segments, stateLine }: PlannerFlowProps) {
               <svg aria-hidden className="size-2.5 shrink-0">
                 <circle cx="50%" cy="50%" r="50%" fill={segment.color} />
               </svg>
-              <span className="min-w-0 flex-1 truncate text-left">
-                {segment.label}
+              <span className="flex min-w-0 flex-1 items-center gap-1 text-left break-words">
+                {segment.rowLabel ?? segment.label}
+                {expandable && (
+                  <ChevronDown
+                    aria-hidden
+                    className={
+                      expanded
+                        ? 'text-muted-foreground size-4 shrink-0 transition-transform'
+                        : 'text-muted-foreground size-4 shrink-0 -rotate-90 transition-transform'
+                    }
+                  />
+                )}
               </span>
               <span className="text-muted-foreground w-12 shrink-0 text-right text-xs tabular-nums">
                 {(segment.pct * 100).toFixed(1)}%
@@ -79,7 +92,7 @@ export function PlannerFlow({ net, segments, stateLine }: PlannerFlowProps) {
                   type="button"
                   aria-expanded={expanded}
                   onClick={() => setOpen(expanded ? null : segment.key)}
-                  className="hover:bg-muted/50 flex w-full items-center gap-2 py-2"
+                  className="hover:bg-muted/50 flex min-h-10 w-full items-center gap-2 py-2"
                 >
                   {row}
                 </button>

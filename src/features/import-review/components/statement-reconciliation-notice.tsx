@@ -39,8 +39,8 @@ export function StatementReconciliationNotice({
       </p>
       {!hidden && (
         <ul className="tabular-nums">
-          {reconciliation.mismatches.map((mismatch) => (
-            <li key={`${mismatch.totalCents}-${mismatch.parsedCents}`}>
+          {reconciliation.mismatches.map((mismatch, index) => (
+            <li key={`${index}-${mismatch.totalCents}-${mismatch.parsedCents}`}>
               Statement {sgd(mismatch.totalCents)}, rows{' '}
               {sgd(mismatch.parsedCents)}: difference{' '}
               {mismatch.differenceCents < 0 ? '-' : '+'}

@@ -10,11 +10,6 @@ export interface OcrDumpPage {
   items: PositionedStatementText[];
 }
 
-/** The dump page exists only for local development; production serves 404. */
-export function isOcrDumpEnabled(nodeEnv: string | undefined): boolean {
-  return nodeEnv === 'development';
-}
-
 /** Statement digits are the sensitive part, so masking keeps layout intact
  * (same character count) while hiding every amount, date and account number. */
 export function maskDigits(text: string, mask: boolean): string {

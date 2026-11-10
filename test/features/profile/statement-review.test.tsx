@@ -23,7 +23,33 @@ const mocks = vi.hoisted(() => ({
   destroy: vi.fn(),
   read: vi.fn(),
   insert: vi.fn(),
+  detect: vi.fn(),
+  parse: vi.fn(),
 }));
+vi.mock('@/features/import-review/lib/statement-bank-detect', async () => {
+  const actual = await vi.importActual<
+    typeof import('@/features/import-review/lib/statement-bank-detect')
+  >('@/features/import-review/lib/statement-bank-detect');
+  return {
+    detectStatementBank: (
+      lines: Parameters<typeof actual.detectStatementBank>[0]
+    ) => mocks.detect() ?? actual.detectStatementBank(lines),
+  };
+});
+vi.mock('@/features/import-review/lib/statement-parser', async () => {
+  const actual = await vi.importActual<
+    typeof import('@/features/import-review/lib/statement-parser')
+  >('@/features/import-review/lib/statement-parser');
+  return {
+    ...actual,
+    parseStatementLines: (
+      ...args: Parameters<typeof actual.parseStatementLines>
+    ) => {
+      mocks.parse(args[1]);
+      return actual.parseStatementLines(...args);
+    },
+  };
+});
 // Paging behaviour is page-size agnostic; a small page keeps the DOM small, as
 // jsdom queries on twenty dense cards time out under V8 coverage instrumentation.
 vi.mock('@/features/import-review/constants', async (importOriginal) => ({
@@ -65,6 +91,7 @@ vi.mock('@/features/expenses', async () => ({
 }));
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.detect.mockReturnValue(undefined);
   mocks.extract.mockResolvedValue([
     { page: 1, line: 1, text: 'UOB' },
     { page: 1, line: 2, text: 'SGD billed' },
@@ -79,7 +106,12 @@ beforeEach(() => {
   });
 });
 afterEach(cleanup);
-function setup(read = async () => new ArrayBuffer(4), size = 4, manual = true) {
+function setup(
+  read = async () => new ArrayBuffer(4),
+  size = 4,
+  manual = true,
+  bank = 'uob'
+) {
   render(
     <AmountVisibilityProvider>
       <AmountVisibilityToggle />
@@ -93,6 +125,11 @@ function setup(read = async () => new ArrayBuffer(4), size = 4, manual = true) {
     });
     fireEvent.change(screen.getByLabelText('Period end'), {
       target: { value: '2026-01-14' },
+    });
+  }
+  if (bank !== 'auto') {
+    fireEvent.change(screen.getByLabelText('Statement bank'), {
+      target: { value: bank },
     });
   }
   const file = new File(['fake'], 'constructed.pdf', {
@@ -603,4 +640,166 @@ it('pins the row pager, numbers rows across pages and focuses the first card aft
     expect(
       screen.getByRole('region', { name }).querySelector('[style]')
     ).toBeNull();
+});
+
+const DBS_LINES = [
+  'DBS TEST CARDS',
+  'DATE DESCRIPTION AMOUNT (S$)',
+  'NEW TRANSACTIONS TEST USER',
+  '20 DEC EXAMPLE MARKET 12.50',
+].map((text, index) => ({ page: 1, line: index + 1, text }));
+const UNKNOWN_LINES = [
+  'SYNTHETIC UNRELATED DOCUMENT',
+  '20 DEC EXAMPLE MARKET 12.50',
+].map((text, index) => ({ page: 1, line: index + 1, text }));
+
+it('defaults the bank to Auto-detect', () => {
+  render(
+    <AmountVisibilityProvider>
+      <StatementReview />
+    </AmountVisibilityProvider>
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Review bank PDF' }));
+  expect(screen.getByLabelText('Statement bank')).toHaveValue('auto');
+});
+it('detects the bank, parses with it and labels it as detected', async () => {
+  mocks.extract.mockResolvedValue(DBS_LINES);
+  setup(undefined, 4, true, 'auto');
+  expect(await screen.findByLabelText('Item / Brand')).toHaveValue(
+    'EXAMPLE MARKET'
+  );
+  expect(screen.getByText('Detected: DBS')).toBeVisible();
+  expect(mocks.parse).toHaveBeenCalledWith('dbs');
+  expect(mocks.parse).not.toHaveBeenCalledWith('auto');
+});
+it('keeps a manual choice and never switches to the detected bank', async () => {
+  mocks.extract.mockResolvedValue(DBS_LINES);
+  setup(undefined, 4, true, 'uob');
+  expect(
+    await screen.findByText(
+      'The selected bank could not be identified in this PDF. Choose a different bank or use Auto-detect.'
+    )
+  ).toBeVisible();
+  expect(mocks.parse).toHaveBeenCalledWith('uob');
+  expect(mocks.parse).not.toHaveBeenCalledWith('dbs');
+  expect(screen.queryByText(/Detected:/)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Item / Brand')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Statement bank'), {
+    target: { value: 'dbs' },
+  });
+  expect(await screen.findByLabelText('Item / Brand')).toHaveValue(
+    'EXAMPLE MARKET'
+  );
+  expect(screen.getByText('Chosen: DBS')).toBeVisible();
+  expect(mocks.open).toHaveBeenCalledTimes(1);
+  expect(mocks.extract).toHaveBeenCalledTimes(1);
+});
+it('changes the bank from the review header without reopening the PDF', async () => {
+  mocks.extract.mockResolvedValue(DBS_LINES);
+  setup(undefined, 4, true, 'auto');
+  expect(await screen.findByText('Detected: DBS')).toBeVisible();
+  mocks.parse.mockClear();
+  fireEvent.change(screen.getByLabelText('Change statement bank'), {
+    target: { value: 'uob' },
+  });
+  expect(
+    await screen.findByText(/selected bank could not be identified/)
+  ).toBeVisible();
+  expect(mocks.parse).toHaveBeenCalledWith('uob');
+  expect(mocks.open).toHaveBeenCalledTimes(1);
+  expect(mocks.extract).toHaveBeenCalledTimes(1);
+  fireEvent.change(screen.getByLabelText('Statement bank'), {
+    target: { value: 'dbs' },
+  });
+  expect(await screen.findByText('Chosen: DBS')).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Change statement bank'), {
+    target: { value: 'auto' },
+  });
+  expect(await screen.findByText('Detected: DBS')).toBeVisible();
+  expect(mocks.open).toHaveBeenCalledTimes(1);
+  expect(mocks.extract).toHaveBeenCalledTimes(1);
+});
+it('scopes a new merchant rule to the detected bank, never to auto', async () => {
+  mocks.extract.mockResolvedValue(DBS_LINES);
+  setup(undefined, 4, true, 'auto');
+  await screen.findByText('Detected: DBS');
+  fireEvent.click(screen.getByText('Description and details'));
+  fireEvent.click(screen.getByRole('button', { name: 'Create rule' }));
+  expect(screen.getByLabelText('Bank scope')).toHaveValue('dbs');
+});
+it('offers no save or rule control while the bank is unresolved', async () => {
+  mocks.extract.mockResolvedValue(UNKNOWN_LINES);
+  setup(undefined, 4, true, 'auto');
+  await screen.findByText(/could not tell which bank/);
+  expect(screen.queryByLabelText('Change statement bank')).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Save/ })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Create rule' })).toBeNull();
+  expect(mocks.insert).not.toHaveBeenCalled();
+  mocks.detect.mockReturnValue({ status: 'ambiguous', banks: ['dbs', 'hsbc'] });
+  fireEvent.change(screen.getByLabelText('Statement bank'), {
+    target: { value: 'auto' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Extract for review' }));
+  await screen.findByText(/looks like DBS or HSBC/);
+  expect(screen.queryByRole('button', { name: /^Save/ })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Create rule' })).toBeNull();
+  expect(mocks.insert).not.toHaveBeenCalled();
+});
+it('labels a manual choice as chosen', async () => {
+  setup();
+  expect(await screen.findByText('Chosen: UOB')).toBeVisible();
+});
+it('parses nothing when no bank is detected, then reparses stored lines on choosing a bank without re-reading', async () => {
+  mocks.extract.mockResolvedValue(
+    ['UOB', 'SGD billed', '31 DEC MARKET SGD 12.30'].map((text, index) => ({
+      page: 1,
+      line: index + 1,
+      text,
+    }))
+  );
+  setup(undefined, 4, true, 'auto');
+  expect(
+    await screen.findByText(
+      'We could not tell which bank this statement is from. Choose the bank above, then extract again.'
+    )
+  ).toBeVisible();
+  expect(mocks.parse).not.toHaveBeenCalled();
+  expect(screen.queryByLabelText('Item / Brand')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Statement bank'), {
+    target: { value: 'uob' },
+  });
+  expect(await screen.findByLabelText('Item / Brand')).toHaveValue('MARKET');
+  expect(screen.getByText('Chosen: UOB')).toBeVisible();
+  expect(mocks.parse).toHaveBeenCalledWith('uob');
+  expect(mocks.open).toHaveBeenCalledTimes(1);
+  expect(mocks.extract).toHaveBeenCalledTimes(1);
+});
+it('shows no rows for an unrelated statement', async () => {
+  mocks.extract.mockResolvedValue(UNKNOWN_LINES);
+  setup(undefined, 4, true, 'auto');
+  expect(await screen.findByText(/could not tell which bank/)).toBeVisible();
+  expect(screen.queryByLabelText('Item / Brand')).not.toBeInTheDocument();
+});
+it('names the candidates on an ambiguous result and parses nothing', async () => {
+  mocks.detect.mockReturnValue({ status: 'ambiguous', banks: ['dbs', 'hsbc'] });
+  setup(undefined, 4, true, 'auto');
+  expect(await screen.findByText(/looks like DBS or HSBC/)).toBeVisible();
+  expect(mocks.parse).not.toHaveBeenCalled();
+  mocks.detect.mockReturnValue(undefined);
+  fireEvent.change(screen.getByLabelText('Statement bank'), {
+    target: { value: 'uob' },
+  });
+  expect(await screen.findByLabelText('Item / Brand')).toBeVisible();
+  expect(mocks.extract).toHaveBeenCalledTimes(1);
+});
+it('clears the stored lines on Clear review so a bank change needs a new extraction', async () => {
+  mocks.extract.mockResolvedValue(UNKNOWN_LINES);
+  setup(undefined, 4, true, 'auto');
+  await screen.findByText(/could not tell which bank/);
+  fireEvent.click(screen.getByRole('button', { name: 'Clear review' }));
+  fireEvent.change(screen.getByLabelText('Statement bank'), {
+    target: { value: 'uob' },
+  });
+  expect(screen.queryByLabelText('Item / Brand')).not.toBeInTheDocument();
+  expect(mocks.parse).not.toHaveBeenCalled();
 });

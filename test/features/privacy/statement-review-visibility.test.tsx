@@ -67,6 +67,9 @@ function mountReview() {
   );
 }
 function selectPdf() {
+  fireEvent.change(screen.getByLabelText('Statement bank'), {
+    target: { value: 'uob' },
+  });
   fireEvent.change(screen.getByLabelText('Period start'), {
     target: { value: '2025-12-15' },
   });

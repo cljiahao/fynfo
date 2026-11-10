@@ -46,15 +46,26 @@ export function positionedStatementLines(
     const confidences = line.items.flatMap((item) =>
       typeof item.confidence === 'number' ? [item.confidence] : []
     );
+    const sorted = line.items.sort((left, right) => left.x - right.x);
     return {
       page,
       line: index + 1,
-      text: line.items
-        .sort((left, right) => left.x - right.x)
+      text: sorted
         .map((item) => item.text)
         .join(' ')
         .trim(),
-      ...(confidences.length ? { confidence: Math.min(...confidences) } : {}),
+      ...(confidences.length
+        ? {
+            confidence: Math.min(...confidences),
+            words: sorted.map((item) => ({
+              text: item.text,
+              x: item.x,
+              ...(typeof item.confidence === 'number'
+                ? { confidence: item.confidence }
+                : {}),
+            })),
+          }
+        : {}),
     };
   });
 }
@@ -328,6 +339,19 @@ function qualifyRow(
   return row;
 }
 
+/** Shared by the manual parse gate and bank auto-detection so the two cannot
+ * disagree about what counts as a bank's statement. */
+export function matchesStatementIdentity(
+  bank: StatementBank,
+  text: string
+): boolean {
+  const identity = STATEMENT_BANKS.find((entry) => entry.value === bank);
+  return Boolean(
+    identity?.identity.test(text) &&
+    !('exclude' in identity && identity.exclude.test(text))
+  );
+}
+
 /** Conservative text-layout review; no row is saved and unsupported layouts fail
  * visibly. Only the declared synthetic date/description/billed-SGD variants are
  * qualified by fixtures; bank selection alone never establishes layout support. */
@@ -344,11 +368,7 @@ export function parseStatementLines(
   )
     throw new Error('Statement text limit');
   const text = lines.map((line) => line.text).join('\n');
-  const identity = STATEMENT_BANKS.find((entry) => entry.value === bank);
-  if (
-    !identity?.identity.test(text) ||
-    ('exclude' in identity && identity.exclude.test(text))
-  )
+  if (!matchesStatementIdentity(bank, text))
     throw new Error(
       'The selected bank could not be identified in this text PDF.'
     );

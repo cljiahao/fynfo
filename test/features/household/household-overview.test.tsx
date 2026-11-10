@@ -34,6 +34,9 @@ vi.mock('@/features/household/hooks/use-household', () => ({
   },
   useUnlockHousehold: () => ({ mutate: vi.fn() }),
 }));
+vi.mock('@/features/household/hooks/use-household-plan', () => ({
+  useHouseholdPlan: () => ({ data: undefined }),
+}));
 vi.mock('@/features/household/components/goal-list', () => ({
   GoalList: () => <div>Private goal</div>,
 }));

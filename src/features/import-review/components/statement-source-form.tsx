@@ -7,20 +7,20 @@ import { useAmountVisibility } from '@/features/privacy';
 import { useRef, useState } from 'react';
 import { STATEMENT_BANKS } from '../constants';
 import type { DetectedStatementPeriod } from '../lib/statement-period';
-import type { StatementBank } from '../types';
+import type { StatementBankChoice } from '../types';
 
 const PERIOD_ERROR = 'Enter both period dates, or use the dates from the PDF.';
 
 interface StatementSourceFormProps {
   controlId: string;
-  bank: StatementBank;
+  bank: StatementBankChoice;
   from: string;
   to: string;
   manualPeriod: boolean;
   detectedBasis: DetectedStatementPeriod['basis'] | null;
   busy: boolean;
   fileName: string | null;
-  onBankChange: (bank: StatementBank) => void;
+  onBankChange: (bank: StatementBankChoice) => void;
   onFileChange: (file: File | null) => void;
   onPeriodChange: (edge: 'from' | 'to', value: string) => void;
   onUsePdfDates: () => void;
@@ -92,9 +92,16 @@ export function StatementSourceForm({
             className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
             onChange={(event) => {
               if (!canReveal()) return;
-              onBankChange(event.target.value as StatementBank);
+              const value = event.target.value;
+              onBankChange(
+                value === 'auto'
+                  ? 'auto'
+                  : (STATEMENT_BANKS.find((entry) => entry.value === value)
+                      ?.value ?? 'auto')
+              );
             }}
           >
+            <option value="auto">Auto-detect</option>
             {STATEMENT_BANKS.map((entry) => (
               <option key={entry.value} value={entry.value}>
                 {entry.label}
@@ -226,8 +233,9 @@ export function StatementSourceForm({
         </div>
       </form>
       <p className="text-muted-foreground text-sm">
-        Text PDFs up to 10 MiB and 100 pages. Use an unprotected PDF. Scans and
-        some bank layouts need manual entry.
+        PDFs up to 10 MiB and 100 pages. Use an unprotected PDF. Scanned
+        statements are read on this device and can take longer. Leave the bank
+        on Auto-detect or pick it yourself.
       </p>
     </section>
   );

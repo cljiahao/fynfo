@@ -1,6 +1,9 @@
 import { chartColors } from '@/lib/chart-palette';
 import type { AssetCategory } from './types';
 
+export const DEFAULT_EMERGENCY_MONTHS = 3;
+export const DEFAULT_WAR_CHEST_MONTHS = 9;
+
 export const CATEGORIES: AssetCategory[] = [
   'savings',
   'bonds',
@@ -84,6 +87,5 @@ export const SNAPSHOTS_KEY = ['snapshots'] as const;
 
 export const PLANNER_KEY = ['planner-settings'] as const;
 
-export const DEFAULT_HOUSEHOLD_HORIZON_MONTHS = 24;
-export const HORIZON_MIN = 1;
-export const HORIZON_MAX = 120;
+/** Cap on how many months a household shortfall is projected over. */
+export const SHORTFALL_IMPACT_MONTHS = 12;
