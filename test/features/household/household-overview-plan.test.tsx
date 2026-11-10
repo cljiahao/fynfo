@@ -137,6 +137,44 @@ describe('household overview plan summary', () => {
     expect(screen.queryByText(/already cover/)).toBeNull();
   });
 
+  describe('covered by personal savings', () => {
+    // Share of the Sofa goal is 6000 at half of 12000.
+    const sentence = 'Your savings already cover your share.';
+    const together = () =>
+      screen.getByText(/Together \$1,200 a month/).textContent;
+
+    it('shows once the surplus covers the whole scheduled share', () => {
+      render(<HouseholdOverview personalSurplus={6000} />);
+      expect(screen.getByText(sentence)).toBeInTheDocument();
+    });
+
+    it('stays hidden when the surplus falls short or is unknown', () => {
+      const first = render(<HouseholdOverview personalSurplus={5999} />);
+      expect(screen.queryByText(sentence)).toBeNull();
+      first.unmount();
+      render(<HouseholdOverview personalSurplus={null} />);
+      expect(screen.queryByText(sentence)).toBeNull();
+      render(<HouseholdOverview />);
+      expect(screen.queryByText(sentence)).toBeNull();
+    });
+
+    it('leaves the joint figures and recommendations unchanged', () => {
+      const before = render(<HouseholdOverview />);
+      const plain = before.container.textContent;
+      before.unmount();
+      render(<HouseholdOverview personalSurplus={1e6} />);
+      expect(together()).toBe('Together $1,200 a month');
+      expect(screen.getByText(sentence)).toBeInTheDocument();
+      expect(document.body.textContent?.replace(sentence, '')).toBe(plain);
+    });
+
+    it('stays hidden while the plan is still loading', () => {
+      state.plan = { isLoading: true };
+      render(<HouseholdOverview personalSurplus={1e6} />);
+      expect(screen.queryByText(sentence)).toBeNull();
+    });
+  });
+
   it('shows no recommendation list when there is nothing to say', () => {
     state.plan = { data: { ...input, goals: [], budgets: [] } };
     render(<HouseholdOverview />);

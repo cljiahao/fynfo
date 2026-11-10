@@ -112,7 +112,7 @@ describe('with items', () => {
     );
     expect(screen.getByText('Contributed')).toBeInTheDocument();
     expect(screen.getByText('Paid')).toBeInTheDocument();
-    expect(screen.getByText('Monthly pace')).toBeInTheDocument();
+    expect(screen.getByText('Monthly needed')).toBeInTheDocument();
     expect(screen.getByText('burn-up chart')).toBeInTheDocument();
     expect(screen.getByText(/^You \d+% \/ Partner \d+%$/)).toBeInTheDocument();
     expect(screen.getAllByText('Venue').length).toBeGreaterThan(1);
@@ -425,7 +425,7 @@ describe('amounts hidden', () => {
     expect(container.textContent).not.toMatch(/\d{1,3},\d{3}/);
     expect(container.textContent).not.toContain('Wedding');
     expect(screen.queryByRole('status')).toBeNull();
-    expect(container.textContent).toMatch(/Monthly pace\s*Hidden/);
+    expect(container.textContent).toMatch(/Monthly needed\s*Hidden/);
     expect(container.textContent).not.toMatch(/Past target date/);
     expect(screen.getByRole('button', { name: 'Add item' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();

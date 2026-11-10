@@ -4,26 +4,30 @@ import { useAmountVisibility } from '@/features/privacy';
 import { formatSGDWhole } from '@/lib/utils/currency';
 import { useMemo, useState } from 'react';
 import { useHouseholdPlan } from '../hooks/use-household-plan';
+import { savingsCoverShare, sharedInput } from '../lib/household-joint-plan';
 import {
   computeHouseholdPlan,
   householdRecommendations,
-  type HouseholdPlanInput,
 } from '../lib/household-plan';
 import { HouseholdRecommendations } from './household-recommendations';
 
-function sharedInput(input: HouseholdPlanInput) {
-  return {
-    goals: input.goals.map((goal) => ({ ...goal, share: 1 })),
-    budgets: input.budgets.map((budget) => ({ ...budget, share: 1 })),
-  };
+interface HouseholdPlanSummaryProps {
+  /**
+   * The caller's own spare savings, worked out in their browser by the page.
+   * Null while unknown. It only drives one note; the joint figures ignore it.
+   */
+  personalSurplus?: number | null;
 }
 
 /**
  * Recommendations and monthly figures at the top of the household page. The
- * page never has the caller's savings, so surplus is 0: no "covered" or
- * "shortfall" notes, and the shared total is labelled "before your savings".
+ * joint figures never use the caller's savings, so surplus is 0 and the shared
+ * total is labelled "before your savings". The one personal note is shown only
+ * when the page supplies a surplus that covers the caller's whole share.
  */
-export function HouseholdPlanSummary() {
+export function HouseholdPlanSummary({
+  personalSurplus = null,
+}: HouseholdPlanSummaryProps) {
   const plan = useHouseholdPlan();
   const { mask } = useAmountVisibility();
   const [now] = useState(() => new Date());
@@ -40,8 +44,11 @@ export function HouseholdPlanSummary() {
       mine: mine.monthly,
       together: together.monthly,
       recommendations: householdRecommendations(input, mine, { now }),
+      covered:
+        personalSurplus !== null &&
+        savingsCoverShare(input, personalSurplus, now),
     };
-  }, [input, now]);
+  }, [input, now, personalSurplus]);
 
   if (plan.isError) {
     return (
@@ -75,6 +82,11 @@ export function HouseholdPlanSummary() {
           <span className="text-muted-foreground">
             , before your savings. Your share {money(figures.mine)} a month.
           </span>
+        </p>
+      )}
+      {figures.covered && (
+        <p className="text-muted-foreground text-sm">
+          Your savings already cover your share.
         </p>
       )}
     </div>

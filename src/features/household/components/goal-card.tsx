@@ -31,6 +31,8 @@ interface GoalCardProps {
   onContribute: (goal: HouseholdGoal) => void;
   onEdit: (goal: HouseholdGoal) => void;
   onDelete: (goal: HouseholdGoal) => void;
+  /** Joint monthly figure from the household plan; absent until it is known. */
+  monthly?: number | null;
   className?: string;
 }
 
@@ -39,13 +41,15 @@ export function GoalCard({
   onContribute,
   onEdit,
   onDelete,
+  monthly = null,
   className,
 }: GoalCardProps) {
   const { hidden, mask, canReveal } = useAmountVisibility();
   const [now] = useState(() => new Date());
   const status = goalStatus(goal, now);
   const funded = status === 'funded';
-  const pace = monthlyPaceNeeded(goal, now);
+  const dated = monthlyPaceNeeded(goal, now);
+  const pace = dated === 'past' || dated === null ? dated : monthly;
 
   const overCommitted =
     goal.contributed + goalCommitted(goal) > goal.targetAmount;
@@ -164,7 +168,9 @@ export function GoalCard({
           <p className="text-muted-foreground text-xs">
             {pace === 'past'
               ? 'Past target date'
-              : `${mask(formatSGD(pace))}/mo needed`}
+              : pace === 0
+                ? 'Nothing to set aside monthly'
+                : `${mask(formatSGD(pace))}/mo needed`}
           </p>
         )}
       </CardContent>

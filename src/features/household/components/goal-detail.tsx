@@ -19,6 +19,7 @@ import {
   UNDO_DELAY_MS,
 } from '../constants';
 import { useDeleteGoal, useGoals, useHousehold } from '../hooks/use-household';
+import { useJointGoalMonthly } from '../hooks/use-joint-goal-monthly';
 import {
   UndoableDeleteProvider,
   useUndoableDelete,
@@ -178,7 +179,9 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
   const selfPct =
     goal.contributed > 0 ? Math.round((self / goal.contributed) * 100) : 0;
   const funded = goal.targetAmount > 0 && goal.contributed >= goal.targetAmount;
-  const pace = monthlyPaceNeeded(goal, new Date());
+  const jointMonthly = useJointGoalMonthly()?.get(goal.id) ?? null;
+  const dated = monthlyPaceNeeded(goal, new Date());
+  const pace = dated === 'past' || dated === null ? dated : jointMonthly;
   const hasItems = goal.items.length > 0;
   // Counted on the unfiltered goal: an item in its undo window still occupies a slot.
   const itemLimitReached = source.items.length >= GOAL_ITEM_LIMIT;
@@ -288,7 +291,7 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
             />
           )}
           <StatCard
-            label="Monthly pace"
+            label="Monthly needed"
             value={
               hidden
                 ? mask('')
@@ -296,7 +299,9 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
                   ? '-'
                   : pace === 'past'
                     ? 'Past target date'
-                    : `${mask(formatSGD(pace))}/mo`
+                    : pace === 0
+                      ? 'Nothing to set aside'
+                      : `${mask(formatSGD(pace))}/mo`
             }
           />
         </div>

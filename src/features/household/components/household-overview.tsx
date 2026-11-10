@@ -35,7 +35,14 @@ const VIEWS = [
 ] as const;
 type View = (typeof VIEWS)[number]['id'];
 
-export function HouseholdOverview() {
+interface HouseholdOverviewProps {
+  /** The caller's spare savings, computed in their browser; null if unknown. */
+  personalSurplus?: number | null;
+}
+
+export function HouseholdOverview({
+  personalSurplus = null,
+}: HouseholdOverviewProps) {
   const { hidden, canReveal } = useAmountVisibility();
   const household = useHousehold();
   // Lock state is authoritative from the session (cookie), not inferred from a
@@ -139,7 +146,7 @@ export function HouseholdOverview() {
               )}
               {goals.data && (
                 <>
-                  <HouseholdPlanSummary />
+                  <HouseholdPlanSummary personalSurplus={personalSurplus} />
                   {showInvite && <InvitePanel />}
                   {household.data.memberCount === HOUSEHOLD_MEMBER_CAP && (
                     <PlannerSplitEditor />

@@ -8,6 +8,7 @@ import { Plus, Target } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useDeleteGoal } from '../hooks/use-household';
+import { useJointGoalMonthly } from '../hooks/use-joint-goal-monthly';
 import type { HouseholdGoal } from '../types';
 import { AddContributionDialog } from './add-contribution-dialog';
 import { ConfirmDeleteDialog } from './confirm-delete-dialog';
@@ -28,6 +29,7 @@ function plural(count: number, noun: string) {
 export function GoalList({ goals, className, onCreate }: GoalListProps) {
   const { canReveal, mask } = useAmountVisibility();
   const deleteGoal = useDeleteGoal();
+  const monthly = useJointGoalMonthly();
   const [contributingTo, setContributingTo] = useState<HouseholdGoal | null>(
     null
   );
@@ -105,6 +107,7 @@ export function GoalList({ goals, className, onCreate }: GoalListProps) {
           <GoalCard
             key={goal.id}
             goal={goal}
+            monthly={monthly?.get(goal.id) ?? null}
             className={goals.length === 1 ? 'sm:col-span-2' : undefined}
             onContribute={setContributingTo}
             onEdit={setEditing}
