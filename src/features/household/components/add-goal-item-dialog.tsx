@@ -27,7 +27,12 @@ interface AddGoalItemDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type ItemErrors = { name?: string; budget?: string; quote?: string };
+type ItemErrors = {
+  name?: string;
+  budget?: string;
+  quote?: string;
+  dueDate?: string;
+};
 
 function toAmount(value: string): number {
   return value.trim() === '' ? NaN : Number(value);
@@ -40,6 +45,7 @@ function existingItem(item: HouseholdGoal['items'][number]) {
     name: item.name,
     budget: toAmount(item.budget.toFixed(2)),
     quote: item.quote === null ? null : toAmount(item.quote.toFixed(2)),
+    dueDate: item.dueDate,
   };
 }
 
@@ -53,6 +59,7 @@ export function AddGoalItemDialog({
   const [name, setName] = useState('');
   const [budget, setBudget] = useState('');
   const [quote, setQuote] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [errors, setErrors] = useState<ItemErrors>({});
 
   const clear = (key: keyof ItemErrors) =>
@@ -65,6 +72,7 @@ export function AddGoalItemDialog({
       name,
       budget: toAmount(budget),
       quote: quote.trim() === '' ? null : toAmount(quote),
+      dueDate: dueDate === '' ? null : dueDate,
     });
     if (!parsed.success) {
       const next: ItemErrors = {};
@@ -73,6 +81,7 @@ export function AddGoalItemDialog({
         if (key === 'name') next.name ??= 'Enter a name';
         if (key === 'budget') next.budget ??= 'Enter an amount above 0';
         if (key === 'quote') next.quote ??= 'Enter an amount above 0';
+        if (key === 'dueDate') next.dueDate ??= 'Enter a valid date';
       }
       setErrors(next);
       return;
@@ -182,6 +191,25 @@ export function AddGoalItemDialog({
               />
               <FieldError id="goal-item-quote-error">{errors.quote}</FieldError>
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="goal-item-due">Due date (optional)</Label>
+            <Input
+              id="goal-item-due"
+              disabled={hidden}
+              type="date"
+              value={hidden ? '' : dueDate}
+              aria-invalid={errors.dueDate ? true : undefined}
+              aria-describedby={
+                errors.dueDate ? 'goal-item-due-error' : undefined
+              }
+              onChange={(e) => {
+                if (!canReveal()) return;
+                setDueDate(e.target.value);
+                clear('dueDate');
+              }}
+            />
+            <FieldError id="goal-item-due-error">{errors.dueDate}</FieldError>
           </div>
           <DialogFooter>
             <Button

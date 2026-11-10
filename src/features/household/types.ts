@@ -51,6 +51,8 @@ export interface GoalItem {
   budget: number;
   /** Final quote; null until the household has one. */
   quote: number | null;
+  /** ISO date (YYYY-MM-DD) this line falls due; null means the goal's date. */
+  dueDate: string | null;
   payments: GoalItemPayment[];
   paid: number;
   remaining: number;

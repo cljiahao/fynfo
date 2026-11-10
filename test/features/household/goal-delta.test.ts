@@ -28,6 +28,7 @@ describe('computeGoalDelta', () => {
       name: 'Frame',
       budget: 100,
       quote: null,
+      dueDate: null,
       paid: 30,
       remaining: 70,
       over: 0,

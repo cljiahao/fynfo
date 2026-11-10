@@ -33,10 +33,24 @@ export const addContributionSchema = z.object({
   date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
 });
 
+// The column is a plain DATE, so a time suffix or an impossible day must fail
+// at the boundary instead of surfacing as a Postgres error.
+const itemDueDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD')
+  .refine((value) => {
+    const parsed = new Date(`${value}T00:00:00Z`);
+    return (
+      !Number.isNaN(parsed.getTime()) &&
+      parsed.toISOString().slice(0, 10) === value
+    );
+  }, 'date must be a real calendar date');
+
 export const addGoalItemSchema = z.object({
   goalId: z.uuid(),
   name: z.string().trim().min(1).max(80),
   budget: z.number().positive().finite(),
+  dueDate: itemDueDate.nullish(),
 });
 
 export const addItemPaymentSchema = z.object({
@@ -51,6 +65,7 @@ export const saveGoalItemSchema = z.object({
   name: z.string().trim().min(1).max(80),
   budget: z.number().positive().finite(),
   quote: z.number().positive().finite().nullish(),
+  dueDate: itemDueDate.nullish(),
 });
 
 export const saveGoalSchema = z

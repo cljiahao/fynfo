@@ -11,7 +11,7 @@ export function GoalSplitField({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="border-t pt-4" data-testid="goal-split">
+    <div className="pt-1" data-testid="goal-split">
       <SplitPicker
         label="Your share of this goal"
         value={value}

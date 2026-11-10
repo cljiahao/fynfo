@@ -52,6 +52,7 @@ interface ItemRow {
   name: string;
   budget: string;
   quote: string | null;
+  due_date: string | null;
 }
 
 interface PaymentRow {
@@ -80,7 +81,9 @@ async function readGoalItems(
         (from, to) =>
           supabase
             .from('household_goal_items')
-            .select('id, goal_id, name, budget, quote', { count: 'exact' })
+            .select('id, goal_id, name, budget, quote, due_date', {
+              count: 'exact',
+            })
             .in('goal_id', ids)
             .order('created_at', { ascending: true })
             .order('id', { ascending: true })
@@ -130,6 +133,7 @@ async function readGoalItems(
       name: decryptPayload(row.name, kh),
       budget,
       quote: row.quote ? Number(decryptPayload(row.quote, kh)) : null,
+      dueDate: row.due_date ? row.due_date.slice(0, 10) : null,
       payments,
       ...computeItemBudget(
         budget,
@@ -315,6 +319,7 @@ export async function addGoalItem(input: unknown): Promise<void> {
     goal_id: data.goalId,
     name: encryptPayload(data.name, kh),
     budget: encryptPayload(data.budget.toString(), kh),
+    due_date: data.dueDate ?? null,
   });
   throwIfSupabaseError(error, 'household goal item create');
 }
@@ -411,6 +416,7 @@ interface ExistingItem {
   name: string;
   budget: number;
   quote: number | null;
+  dueDate: string | null;
 }
 
 /**
@@ -492,12 +498,12 @@ export async function saveGoal(input: unknown): Promise<SaveGoalResult> {
     const existing = new Map<string, ExistingItem>();
     if (goalExists) {
       const rows = await readAllRows<
-        Pick<ItemRow, 'id' | 'name' | 'budget' | 'quote'>
+        Pick<ItemRow, 'id' | 'name' | 'budget' | 'quote' | 'due_date'>
       >(
         (from, to) =>
           supabase
             .from('household_goal_items')
-            .select('id, name, budget, quote', { count: 'exact' })
+            .select('id, name, budget, quote, due_date', { count: 'exact' })
             .eq('goal_id', goalId)
             .order('created_at', { ascending: true })
             .order('id', { ascending: true })
@@ -509,6 +515,7 @@ export async function saveGoal(input: unknown): Promise<SaveGoalResult> {
           name: decryptPayload(row.name, kh),
           budget: Number(decryptPayload(row.budget, kh)),
           quote: row.quote ? Number(decryptPayload(row.quote, kh)) : null,
+          dueDate: row.due_date ? row.due_date.slice(0, 10) : null,
         });
       }
     }
@@ -517,6 +524,7 @@ export async function saveGoal(input: unknown): Promise<SaveGoalResult> {
       name: encryptPayload(item.name, kh),
       budget: encryptPayload(item.budget.toString(), kh),
       quote: item.quote ? encryptPayload(item.quote.toString(), kh) : null,
+      due_date: item.dueDate ?? null,
     });
 
     for (const item of draft) {
@@ -525,7 +533,8 @@ export async function saveGoal(input: unknown): Promise<SaveGoalResult> {
       const unchanged =
         before.name === item.name &&
         before.budget === item.budget &&
-        before.quote === (item.quote ?? null);
+        before.quote === (item.quote ?? null) &&
+        before.dueDate === (item.dueDate ?? null);
       if (unchanged) continue;
       const { error } = await supabase
         .from('household_goal_items')
