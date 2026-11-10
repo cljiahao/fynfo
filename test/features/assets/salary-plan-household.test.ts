@@ -425,6 +425,9 @@ describe('shortfallImpactMonths', () => {
     [12, 12],
     [30, 12],
     [null, 12],
+    [0, 1],
+    [-5, 1],
+    [NaN, 12],
   ])('binding %s months projects over %s months', (binding, expected) => {
     expect(shortfallImpactMonths(binding)).toBe(expected);
   });

@@ -45,6 +45,9 @@ vi.mock('@/features/household/actions/plan-actions', () => ({
 }));
 
 const scenarioInputs = vi.hoisted(() => ({ last: null as unknown }));
+const plannerValues = vi.hoisted(() => ({
+  last: null as null | { householdEarmark: number },
+}));
 vi.mock('@/features/assets/components/planning-scenarios', () => ({
   PlanningScenarios: ({ inputs }: { inputs: unknown }) => {
     scenarioInputs.last = inputs;
@@ -109,7 +112,9 @@ function planInput(
   };
 }
 
-function mount() {
+function mount(
+  snapshot?: React.ComponentProps<typeof SalaryPlanner>['snapshot']
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -117,13 +122,19 @@ function mount() {
     <QueryClientProvider client={client}>
       <AmountVisibilityProvider>
         <AmountVisibilityToggle />
-        <SalaryPlanner />
+        <SalaryPlanner
+          snapshot={snapshot}
+          onPlannerValuesChange={(v) => {
+            plannerValues.last = v;
+          }}
+        />
       </AmountVisibilityProvider>
     </QueryClientProvider>
   );
 }
 
 beforeEach(() => {
+  plannerValues.last = null;
   window.localStorage.clear();
   api.getSalaryRecords.mockResolvedValue([salaryRow('2026-01', 5000, 0)]);
   api.getExpenses.mockResolvedValue([
@@ -169,14 +180,18 @@ describe('planner expenses source', () => {
 });
 
 async function openHousehold() {
-  fireEvent.click(await screen.findByRole('button', { name: /Household/ }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: /Set aside this month/ })
+  );
 }
 
 describe('planner household states', () => {
   it('has no Household line when there is no household', async () => {
     mount();
     await screen.findByText(/Net \(after CPF\)/);
-    expect(screen.queryByRole('button', { name: /Household/ })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: /Set aside this month/ })
+    ).toBeNull();
     expect(screen.queryByText(/Unlock your household/)).toBeNull();
   });
 
@@ -251,6 +266,61 @@ describe('planner household states', () => {
     expect(scenarioInputs.last).not.toHaveProperty('householdMonthlyDeduction');
     expect(scenarioInputs.last).not.toHaveProperty('householdReserve');
   });
+
+  it('collapsed Household row reads as the set-aside line with a masked amount', async () => {
+    api.getHouseholdPlanInput.mockResolvedValue(planInput('ready', 6000));
+    mount();
+    const row = await screen.findByRole('button', {
+      name: /Set aside this month/,
+    });
+    expect(row.textContent).toMatch(/1,000/);
+    expect(row.textContent).not.toMatch(/Household/);
+    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    expect(row.textContent).not.toMatch(/1,000/);
+  });
+
+  it('lifts the earmark as the surplus used when the household is ready', async () => {
+    api.getHouseholdPlanInput.mockResolvedValue(planInput('ready', 6000));
+    mount({
+      id: '2026-01',
+      entries: [{ category: 'savings', account: 'Bank', amount: 1000000 }],
+    });
+    await waitFor(() =>
+      expect(plannerValues.last?.householdEarmark).toBe(6000)
+    );
+  });
+
+  it.each([
+    [
+      'none',
+      () => api.getHouseholdPlanInput.mockResolvedValue(planInput('none')),
+    ],
+    [
+      'locked',
+      () => api.getHouseholdPlanInput.mockResolvedValue(planInput('locked')),
+    ],
+    [
+      'loading',
+      () =>
+        api.getHouseholdPlanInput.mockReturnValue(new Promise(() => undefined)),
+    ],
+    [
+      'error',
+      () => api.getHouseholdPlanInput.mockRejectedValue(new Error('boom')),
+    ],
+  ])(
+    'lifts a zero earmark when the household is %s',
+    async (_name, arrange) => {
+      arrange();
+      mount({
+        id: '2026-01',
+        entries: [{ category: 'savings', account: 'Bank', amount: 1000000 }],
+      });
+      await screen.findByText(/Net \(after CPF\)/);
+      await waitFor(() => expect(plannerValues.last).not.toBeNull());
+      expect(plannerValues.last?.householdEarmark).toBe(0);
+    }
+  );
 
   it('does not offer a household horizon in settings', async () => {
     api.getHouseholdPlanInput.mockResolvedValue(planInput('ready', 6000));
