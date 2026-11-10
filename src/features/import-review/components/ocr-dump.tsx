@@ -34,6 +34,7 @@ async function dumpPdf(
   if (bytes.byteLength > STATEMENT_LIMITS.bytes)
     throw new Error('PDF exceeds the 10 MiB limit.');
   const pdfjs = await import('pdfjs-dist');
+  if (signal.aborted) throw new Error('Cancelled');
   const port = new Worker(`${RESOURCE_ROOT}pdf.worker.mjs`, { type: 'module' });
   const worker = pdfjs.PDFWorker.create({ port });
   let loading: PDFDocumentLoadingTask | undefined;
@@ -55,6 +56,7 @@ async function dumpPdf(
       standardFontDataUrl: `${RESOURCE_ROOT}standard_fonts/`,
       wasmUrl: `${RESOURCE_ROOT}wasm/`,
       enableXfa: false,
+      stopAtErrors: true,
       maxImageSize: STATEMENT_LIMITS.pixels,
       canvasMaxAreaInBytes: STATEMENT_LIMITS.pixels * 4,
       useSystemFonts: true,
@@ -149,19 +151,40 @@ export function OcrDump() {
     if (!file) return;
     const run = new AbortController();
     controller.current = run;
-    const timer = setTimeout(() => run.abort(), OCR_DEADLINE_MS);
+    const current = () => controller.current === run && !run.signal.aborted;
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      run.abort();
+    }, OCR_DEADLINE_MS);
     setBusy(true);
+    setStatus('reading file');
     try {
-      await dumpPdf(await file.arrayBuffer(), run.signal, setStatus, (page) =>
-        setPages((current) => [...current, page])
+      await dumpPdf(
+        await file.arrayBuffer(),
+        run.signal,
+        (next) => {
+          if (current()) setStatus(next);
+        },
+        (page) => {
+          if (current()) setPages((existing) => [...existing, page]);
+        }
       );
-      setStatus('idle');
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'OCR failed.');
-      setStatus('idle');
+      if (controller.current === run)
+        setError(
+          timedOut
+            ? `OCR timed out after ${OCR_DEADLINE_MS / 1000} s`
+            : failure instanceof Error
+              ? failure.message
+              : 'OCR failed.'
+        );
     } finally {
       clearTimeout(timer);
-      if (controller.current === run) setBusy(false);
+      if (controller.current === run) {
+        setStatus('idle');
+        setBusy(false);
+      }
     }
   }
 

@@ -171,7 +171,7 @@ script only OCRed embedded images and the HSBC statement body is not one, and
 the Node canvas binary needed to render pages is blocked by Windows Application
 Control; the page reuses the app's own page render, recogniser and line
 grouping and adds no dependency. It is a client component (`'use client'`)
-because it needs a file input, a canvas and a web worker. Production returns 404. The approval status is unchanged.
+because it needs a file input, a canvas and a web worker. Production returns 404. The dump component is exported from the barrel as a development-gated dynamic import so production bundles do not contain it. The approval status is unchanged.
 
 ### HSBC layout
 

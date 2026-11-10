@@ -6,8 +6,15 @@ const notFound = vi.hoisted(() =>
   })
 );
 vi.mock('next/navigation', () => ({ notFound }));
+const OcrDump = vi.hoisted(() => () => null);
+// Stubbing NODE_ENV flips the JSX transform to the dev runtime, which the
+// production React build in vitest does not provide.
+vi.mock('react/jsx-dev-runtime', () => ({
+  Fragment: Symbol('fragment'),
+  jsxDEV: (type: unknown, props: unknown) => ({ type, props }),
+}));
 vi.mock('@/features/import-review', async () => ({
-  OcrDump: () => null,
+  OcrDump,
   isOcrDumpEnabled: (
     await import('@/features/import-review/lib/ocr-dump-format')
   ).isOcrDumpEnabled,
@@ -23,4 +30,11 @@ it('returns 404 outside development', async () => {
   const { default: Page } = await import('@/app/dev/ocr-dump/page');
   expect(() => Page()).toThrow('NEXT_NOT_FOUND');
   expect(notFound).toHaveBeenCalled();
+});
+
+it('renders the dump component in development', async () => {
+  vi.stubEnv('NODE_ENV', 'development');
+  const { default: Page } = await import('@/app/dev/ocr-dump/page');
+  expect(Page()).toMatchObject({ type: OcrDump });
+  expect(notFound).not.toHaveBeenCalled();
 });
