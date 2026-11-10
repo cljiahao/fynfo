@@ -242,7 +242,7 @@ Triggers and copy (ordered by months moved, then as listed; at most 3 shown):
 1. `extra-monthly`: always when `base.months > 0` and the base run is reached. The step is the larger of 100 and 10 percent of `monthlyInvesting`, rounded to 50. `monthsEarlier = base.months - months(base with monthlyInvesting + step)`; shown only if `monthsEarlier >= 1`. Copy: "Investing $X more a month brings your date forward N months."
 2. `expense-drift`: when the latest completed month, or the 12-month average used by the planner, is more than 10 percent above the 12-month figure it is compared against (`calcRecentAvgExpense` average versus the planner `expenses` when an override is set; if no override is set, compare the most recent completed month with the 12-month average). `driftPct` is whole percent. `monthsLater` = months(base with `annualCost` scaled by the drift on the expenses portion) minus `base.months`, shown only if `>= 1`. Copy: "Spending is N% above your 12-month average. If it stays there, your date moves back M months." This lever needs a recent month and `monthsUsed >= 3`.
 3. `emergency-surplus`: when `savings + bonds` exceed `emergencyFundGoal + warChestGoal` plus the household earmark (`PlannerValues.householdEarmark`) by at least 1,000 (the same deployable surplus `computeInvestmentBreakdown` computes). `amount` = that surplus net of the earmark, rounded down to the nearest 100. Copy: "Your emergency fund is $X above target, available to invest if you choose." It does not say where to invest.
-4. `household-goal-ends`: for each household goal in the household plan's schedule whose set-aside ends within the next 60 months, `extraInvesting` = that goal's monthly set-aside released (floored at 0). Copy: "Household goal <name> ends in <Month Year>; your investing rises by $X a month after." One lever per goal, soonest first. Needs household unlocked and a non-empty schedule.
+4. `household-goal-ends`: for each household goal in the household plan's schedule whose set-aside ends within the next 60 months, `extraInvesting` = that goal's monthly set-aside released (floored at 0). Copy: "Household goal <name> ends in <Month Year>; your investing rises by $X a month after." `<name>` and `$X`go through`mask()`like every household goal name (spec 187:`CopyOptions.maskName`in`src/features/household/lib/household-recommendation-copy.ts:10`, `:30`, applied by `household-recommendations.tsx:35`). One lever per goal, soonest first. Needs household state `'ready'` and a non-empty schedule.
 
 If no lever triggers, the section is hidden (not an empty heading).
 
@@ -286,17 +286,17 @@ Layout: single-column, 16 px gutters, no fixed widths over 100 percent, works at
 
 ### States
 
-| State                              | Behaviour                                                                                                                              |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| No salary                          | Projection still runs from entered investing and portfolio; savings rate is hidden (null). Copy: "Add a salary to see a savings rate." |
-| No expenses (annual cost 0)        | `no_expenses`: card says "Add expenses to set a freedom number." No date.                                                              |
-| No portfolio                       | Runs with `P = 0`; the sentence leads with "No invested portfolio yet." and the date comes from contributions.                         |
-| No assumptions                     | `no_assumptions`: invitation to add return and withdrawal rate; no numbers.                                                            |
-| Household locked / unavailable     | Household contributes 0; the detail says "Household goals not included (locked)". No error, no lever from household.                   |
-| Amounts hidden                     | Amounts masked; percentages and years visible (Q6); assumption editing blocked until revealed.                                         |
-| Not reached within cap             | Sentence reads "Not reached within 60 years at this pace." No date.                                                                    |
-| Already reached                    | Sentence reads "Your portfolio already covers your living costs at your assumptions." Date line shows the current month.               |
-| Missing column (migration pending) | Assumptions do not persist; the card still works for the session.                                                                      |
+| State                              | Behaviour                                                                                                                                                                                                                                                                                                                                       |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No salary                          | Projection still runs from entered investing and portfolio; savings rate is hidden (null). Copy: "Add a salary to see a savings rate."                                                                                                                                                                                                          |
+| No expenses (annual cost 0)        | `no_expenses`: card says "Add expenses to set a freedom number." No date.                                                                                                                                                                                                                                                                       |
+| No portfolio                       | Runs with `P = 0`; the sentence leads with "No invested portfolio yet." and the date comes from contributions.                                                                                                                                                                                                                                  |
+| No assumptions                     | `no_assumptions`: invitation to add return and withdrawal rate; no numbers.                                                                                                                                                                                                                                                                     |
+| Household locked / unavailable     | `HouseholdPlanInput.state` of `'none'` or `'locked'`, and the household plan query loading or in error, all mean zero household contribution: `householdGoalsMonthlyByYear` is empty, `budgetsMonthly` and `goalsMonthly` are 0, no household lever. The card still renders; the detail says "Household goals not included". No error is shown. |
+| Amounts hidden                     | Amounts masked; percentages and years visible (Q6); assumption editing blocked until revealed.                                                                                                                                                                                                                                                  |
+| Not reached within cap             | Sentence reads "Not reached within 60 years at this pace." No date.                                                                                                                                                                                                                                                                             |
+| Already reached                    | Sentence reads "Your portfolio already covers your living costs at your assumptions." Date line shows the current month.                                                                                                                                                                                                                        |
+| Missing column (migration pending) | Assumptions do not persist; the card still works for the session.                                                                                                                                                                                                                                                                               |
 
 ### Privacy
 
@@ -345,12 +345,13 @@ S1 (`freedom-projection.test.ts`):
 - Cap: investing so small that 720 months is not enough returns null, and a run needing exactly 720 months reports a date.
 - `projectFreedom` statuses: no assumptions, no expenses, invalid input, withdrawal rate 0.
 - Savings rate and dividend coverage: coverage equals `expenseCoverage(...) * 100`; null netAfterCpf gives null savings rate.
-- Levers per kind: `extra-monthly` months moved, `expense-drift` at 10 percent threshold (below does not fire), `emergency-surplus` at the 1,000 threshold, `household-goal-ends` ordering and the 60-month window; max-3 trimming order; no lever when nothing triggers; no asset name appears in any lever.
+- Levers per kind: `extra-monthly` months moved, `expense-drift` at 10 percent threshold (below does not fire), `emergency-surplus` at the 1,000 threshold measured net of the household earmark (surplus 3,000 with earmark 2,500 does not fire; surplus 3,000 with earmark 1,500 gives amount 1,500; earmark larger than the surplus does not fire), `household-goal-ends` ordering and the 60-month window; max-3 trimming order; no lever when nothing triggers; no asset name appears in any lever; `household-goal-ends` copy passes the goal name through the supplied mask function (a masking stub is applied to the name and amount).
+- Household unavailable: state `'none'`, state `'locked'`, query loading and query error each produce an empty `householdGoalsMonthlyByYear`, zero household budgets and goals, and a projection equal to the one with no household goals.
 - `now` is passed in (no `Date.now()`): the same input at two `now` values shifts only the dates.
 
 S2: new optional fields round trip through the schema and export validator; upsert omits undefined freedom fields; the missing-column fallback still saves the old fields.
 
-S3: component renders each state in the States table; amounts masked and percentages not; scenario date uses the scenario basis label; no horizontal overflow classes at 375 px (class check).
+S3: component renders each state in the States table, including the household unavailable row for `'none'`, `'locked'`, loading and error (the card still renders in each); a household goal name is masked in lever copy while amounts are hidden; amounts masked and percentages not; scenario date uses the scenario basis label; no horizontal overflow classes at 375 px (class check).
 
 ## Out of scope
 
@@ -377,6 +378,9 @@ S3: component renders each state in the States table; amounts masked and percent
 - [ ] Migration is additive and idempotent; running it twice changes nothing; owner has applied it before S2 deploys.
 - [ ] Card works at 375 px and in dark mode; amounts masked, no new dependency.
 - [ ] The partner account sees nothing from this feature.
+- [ ] The `emergency-surplus` lever is net of `PlannerValues.householdEarmark`, matching `computeInvestmentBreakdown`.
+- [ ] Household goal names in lever or detail copy go through `mask()`.
+- [ ] Household `'none'`, `'locked'`, loading and error all render the card with zero household contribution.
 
 ## Risk & reversibility
 
