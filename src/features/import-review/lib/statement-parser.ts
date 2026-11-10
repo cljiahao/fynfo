@@ -23,7 +23,7 @@ import {
 
 const calendar = z.iso.date();
 
-function groupPositionedText(items: PositionedStatementText[]) {
+export function groupPositionedText(items: PositionedStatementText[]) {
   if (items.length > STATEMENT_LIMITS.textItems)
     throw new Error('Statement text limit');
   const ordered = items

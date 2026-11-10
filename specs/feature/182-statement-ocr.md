@@ -165,16 +165,25 @@ seconds per user, and a refused call returns `not_saved` rows with a retry
 message instead of throwing, so a refused group is never shown as
 `unconfirmed`. The approval status is unchanged.
 
+Amendment note (2026-11-10, owner decision): the Node dump script is
+replaced by a development-only in-browser dump page at `/dev/ocr-dump`. The
+script only OCRed embedded images and the HSBC statement body is not one, and
+the Node canvas binary needed to render pages is blocked by Windows Application
+Control; the page reuses the app's own page render, recogniser and line
+grouping and adds no dependency. It is a client component (`'use client'`)
+because it needs a file input, a canvas and a web worker. Production returns 404. The approval status is unchanged.
+
 ### HSBC layout
 
 No HSBC column positions, header wording or total line are known: no text was
 ever extractable. This is a deliberate implementation step, not a guess here:
 
-1. Slice 1 ships the OCR engine plus a local-only developer script (for example
-   `scripts/ocr-dump.mjs`) that takes a PDF path on the command line and prints
-   OCR word boxes (text, x/y, confidence) to stdout only. It writes no files and
-   makes no network call, and its output is never committed or pasted into the
-   repo. The owner runs it on his real statement.
+1. Slice 1 ships the OCR engine plus a development-only dump page
+   (`/dev/ocr-dump`, 404 in production) where the owner picks a PDF and sees the
+   OCR word boxes from the app's own pipeline. It runs entirely in the browser
+   tab: no file is written, no network call carries content, and its output is
+   never committed or pasted into the repo. The owner runs it on his real
+   statement.
 2. The owner inspects that output locally and supplies REDACTED layout notes
    for the HSBC section of spec 181 or this spec: header text,
    column x ranges, date format, credit marker, summary lines, total line. No
@@ -244,7 +253,7 @@ exactly. Alternatives considered:
       `consumeRateLimit` (owner approved 2026-11-10); over-limit returns
       `not_saved` rows with a retry message, no DB write (regression test)
 - [ ] OCR deadline is 120 s; text PDFs still use 45 s
-- [ ] The dump script prints to stdout only; no real statement output in the diff
+- [ ] The dump page keeps output in the tab only; no real statement output in the diff
 - [ ] `pnpm build` green; `public/ocr/` is generated and gitignored
 - [ ] Manual: with DevTools Network open, importing a scanned PDF makes no
       request to any origin but the app's own, and importing a text PDF loads

@@ -48,7 +48,7 @@ export interface LocalStatementPdf {
 }
 
 /** Caps a requested scale by canvas edge and pixel limits. */
-function renderScale(
+export function renderScale(
   base: { width: number; height: number },
   requested: number
 ): number {
