@@ -2,12 +2,12 @@
 id: '186'
 slug: statement-bank-autodetect
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-10
 approved: 2026-11-10 # YYYY-MM-DD, set on approval
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # link to impl PR, set on shipped
+shipped: 2026-11-11
+impl_pr: none (direct to main, e86e672)
 supersedes:
 constitution_satisfies:
   - '§2.1'
