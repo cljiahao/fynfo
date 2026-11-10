@@ -2,12 +2,12 @@
 id: '187'
 slug: household-ui-audit-fixes
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-11
 approved: 2026-11-11 # owner-authorized in chat 2026-11-11 ("fix all of it and ensure it will work as intended"), follow-up to specs 183 and 185
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # no PR (direct to main)
+shipped: 2026-11-11 # YYYY-MM-DD, set on impl merge
+impl_pr: none (direct to main); commit f48b360 # no PR (direct to main)
 constitution_satisfies:
   - '§2.1'
   - '§2.6'
