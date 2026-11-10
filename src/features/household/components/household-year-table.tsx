@@ -56,6 +56,7 @@ export function HouseholdYearTable({ schedule, goals }: Props) {
             <button
               type="button"
               aria-expanded={expanded}
+              aria-controls={`household-year-${row.year}`}
               onClick={() => setOpen(expanded ? null : row.year)}
               className="flex w-full items-center justify-between gap-2 p-3 text-left"
             >
@@ -73,16 +74,21 @@ export function HouseholdYearTable({ schedule, goals }: Props) {
               <span className="tabular-nums">{money(row.total)}</span>
             </button>
             {expanded && (
-              <ul className="text-muted-foreground space-y-1 px-3 pb-3 pl-9">
+              <ul
+                id={`household-year-${row.year}`}
+                className="text-muted-foreground space-y-1 px-3 pb-3 pl-9"
+              >
                 {row.byGoal.map((line) => (
                   <li
                     key={line.goalId}
                     className="flex justify-between gap-2 tabular-nums"
                   >
-                    <span className="truncate">
-                      {names.get(line.goalId) ?? 'Goal'}
+                    <span className="min-w-0 break-words">
+                      {mask(names.get(line.goalId) ?? 'Goal')}
                     </span>
-                    <span>{money(line.total)}</span>
+                    <span className="shrink-0 whitespace-nowrap">
+                      {money(line.total)}
+                    </span>
                   </li>
                 ))}
               </ul>

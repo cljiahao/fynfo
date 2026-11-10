@@ -32,7 +32,7 @@ export function HouseholdRecommendations({ recommendations, now }: Props) {
             key={`${rec.kind}-${rec.goalId ?? 'all'}-${index}`}
             className="rounded-xl border p-3 text-sm"
           >
-            {recommendationSentence(rec, { money, now })}
+            {recommendationSentence(rec, { money, maskName: mask, now })}
           </li>
         ))}
       </ul>

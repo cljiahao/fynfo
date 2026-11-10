@@ -103,7 +103,7 @@ export function PlannerSplitEditor() {
       <Button
         variant="ghost"
         size="sm"
-        className="h-auto px-0 py-1 font-normal"
+        className="h-auto min-h-10 px-0 py-1 font-normal"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
