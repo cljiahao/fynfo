@@ -2,12 +2,12 @@
 id: '183'
 slug: household-time-phased-planner
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-10
 approved: 2026-11-10
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # link to impl PR, set on shipped
+shipped: 2026-11-10 # YYYY-MM-DD, set on impl merge
+impl_pr: none (direct to main); commits 5f5719a..aa6a1af # no PR (direct to main)
 supersedes: '176 (partial; see "Superseded parts of spec 176")'
 constitution_satisfies:
   - '§1.1'
