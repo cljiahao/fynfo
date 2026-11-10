@@ -2,10 +2,10 @@
 id: '183'
 slug: household-time-phased-planner
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-10
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-10
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # link to impl PR, set on shipped
 supersedes: '176 (partial; see "Superseded parts of spec 176")'
@@ -57,6 +57,24 @@ constitution_overrides:
    per-budget overrides, quote versus budget and three screens. The household
    affects two people and each person's own plan; it should read as one number,
    one sentence and one tap for detail.
+
+4. **Spare savings are spent twice.** `computeInvestmentBreakdown` treats savings
+   above the emergency fund plus bonds above the war chest as cash to deploy into
+   SG and US equity (`src/features/assets/lib/investment-math.ts:195-198`).
+   Section 4 of this spec treats that same surplus as already set aside for
+   household goals, so without a fix the Investments tab would tell the owner to
+   invest money the planner says is earmarked. The gap exists today under spec
+   176 as well: the deployable calculation takes only `emergencyFundGoal` and
+   `warChestGoal` from the planner (`PlannerValues`,
+   `salary-planner.tsx:49-54`; `investment-breakdown.tsx:142-159`), so the 176
+   reserve is not subtracted from deployable cash either (it only pauses the
+   monthly investment amount).
+
+**Owner approval (2026-11-10).** Clarence wrote: "if you confirmation swep the
+spec and you're confident, go ahead to implement." The orchestrator swept the
+spec, found the two gaps above (deployable cash and shortfall horizon) and
+amended it. With those fixed the spec is approved and every open question takes
+its recommended default.
 
 The two members split costs by an agreed percentage, not by salary, because
 personal vaults are zero-knowledge (constitution §5.1) and the household space
@@ -254,6 +272,22 @@ months give the same kind of figure, differing only by the months divisor.
 - The surplus is applied earliest-first across the caller's whole schedule (all
   goals, by date, ties by goal id), giving an offset schedule and `surplusUsed`
   per goal; the cumulative remainder `max(0, C_k - S)` equals the formula above.
+- **Earmark for the Investments tab.** The total of the surplus consumed by the
+  schedule is returned as `surplusUsed` (never above `S`). It is the household
+  earmark: `BreakdownInput` in `investment-math.ts:126` gains an optional
+  `householdEarmark` (default 0), and `totalDeployable` becomes
+  `floorH(max(0, fromSavings + bondsSurplus - householdEarmark))` (today
+  `floorH(fromSavings + bondsSurplus)`, `:198`). With 0 or omitted the result is
+  deep-equal to today's. The planner publishes the earmark with the other planner
+  values: `PlannerValues` (`salary-planner.tsx:49-54`) gains `householdEarmark`,
+  which `onPlannerValuesChange` already carries (`:287`) into the
+  `plannerValues` state in `dashboard-overview.tsx:54-67`; the page passes it as
+  a prop next to `emergencyFundGoal` and `warChestGoal`
+  (`dashboard-overview.tsx:160-166`), `investment-breakdown.tsx` (props `:41-44`)
+  forwards it into `computeInvestmentBreakdown` (`:142-159`) and shows it. When
+  the earmark is above 0 the Investments view shows one masked line: "$X of your
+  spare savings is set aside for household goals". The earmark stays in the
+  browser (§5.1, §5.1a).
 - The server never receives the surplus. The plan-input action returns household
   data a member can already read through `getGoals()` plus the caller's shares;
   the browser applies `S`.
@@ -272,8 +306,13 @@ budgets, the existing shortfall path displays it as "drawn from savings"
 (`householdShortfallAmt`, `salary-plan.ts:230`; `computeShortfallImpact`,
 `:267-278`). No separate "reserve" path exists.
 `computeShortfallImpact` loses its `monthsHorizon` parameter's link to the
-setting and takes a fixed constant `SHORTFALL_IMPACT_MONTHS = 12` in
-`assets/constants.ts` (replacing `salary-planner.tsx:405-407`).
+setting. A shortfall caused by a deadline two months away does not recur for
+twelve months, so a fixed 12 would overstate "leaves X of N months".
+`computeHouseholdPlan` therefore also returns `bindingMonths`, the `m_k` of the
+deadline that sets `goalsMonthly` (null when `goalsMonthly` is 0), and the
+planner projects the shortfall over `min(bindingMonths ?? SHORTFALL_IMPACT_MONTHS,
+SHORTFALL_IMPACT_MONTHS)` months. `SHORTFALL_IMPACT_MONTHS = 12` in
+`assets/constants.ts` stays as the cap (replacing `salary-planner.tsx:405-407`).
 
 ### 6. Per-year view (display only)
 
@@ -432,10 +471,11 @@ and `HORIZON_MAX` usage in UI.
 Estimate (to be confirmed at implementation): about 300 source lines removed
 (commitment buckets ~70, planner household breakdown ~100, horizon plumbing and
 setting ~80, reserve and pause path ~35, action/schema ~15) and about 480
-source lines added (schedule, plan and recommendations module ~250, household
+source lines added, about 520 with the earmark work (schedule, plan and recommendations module ~250, household
 page card and per-year table ~140, goal editor date and disclosures ~70,
-migration ~10, action ~10), plus about 400 test lines. Net production code is
-roughly +180 lines, but the vocabulary a member must learn drops from eleven
+migration ~10, action ~10, earmark and `bindingMonths` plumbing and the
+Investments line ~40), plus about 450 test lines. Net production code is
+roughly +220 lines, but the vocabulary a member must learn drops from eleven
 concepts to three (goal, date, share).
 
 ## Superseded parts of spec 176
@@ -475,10 +515,19 @@ code, and S4a switches callers before S4b deletes what they used.
   builder (latest-first placement), `computeHouseholdPlan`,
   `householdRecommendations`. Imports `goalShare`, `budgetShare`, `defaultShare`
   and `CommitmentSplit` from `household-commitment.ts` and `monthsUntil` from
-  `goal-stats.ts` without editing either file.
+  `goal-stats.ts` without editing either file. `computeHouseholdPlan` returns
+  `{ monthly, goalsMonthly, budgetsMonthly, bindingMonths, surplusUsed,
+schedule, perGoal }`: `monthly = goalsMonthly + budgetsMonthly`;
+  `bindingMonths` is the `m_k` of the deadline that sets `goalsMonthly` (null when
+  `goalsMonthly` is 0); `surplusUsed` is the total surplus consumed by the
+  schedule, never above `surplus`; `schedule` is the offset schedule of
+  `{ goalId, itemId | null, label, date, amount }`; `perGoal` is `{ goalId,
+scheduleTotal, surplusUsed, monthly }[]`.
 - `src/features/household/lib/household-plan.test.ts` (new): see Tests; one
-  describe block per recommendation kind plus ordering, cap and the covered and
-  behind interactions.
+  describe block per recommendation kind plus ordering, cap, the covered and
+  behind interactions, `surplusUsed` (never above surplus, equals the schedule
+  total when the surplus covers it) and `bindingMonths` (deposit-binding and
+  balance-binding cases, null when `goalsMonthly` is 0).
 
 No existing file is edited, so the slice cannot break anything.
 
@@ -535,7 +584,17 @@ owner confirms the migration is applied. S1 has no such dependency.
   `householdReserve` to scenarios.
 - `src/features/assets/lib/salary-plan.ts` and its test: remove the reserve and
   pause path, accept and ignore `householdReserve`, `computeShortfallImpact`
-  without horizon coupling.
+  without horizon coupling, projected over `min(bindingMonths ?? 12, 12)` months.
+- `src/features/assets/lib/investment-math.ts` and its test: optional
+  `householdEarmark` on `BreakdownInput`, subtracted before `totalDeployable` is
+  floored.
+- `src/features/assets/components/investment-breakdown.tsx`: new
+  `householdEarmark` prop forwarded to `computeInvestmentBreakdown`, one masked
+  line "$X of your spare savings is set aside for household goals" when above 0.
+- `src/app/dashboard/(overview)/dashboard-overview.tsx`: pass
+  `plannerValues.householdEarmark` to `InvestmentBreakdown`; the initial
+  `plannerValues` state gains `householdEarmark: 0`. `PlannerValues`
+  (`salary-planner.tsx`, already in S4a) gains the field.
 - `src/features/assets/schemas.ts`, `src/features/assets/constants.ts`
   (`SHORTFALL_IMPACT_MONTHS`): scenario field kept optional and documented as
   ignored; `householdHorizonMonths` stays an optional accepted field in
@@ -573,7 +632,7 @@ reserve and pace types.
 | S1    | `lib/household-plan.ts` and its test (both new)                                                                                                                                                                                | nothing                           | S2            |
 | S2    | migration (new), `goal-actions.ts`, `types.ts` (GoalItem), `schemas.ts` (item), `goal-editor-sheet.tsx`, `add-goal-item-dialog.tsx`, `goal-split-override.tsx`                                                                 | owner applies the migration first | S1            |
 | S3    | `plan-actions.ts`, `use-household-plan.ts`, `household-recommendation-copy.ts`, `household-recommendations.tsx`, `household-year-table.tsx` (new); `household-overview.tsx`, `planner-split-editor.tsx`, `index.ts` (additive) | S1 and S2                         | none          |
-| S4a   | the four planner components, `salary-plan.ts`, `assets/schemas.ts`, `assets/constants.ts`, their tests                                                                                                                         | S1 and S3 (hook, copy, table)     | none          |
+| S4a   | the four planner components, `salary-plan.ts`, `assets/schemas.ts`, `assets/constants.ts`, `investment-math.ts`, `investment-breakdown.tsx`, `dashboard-overview.tsx`, their tests                                             | S1 and S3 (hook, copy, table)     | none          |
 | S4b   | `household-commitment.ts`, `types.ts`, `schemas.ts`, `planner-actions.ts`, old hook, three hook import edits, `index.ts` (removals)                                                                                            | S4a                               | none          |
 
 Three files are edited by more than one slice: `types.ts` and `schemas.ts` (S2
@@ -627,6 +686,14 @@ last.
   behind amount the surplus fully absorbs emits no `behind`; at most one of
   `behind` and `monthly-pace` per goal; on the household page (surplus 0) no
   `covered` appears and `behind` is unoffset.
+- Shortfall horizon: `bindingMonths` is 2 when the deposit sets `goalsMonthly`
+  and 18 when the balance does, null when `goalsMonthly` is 0; the projection
+  uses `min(bindingMonths ?? 12, 12)` months (2, 12 and 12 in those cases).
+- Earmark: `computeInvestmentBreakdown` with `householdEarmark` 0 or omitted is
+  deep-equal to today's for a table of inputs; an earmark below the surplus
+  lowers `totalDeployable` by exactly that amount (and the SG/US cash split with
+  it); an earmark above the surplus floors `totalDeployable` at 0. The
+  Investments line renders only when the earmark is above 0 and is masked.
 - Together total equals the schedule at share 1 and excludes the surplus.
 - Migration applied twice is a no-op (manual SQL check by the owner).
 
@@ -652,6 +719,8 @@ last.
 - [ ] `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test:ci`, `pnpm build` green for each slice
 - [ ] Migration applies cleanly twice, is nullable and forward-only; existing item RLS covers `due_date` for a member and denies a non-member
 - [ ] The owner confirmed the migration is applied before S2 (and S3, S4a, S4b) reach `main`
+- [ ] Deployable cash on the Investments tab no longer double-uses the surplus: `householdEarmark` is subtracted before the floor, 0 is deep-equal to today's, and the masked "set aside for household goals" line shows only when above 0
+- [ ] The shortfall projection uses `min(bindingMonths ?? 12, 12)` months
 - [ ] Contributions pay the earliest items first: the 46,000 / 10,000 example schedules only the 36,000 balance
 - [ ] Every slice is green alone; S1 edits no existing file; S4a switches callers before S4b deletes
 - [ ] A goal due in 23 months and in 25 months give continuous plans; no horizon bucket, `reserveGap` or `investmentPaused` path remains
@@ -700,37 +769,47 @@ last.
 
 Each has an owner (Clarence) and a recommended default; none is resolved yet.
 
-- [ ] Q1: Contributions already logged against a goal. If that money still sits in
+- [x] Q1: Contributions already logged against a goal. If that money still sits in
       the caller's personal savings it is counted twice in the caller's favour
       (`remaining` excludes it, savings surplus includes it). Options: copy
       guidance only, or a per-goal "held in my savings" toggle. Default: copy
-      guidance only. Owner: Clarence. A:
-- [ ] Q2: When the goal target amount and the committed item total (`quote ??
+      guidance only. Owner: Clarence. A: copy guidance only. (owner,
+      2026-11-10, recommended default)
+- [x] Q2: When the goal target amount and the committed item total (`quote ??
 budget`) differ, which wins? Default: the goal target is authoritative
       (`goal.remaining`), items only decide timing, contributions pay the earliest
       items first, and when items exceed the remainder the earliest items are
-      trimmed (the pot covers them). Owner: Clarence. A:
-- [ ] Q3: Undated goals. Keep them excluded and listed through the `missing-data`
+      trimmed (the pot covers them). Owner: Clarence. A: goal target is
+      authoritative, earliest items trimmed. (owner, 2026-11-10, recommended
+      default)
+- [x] Q3: Undated goals. Keep them excluded and listed through the `missing-data`
       recommendation, or require a date on every goal? Default: keep excluded and
-      listed. Owner: Clarence. A:
-- [ ] Q4: Does the emergency and war-chest 9-month spread rule
-      (`salary-plan.ts:194-199`) stay as is? Default: unchanged. Owner: Clarence. A:
-- [ ] Q5: Drop `household_horizon_months` later via a separate forward
-      migration? Default: leave the column. Owner: Clarence. A:
-- [ ] Q6: A payment recorded without a matching contribution lowers the item's
+      listed. Owner: Clarence. A: keep excluded and listed. (owner, 2026-11-10,
+      recommended default)
+- [x] Q4: Does the emergency and war-chest 9-month spread rule
+      (`salary-plan.ts:194-199`) stay as is? Default: unchanged. Owner: Clarence. A: unchanged. (owner, 2026-11-10,
+      recommended default)
+- [x] Q5: Drop `household_horizon_months` later via a separate forward
+      migration? Default: leave the column. Owner: Clarence. A: leave the column. (owner, 2026-11-10,
+      recommended default)
+- [x] Q6: A payment recorded without a matching contribution lowers the item's
       unpaid amount but not `goal.remaining`, so the schedule total falls below
       `remaining` by `max(0, P - c)` while the goal card still shows it. Should
       payments also lower `goal.remaining`? Default: no, `remaining` stays target
       minus contributions and the planner treats the item as paid; revisit with
-      Q1. Owner: Clarence. A:
-- [ ] Q7: A stored scenario with `householdReserve > 0` now shows more
+      Q1. Owner: Clarence. A: no; `remaining` stays target minus contributions.
+      (owner, 2026-11-10, recommended default)
+- [x] Q7: A stored scenario with `householdReserve > 0` now shows more
       investment than when saved. Proposed: ignore the field, leave
       `schemaVersion` at 1. Alternative: bump `schemaVersion` and label old
       scenarios "saved under the old household rule". Default: ignore, no bump.
-      Owner: Clarence. A:
-- [ ] Q8: Show the shared total ("Together $2,400 a month, before your savings")
-      on the household page? Default: yes. Owner: Clarence. A:
-- [ ] Q9: Cap of 3 recommendations with a "Show all" link? Default: 3. Owner:
-      Clarence. A:
-- [ ] Q10: Are dismissible recommendations needed? Default: no; they are derived
-      state and disappear when the cause does. Owner: Clarence. A:
+      Owner: Clarence. A: ignore, no bump. (owner, 2026-11-10, recommended
+      default)
+- [x] Q8: Show the shared total ("Together $2,400 a month, before your savings")
+      on the household page? Default: yes. Owner: Clarence. A: yes. (owner, 2026-11-10, recommended
+      default)
+- [x] Q9: Cap of 3 recommendations with a "Show all" link? Default: 3. Owner:
+      Clarence. A: 3 with "Show all". (owner, 2026-11-10, recommended default)
+- [x] Q10: Are dismissible recommendations needed? Default: no; they are derived
+      state and disappear when the cause does. Owner: Clarence. A: no. (owner, 2026-11-10,
+      recommended default)
