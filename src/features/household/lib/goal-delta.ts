@@ -6,6 +6,7 @@ export interface DraftItem {
   name: string;
   budget: number;
   quote: number | null;
+  dueDate?: string | null;
 }
 
 export interface DraftGoal {
@@ -43,7 +44,8 @@ export function computeGoalDelta(
     else if (
       before.name !== item.name ||
       before.budget !== item.budget ||
-      before.quote !== item.quote
+      before.quote !== item.quote ||
+      before.dueDate !== (item.dueDate ?? null)
     ) {
       changed += 1;
     }

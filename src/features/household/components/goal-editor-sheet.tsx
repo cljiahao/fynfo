@@ -188,6 +188,10 @@ function GoalEditorForm({
       : '');
   const splitPct = parsePct(splitText);
   const hasOverride = splitData?.goalOverrides[goalId] !== undefined;
+  const [costOpen, setCostOpen] = useState(() => (goal?.items.length ?? 0) > 0);
+  // null until the user toggles it, so an override that loads late still opens it.
+  const [splitChoice, setSplitChoice] = useState<boolean | null>(null);
+  const splitOpen = splitChoice ?? hasOverride;
   const [showQuote, setShowQuote] = useState(
     () => goal?.items.some((item) => item.quote !== null) ?? false
   );
@@ -210,7 +214,11 @@ function GoalEditorForm({
 
   const review = form.handleSubmit((values) => {
     if (!canReveal()) return;
-    if (splitData && splitPct === null) return;
+    if (splitData && splitPct === null) {
+      setErrors({ split: 'Enter a whole number from 0 to 100' });
+      setSplitChoice(true);
+      return;
+    }
     const parsed = saveGoalSchema.safeParse({ ...toDraft(values), goalId });
     if (!parsed.success) {
       const next: Errors = {};
@@ -219,6 +227,9 @@ function GoalEditorForm({
         next[key] ??= FIELD_MESSAGES[key] ?? 'Check this field';
       }
       setErrors(next);
+      if (Object.keys(next).some((key) => key.startsWith('items'))) {
+        setCostOpen(true);
+      }
       return;
     }
     setErrors({});
@@ -252,6 +263,7 @@ function GoalEditorForm({
           }
           if (result.code === 'VALIDATION') {
             setErrors({ items: 'Check the highlighted fields' });
+            setCostOpen(true);
             setStage('edit');
             return;
           }
@@ -389,7 +401,8 @@ function GoalEditorForm({
 
         <Accordion
           type="multiple"
-          defaultValue={fields.length > 0 ? ['cost'] : []}
+          value={costOpen ? ['cost'] : []}
+          onValueChange={(value) => setCostOpen(value.includes('cost'))}
         >
           <Disclosure value="cost" title="Break down the cost">
             <div className="space-y-3">
@@ -533,12 +546,13 @@ function GoalEditorForm({
         </Accordion>
         {splitData && (
           <Accordion
-            key={hasOverride ? 'override' : 'default'}
             type="multiple"
-            defaultValue={hasOverride ? ['split'] : []}
+            value={splitOpen ? ['split'] : []}
+            onValueChange={(value) => setSplitChoice(value.includes('split'))}
           >
             <Disclosure value="split" title="Different split">
               <GoalSplitField value={splitText} onChange={setSplitEdit} />
+              <FieldError id="goal-split-error">{errors.split}</FieldError>
             </Disclosure>
           </Accordion>
         )}
