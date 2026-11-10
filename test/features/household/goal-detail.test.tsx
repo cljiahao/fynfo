@@ -217,9 +217,15 @@ describe('with items', () => {
         target: 10000,
         targetDate: '2027-03-01',
         items: [
-          { id: 'i1', name: 'Venue', budget: 8000, quote: null },
-          { id: 'i2', name: 'Photographer', budget: 3000, quote: null },
-          { name: 'Cake', budget: 250.5, quote: 240 },
+          { id: 'i1', name: 'Venue', budget: 8000, quote: null, dueDate: null },
+          {
+            id: 'i2',
+            name: 'Photographer',
+            budget: 3000,
+            quote: null,
+            dueDate: null,
+          },
+          { name: 'Cake', budget: 250.5, quote: 240, dueDate: null },
         ],
       });
       await waitFor(() =>

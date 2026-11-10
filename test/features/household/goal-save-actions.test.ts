@@ -134,6 +134,75 @@ describe('saveGoal', () => {
     expect(fake.calls.delete).toBe(0);
   });
 
+  it('writes the item due date and null when none is set', async () => {
+    const fake = setSupabase({
+      selectDataByTable: {
+        household_goals: [],
+        household_members: [{ household_id: 'h1' }],
+      },
+    });
+    const { saveGoal } =
+      await import('@/features/household/actions/goal-actions');
+    const result = await saveGoal({
+      goalId: GOAL_ID,
+      name: 'Wedding',
+      target: 5000,
+      items: [
+        { name: 'Deposit', budget: 1000, dueDate: '2027-01-15' },
+        { name: 'Balance', budget: 2000 },
+      ],
+    });
+    expect(result.ok).toBe(true);
+    expect((fake.calls.insert[1] as Record<string, unknown>).due_date).toBe(
+      '2027-01-15'
+    );
+    expect((fake.calls.insert[2] as Record<string, unknown>).due_date).toBe(
+      null
+    );
+  });
+
+  it('diffs the due date: unchanged skips, changed updates', async () => {
+    const fake = setSupabase({
+      selectDataByTable: {
+        household_goals: [{ id: GOAL_ID }],
+        household_goal_items: [
+          { ...itemRow(ITEM_A, 'Venue', 3000), due_date: '2027-01-15' },
+          { ...itemRow(ITEM_B, 'Cake', 200), due_date: null },
+        ],
+      },
+    });
+    const { saveGoal } =
+      await import('@/features/household/actions/goal-actions');
+    await saveGoal({
+      goalId: GOAL_ID,
+      name: 'Wedding',
+      target: 6000,
+      items: [
+        { id: ITEM_A, name: 'Venue', budget: 3000, dueDate: '2027-01-15' },
+        { id: ITEM_B, name: 'Cake', budget: 200, dueDate: '2027-02-01' },
+      ],
+    });
+    const updates = fake.calls.queries.filter(
+      (q) => q.table === 'household_goal_items' && q.operation === 'update'
+    );
+    expect(updates).toHaveLength(1);
+    expect(updates[0]?.eq).toContainEqual({ column: 'id', value: ITEM_B });
+  });
+
+  it('rejects a non-date due date', async () => {
+    const fake = setSupabase();
+    const { saveGoal } =
+      await import('@/features/household/actions/goal-actions');
+    const result = await saveGoal({
+      goalId: GOAL_ID,
+      name: 'Wedding',
+      target: 5000,
+      items: [{ name: 'Deposit', budget: 1000, dueDate: 'soon' }],
+    });
+    expect(result.ok).toBe(false);
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+
   it('returns flattened errors and reads nothing after the guard on bad input', async () => {
     const fake = setSupabase();
     const { saveGoal } =

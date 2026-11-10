@@ -27,6 +27,7 @@ function item(
     name: `Item ${id}`,
     budget,
     quote: null,
+    dueDate: null,
     paid,
     remaining: Math.max(0, budget - paid),
     over: Math.max(0, paid - budget),

@@ -76,6 +76,7 @@ function item(index: number, budget: number, paid = 0) {
     name: `Item ${index}`,
     budget,
     quote: null,
+    dueDate: null,
     paid,
     remaining: Math.max(0, budget - paid),
     over: Math.max(0, paid - budget),
