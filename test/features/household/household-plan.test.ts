@@ -721,3 +721,179 @@ describe('household page (surplus 0)', () => {
     expect(share1.schedule.reduce((s, e) => s + e.amount, 0)).toBe(46000);
   });
 });
+
+describe('input hardening', () => {
+  const datedGoal = (over: Partial<PlanGoal>) =>
+    goal({
+      id: 'g',
+      targetDate: '2026-06-15',
+      targetAmount: 1000,
+      remaining: 1000,
+      ...over,
+    });
+
+  function expectSane(plan: ReturnType<typeof computeHouseholdPlan>) {
+    for (const n of [
+      plan.monthly,
+      plan.goalsMonthly,
+      plan.budgetsMonthly,
+      plan.surplusUsed,
+    ]) {
+      expect(Number.isFinite(n)).toBe(true);
+      expect(n).toBeGreaterThanOrEqual(0);
+    }
+    for (const e of plan.schedule) {
+      expect(Number.isFinite(e.amount)).toBe(true);
+      expect(e.amount).toBeGreaterThan(0);
+    }
+    for (const g of plan.perGoal) {
+      expect(Number.isFinite(g.scheduleTotal)).toBe(true);
+      expect(Number.isFinite(g.monthly)).toBe(true);
+    }
+  }
+
+  it.each([NaN, -50])('survives remaining %s', (remaining) => {
+    const plan = computeHouseholdPlan(
+      { goals: [datedGoal({ remaining })], budgets: [] },
+      { surplus: 0, now: NOW }
+    );
+    expectSane(plan);
+    expect(plan.schedule).toEqual([]);
+  });
+
+  it.each([NaN, -50])('survives targetAmount %s', (targetAmount) => {
+    const plan = computeHouseholdPlan(
+      { goals: [datedGoal({ targetAmount })], budgets: [] },
+      { surplus: 0, now: NOW }
+    );
+    expectSane(plan);
+  });
+
+  it.each([NaN, -300])('survives item effective %s', (effective) => {
+    const plan = computeHouseholdPlan(
+      {
+        goals: [
+          datedGoal({
+            items: [item({ id: 'i', effective, dueDate: '2026-03-15' })],
+          }),
+        ],
+        budgets: [],
+      },
+      { surplus: 0, now: NOW }
+    );
+    expectSane(plan);
+  });
+
+  it('treats NaN and negative paid as nothing paid, and caps paid at effective', () => {
+    const run = (paid: number) =>
+      computeHouseholdPlan(
+        {
+          goals: [
+            datedGoal({
+              items: [
+                item({
+                  id: 'i',
+                  effective: 1000,
+                  paid,
+                  dueDate: '2026-03-15',
+                }),
+              ],
+            }),
+          ],
+          budgets: [],
+        },
+        { surplus: 0, now: NOW }
+      );
+    expect(run(NaN).schedule[0]?.amount).toBe(1000);
+    expect(run(-100).schedule[0]?.amount).toBe(1000);
+    expect(run(5000).schedule).toEqual([]);
+    expectSane(run(NaN));
+    expectSane(run(-100));
+  });
+
+  it.each([NaN, -500])('survives budget monthlyAmount %s', (monthlyAmount) => {
+    const plan = computeHouseholdPlan(
+      { goals: [], budgets: [{ id: 'b', monthlyAmount, share: 1 }] },
+      { surplus: 0, now: NOW }
+    );
+    expectSane(plan);
+    expect(plan.budgetsMonthly).toBe(0);
+  });
+
+  it.each([NaN, -1])('survives budget share %s', (share) => {
+    const plan = computeHouseholdPlan(
+      { goals: [], budgets: [{ id: 'b', monthlyAmount: 500, share }] },
+      { surplus: 0, now: NOW }
+    );
+    expectSane(plan);
+    expect(plan.budgetsMonthly).toBe(0);
+  });
+
+  it.each([NaN, -1])('drops a goal with share %s', (share) => {
+    const plan = computeHouseholdPlan(
+      { goals: [datedGoal({ share })], budgets: [] },
+      { surplus: 0, now: NOW }
+    );
+    expect(plan.schedule).toEqual([]);
+    expectSane(plan);
+  });
+
+  it('clamps share above 1 so the schedule never exceeds remaining', () => {
+    const plan = computeHouseholdPlan(
+      {
+        goals: [datedGoal({ share: 1.5 })],
+        budgets: [{ id: 'b', monthlyAmount: 200, share: 2 }],
+      },
+      { surplus: 0, now: NOW }
+    );
+    expect(plan.perGoal[0]?.scheduleTotal).toBe(1000);
+    expect(plan.budgetsMonthly).toBe(200);
+  });
+
+  it.each([NaN, -100])('treats surplus %s as 0', (surplus) => {
+    const plan = computeHouseholdPlan(
+      { goals: [datedGoal({})], budgets: [] },
+      { surplus, now: NOW }
+    );
+    expect(plan.surplusUsed).toBe(0);
+    expectSane(plan);
+  });
+});
+
+describe('month boundaries', () => {
+  const run = (now: Date, targetDate: string) =>
+    computeHouseholdPlan(
+      {
+        goals: [
+          goal({ id: 'g', targetDate, targetAmount: 1200, remaining: 1200 }),
+        ],
+        budgets: [],
+      },
+      { surplus: 0, now }
+    );
+
+  it('counts 2026-01-31 to 2026-02-28 as one month', () => {
+    const plan = run(new Date(2026, 0, 31), '2026-02-28');
+    expect(plan.bindingMonths).toBe(1);
+    expect(plan.goalsMonthly).toBe(1200);
+  });
+
+  it('counts 2026-01-30 to 2026-03-01 as two months', () => {
+    const plan = run(new Date(2026, 0, 30), '2026-03-01');
+    expect(plan.bindingMonths).toBe(2);
+    expect(plan.goalsMonthly).toBe(600);
+  });
+
+  it('has no off-by-one on the first and last day of a month', () => {
+    expect(run(new Date(2026, 0, 1, 23, 59), '2026-01-31').bindingMonths).toBe(
+      1
+    );
+    expect(run(new Date(2026, 0, 31, 0, 1), '2026-03-01').bindingMonths).toBe(
+      2
+    );
+    const exact = run(new Date(2026, 0, 1, 12), '2026-04-01');
+    expect(exact.bindingMonths).toBe(3);
+    expect(exact.goalsMonthly).toBe(400);
+    expect(run(new Date(2026, 0, 1, 12), '2026-04-02').bindingMonths).toBe(4);
+  });
+});

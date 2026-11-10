@@ -87,21 +87,33 @@ function dueAscending(a: Entry, b: Entry): number {
   return byId(a.date, b.date) || byId(a.goalId, b.goalId) || a.order - b.order;
 }
 
+/** Bad input must degrade to "nothing due", never to NaN in the totals. */
+function nonNegative(value: number): number {
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+
+function clampShare(share: number): number {
+  return Number.isFinite(share) ? Math.min(1, Math.max(0, share)) : 0;
+}
+
 /**
  * Contributions are household money that pays the earliest bills first, so the
  * remaining total is placed from the latest date backwards; the earliest
  * entries are the ones the pot already covers or that get trimmed.
  */
 function placeGoal(goal: PlanGoal, startOrder: number): Entry[] {
-  const remaining = Math.max(0, goal.remaining);
-  if (remaining <= 0 || goal.share <= 0) return [];
+  const remaining = nonNegative(goal.remaining);
+  const share = clampShare(goal.share);
+  if (remaining <= 0 || share <= 0) return [];
   const targetDate = goal.targetDate ? dayOf(goal.targetDate) : null;
 
   const raw: Omit<Entry, 'order'>[] = [];
   let itemTotal = 0;
   for (const item of goal.items) {
-    itemTotal += item.effective;
-    const unpaid = Math.max(0, item.effective - item.paid);
+    const effective = nonNegative(item.effective);
+    const paid = Math.min(nonNegative(item.paid), effective);
+    itemTotal += effective;
+    const unpaid = effective - paid;
     const date = item.dueDate ? dayOf(item.dueDate) : targetDate;
     if (unpaid <= 0 || date === null) continue;
     raw.push({
@@ -112,7 +124,7 @@ function placeGoal(goal: PlanGoal, startOrder: number): Entry[] {
       amount: unpaid,
     });
   }
-  const balance = goal.targetAmount - itemTotal;
+  const balance = nonNegative(goal.targetAmount) - itemTotal;
   if (balance > 0 && targetDate !== null) {
     raw.push({
       goalId: goal.id,
@@ -134,7 +146,7 @@ function placeGoal(goal: PlanGoal, startOrder: number): Entry[] {
     left -= amount;
     placed.push({
       ...entry,
-      amount: amount * goal.share,
+      amount: amount * share,
       order: startOrder + index,
     });
   }
@@ -180,7 +192,7 @@ export function computeHouseholdPlan(
     ? Math.max(0, options.surplus)
     : 0;
 
-  const planned = input.goals.filter((g) => g.share > 0);
+  const planned = input.goals.filter((g) => clampShare(g.share) > 0);
   let order = 0;
   const entries: Entry[] = [];
   for (const goal of planned) {
@@ -215,7 +227,7 @@ export function computeHouseholdPlan(
   });
 
   const budgetsMonthly = input.budgets.reduce(
-    (sum, b) => sum + b.share * b.monthlyAmount,
+    (sum, b) => sum + clampShare(b.share) * nonNegative(b.monthlyAmount),
     0
   );
 
@@ -302,11 +314,11 @@ export function householdRecommendations(
   let missing = 0;
 
   const goals = input.goals
-    .filter((g) => g.share > 0)
+    .filter((g) => clampShare(g.share) > 0)
     .sort((a, b) => byId(a.id, b.id));
 
   for (const goal of goals) {
-    if (Math.max(0, goal.remaining) <= 0) continue;
+    if (nonNegative(goal.remaining) <= 0) continue;
     if (isUndated(goal)) {
       missing += 1;
       continue;
@@ -346,7 +358,8 @@ export function householdRecommendations(
     let behindEmitted = false;
     if (targetDate !== null && goalStatus(goal, now) === 'behind') {
       const behind =
-        (expectedSaved(goal, targetDate, now) - goal.contributed) * goal.share -
+        (expectedSaved(goal, targetDate, now) - goal.contributed) *
+          clampShare(goal.share) -
         figures.surplusUsed;
       if (behind > 0) {
         behindEmitted = true;
