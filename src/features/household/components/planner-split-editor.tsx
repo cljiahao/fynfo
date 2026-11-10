@@ -111,6 +111,12 @@ export function PlannerSplitEditor() {
         <span className="text-muted-foreground ml-2 text-xs">
           {open ? 'Hide split' : 'Change split'}
         </span>
+        {/* The open form carries its own default notice. */}
+        {!open && split.data.isDefault && (
+          <span className="text-muted-foreground ml-2 text-xs">
+            (not set yet)
+          </span>
+        )}
       </Button>
       {open && <SplitForm key={key} split={split.data} />}
     </div>
