@@ -7,6 +7,9 @@ const TABLE_MAX_X = 385;
 // Amounts are right-aligned and start near x 333; the band is wide because OCR
 // x values drift by a point or two.
 const AMOUNT_MIN_X = 300;
+// Summary labels start near x 141; anything left of this on those lines is OCR
+// junk from the date columns.
+const LABEL_MIN_X = 130;
 
 const MONTH = '(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)' as const;
 const DAY_MONTH = new RegExp(`^(\\d{1,2})(${MONTH})$`, 'i');
@@ -17,6 +20,8 @@ const AMOUNT_WITH_CREDIT = /^((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})(CR)?$/i;
 const HEADER = /\bDATE\s+DATE\s+DESCRIPTION\s+AMOUNT\s*\(SGD\)/i;
 const TOTAL_DUE =
   /^Total\s+Due\s+((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})\s*(CR)?$/i;
+const PREVIOUS_BALANCE =
+  /^Previous\s+Statement\s+Balance\s+((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})\s*(CR)?$/i;
 
 interface Token {
   text: string;
@@ -60,6 +65,19 @@ function tableText(line: StatementLine): string {
     .join(' ');
 }
 
+function labelText(line: StatementLine): string {
+  return tableTokens(line)
+    .filter((token) => token.x === undefined || token.x >= LABEL_MIN_X)
+    .map((token) => token.text)
+    .join(' ');
+}
+
+function signedCents(amount: string, credit: string | undefined): number {
+  return (
+    Math.round(Number(amount.replaceAll(',', '')) * 100) * (credit ? -1 : 1)
+  );
+}
+
 /** `1,234.56`, `1,234.56CR` or `1,234.56 CR` at the end of the tokens. */
 function trailingAmount(
   tokens: Token[]
@@ -82,33 +100,37 @@ function parseRow(line: StatementLine): StatementLine | undefined {
   const tokens = tableTokens(line);
   const [postDay, postMonth, tranDay, tranMonth] = tokens;
   if (
-    tokens.length < 5 ||
+    tokens.length < 4 ||
     !DAY_WORD.test(postDay.text) ||
     !MONTH_WORD.test(postMonth.text) ||
     !DAY_WORD.test(tranDay.text) ||
     !MONTH_WORD.test(tranMonth.text)
   )
     return undefined;
-  const trailing = trailingAmount(tokens.slice(4));
-  if (!trailing) return undefined;
-  const description = tokens
-    .slice(4, tokens.length - trailing.count)
+  const rest = tokens.slice(4);
+  const trailing = trailingAmount(rest);
+  // Garbage in the amount band is a misread amount, not description text.
+  const description = rest
+    .slice(0, rest.length - (trailing?.count ?? 0))
+    .filter((token) => token.x === undefined || token.x < AMOUNT_MIN_X)
     .map((token) => token.text)
     .join(' ');
-  const confidence = minConfidence(tokens);
-  const { words: _words, confidence: _confidence, ...rest } = line;
+  // A row with an unreadable amount is kept and forced to zero confidence so
+  // it is flagged instead of vanishing from the import.
+  const confidence = trailing ? minConfidence(tokens) : 0;
+  const { words: _words, confidence: _confidence, ...base } = line;
   // Both dates stay in the text (the parser takes the second as the row date);
   // the CR suffix is split off because credit detection needs a word boundary.
   return {
-    ...rest,
+    ...base,
     text: [
       postDay.text,
       postMonth.text,
       tranDay.text,
       tranMonth.text,
       description,
-      trailing.amount,
-      ...(trailing.credit ? ['CR'] : []),
+      trailing?.amount,
+      ...(trailing?.credit ? ['CR'] : []),
     ]
       .filter(Boolean)
       .join(' '),
@@ -119,9 +141,14 @@ function parseRow(line: StatementLine): StatementLine | undefined {
 function scan(
   lines: StatementLine[],
   claimedPages: ReadonlySet<number>
-): { rows: StatementLine[][]; totalCents?: number } {
+): {
+  rows: StatementLine[][];
+  totalCents?: number;
+  previousCents?: number;
+} {
   const rows: StatementLine[][] = [];
   let totalCents: number | undefined;
+  let previousCents: number | undefined;
   let inTable = false;
   let page = 0;
   for (const line of lines) {
@@ -130,18 +157,21 @@ function scan(
       page = line.page;
       inTable = false;
     }
-    const text = tableText(line);
-    if (HEADER.test(text)) {
+    if (HEADER.test(tableText(line))) {
       inTable = true;
       continue;
     }
     if (!inTable) continue;
-    const total = text.match(TOTAL_DUE);
+    const labelled = labelText(line);
+    const total = labelled.match(TOTAL_DUE);
     if (total) {
-      totalCents =
-        Math.round(Number(total[1].replaceAll(',', '')) * 100) *
-        (total[2] ? -1 : 1);
+      totalCents = signedCents(total[1], total[2]);
       inTable = false;
+      continue;
+    }
+    const previous = labelled.match(PREVIOUS_BALANCE);
+    if (previous) {
+      previousCents ??= signedCents(previous[1], previous[2]);
       continue;
     }
     const row = parseRow(line);
@@ -149,7 +179,7 @@ function scan(
     // the description and amount sit on the first line.
     if (row) rows.push([row]);
   }
-  return { rows, totalCents };
+  return { rows, totalCents, previousCents };
 }
 
 export const hsbcLayout: StatementLayout = {
@@ -162,10 +192,17 @@ export const hsbcLayout: StatementLayout = {
     return scan(lines, claimedPages).rows;
   },
   blockTotals(lines, claimedPages) {
-    const { rows, totalCents } = scan(lines, claimedPages);
-    return totalCents === undefined
+    const { rows, totalCents, previousCents } = scan(lines, claimedPages);
+    // Total Due includes the previous balance, which no row carries; without a
+    // readable one the check is skipped rather than reported as a false mismatch.
+    return totalCents === undefined || previousCents === undefined
       ? []
-      : [{ totalCents, rowStarts: rows.map((group) => group[0]) }];
+      : [
+          {
+            totalCents: totalCents - previousCents,
+            rowStarts: rows.map((group) => group[0]),
+          },
+        ];
   },
   columns: { billedSgd: true, twoDate: true },
 };

@@ -353,11 +353,17 @@ exactly. Alternatives considered:
 - **Merged columns**: `StatementLine` gains optional positioned `words` for OCR
   lines. The layout drops words at x >= 385 (the account summary), divider glyph
   tokens, and splits glued `07Sep` tokens. A row needs two date pairs and a
-  trailing amount at x >= 300; the second pair is the row date.
+  trailing amount at x >= 300; the second pair is the row date. A line with two
+  date pairs but an unreadable amount is still a row: it is kept with an empty
+  amount and zero confidence so review flags it, and reconciliation then
+  mismatches instead of the row vanishing.
 - **Credits**: a `CR` suffix is normalised to a separate `CR` word. The credit
   row's amount stays blank like other credits; reconciliation reads the sign
   from the source text, so credits reduce the total.
-- **Total**: `Total Due` is exposed through `blockTotals` over every row.
+- **Total**: `Total Due` includes the `Previous Statement Balance`, so the block
+  total is `Total Due` minus that balance (CR is negative) over every row. No
+  total is exposed when either amount is unreadable. Both labels are matched
+  ignoring tokens left of x 130.
   Reconciliation counts credit and payment rows (they are in the total), and
   ignores summary rows.
 - **Confidence**: row confidence is the minimum over table-column words only.

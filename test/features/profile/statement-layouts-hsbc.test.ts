@@ -232,7 +232,7 @@ const ROWS: PositionedStatementText[][] = [
     [
       ['Total', 141],
       ['Due', 177],
-      ['371.36', 316],
+      ['1,482.47', 316],
     ],
     [
       ['Points', 400],
@@ -240,6 +240,10 @@ const ROWS: PositionedStatementText[][] = [
     ]
   ),
 ];
+
+const withoutTotal = ROWS.slice(0, -1);
+const totalLine = (amount: string, junk: Cell[] = []) =>
+  line(380, [...junk, ['Total', 141], ['Due', 177], [amount, 316]]);
 
 const PAGE2 = [
   line(
@@ -401,9 +405,75 @@ describe('HSBC OCR layout', () => {
   });
 
   it('exposes no total when the Total Due line is missing', () => {
-    const noTotal = ROWS.filter((_, index) => index !== ROWS.length - 1);
-    const { lines: partial } = statement('15 Sep 2026', noTotal);
+    const { lines: partial } = statement('15 Sep 2026', withoutTotal);
     expect(statementTotalBlocks(partial, 'hsbc')).toEqual([]);
+  });
+
+  it('exposes no total when the previous balance is unreadable', () => {
+    const unreadable = page1('15 Sep 2026', ROWS).map((item) =>
+      item.text === '1,111.11' ? { ...item, text: '1,1l1.11' } : item
+    );
+    const partial = positionedStatementLines(unreadable, 1);
+    expect(statementTotalBlocks(partial, 'hsbc')).toEqual([]);
+  });
+
+  it('reads Total Due despite a junk token left of the label', () => {
+    const junk = statement('15 Sep 2026', [
+      ...withoutTotal,
+      totalLine('1,482.47', [['BEE', 56, 20]]),
+    ]);
+    const blocks = statementTotalBlocks(junk.lines, 'hsbc');
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].totalCents).toBe(37136);
+  });
+
+  it('subtracts a credit previous balance from a credit Total Due', () => {
+    const credit = page1('15 Sep 2026', [
+      ...withoutTotal,
+      totalLine('739.75CR'),
+    ]).map((item) =>
+      item.text === '1,111.11' ? { ...item, text: '1,111.11CR' } : item
+    );
+    const blocks = statementTotalBlocks(
+      positionedStatementLines(credit, 1),
+      'hsbc'
+    );
+    expect(blocks[0].totalCents).toBe(37136);
+  });
+
+  describe('a row with an unreadable amount', () => {
+    const garbage = line(
+      425,
+      [
+        ['17', 60],
+        ['Sep', 71],
+        ['18', 101],
+        ['Sep', 112],
+        ['MYSTERY SHOP', 141],
+        ['5#.O0', 349],
+      ],
+      [SUMMARY_NOISE.total]
+    );
+    const rowsWithGarbage = [...withoutTotal, garbage, totalLine('1,487.47')];
+    const { lines: gLines, period: gPeriod } = statement(
+      '15 Sep 2026',
+      rowsWithGarbage
+    );
+    const gRows = parseStatementLines(gLines, 'hsbc', gPeriod);
+
+    it('is kept with an empty amount and flagged for review', () => {
+      expect(gRows).toHaveLength(6);
+      const kept = gRows[4];
+      expect(kept.description).toBe('MYSTERY SHOP');
+      expect(kept.amount).toBe('');
+      expect(kept.confidence).toBe(0);
+      expect(kept.source[0].text).not.toContain('5#.O0');
+    });
+
+    it('makes reconciliation report a mismatch', () => {
+      const blocks = statementTotalBlocks(gLines, 'hsbc');
+      expect(reconcileStatement(gRows, blocks).status).toBe('mismatch');
+    });
   });
 });
 
