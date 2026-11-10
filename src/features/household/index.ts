@@ -40,6 +40,18 @@ export { HouseholdRecommendations } from './components/household-recommendations
 export { HouseholdYearTable } from './components/household-year-table';
 export { useHouseholdPlan } from './hooks/use-household-plan';
 export { usePlannerCommitment } from './hooks/use-planner-commitment';
+export {
+  NEXT_PAYMENT_DAYS,
+  computeHouseholdPlan,
+  householdRecommendations,
+} from './lib/household-plan';
+export type {
+  GoalPlan,
+  HouseholdPlan,
+  HouseholdPlanInput,
+  HouseholdRecommendation,
+  ScheduleEntry,
+} from './lib/household-plan';
 export { recommendationSentence } from './lib/household-recommendation-copy';
 export type {
   AcceptInviteResult,

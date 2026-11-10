@@ -189,6 +189,26 @@ describe('computeInvestmentBreakdown', () => {
     expect(r.totalDeployable).toBe(25000);
   });
 
+  it('treats a zero earmark exactly like none', () => {
+    expect(
+      computeInvestmentBreakdown({ ...base, householdEarmark: 0 })
+    ).toEqual(computeInvestmentBreakdown(base));
+  });
+
+  it('reduces deployable cash and both market splits by the earmark', () => {
+    const r = computeInvestmentBreakdown({ ...base, householdEarmark: 10000 });
+    expect(r.totalDeployable).toBe(25000);
+    expect(r.sgCash).toBe(floorHRef(25000 * 0.6));
+    expect(r.usCash).toBe(floorHRef(25000 * 0.4));
+  });
+
+  it('floors deployable cash at 0 when the earmark exceeds the surplus', () => {
+    const r = computeInvestmentBreakdown({ ...base, householdEarmark: 99999 });
+    expect(r.totalDeployable).toBe(0);
+    expect(r.sgCash).toBe(0);
+    expect(r.usCash).toBe(0);
+  });
+
   it('builds market budgets with remaining clamped at 0', () => {
     const r = computeInvestmentBreakdown({ ...base, sgSpent: 99999 });
     expect(r.budgets.sg.quarterRemaining).toBe(0);

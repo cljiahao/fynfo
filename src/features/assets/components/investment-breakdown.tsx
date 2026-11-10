@@ -42,6 +42,7 @@ interface InvestmentBreakdownProps {
   investmentAmount: number;
   emergencyFundGoal: number;
   warChestGoal: number;
+  householdEarmark?: number;
   snapshot?: SnapshotData;
   onBudgetsChange?: (budgets: MarketBudgets | null) => void;
 }
@@ -53,6 +54,7 @@ export function InvestmentBreakdown({
   investmentAmount,
   emergencyFundGoal,
   warChestGoal,
+  householdEarmark = 0,
   snapshot,
   onBudgetsChange,
 }: InvestmentBreakdownProps) {
@@ -147,6 +149,7 @@ export function InvestmentBreakdown({
         bonds: currentBonds,
         emergencyFundGoal,
         warChestGoal,
+        householdEarmark,
         sgEquity: sgEquity ?? 0,
         usEquity: usEquity ?? 0,
         sgSpent,
@@ -165,6 +168,7 @@ export function InvestmentBreakdown({
       currentBonds,
       emergencyFundGoal,
       warChestGoal,
+      householdEarmark,
       sgEquity,
       usEquity,
       sgSpent,
@@ -276,6 +280,13 @@ export function InvestmentBreakdown({
                 />
               ))}
             </div>
+          )}
+
+          {householdEarmark > 0 && (
+            <p className="text-muted-foreground text-sm">
+              {mask(formatSGD(householdEarmark))} of your spare savings is set
+              aside for household goals.
+            </p>
           )}
 
           {/* Two columns: Category Ratios | Deployable Cash */}

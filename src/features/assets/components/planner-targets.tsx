@@ -40,7 +40,7 @@ function TargetProgress({ bar }: { bar: TargetBar }) {
   );
 }
 
-/** Funded-of-target bars for the emergency fund, war chest and household reserve. */
+/** Funded-of-target bars for the emergency fund and war chest. */
 export function PlannerTargets({ bars }: { bars: TargetBar[] }) {
   return (
     <div className="space-y-3">

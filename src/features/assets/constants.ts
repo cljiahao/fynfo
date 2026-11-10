@@ -84,6 +84,5 @@ export const SNAPSHOTS_KEY = ['snapshots'] as const;
 
 export const PLANNER_KEY = ['planner-settings'] as const;
 
-export const DEFAULT_HOUSEHOLD_HORIZON_MONTHS = 24;
-export const HORIZON_MIN = 1;
-export const HORIZON_MAX = 120;
+/** Cap on how many months a household shortfall is projected over. */
+export const SHORTFALL_IMPACT_MONTHS = 12;

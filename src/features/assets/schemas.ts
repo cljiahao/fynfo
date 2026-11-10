@@ -42,6 +42,7 @@ export const plannerSettingsSchema = z.object({
   tithePct: z.number().min(0).max(100),
   allowanceEnabled: z.boolean(),
   allowancePct: z.number().min(0).max(100),
+  // Retired from the planner; still accepted so older exports import.
   householdHorizonMonths: z.number().int().min(1).max(120).optional(),
   expenseBufferPct: z.number().min(0).max(100).optional(),
 });
@@ -59,6 +60,7 @@ export const scenarioInputsSchema = z.strictObject({
   currentSavings: z.number().min(-1e9).max(1e9),
   currentBonds: z.number().min(-1e9).max(1e9),
   householdMonthlyDeduction: z.number().min(0).max(1e9).optional(),
+  // Ignored by the planner; kept so older saved scenarios still parse.
   householdReserve: z.number().min(0).max(1e9).optional(),
 });
 

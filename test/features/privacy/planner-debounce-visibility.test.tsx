@@ -123,7 +123,6 @@ describe('actual salary planner delayed-save visibility', () => {
     expect(api.upsertPlannerSettings).toHaveBeenCalledTimes(1);
     expect(api.upsertPlannerSettings).toHaveBeenCalledWith({
       ...settings,
-      householdHorizonMonths: 24,
       expenseBufferPct: 0,
       emergencyMonths: 5,
     });

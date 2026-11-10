@@ -1,6 +1,10 @@
 'use client';
 
-import { usePlannerCommitment } from '@/features/household';
+import {
+  computeHouseholdPlan,
+  householdRecommendations,
+  useHouseholdPlan,
+} from '@/features/household';
 import { useAmountVisibility } from '@/features/privacy';
 import { chartColor } from '@/lib/chart-palette';
 import { formatSGD } from '@/lib/utils/currency';
@@ -20,7 +24,6 @@ import { trailingTwelveMonths, useSalaryRecords } from '@/features/salary';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { DEFAULT_HOUSEHOLD_HORIZON_MONTHS } from '../constants';
 import { useExpensesOverride } from '../hooks/use-expenses-override';
 import {
   usePlannerSettings,
@@ -31,6 +34,7 @@ import {
   computeSalaryPlan,
   computeShortfallImpact,
   planStateLine,
+  shortfallImpactMonths,
   sumByCategory,
   type RecentAvgExpense,
 } from '../lib/salary-plan';
@@ -50,6 +54,8 @@ export interface PlannerValues {
   investmentAmount: number;
   emergencyFundGoal: number;
   warChestGoal: number;
+  /** Spare savings the household plan already counts on; not deployable. */
+  householdEarmark: number;
   expenses: number;
 }
 
@@ -66,7 +72,6 @@ const DEFAULT_SETTINGS: PlannerSettingsData = {
   tithePct: 10,
   allowanceEnabled: false,
   allowancePct: 5,
-  householdHorizonMonths: DEFAULT_HOUSEHOLD_HORIZON_MONTHS,
   expenseBufferPct: 0,
 };
 
@@ -130,7 +135,8 @@ export function SalaryPlanner(props: SalaryPlannerProps) {
   const otherIncome = lastRecord
     ? trailingTwelveMonths(salaryRecords ?? [], lastRecord.id)
     : { bonus: 0, oneTime: 0 };
-  const recentAvg = calcRecentAvgExpense(expenses, new Date(), 12);
+  const now = new Date();
+  const recentAvg = calcRecentAvgExpense(expenses, now, 12);
 
   return (
     <>
@@ -144,6 +150,7 @@ export function SalaryPlanner(props: SalaryPlannerProps) {
           otherIncome={otherIncome}
           initialSettings={savedSettings ?? DEFAULT_SETTINGS}
           recentAvg={recentAvg}
+          now={now}
         />
       </QueryContent>
     </>
@@ -157,11 +164,13 @@ function SalaryPlannerInner({
   otherIncome,
   initialSettings,
   recentAvg,
+  now,
 }: SalaryPlannerProps & {
   salary: number;
   otherIncome: { bonus: number; oneTime: number };
   initialSettings: PlannerSettingsData;
   recentAvg: RecentAvgExpense;
+  now: Date;
 }) {
   const { canReveal, getHideEpoch, mask } = useAmountVisibility();
   const upsertSettings = useUpsertPlannerSettings();
@@ -178,9 +187,6 @@ function SalaryPlannerInner({
   const [settings, setSettings] = useState({
     emergencyMonths: initialSettings.emergencyMonths,
     warChestMonths: initialSettings.warChestMonths,
-    householdHorizonMonths:
-      initialSettings.householdHorizonMonths ??
-      DEFAULT_HOUSEHOLD_HORIZON_MONTHS,
     titheEnabled: initialSettings.titheEnabled,
     tithePctInput: initialSettings.tithePct,
     allowanceEnabled: initialSettings.allowanceEnabled,
@@ -190,7 +196,6 @@ function SalaryPlannerInner({
   const {
     emergencyMonths,
     warChestMonths,
-    householdHorizonMonths,
     titheEnabled,
     tithePctInput,
     allowanceEnabled,
@@ -232,13 +237,11 @@ function SalaryPlannerInner({
       tithePct: tithePctInput,
       allowanceEnabled,
       allowancePct: allowancePctInput,
-      householdHorizonMonths,
       expenseBufferPct,
     });
   }, [
     emergencyMonths,
     warChestMonths,
-    householdHorizonMonths,
     titheEnabled,
     tithePctInput,
     allowanceEnabled,
@@ -247,26 +250,22 @@ function SalaryPlannerInner({
     debouncedSave,
   ]);
 
-  const commitmentQuery = usePlannerCommitment(householdHorizonMonths);
-  const commitment = commitmentQuery.data;
-  const householdStatus: HouseholdQueryStatus = commitmentQuery.isError
+  const planQuery = useHouseholdPlan();
+  const planInput = planQuery.data;
+  const householdStatus: HouseholdQueryStatus = planQuery.isError
     ? 'error'
-    : commitmentQuery.isPending
+    : planQuery.isPending
       ? 'loading'
       : 'ready';
-  const readyCommitment =
-    commitment && commitment.state === 'ready' ? commitment : null;
-  const householdMonthlyDeduction = readyCommitment
-    ? readyCommitment.monthlyDeduction
-    : 0;
-  const householdReserve = readyCommitment ? readyCommitment.reserve : 0;
+  const readyInput =
+    planInput && planInput.state === 'ready' ? planInput : null;
 
   const currentSavings = snapshot
     ? sumByCategory(snapshot.entries, 'savings')
     : 0;
   const currentBonds = snapshot ? sumByCategory(snapshot.entries, 'bonds') : 0;
 
-  const plan = computeSalaryPlan({
+  const planBase = {
     salary,
     expenses,
     emergencyMonths,
@@ -277,23 +276,42 @@ function SalaryPlannerInner({
     allowancePctInput,
     currentSavings,
     currentBonds,
-    householdMonthlyDeduction,
-    householdReserve,
     expenseBufferPct,
-  });
+  };
+  // The surplus depends only on savings, bonds and expenses, so it is known
+  // before the household figure and the two steps never form a cycle.
+  const baseline = computeSalaryPlan(planBase);
+  const surplus = Math.max(0, baseline.goalsFunded - baseline.goalsNeeded);
+  const householdPlan = readyInput
+    ? computeHouseholdPlan(readyInput, { surplus, now })
+    : null;
+  const householdMonthlyDeduction = householdPlan ? householdPlan.monthly : 0;
+
+  const plan = computeSalaryPlan({ ...planBase, householdMonthlyDeduction });
   const { investmentAmt, emergencyFundGoal, warChestGoal } = plan;
+  const householdEarmark = householdPlan ? householdPlan.surplusUsed : 0;
+  const shortfall = plan.householdShortfallAmt;
+  const recommendations =
+    readyInput && householdPlan
+      ? householdRecommendations(readyInput, householdPlan, {
+          now,
+          shortfallPerMonth: shortfall,
+        })
+      : [];
 
   useEffect(() => {
     onPlannerValuesChange?.({
       investmentAmount: investmentAmt,
       emergencyFundGoal,
       warChestGoal,
+      householdEarmark,
       expenses,
     });
   }, [
     investmentAmt,
     emergencyFundGoal,
     warChestGoal,
+    householdEarmark,
     expenses,
     onPlannerValuesChange,
   ]);
@@ -346,7 +364,7 @@ function SalaryPlannerInner({
           },
         ]
       : []),
-    ...(readyCommitment
+    ...(readyInput && householdPlan
       ? [
           {
             key: 'household',
@@ -354,7 +372,14 @@ function SalaryPlannerInner({
             amount: plan.householdAmt,
             pct: plan.householdPct,
             color: chartColor(2),
-            details: <HouseholdBreakdown commitment={readyCommitment} />,
+            details: (
+              <HouseholdBreakdown
+                input={readyInput}
+                plan={householdPlan}
+                recommendations={recommendations}
+                now={now}
+              />
+            ),
           },
         ]
       : []),
@@ -367,7 +392,7 @@ function SalaryPlannerInner({
     },
     {
       key: 'investment',
-      label: plan.investmentPaused ? 'Investment (paused)' : 'Investment',
+      label: 'Investment',
       amount: plan.investmentAmt,
       pct: plan.investmentPct,
       color: chartColor(6),
@@ -387,24 +412,16 @@ function SalaryPlannerInner({
       funded: currentBonds,
       target: plan.warChestGoal,
     },
-    ...(plan.householdReserve > 0
-      ? [
-          {
-            key: 'reserve',
-            label: 'Household reserve',
-            funded: Math.max(0, plan.goalsFunded - plan.goalsNeeded),
-            target: plan.householdReserve,
-          },
-        ]
-      : []),
   ];
 
-  const shortfall = plan.householdShortfallAmt;
+  const impactMonths = shortfallImpactMonths(
+    householdPlan?.bindingMonths ?? null
+  );
   const impact =
     shortfall > 0
       ? computeShortfallImpact({
           shortfallPerMonth: shortfall,
-          monthsHorizon: householdHorizonMonths,
+          monthsHorizon: impactMonths,
           currentSavings,
           expenses,
           emergencyMonths,
@@ -412,9 +429,7 @@ function SalaryPlannerInner({
       : null;
 
   const scenarioHousehold =
-    householdMonthlyDeduction > 0 || householdReserve > 0
-      ? { householdMonthlyDeduction, householdReserve }
-      : {};
+    householdMonthlyDeduction > 0 ? { householdMonthlyDeduction } : {};
 
   return (
     <Card>
@@ -477,7 +492,6 @@ function SalaryPlannerInner({
               onChange={(patch) =>
                 setSettings((current) => ({ ...current, ...patch }))
               }
-              showHorizon={commitment?.state !== 'none'}
             />
           </div>
         </div>
@@ -489,7 +503,7 @@ function SalaryPlannerInner({
               segments={segments}
               stateLine={planStateLine(plan)}
             />
-            <HouseholdNote status={householdStatus} commitment={commitment} />
+            <HouseholdNote status={householdStatus} input={planInput} />
             {shortfall > 0 && impact && (
               <div
                 role="alert"
@@ -502,9 +516,8 @@ function SalaryPlannerInner({
                     : 'over your take-home'}
                 </p>
                 <p className="text-muted-foreground text-xs">
-                  Savings and investment are 0. Over{' '}
-                  {mask(householdHorizonMonths)} months this leaves{' '}
-                  {mask(impact.monthsCovered.toFixed(1))} of{' '}
+                  Savings and investment are 0. Over {mask(impactMonths)} months
+                  this leaves {mask(impact.monthsCovered.toFixed(1))} of{' '}
                   {mask(impact.emergencyMonths)} months of emergency fund.
                 </p>
               </div>

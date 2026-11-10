@@ -14,7 +14,6 @@ afterEach(cleanup);
 const values: PlannerSettingsValues = {
   emergencyMonths: 3,
   warChestMonths: 9,
-  householdHorizonMonths: 12,
   titheEnabled: false,
   tithePctInput: 10,
   allowanceEnabled: false,
@@ -26,11 +25,7 @@ async function openAndType(raw: string) {
   const onChange = vi.fn();
   render(
     <AmountVisibilityProvider>
-      <PlannerSettingsSheet
-        values={values}
-        onChange={onChange}
-        showHorizon={false}
-      />
+      <PlannerSettingsSheet values={values} onChange={onChange} />
     </AmountVisibilityProvider>
   );
   await userEvent.click(screen.getByText('Adjust settings'));

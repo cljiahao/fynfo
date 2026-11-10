@@ -135,6 +135,8 @@ export interface BreakdownInput {
   usEquity: number;
   sgSpent: number;
   usSpent: number;
+  /** Spare savings already set aside for household goals; default 0. */
+  householdEarmark?: number;
 }
 
 export interface BreakdownResult {
@@ -166,6 +168,8 @@ export interface BreakdownResult {
  * Deployable cash: savings already includes the quarterly budget (snapshot is
  * taken after salary deposit). Savings − emergency fund − bonds shortfall is
  * deployable from savings; bonds above the war-chest goal is deployable surplus.
+ * The household earmark is spare savings the planner already set aside for
+ * shared goals, so it is not deployable.
  */
 export function computeInvestmentBreakdown(
   input: BreakdownInput
@@ -183,6 +187,7 @@ export function computeInvestmentBreakdown(
     sgSpent,
     usSpent,
   } = input;
+  const householdEarmark = Math.max(0, input.householdEarmark ?? 0);
 
   const totalRatio = ratios.rsp + ratios.us + ratios.sg;
 
@@ -195,7 +200,9 @@ export function computeInvestmentBreakdown(
   const bondsSurplus = Math.max(bonds - warChestGoal, 0);
   const bondsShortfall = Math.max(warChestGoal - bonds, 0);
   const fromSavings = Math.max(savings - emergencyFundGoal - bondsShortfall, 0);
-  const totalDeployable = floorH(fromSavings + bondsSurplus);
+  const totalDeployable = floorH(
+    Math.max(0, fromSavings + bondsSurplus - householdEarmark)
+  );
   const sgCash = floorH(totalDeployable * (cashAlloc.sg / 100));
   const usCash = floorH(totalDeployable * (cashAlloc.us / 100));
 

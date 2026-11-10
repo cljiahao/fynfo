@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { SalaryPlanner } from '@/features/assets/components/salary-planner';
-import { AmountVisibilityProvider } from '@/features/privacy';
+import {
+  AmountVisibilityProvider,
+  AmountVisibilityToggle,
+} from '@/features/privacy';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import {
@@ -19,7 +22,7 @@ const api = vi.hoisted(() => ({
   getPlannerSettings: vi.fn(),
   upsertPlannerSettings: vi.fn(),
   getScenarios: vi.fn(),
-  getPlannerCommitment: vi.fn(),
+  getHouseholdPlanInput: vi.fn(),
 }));
 vi.mock('@/features/salary/actions/salary-actions', () => ({
   getSalaryRecords: api.getSalaryRecords,
@@ -37,8 +40,16 @@ vi.mock('@/features/assets/actions/scenario-actions', () => ({
   updateScenario: vi.fn(),
   deleteScenario: vi.fn(),
 }));
-vi.mock('@/features/household/actions/planner-actions', () => ({
-  getPlannerCommitment: api.getPlannerCommitment,
+vi.mock('@/features/household/actions/plan-actions', () => ({
+  getHouseholdPlanInput: api.getHouseholdPlanInput,
+}));
+
+const scenarioInputs = vi.hoisted(() => ({ last: null as unknown }));
+vi.mock('@/features/assets/components/planning-scenarios', () => ({
+  PlanningScenarios: ({ inputs }: { inputs: unknown }) => {
+    scenarioInputs.last = inputs;
+    return null;
+  },
 }));
 
 const OVERRIDE_KEY = 'fynfo:planner-expenses-override';
@@ -66,15 +77,35 @@ function expense(id: string, monthsAgo: number, amount: number) {
   };
 }
 
-function ready(monthlyDeduction: number) {
+function planInput(
+  state: 'none' | 'locked' | 'ready',
+  targetAmount = 0,
+  monthsAhead = 6
+) {
+  const due = new Date();
+  due.setMonth(due.getMonth() + monthsAhead);
+  const goals =
+    state === 'ready' && targetAmount > 0
+      ? [
+          {
+            id: 'g1',
+            name: 'Holiday',
+            targetDate: due.toISOString(),
+            createdAt: new Date().toISOString(),
+            targetAmount,
+            contributed: 0,
+            remaining: targetAmount,
+            share: 1,
+            items: [],
+          },
+        ]
+      : [];
   return {
-    state: 'ready',
+    state,
     isDefaultSplit: false,
-    reserve: 0,
-    monthlyDeduction,
-    goals: [],
-    budgets: { monthlyTotal: 0, share: 0.5, monthlyShare: 0 },
-    excluded: [],
+    callerShares: { default: 0.5 },
+    goals,
+    budgets: [],
   };
 }
 
@@ -85,6 +116,7 @@ function mount() {
   render(
     <QueryClientProvider client={client}>
       <AmountVisibilityProvider>
+        <AmountVisibilityToggle />
         <SalaryPlanner />
       </AmountVisibilityProvider>
     </QueryClientProvider>
@@ -101,7 +133,7 @@ beforeEach(() => {
   api.getPlannerSettings.mockResolvedValue(null);
   api.upsertPlannerSettings.mockResolvedValue(undefined);
   api.getScenarios.mockResolvedValue([]);
-  api.getPlannerCommitment.mockResolvedValue({ state: 'none' });
+  api.getHouseholdPlanInput.mockResolvedValue(planInput('none'));
 });
 afterEach(() => {
   cleanup();
@@ -136,18 +168,34 @@ describe('planner expenses source', () => {
   });
 });
 
+async function openHousehold() {
+  fireEvent.click(await screen.findByRole('button', { name: /Household/ }));
+}
+
 describe('planner household states', () => {
+  it('has no Household line when there is no household', async () => {
+    mount();
+    await screen.findByText(/Net \(after CPF\)/);
+    expect(screen.queryByRole('button', { name: /Household/ })).toBeNull();
+    expect(screen.queryByText(/Unlock your household/)).toBeNull();
+  });
+
   it('prompts to unlock when the household key is not in session', async () => {
-    api.getPlannerCommitment.mockResolvedValue({
-      ...ready(0),
-      state: 'locked',
-    });
+    api.getHouseholdPlanInput.mockResolvedValue(planInput('locked'));
     mount();
     expect(await screen.findByText(/Unlock your household/)).toBeTruthy();
   });
 
-  it('says household is not included when the commitment fails to load', async () => {
-    api.getPlannerCommitment.mockRejectedValue(new Error('boom'));
+  it('says household is not included while loading', async () => {
+    api.getHouseholdPlanInput.mockReturnValue(new Promise(() => undefined));
+    mount();
+    expect(
+      await screen.findByText(/Loading household commitments/)
+    ).toBeTruthy();
+  });
+
+  it('says household is not included when the plan fails to load', async () => {
+    api.getHouseholdPlanInput.mockRejectedValue(new Error('boom'));
     mount();
     expect(
       await screen.findByText(/could not be loaded, so they are not included/)
@@ -155,21 +203,61 @@ describe('planner household states', () => {
     expect(screen.getByText('Gross Salary')).toBeTruthy();
   });
 
+  it('shows the set-aside line, table and recommendations when ready', async () => {
+    api.getHouseholdPlanInput.mockResolvedValue(planInput('ready', 6000));
+    mount();
+    await openHousehold();
+    expect(await screen.findByText(/Set aside .* this month/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Holiday' })).toBeTruthy();
+    expect(screen.getByText(/counted twice/)).toBeTruthy();
+    expect(screen.queryByText(/horizon/i)).toBeNull();
+  });
+
+  it('masks the Household amounts when amounts are hidden', async () => {
+    api.getHouseholdPlanInput.mockResolvedValue(planInput('ready', 6000));
+    mount();
+    await openHousehold();
+    const line = await screen.findByText(/Set aside .* this month/);
+    expect(line.textContent).toMatch(/1,000/);
+    const panel = line.parentElement as HTMLElement;
+    expect(panel.textContent).toMatch(/6,000/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    expect(panel.textContent).not.toMatch(/\$/);
+    expect(panel.textContent).not.toMatch(/1,000|6,000/);
+  });
+
   it('shows the shortfall alert when household exceeds take-home', async () => {
-    api.getPlannerCommitment.mockResolvedValue(ready(5000));
+    api.getHouseholdPlanInput.mockResolvedValue(planInput('ready', 600000));
     mount();
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/a month/);
     expect(alert).toHaveTextContent(/Savings and investment are 0/);
   });
 
-  it('offers the personal household horizon in settings when in a household', async () => {
-    api.getPlannerCommitment.mockResolvedValue(ready(500));
+  it('saves the household deduction in a scenario but never a reserve', async () => {
+    api.getHouseholdPlanInput.mockResolvedValue(planInput('ready', 6000));
+    mount();
+    await screen.findByText(/Net \(after CPF\)/);
+    await waitFor(() =>
+      expect(scenarioInputs.last).toHaveProperty('householdMonthlyDeduction')
+    );
+    expect(scenarioInputs.last).not.toHaveProperty('householdReserve');
+  });
+
+  it('leaves the scenario payload without household fields when there is no household', async () => {
+    mount();
+    await screen.findByText(/Net \(after CPF\)/);
+    expect(scenarioInputs.last).not.toHaveProperty('householdMonthlyDeduction');
+    expect(scenarioInputs.last).not.toHaveProperty('householdReserve');
+  });
+
+  it('does not offer a household horizon in settings', async () => {
+    api.getHouseholdPlanInput.mockResolvedValue(planInput('ready', 6000));
     mount();
     await screen.findByText(/Net \(after CPF\)/);
     fireEvent.click(screen.getByRole('button', { name: 'Adjust settings' }));
-    expect(
-      await screen.findByLabelText('Household horizon (months)')
-    ).toHaveValue(24);
+    await screen.findByLabelText('Emergency Fund (months)');
+    expect(screen.queryByLabelText(/horizon/i)).toBeNull();
   });
 });
