@@ -199,7 +199,7 @@ export function OcrDump() {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4 px-4 py-6">
-      <h1 className="text-xl font-semibold">OCR dump (development only)</h1>
+      <h1 className="text-xl font-semibold">OCR dump</h1>
       <p className="text-muted-foreground text-sm">
         Real statement data is shown here. Everything runs in this tab and
         nothing is sent anywhere. Redact names and merchants before sharing.

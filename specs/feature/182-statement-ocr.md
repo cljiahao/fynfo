@@ -166,20 +166,34 @@ message instead of throwing, so a refused group is never shown as
 `unconfirmed`. The approval status is unchanged.
 
 Amendment note (2026-11-10, owner decision): the Node dump script is
-replaced by a development-only in-browser dump page at `/dev/ocr-dump`. The
+replaced by an in-browser dump page (first built development-only, since
+moved to `/dashboard/admin/ocr-dump`; see the following amendment). The
 script only OCRed embedded images and the HSBC statement body is not one, and
 the Node canvas binary needed to render pages is blocked by Windows Application
 Control; the page reuses the app's own page render, recogniser and line
 grouping and adds no dependency. It is a client component (`'use client'`)
-because it needs a file input, a canvas and a web worker. Production returns 404. The dump component is exported from the barrel as a development-gated dynamic import so production bundles do not contain it. The approval status is unchanged.
+because it needs a file input, a canvas and a web worker. The dump component is exported from the barrel as a dynamic import. The approval status is unchanged.
+
+Amendment note (2026-11-10, owner decision, given in conversation): the dump
+page moves from development-only to admin-only at `/dashboard/admin/ocr-dump`.
+It is gated by authentication plus `ADMIN_EMAILS`, exactly like the admin page,
+through the shared `requireAdmin()` gate; it fails closed (unset allowlist is a
+404 for everyone). Reason: the owner cannot sign in on localhost, so production
+is the only usable environment. The page does no database access and has no
+server action, so CONSTITUTION 2.3 (`requireUserId()` then
+`getVaultDekSession()` before DB access) has nothing to guard beyond the admin
+carve-out. The PDF is read and OCRed in the browser tab and its content never
+leaves it. The component stays a lazily loaded client-only chunk that only this
+page requests. Earlier "development-only" and "404 in production" wording is
+superseded. The approval status is unchanged.
 
 ### HSBC layout
 
 No HSBC column positions, header wording or total line are known: no text was
 ever extractable. This is a deliberate implementation step, not a guess here:
 
-1. Slice 1 ships the OCR engine plus a development-only dump page
-   (`/dev/ocr-dump`, 404 in production) where the owner picks a PDF and sees the
+1. Slice 1 ships the OCR engine plus an admin-only dump page
+   (`/dashboard/admin/ocr-dump`, 404 for non-admins) where the owner picks a PDF and sees the
    OCR word boxes from the app's own pipeline. It runs entirely in the browser
    tab: no file is written, no network call carries content, and its output is
    never committed or pasted into the repo. The owner runs it on his real
