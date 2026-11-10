@@ -6,6 +6,8 @@ import type { HouseholdRecommendation } from './household-plan';
 export interface CopyOptions {
   /** Formats an amount; the caller passes a masking formatter. */
   money: (amount: number) => string;
+  /** Masks a goal or budget name; the caller passes the privacy mask. */
+  maskName: (name: string) => string;
   now: Date;
 }
 
@@ -23,9 +25,9 @@ function dueIn(iso: string, now: Date): string {
 /** Wording lives here so it can change without touching the plan math. */
 export function recommendationSentence(
   rec: HouseholdRecommendation,
-  { money, now }: CopyOptions
+  { money, maskName, now }: CopyOptions
 ): string {
-  const label = rec.label ?? 'Goal';
+  const label = maskName(rec.label ?? 'Goal');
   switch (rec.kind) {
     case 'shortfall':
       return `This month's household share exceeds what's left by ${money(rec.amounts.shortfall)}; it comes from savings.`;

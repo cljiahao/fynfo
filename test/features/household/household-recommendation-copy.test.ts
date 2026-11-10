@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 const now = new Date(2026, 10, 10);
 const money = (n: number) => `$${Math.round(n)}`;
 const say = (rec: HouseholdRecommendation) =>
-  recommendationSentence(rec, { money, now });
+  recommendationSentence(rec, { money, maskName: (name) => name, now });
 
 describe('recommendationSentence', () => {
   it('words a shortfall', () => {
@@ -102,10 +102,8 @@ describe('recommendationSentence', () => {
         amounts: { behind: 800, catchUpPerMonth: 150 },
         dates: { target: '2027-06-01' },
       },
-      { money: () => '****', now }
+      { money: () => '****', maskName: () => '####', now }
     );
-    expect(masked).toBe(
-      'Renovation is **** behind; **** more a month catches up.'
-    );
+    expect(masked).toBe('#### is **** behind; **** more a month catches up.');
   });
 });

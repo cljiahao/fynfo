@@ -44,10 +44,13 @@ export function HouseholdBreakdown({
       <ul className="space-y-0.5">
         {goalLines.map((goal) => (
           <li key={goal.goalId} className="flex justify-between gap-2">
-            <Link href={goalHref(goal.goalId)} className="underline">
-              {goalNames.get(goal.goalId) ?? 'Goal'}
+            <Link
+              href={goalHref(goal.goalId)}
+              className="min-w-0 break-words underline"
+            >
+              {mask(goalNames.get(goal.goalId) ?? 'Goal')}
             </Link>
-            <span className="tabular-nums">
+            <span className="shrink-0 whitespace-nowrap tabular-nums">
               {mask(formatSGD(goal.monthly))} a month
             </span>
           </li>

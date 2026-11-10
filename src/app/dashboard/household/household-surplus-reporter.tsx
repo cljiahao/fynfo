@@ -8,8 +8,7 @@ import {
   useSnapshots,
 } from '@/features/assets';
 import { useExpenses } from '@/features/expenses';
-import { HouseholdOverview } from '@/features/household';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * Spare savings above the emergency fund and war chest. Everything is read and
@@ -32,6 +31,15 @@ function usePersonalSurplus(): number | null {
   });
 }
 
-export default function HouseholdSurplusOverview() {
-  return <HouseholdOverview personalSurplus={usePersonalSurplus()} />;
+interface Props {
+  onSurplus: (surplus: number | null) => void;
+}
+
+/** Renders nothing; reports the surplus up so the overview never remounts. */
+export default function HouseholdSurplusReporter({ onSurplus }: Props) {
+  const surplus = usePersonalSurplus();
+  useEffect(() => {
+    onSurplus(surplus);
+  }, [onSurplus, surplus]);
+  return null;
 }

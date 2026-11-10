@@ -302,7 +302,11 @@ function GoalEditorForm({
     const money = (n: number | null) => (n === null ? '' : mask(formatSGD(n)));
     return (
       <>
-        <div className="space-y-4 px-4" aria-label="Changes to save">
+        <div
+          role="group"
+          className="space-y-4 px-4"
+          aria-label="Changes to save"
+        >
           <h3 className="text-sm font-medium">Review changes</h3>
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between gap-3">
@@ -484,18 +488,31 @@ function GoalEditorForm({
                           />
                         )}
                         {showDates && (
-                          <Input
-                            aria-label={`Item ${index + 1} due date`}
-                            disabled={hidden}
-                            type="date"
-                            className="col-start-2"
-                            aria-invalid={
-                              errors[`items.${index}.dueDate`]
-                                ? true
-                                : undefined
+                          <div
+                            className={
+                              showQuote
+                                ? 'flex items-center gap-2'
+                                : 'col-span-2 flex items-center gap-2'
                             }
-                            {...form.register(`items.${index}.dueDate`)}
-                          />
+                          >
+                            <span
+                              aria-hidden
+                              className="text-muted-foreground text-xs"
+                            >
+                              Due
+                            </span>
+                            <Input
+                              aria-label={`Item ${index + 1} due date`}
+                              disabled={hidden}
+                              type="date"
+                              aria-invalid={
+                                errors[`items.${index}.dueDate`]
+                                  ? true
+                                  : undefined
+                              }
+                              {...form.register(`items.${index}.dueDate`)}
+                            />
+                          </div>
                         )}
                       </div>
                     )}
@@ -525,6 +542,7 @@ function GoalEditorForm({
                     type="button"
                     size="sm"
                     variant="ghost"
+                    className="min-h-10"
                     onClick={() => setShowQuote(true)}
                   >
                     Got a final quote?
@@ -535,6 +553,7 @@ function GoalEditorForm({
                     type="button"
                     size="sm"
                     variant="ghost"
+                    className="min-h-10"
                     onClick={() => setShowDates(true)}
                   >
                     Add payment dates

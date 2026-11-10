@@ -86,6 +86,19 @@ describe('HouseholdYearTable', () => {
     expect(screen.queryByText(/1,750/)).toBeNull();
     const line = screen.getAllByRole('listitem')[0];
     expect(within(line).queryByText(/1,250/)).toBeNull();
-    expect(within(line).getByText('Hidden')).toBeInTheDocument();
+    expect(within(line).getAllByText('Hidden')).toHaveLength(2);
+    expect(screen.queryByText('Wedding')).toBeNull();
+    expect(screen.queryByText('Sofa')).toBeNull();
+  });
+
+  it('links each year button to its panel', async () => {
+    mount();
+    const year = screen.getByRole('button', { name: /^2027/ });
+    await userEvent.click(year);
+    const panelId = year.getAttribute('aria-controls');
+    expect(panelId).toBeTruthy();
+    expect(document.getElementById(panelId ?? '')).toContainElement(
+      screen.getByText('Wedding')
+    );
   });
 });

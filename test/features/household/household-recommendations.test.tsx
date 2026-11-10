@@ -69,4 +69,28 @@ describe('HouseholdRecommendations', () => {
     expect(screen.queryByText(/1,200/)).toBeNull();
     expect(screen.getByText(/Hidden a month/)).toBeInTheDocument();
   });
+
+  it('masks the goal name in every sentence kind when amounts are hidden', async () => {
+    mount([
+      pace('Wedding', 1200),
+      {
+        kind: 'behind',
+        goalId: 'w',
+        label: 'Wedding',
+        amounts: { behind: 500, catchUpPerMonth: 50 },
+        dates: { target: '2027-12-01' },
+      },
+      {
+        kind: 'covered',
+        goalId: 'w',
+        label: 'Wedding',
+        amounts: { covered: 100 },
+        dates: {},
+      },
+    ]);
+    expect(screen.getAllByText(/Wedding/)).toHaveLength(3);
+    await userEvent.click(screen.getByRole('button', { name: 'Hide amounts' }));
+    expect(screen.queryByText(/Wedding/)).toBeNull();
+    expect(screen.getAllByText(/Hidden/)).toHaveLength(3);
+  });
 });
