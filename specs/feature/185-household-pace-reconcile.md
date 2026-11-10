@@ -2,12 +2,12 @@
 id: '185'
 slug: household-pace-reconcile
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-10
 approved: 2026-11-10 # owner-authorized in chat 2026-11-10 ("fix all please"), follow-up to spec 183
-shipped:
-impl_pr: none (direct to main)
+shipped: 2026-11-10 # YYYY-MM-DD, set on impl merge
+impl_pr: none (direct to main); commit 767f532 # no PR (direct to main)
 supersedes: '183 (partial: "savings-surplus offset never on the household page", for one sentence only)'
 constitution_satisfies:
   - '§2.1'
