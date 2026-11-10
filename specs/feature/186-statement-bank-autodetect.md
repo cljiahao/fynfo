@@ -2,10 +2,10 @@
 id: '186'
 slug: statement-bank-autodetect
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-10
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-10 # YYYY-MM-DD, set on approval
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # link to impl PR, set on shipped
 supersedes:
