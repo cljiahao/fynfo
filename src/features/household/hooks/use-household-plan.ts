@@ -1,8 +1,15 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { refreshQueriesAfterMutation } from '@/lib/query-refresh';
+import { useQuery, type QueryClient } from '@tanstack/react-query';
 import { getHouseholdPlanInput } from '../actions/plan-actions';
-import { PLANNER_COMMITMENT_KEY } from './use-planner-commitment';
+
+export const PLANNER_COMMITMENT_KEY = ['household-planner-commitment'] as const;
+
+/** Goals, budgets, the split and membership all feed the household plan. */
+export function refreshPlannerCommitment(qc: QueryClient): Promise<void> {
+  return refreshQueriesAfterMutation(qc, PLANNER_COMMITMENT_KEY);
+}
 
 /**
  * Under the commitment key prefix so the existing goal, split and budget

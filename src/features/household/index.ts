@@ -19,11 +19,7 @@ export {
   unlockHousehold,
 } from './actions/household-actions';
 export { getHouseholdPlanInput } from './actions/plan-actions';
-export {
-  getPlannerCommitment,
-  getPlannerSplit,
-  setPlannerSplit,
-} from './actions/planner-actions';
+export { getPlannerSplit, setPlannerSplit } from './actions/planner-actions';
 export {
   addSpending,
   createSpace,
@@ -39,7 +35,6 @@ export {
 export { HouseholdRecommendations } from './components/household-recommendations';
 export { HouseholdYearTable } from './components/household-year-table';
 export { useHouseholdPlan } from './hooks/use-household-plan';
-export { usePlannerCommitment } from './hooks/use-planner-commitment';
 export {
   NEXT_PAYMENT_DAYS,
   computeHouseholdPlan,
@@ -65,9 +60,6 @@ export type {
   HouseholdSpaceKind,
   HouseholdSummary,
   InviteResult,
-  PlannerCommitment,
-  PlannerCommitmentGoal,
-  PlannerCommitmentState,
   PlannerSplit,
   SaveGoalResult,
   SharedSpendingEntry,

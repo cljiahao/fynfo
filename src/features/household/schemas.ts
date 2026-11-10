@@ -201,7 +201,3 @@ export const plannerSplitUpdateSchema = z.union([
 ]);
 
 export type PlannerSplitUpdateInput = z.infer<typeof plannerSplitUpdateSchema>;
-
-export const plannerCommitmentInputSchema = z.object({
-  horizonMonths: z.number().int().min(1).max(120),
-});

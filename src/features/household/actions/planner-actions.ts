@@ -6,16 +6,8 @@ import { AppError, throwIfSupabaseError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
-import { computeHouseholdCommitment } from '../lib/household-commitment';
-import {
-  plannerCommitmentInputSchema,
-  plannerSplitSchema,
-  plannerSplitUpdateSchema,
-} from '../schemas';
-import type { PlannerCommitment, PlannerSplit } from '../types';
-import { getSpendingBudgets } from './budget-actions';
-import { getGoals } from './goal-actions';
-import { getHousehold } from './household-actions';
+import { plannerSplitSchema, plannerSplitUpdateSchema } from '../schemas';
+import type { PlannerSplit } from '../types';
 
 const MAX_WRITE_ATTEMPTS = 3;
 const UNIQUE_VIOLATION = '23505';
@@ -283,73 +275,4 @@ export async function setPlannerSplit(input: unknown): Promise<void> {
     'DB_ERROR',
     'The split was changed at the same time, please retry'
   );
-}
-
-function emptyCommitment(state: 'none' | 'locked'): PlannerCommitment {
-  return {
-    state,
-    isDefaultSplit: false,
-    reserve: 0,
-    monthlyDeduction: 0,
-    goals: [],
-    budgets: { monthlyTotal: 0, share: 0, monthlyShare: 0 },
-    excluded: [],
-  };
-}
-
-/**
- * The caller's share of household goals and budgets for the personal planner.
- * Only the caller's computed figures leave the server. No household is `none`
- * and a locked one is `locked`, so the planner can render without either.
- */
-export async function getPlannerCommitment(
-  input: unknown
-): Promise<PlannerCommitment> {
-  const { horizonMonths } = parseOrThrow(
-    plannerCommitmentInputSchema,
-    input,
-    'household.plannerCommitment.input'
-  );
-
-  const household = await getHousehold();
-  if (!household) return emptyCommitment('none');
-  if (household.locked) return emptyCommitment('locked');
-
-  const [goals, budgets, split] = await Promise.all([
-    getGoals(),
-    getSpendingBudgets(),
-    getPlannerSplit(),
-  ]);
-
-  const result = computeHouseholdCommitment({
-    goals: goals.map((goal) => ({
-      id: goal.id,
-      remaining: goal.remaining,
-      targetDate: goal.targetDate,
-    })),
-    budgets: budgets.map((budget) => ({
-      id: budget.id,
-      monthlyAmount: budget.monthlyAmount,
-    })),
-    split,
-    callerUserId: split.userId,
-    horizonMonths,
-    now: new Date(),
-  });
-
-  const names = new Map(goals.map((goal) => [goal.id, goal.name]));
-  const nameOf = (goalId: string) => names.get(goalId) ?? 'Goal';
-
-  return {
-    state: 'ready',
-    isDefaultSplit: split.isDefault,
-    reserve: result.reserve,
-    monthlyDeduction: result.monthlyDeduction,
-    goals: result.goals.map((line) => ({ ...line, name: nameOf(line.goalId) })),
-    budgets: result.budgets,
-    excluded: result.excluded.map((entry) => ({
-      ...entry,
-      name: nameOf(entry.goalId),
-    })),
-  };
 }

@@ -25,11 +25,11 @@ const api = vi.hoisted(() => ({
   getDividends: vi.fn(),
   fetchStockPrices: vi.fn(),
   fetchExchangeRate: vi.fn(),
-  getPlannerCommitment: vi.fn(),
+  getHouseholdPlanInput: vi.fn(),
 }));
 vi.mock('@/features/assets/actions/snapshot-actions', () => api);
 vi.mock('@/features/assets/actions/planner-actions', () => api);
-vi.mock('@/features/household/actions/planner-actions', () => api);
+vi.mock('@/features/household/actions/plan-actions', () => api);
 vi.mock('@/features/salary/actions/salary-actions', () => api);
 vi.mock('@/features/expenses/actions/expense-actions', () => api);
 vi.mock('@/features/profile/actions/profile-actions', () => api);
@@ -82,7 +82,7 @@ beforeEach(() => {
   api.fetchExchangeRate.mockResolvedValue(1.3);
   api.fetchStockPrices.mockResolvedValue({});
   api.upsertPlannerSettings.mockResolvedValue(undefined);
-  api.getPlannerCommitment.mockResolvedValue({ state: 'none' });
+  api.getHouseholdPlanInput.mockResolvedValue(null);
 });
 afterEach(() => {
   cleanup();
