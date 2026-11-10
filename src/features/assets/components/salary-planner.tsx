@@ -369,6 +369,7 @@ function SalaryPlannerInner({
           {
             key: 'household',
             label: 'Household',
+            rowLabel: 'Set aside this month',
             amount: plan.householdAmt,
             pct: plan.householdPct,
             color: chartColor(2),

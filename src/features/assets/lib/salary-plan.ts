@@ -230,10 +230,9 @@ export function planStateLine(plan: SalaryPlan): string {
  * deadline nor than the cap.
  */
 export function shortfallImpactMonths(bindingMonths: number | null): number {
-  return Math.min(
-    bindingMonths ?? SHORTFALL_IMPACT_MONTHS,
-    SHORTFALL_IMPACT_MONTHS
-  );
+  if (bindingMonths === null || !Number.isFinite(bindingMonths))
+    return SHORTFALL_IMPACT_MONTHS;
+  return Math.min(Math.max(1, bindingMonths), SHORTFALL_IMPACT_MONTHS);
 }
 
 export interface ShortfallImpactInput {

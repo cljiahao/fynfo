@@ -8,6 +8,8 @@ import { PlannerDonut } from './planner-donut';
 export interface FlowSegment {
   key: string;
   label: string;
+  /** Legend text when it should differ from the donut label. */
+  rowLabel?: string;
   amount: number;
   /** Share of net take-home, as a fraction. */
   pct: number;
@@ -62,7 +64,7 @@ export function PlannerFlow({ net, segments, stateLine }: PlannerFlowProps) {
                 <circle cx="50%" cy="50%" r="50%" fill={segment.color} />
               </svg>
               <span className="min-w-0 flex-1 truncate text-left">
-                {segment.label}
+                {segment.rowLabel ?? segment.label}
               </span>
               <span className="text-muted-foreground w-12 shrink-0 text-right text-xs tabular-nums">
                 {(segment.pct * 100).toFixed(1)}%
