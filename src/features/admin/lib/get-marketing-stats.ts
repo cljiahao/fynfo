@@ -1,10 +1,8 @@
 import { readMarketingAggregates } from '@/integrations/services/security-rpc';
-import { createSupabaseServerClient } from '@/integrations/services/supabase';
-import { isAdminEmail } from '@/lib/admin';
 import { logger } from '@/lib/logger';
-import { notFound } from 'next/navigation';
 import type { DailyPoint, MarketingStats } from '../types';
 import { computeClickRate } from './compute-click-rate';
+import { requireAdmin } from './require-admin';
 
 /**
  * Admin-only aggregate telemetry read. Per CONSTITUTION §2.3 carve-out: requires
@@ -12,18 +10,7 @@ import { computeClickRate } from './compute-click-rate';
  * non-encrypted aggregate counts. Non-admins get a 404 (no admin surface leak).
  */
 export async function getMarketingStats(): Promise<MarketingStats> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (
-    userError ||
-    !user ||
-    !isAdminEmail(user.email, process.env.ADMIN_EMAILS)
-  ) {
-    notFound();
-  }
+  await requireAdmin();
 
   const { events: eventRows, signups: signupRows } =
     await readMarketingAggregates().catch(() => {
