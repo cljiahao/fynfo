@@ -1,6 +1,7 @@
 import type { ExpenseSplitData } from '@/features/expenses';
 
 export type StatementBank = 'uob' | 'dbs' | 'hsbc' | 'citibank' | 'paylah';
+export type StatementBankChoice = StatementBank | 'auto';
 export interface StatementPeriod {
   from: string;
   to: string;

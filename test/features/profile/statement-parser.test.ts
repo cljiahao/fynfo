@@ -1,5 +1,6 @@
 import {
   getStatementReview,
+  matchesStatementIdentity,
   parseStatementLines,
   positionedStatementLines,
   validStatementPeriod,
@@ -425,5 +426,35 @@ describe('conservative local statement parsing', () => {
       { page: 2, line: 1, text: 'HEADER' },
       { page: 2, line: 2, text: '20 DEC SHOP SGD 2.00' },
     ]);
+  });
+});
+
+describe('statement identity gate', () => {
+  it('rejects text that does not identify the selected bank with the unchanged message', () => {
+    expect(() =>
+      parseStatementLines(
+        lines('SYNTHETIC TEST', '20 DEC SHOP 2.00'),
+        'uob',
+        period
+      )
+    ).toThrow('The selected bank could not be identified in this text PDF.');
+  });
+
+  it('rejects a bank whose exclude marker is present', () => {
+    expect(() =>
+      parseStatementLines(
+        lines('PayLah! Statement', 'DATE DESCRIPTION AMOUNT (S$)'),
+        'paylah',
+        period
+      )
+    ).toThrow('The selected bank could not be identified in this text PDF.');
+  });
+
+  it('exposes the same decision through matchesStatementIdentity', () => {
+    expect(matchesStatementIdentity('uob', 'UNITED OVERSEAS BANK')).toBe(true);
+    expect(matchesStatementIdentity('uob', 'DBS')).toBe(false);
+    expect(matchesStatementIdentity('paylah', 'PayLah! AMOUNT (S$)')).toBe(
+      false
+    );
   });
 });
