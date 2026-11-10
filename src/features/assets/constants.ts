@@ -1,6 +1,9 @@
 import { chartColors } from '@/lib/chart-palette';
 import type { AssetCategory } from './types';
 
+export const DEFAULT_EMERGENCY_MONTHS = 3;
+export const DEFAULT_WAR_CHEST_MONTHS = 9;
+
 export const CATEGORIES: AssetCategory[] = [
   'savings',
   'bonds',

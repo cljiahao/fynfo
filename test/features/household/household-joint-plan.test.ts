@@ -76,6 +76,50 @@ describe('jointGoalMonthly', () => {
     const sum = [...slices.values()].reduce((a, b) => a + b, 0);
     expect(sum).toBeCloseTo(together(goals), 6);
   });
+
+  it('keeps every slice finite and the total intact with an overdue goal', () => {
+    const overdue = goal({
+      id: 'overdue',
+      targetDate: '2026-01-01',
+      targetAmount: 2000,
+      remaining: 2000,
+    });
+    const goals = [...input.goals, overdue];
+    const slices = jointGoalMonthly({ goals, budgets: [] }, NOW);
+    for (const value of slices.values()) {
+      expect(Number.isFinite(value)).toBe(true);
+      expect(value).toBeGreaterThanOrEqual(0);
+    }
+    const sum = [...slices.values()].reduce((a, b) => a + b, 0);
+    expect(sum).toBeCloseTo(together(goals), 6);
+  });
+
+  it('gives a slice to dated items on a goal that has no target date', () => {
+    const itemsOnly = goal({
+      id: 'itemsOnly',
+      targetAmount: 1200,
+      remaining: 1200,
+      items: [
+        {
+          id: 'i1',
+          name: 'Deposit',
+          effective: 1200,
+          paid: 0,
+          dueDate: '2027-05-01',
+        },
+      ],
+    });
+    const slices = jointGoalMonthly({ goals: [itemsOnly], budgets: [] }, NOW);
+    expect(slices.get('itemsOnly')).toBeGreaterThan(0);
+    expect(slices.get('itemsOnly')).toBeCloseTo(together([itemsOnly]), 6);
+  });
+
+  it('gives every goal zero when nothing is placed', () => {
+    const empty = goal({ id: 'empty', targetAmount: 500, remaining: 0 });
+    const slices = jointGoalMonthly({ goals: [empty], budgets: [] }, NOW);
+    expect(slices.get('empty')).toBe(0);
+    expect(jointGoalMonthly({ goals: [], budgets: [] }, NOW).size).toBe(0);
+  });
 });
 
 describe('savingsCoverShare', () => {
@@ -86,6 +130,18 @@ describe('savingsCoverShare', () => {
     expect(savingsCoverShare(input, scheduled, NOW)).toBe(true);
     expect(savingsCoverShare(input, scheduled - 1, NOW)).toBe(false);
     expect(savingsCoverShare(input, 0, NOW)).toBe(false);
+  });
+
+  it('measures the caller share, not the whole schedule, with a non-default split', () => {
+    const half = {
+      ...input,
+      goals: input.goals.map((g) => ({ ...g, share: 0.25 })),
+    };
+    const myShare = computeHouseholdPlan(half, { surplus: 0, now: NOW });
+    const myScheduled = myShare.schedule.reduce((sum, e) => sum + e.amount, 0);
+    expect(myScheduled).toBeLessThan(scheduled);
+    expect(savingsCoverShare(half, myScheduled, NOW)).toBe(true);
+    expect(savingsCoverShare(half, myScheduled - 1, NOW)).toBe(false);
   });
 
   it('is false when there is nothing scheduled to cover', () => {

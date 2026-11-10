@@ -24,11 +24,16 @@ import { trailingTwelveMonths, useSalaryRecords } from '@/features/salary';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  DEFAULT_EMERGENCY_MONTHS,
+  DEFAULT_WAR_CHEST_MONTHS,
+} from '../constants';
 import { useExpensesOverride } from '../hooks/use-expenses-override';
 import {
   usePlannerSettings,
   useUpsertPlannerSettings,
 } from '../hooks/use-planner-settings';
+import { derivePersonalSurplus } from '../lib/personal-surplus';
 import {
   calcRecentAvgExpense,
   computeSalaryPlan,
@@ -66,8 +71,8 @@ interface SalaryPlannerProps {
 }
 
 const DEFAULT_SETTINGS: PlannerSettingsData = {
-  emergencyMonths: 3,
-  warChestMonths: 9,
+  emergencyMonths: DEFAULT_EMERGENCY_MONTHS,
+  warChestMonths: DEFAULT_WAR_CHEST_MONTHS,
   titheEnabled: true,
   tithePct: 10,
   allowanceEnabled: false,
@@ -280,8 +285,13 @@ function SalaryPlannerInner({
   };
   // The surplus depends only on savings, bonds and expenses, so it is known
   // before the household figure and the two steps never form a cycle.
-  const baseline = computeSalaryPlan(planBase);
-  const surplus = Math.max(0, baseline.goalsFunded - baseline.goalsNeeded);
+  const surplus =
+    derivePersonalSurplus({
+      snapshots: snapshot ? [snapshot] : [],
+      settings: { emergencyMonths, warChestMonths },
+      averageExpense: expenses,
+      override: expenses,
+    }) ?? 0;
   const householdPlan = readyInput
     ? computeHouseholdPlan(readyInput, { surplus, now })
     : null;

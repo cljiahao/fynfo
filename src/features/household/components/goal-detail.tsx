@@ -27,7 +27,7 @@ import {
 import {
   breakdownSegments,
   goalCommitted,
-  monthlyPaceNeeded,
+  goalPlanShare,
   recentActivity,
   withoutPending,
   type ActivityEntry,
@@ -180,8 +180,7 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
     goal.contributed > 0 ? Math.round((self / goal.contributed) * 100) : 0;
   const funded = goal.targetAmount > 0 && goal.contributed >= goal.targetAmount;
   const jointMonthly = useJointGoalMonthly()?.get(goal.id) ?? null;
-  const dated = monthlyPaceNeeded(goal, new Date());
-  const pace = dated === 'past' || dated === null ? dated : jointMonthly;
+  const pace = goalPlanShare(goal, new Date(), jointMonthly);
   const hasItems = goal.items.length > 0;
   // Counted on the unfiltered goal: an item in its undo window still occupies a slot.
   const itemLimitReached = source.items.length >= GOAL_ITEM_LIMIT;
@@ -291,7 +290,7 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
             />
           )}
           <StatCard
-            label="Monthly needed"
+            label="Share of monthly plan"
             value={
               hidden
                 ? mask('')

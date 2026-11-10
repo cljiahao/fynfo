@@ -59,10 +59,12 @@ their share sees a household figure with no hint of that.
   `Your savings already cover your share.` shows only when
   `savingsCoverShare` is true. "Together", cards, "Behind" and recommendations
   stay joint and surplus-free.
-- `src/app/dashboard/household/household-with-savings.tsx` (new, client) derives
-  `S = max(0, savings + bonds - emergency - warChest)` like the planner
-  (`computeSalaryPlan`, latest snapshot, planner settings, expenses average or
-  per-browser override) and passes it down; null until all inputs have loaded.
+- `src/app/dashboard/household/household-surplus-overview.tsx` (new, client)
+  derives `S = max(0, savings + bonds - emergency - warChest)` with the shared
+  `derivePersonalSurplus` (latest snapshot, planner settings, expenses average
+  or per-browser override) and passes it down; null until all inputs have
+  loaded. `household-with-savings.tsx` loads it with `next/dynamic` so the
+  assets barrel (and the planner) stay out of the page's first load.
   Composing at the page keeps `household` from importing `assets`, which already
   imports `household`.
 - `assets/index.ts`: additive exports `calcRecentAvgExpense`, `computeSalaryPlan`,
@@ -81,6 +83,12 @@ their share sees a household figure with no hint of that.
       $60,000 by 2027-11-27, Renovation $50,000 by 2028-10-01)
 - [ ] Sentence shows only when surplus covers the caller's scheduled share, never
       alters other figures, hidden while loading or unknown
+
+## Known limitations
+
+- The per-goal figure is a share of the joint monthly plan, not a per-goal deadline pace. Goals are placed latest-first against a binding cumulative deadline, so a goal's slice can be smaller or larger than what it alone would need by its own date.
+- Behind badges and recommendations use each goal's real deadline, so they can disagree with the share shown on the card.
+- A goal with dated items but no target date shows a share only when the plan schedules entries for it; a goal with no schedule at all shows nothing.
 
 ## Risk & reversibility
 

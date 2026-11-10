@@ -2,7 +2,13 @@ export { getPlannerSettings } from './actions/planner-actions';
 export { getScenarios } from './actions/scenario-actions';
 export { getSnapshots } from './actions/snapshot-actions';
 export * from './components';
-export { CATEGORY_LABELS, PLANNER_KEY, SNAPSHOTS_KEY } from './constants';
+export {
+  CATEGORY_LABELS,
+  DEFAULT_EMERGENCY_MONTHS,
+  DEFAULT_WAR_CHEST_MONTHS,
+  PLANNER_KEY,
+  SNAPSHOTS_KEY,
+} from './constants';
 export * from './hooks';
 export { useExpensesOverride } from './hooks/use-expenses-override';
 export {
@@ -11,6 +17,7 @@ export {
   getLatestSnapshot,
   getPreviousSnapshot,
 } from './lib/calculations';
+export { derivePersonalSurplus } from './lib/personal-surplus';
 export {
   calcRecentAvgExpense,
   computeSalaryPlan,
