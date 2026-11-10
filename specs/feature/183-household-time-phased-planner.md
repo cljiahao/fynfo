@@ -93,7 +93,7 @@ must not learn either salary (§1.1). That does not change.
   (`household-commitment.ts:95-171`): a goal with `targetDate === null` or
   `remaining <= 0` is excluded (`:111-123`, reasons `no-date` and `funded`); a
   dated goal with `monthsUntil` null (overdue) or `<= horizonMonths` goes to
-  `reserve` = share x remaining (`:125-135`); a goal beyond the horizon goes to
+  `reserve` = share x remaining (`:126-135`); a goal beyond the horizon goes to
   `pace` = share x remaining / months (`:136-146`); budgets add share x
   `monthlyAmount` to `monthlyDeduction` (`:149-154`).
 - `computeSalaryPlan` (`salary-plan.ts:122-234`): `householdReserve` is read at
@@ -111,7 +111,7 @@ must not learn either salary (§1.1). That does not change.
   rounded up, minimum 1 (`goal-stats.ts:16-23`).
 - Action and hook: `getPlannerCommitment` takes `{ horizonMonths }`
   (`household/actions/planner-actions.ts:305-355`); `usePlannerCommitment`
-  (`household/hooks/use-planner-commitment.ts:21-28`) keys on the horizon; the
+  (`household/hooks/use-planner-commitment.ts:22-28`) keys on the horizon; the
   planner reads `commitmentQuery` at `salary-planner.tsx:250`, feeds
   `householdMonthlyDeduction` and `householdReserve` (`:259-281`), builds the
   reserve target bar (`:390-398`), the shortfall impact over the horizon
@@ -120,12 +120,12 @@ must not learn either salary (§1.1). That does not change.
   plaintext DATE (`supabase/migrations/20260627000000_add_household_goals.sql:11-19`).
   Items: `name` and `budget` ciphertext, `quote` ciphertext (added in
   `20261105000175_household_redesign.sql:12`); payment `date` is plaintext DATE
-  (`20261023000149_household_project_items.sql:26`, header comment `:3-5`).
+  (`20261023000149_household_project_items.sql:27`, header comment `:3-5`).
 - Personal horizon: `planner_settings.household_horizon_months`
   (`20261106000176_household_planner_split.sql:39`, per spec 176), validated in
   `assets/schemas.ts:45`, edited in `planner-settings-sheet.tsx:38-82,148`,
   defaulted in `assets/constants.ts:87-89`, also referenced in
-  `profile/lib/export-validation.ts`.
+  `profile/lib/export-validation.ts:138`.
 - Scenarios: `scenarioInputsSchema` accepts optional `householdMonthlyDeduction`
   and `householdReserve` (`assets/schemas.ts:61-62`).
 
@@ -157,32 +157,53 @@ budgets whose caller share is 0% stay excluded silently, as today
 The caller's schedule is a list of due entries `{ goalId, itemId | null, label,
 date, amount }` where `amount` is the caller's share of the unpaid cost.
 
-Reconciliation of item amounts and `goal.remaining` (nothing counted twice):
+Notation per goal: `T` target amount, `c` contributions (`goal.contributed`),
+`R = max(0, T - c)` (`goal.remaining`), per item `u = max(0, (quote ?? budget) -
+paid)` (unpaid), `E` the sum of `(quote ?? budget)` over items and `P` the sum of
+`paid`. Contributions are money already raised and are household money, so they
+pay the **earliest** bills first. Placement therefore runs from the latest date
+backwards:
 
-- **`goal.remaining` is authoritative for the total** a goal still needs
-  (target minus contributions, owner decision Q3 of spec 176). Contributions are
-  therefore counted exactly once, inside `remaining`.
-- **Items decide timing only.** Each item has an unpaid amount
-  `u = max(0, (quote ?? budget) - paid)` and a due date
-  `d = item.dueDate ?? goal.targetDate`. Items are taken in date order
-  (undated-and-no-goal-date items are skipped, see below), each contributing
-  `min(u, outstanding)` where `outstanding` starts at `remaining` and falls by
-  what has been placed. The earliest items fill first.
-- **The rest goes to the goal target date.** Whatever of `remaining` is not
-  placed on items (no items, or target above the item total) is one entry on
-  `goal.targetDate`. If items exceed `remaining` the latest items are trimmed
-  (target wins; see Q2).
-- All amounts are multiplied by the caller's goal share
-  (`goalShare`, `household-commitment.ts:65-74`) after placement.
+- **`goal.remaining` is the total to raise** (target minus contributions, owner
+  decision Q3 of spec 176), so contributions are counted exactly once.
+- **Entries.** Each item with `u > 0` is an entry on
+  `item.dueDate ?? goal.targetDate`. If `T > E` (target above the item total, or
+  no items), the rest `T - E` is one more entry on `goal.targetDate` and orders
+  with the items by date. An item with no date on a goal with no target date is
+  skipped.
+- **Latest first.** Sort entries by date, latest first, and give each
+  `min(amount, left)`, where `left` starts at `R` and falls by what has been
+  placed. Entries that get nothing are dropped. The earliest entries are the
+  ones the pot already covers (or that are trimmed); the latest carry what is
+  still to be raised.
+- **Same thing as funds on hand.** Let `total` be the sum of entry amounts and
+  `F = max(0, total - R)` the funds on hand. The still-to-raise cumulative by
+  date `d` is `max(0, cumulative entries by d - F)`. In the ordinary case
+  (`T >= E`, `c >= P`) `F = c - P`: contributions not yet spent on payments. The
+  implementation is the latest-first loop; `F` is only the explanation.
+- All amounts are multiplied by the caller's goal share (`goalShare`,
+  `household-commitment.ts:65-74`) after placement.
 - A goal with no `targetDate` and no dated items is not planned and is listed as
-  "no date" (see recommendations). An item with no date on a goal with no target
-  date is not placed.
-- A funded goal (`remaining <= 0`) has an empty schedule and says nothing.
+  "no date" (see recommendations).
+- A funded goal (`R = 0`) has an empty schedule and says nothing.
+- If the unpaid items exceed `R` (items above the target, or contributions
+  beyond the target), the earliest items are trimmed: the target wins (Q2).
 
-Known limitation, accepted for this draft: payments are not subtracted from
-`remaining` a second time. A payment lowers its item's `u`, which only moves
-timing, so a goal where payments were made without a matching contribution
-still counts that money as owed on the goal date. See Q1 and Q6.
+Example. Target 46,000, contributions 10,000, nothing paid, deposit 10,000 due
+in 2 months, balance 36,000 due in 18 months. `R = 36,000`. Latest first: the
+balance takes 36,000 and the deposit takes 0. The deposit is covered by the pot;
+the schedule is 36,000 at 18 months. With contributions 5,000 instead, `R =
+41,000`: the balance takes 36,000 and the deposit 5,000. With contributions
+10,000 and the deposit paid (`u = 0`) the schedule is again 36,000 at 18 months.
+
+Known limitation, accepted for this draft (Q6): a payment recorded without a
+matching contribution (someone paid the deposit and logged only the payment).
+The payment lowers that item's `u`, so the schedule drops it, but `goal.remaining`
+(target minus contributions, shown on the goal card) does not drop. Exact effect:
+the schedule total is `min(R, total)`, smaller than `R` by `max(0, P - c)` and
+never larger. The planner treats the paid item as paid while the goal card still
+lists that amount as remaining. The reverse case (a contribution logged without
+the payment) is correct: `F = c` covers the earliest unpaid items. See Q1 and Q6.
 
 ### 3. Required monthly amount: tightest upcoming deadline
 
@@ -201,7 +222,7 @@ unchanged). `now` is an argument; the function is pure and unrounded, rounded fo
 display only.
 
 Worked example. Caller share 50%. Deposit $10,000 due in 2 months, balance
-$36,000 due in 18 months. Caller shares: $5,000 at 2 months, $18,000 at 18
+$36,000 due in 18 months, no contributions yet (`R = 46,000`). Caller shares: $5,000 at 2 months, $18,000 at 18
 months, so `C = 5,000` then `23,000`.
 
 - `S = 0`: `5,000 / 2 = 2,500`; `23,000 / 18 = 1,277.78`; monthly goals figure
@@ -209,6 +230,10 @@ months, so `C = 5,000` then `23,000`.
   deposit paid and `C = 18,000` over 16 months, the figure falls to `1,125`.
 - `S = 3,000`: `(5,000 - 3,000) / 2 = 1,000`; `(23,000 - 3,000) / 18 = 1,111.11`;
   figure `1,111.11`; the balance is now the tightest deadline.
+
+With contributions of 10,000 (the example in section 2) the schedule is only the
+balance: caller share 18,000 at 18 months, `S = 0` gives 1,000 a month and no
+deposit payment is due.
 
 This is the continuity fix: a goal due in 23 months and the same goal due in 25
 months give the same kind of figure, differing only by the months divisor.
@@ -220,13 +245,18 @@ months give the same kind of figure, differing only by the months divisor.
   the `goalsFunded - goalsNeeded` term at `:188`). It is treated as already set
   aside and applied to the earliest due amounts first, which is exactly the
   `- S` in the formula.
-- Where it lives: `computeHouseholdPlan` is a pure function in the household
-  feature (`src/features/household/lib/household-commitment.ts`, rewritten in
-  place so imports and the barrel stay stable). It takes `surplus` as a plain
-  number argument and imports nothing from `assets`. `SalaryPlanner`
-  computes the surplus from its own state and passes it in, in the browser.
-- The server never receives the surplus. `getPlannerCommitment` returns the
-  schedule (the caller's share, before any offset); the browser applies `S`.
+- Where it lives: `computeHouseholdPlan` is a pure function in a new file,
+  `src/features/household/lib/household-plan.ts`. It takes `surplus` as a plain
+  number argument and imports nothing from `assets`; it reads the existing share
+  helpers (`goalShare`, `budgetShare`, `defaultShare`) and `monthsUntil` without
+  editing their files. `SalaryPlanner` computes the surplus from its own state
+  and passes it in, in the browser.
+- The surplus is applied earliest-first across the caller's whole schedule (all
+  goals, by date, ties by goal id), giving an offset schedule and `surplusUsed`
+  per goal; the cumulative remainder `max(0, C_k - S)` equals the formula above.
+- The server never receives the surplus. The plan-input action returns household
+  data a member can already read through `getGoals()` plus the caller's shares;
+  the browser applies `S`.
   The household page calls the same function with `surplus = 0`, and says so
   ("before your savings"). The partner never sees the caller's surplus,
   monthly figure after offset, shortfall or "covered" notices (§1.1, §5.1).
@@ -243,7 +273,7 @@ budgets, the existing shortfall path displays it as "drawn from savings"
 `:267-278`). No separate "reserve" path exists.
 `computeShortfallImpact` loses its `monthsHorizon` parameter's link to the
 setting and takes a fixed constant `SHORTFALL_IMPACT_MONTHS = 12` in
-`assets/constants.ts` (replacing `salary-planner.tsx:406-407`).
+`assets/constants.ts` (replacing `salary-planner.tsx:405-407`).
 
 ### 6. Per-year view (display only)
 
@@ -302,17 +332,22 @@ produced by one small formatter in the UI slice, so wording changes never touch
 the math. Inputs are the commitment, the plan, `now`, and the optional personal
 inputs `surplus` and `shortfallPerMonth` (planner only).
 
-| Kind           | Trigger                                                                                                                                                | Copy (amounts masked)                                                          |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| `shortfall`    | planner only: `householdShortfallAmt > 0`                                                                                                              | This month's household share exceeds what's left by $X; it comes from savings. |
-| `next-payment` | per goal, the earliest schedule entry with amount > 0 dated within 90 days or overdue                                                                  | Venue deposit $5,000 due in 2 months; your share $2,500.                       |
-| `behind`       | goal dated in the future or overdue and `goalStatus === 'behind'` (`goal-stats.ts:167-190`); `behind = expected - contributed`, scaled by caller share | Renovation is $800 behind; $150 more a month catches up.                       |
-| `monthly-pace` | goal with a positive own-schedule monthly figure (see below) that is not `behind`                                                                      | Wedding: $1,200 a month keeps you on track for Dec 2027.                       |
-| `covered`      | planner only: `surplus` applied earliest-first leaves the goal's whole schedule at 0                                                                   | Your savings already cover Honeymoon.                                          |
-| `missing-data` | one item when N >= 1 goals are undated (no `targetDate`, no dated item), caller share > 0, and not funded                                              | 2 goals have no date, so they aren't planned.                                  |
+| Kind           | Trigger                                                                                                                                                                                                             | Copy (amounts masked)                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `shortfall`    | planner only: `householdShortfallAmt > 0`                                                                                                                                                                           | This month's household share exceeds what's left by $X; it comes from savings. |
+| `next-payment` | per goal, the earliest entry of the offset schedule with amount > 0 dated within 90 days or overdue                                                                                                                 | Venue deposit $5,000 due in 2 months; your share $2,500.                       |
+| `behind`       | goal dated in the future or overdue and `goalStatus === 'behind'` (`goal-stats.ts:166-188`); `behindShare = (expected - contributed) x caller share` minus that goal's `surplusUsed`, emitted only if still above 0 | Renovation is $800 behind; $150 more a month catches up.                       |
+| `monthly-pace` | goal with a positive own-schedule monthly figure (see below, after the offset) that did not emit `behind`                                                                                                           | Wedding: $1,200 a month keeps you on track for Dec 2027.                       |
+| `covered`      | planner only: the goal's schedule total is above 0 before the surplus offset and 0 after it                                                                                                                         | Your savings already cover Honeymoon.                                          |
+| `missing-data` | one item when N >= 1 goals are undated (no `targetDate`, no dated item), caller share > 0, and not funded                                                                                                           | 2 goals have no date, so they aren't planned.                                  |
 
 - "Catch-up per month" in `behind` is `behindShare / monthsUntil(target)`, with
-  overdue goals using 1.
+  overdue goals using 1, where `behindShare` is already after the surplus offset.
+- Exclusivity per goal: a covered goal emits only `covered` (no `behind`,
+  `monthly-pace` or `next-payment`). A goal that is not covered emits at most one
+  of `behind` and `monthly-pace`, and may also emit `next-payment`. On the
+  household page `surplus = 0`, so `covered` never appears and `behind` amounts
+  are not offset.
 - "Own-schedule monthly figure" for `monthly-pace` and `behind` is the formula in
   section 3 applied to that goal's entries alone. Per-goal figures can sum to
   more than the headline because deadlines of different goals are staggered
@@ -331,20 +366,24 @@ inputs `surplus` and `shortfallPerMonth` (planner only).
 
 ### One shape for planner and household page
 
-`getPlannerCommitment()` (no horizon input) returns
-`HouseholdCommitment = { state: 'none' | 'locked' | 'ready', isDefaultSplit,
-schedule: DueEntry[], goals: { goalId, name, share, remaining, targetDate,
-createdAt, contributed, targetAmount }[], budgets: { monthlyTotal, share,
-monthlyShare, lines[] }, undated: { goalId, name }[], togetherSchedule:
-DueEntry[] }`. `togetherSchedule` is the same schedule at 100% share and
-feeds the household page's shared total. Only the caller's share and the
-shared totals leave the server; household ciphertext never reaches the client
-(§5.1a). The hook `usePlannerCommitment()` loses its horizon argument and key
-part. The planner calls `computeHouseholdPlan` with its surplus; the household
-page calls it with 0.
+A new action `getHouseholdPlanInput()` (new file `actions/plan-actions.ts`, same
+guards as `getPlannerCommitment`) returns `HouseholdPlanInput = { state: 'none' |
+'locked' | 'ready', isDefaultSplit, callerShares, goals: { id, name,
+targetDate, createdAt, targetAmount, contributed, remaining, share, items: { id,
+name, effective, paid, dueDate }[] }[], budgets: { id, monthlyAmount, share }[]
+}`. It carries only household data the member can already read via `getGoals()`
+and the caller's own shares, never the surplus (§5.1, §5.1a). The pure
+`computeHouseholdPlan` and `householdRecommendations` run in the browser with
+`now` and `surplus`. A new hook `useHouseholdPlan()` uses a key under the
+existing `PLANNER_COMMITMENT_KEY` prefix, so the `refreshPlannerCommitment`
+invalidations from goal, split and budget mutations keep working with no edits.
+The old `getPlannerCommitment` and `usePlannerCommitment` stay until the planner
+is switched (S4a) and are deleted in S4b. The planner calls
+`computeHouseholdPlan` with its surplus; the household page calls it with 0, and
+again at share 1 for the shared total.
 
 Shared total on the household page: "Together $2,400 a month", derived only from
-household data and the split's presence (`togetherSchedule` at share 1 plus the
+household data and the split's presence (the schedule computed at share 1 plus the
 budgets' monthly total), before any personal offset, labelled "before your
 savings". It reveals nothing personal: both members can already see every goal,
 item, budget and the split. The per-member share on the page equals the
@@ -360,13 +399,13 @@ caller's `computeHouseholdPlan(..., surplus 0)` figure.
 | Item due date (new)                     | n/a                                                                                                                                                                               | Add behind disclosure "Add payment dates" (optional).                                      |
 | Item payments                           | `edit-payment-dialog.tsx`; `goal-detail.tsx` item list                                                                                                                            | Keep on goal detail only.                                                                  |
 | Goal contributions                      | `add-contribution-dialog.tsx`; `goal-detail.tsx:165-166` (edit state), burn-up `goal-detail.tsx:314`                                                                              | Keep on goal detail only.                                                                  |
-| Spending budgets (monthly per category) | `budget-field.tsx:35`, `category-budget-bars.tsx:54-70`                                                                                                                           | Keep; flat monthly share.                                                                  |
+| Spending budgets (monthly per category) | `budget-field.tsx:35`, `category-budget-bars.tsx:20`                                                                                                                              | Keep; flat monthly share.                                                                  |
 | Per-budget split                        | `budget-field.tsx:192` (`SplitPicker`)                                                                                                                                            | Hide behind "Different split".                                                             |
-| Shared spaces and trip spending         | `household-overview.tsx:33,159-171`, `shared-spending.tsx`                                                                                                                        | Keep; does not feed the planner (only `household_spending_budgets` does), so out of scope. |
+| Shared spaces and trip spending         | `household-overview.tsx:115,159-171`, `shared-spending.tsx`                                                                                                                       | Keep; does not feed the planner (only `household_spending_budgets` does), so out of scope. |
 | Default split                           | `planner-split-editor.tsx` (rendered `household-overview.tsx:143`)                                                                                                                | Merge into a one-line summary ("You pay 50%") that opens the editor on tap.                |
-| Per-goal split override                 | `goal-split-override.tsx:15` (used from `goal-editor-sheet.tsx`)                                                                                                                  | Hide behind "Different split"; stored overrides keep working.                              |
-| Horizon months                          | `planner-settings-sheet.tsx:38-82,148`; `salary-planner.tsx:69,181-193,235-250,406`; `assets/constants.ts:87-89`; `assets/schemas.ts:45`                                          | Remove from UI and state; column and optional schema field stay (export compatibility).    |
-| Reserve versus pace                     | `household-commitment.ts:31,125-146`; `planner-household.tsx:20-100`; reserve bar `salary-planner.tsx:390-398`; `planner-targets.tsx:43-52`; paused line `salary-plan.ts:237-240` | Remove. One monthly figure replaces both.                                                  |
+| Per-goal split override                 | `goal-split-override.tsx:6` (used from `goal-editor-sheet.tsx`)                                                                                                                   | Hide behind "Different split"; stored overrides keep working.                              |
+| Horizon months                          | `planner-settings-sheet.tsx:38-82,148`; `salary-planner.tsx:69,181-193,235-250,407`; `assets/constants.ts:87-89`; `assets/schemas.ts:45`                                          | Remove from UI and state; column and optional schema field stay (export compatibility).    |
+| Reserve versus pace                     | `household-commitment.ts:31,126-146`; `planner-household.tsx:20-100`; reserve bar `salary-planner.tsx:390-398`; `planner-targets.tsx:43-52`; paused line `salary-plan.ts:237-240` | Remove. One monthly figure replaces both.                                                  |
 | Excluded list                           | `household-commitment.ts:111-123`; `planner-household.tsx:91-100`                                                                                                                 | Replace with the `missing-data` recommendation; funded goals disappear silently.           |
 | Shortfall display                       | `salary-planner.tsx:402-413,496-510`                                                                                                                                              | Keep, reworded with the `shortfall` recommendation.                                        |
 
@@ -381,7 +420,7 @@ deleted; overrides, quotes and items already stored render as before.
 
 Removed: the `reserve` and `pace` buckets and `GoalBucket` (`household-commitment.ts:31`),
 `ExcludedReason 'funded'`, `horizonMonths` (input type `:27`, action schema
-`plannerCommitmentInputSchema` in `household/schemas.ts`, hook argument and key),
+`plannerCommitmentInputSchema` at `household/schemas.ts:190`, hook argument and key),
 `PlannerCommitment.reserve`, `SalaryPlan.householdReserve` and
 `investmentPaused`, `reserveGap` (`salary-plan.ts:186-189,192-193,229`), the
 paused branch of `planStateLine` (`:238-240`), `HouseholdBreakdown` reserve and
@@ -410,14 +449,15 @@ unchanged.
   within-horizon rule (176 lines 163-192).
 - "Planner math": `householdReserve` input and `savingsTarget` including it,
   `reserveGap`, "while `reserveGap > 0` all surplus goes to savings", the
-  `investmentPaused` output and the paused state line (176 lines 223-247).
-- `computeShortfallImpact`'s horizon basis (176 lines 252-259).
+  `investmentPaused` output and the paused state line (176 lines 218-242).
+- `computeShortfallImpact`'s horizon basis (176 lines 253-258).
 - The household horizon setting, its column use and UI (176 lines 121-130, Q6 at
-  449-451, "Settings area" 293-296) and `getPlannerCommitment(input)` taking the
+  449-451, "Settings area" 295) and `getPlannerCommitment(input)` taking the
   horizon (176 lines 149-150).
-- Reserve progress bar in "Target progress" (176 lines 288-290) and the
-  reserve / monthly / excluded breakdown (176 lines 297-299).
-- Scenario optional `householdReserve` semantics (176 lines 261-265): the field
+- The reserve progress bar in "Target progress" and the reserve / monthly /
+  excluded breakdown, both in the "Layout and planner UI" section (176 lines
+  267-314).
+- Scenario optional `householdReserve` semantics (176 lines 259-265): the field
   is still accepted but ignored.
 - Q1 pause rule (176 lines 428-436): the "strict all-to-savings while a reserve
   gap exists" rule is retired; the 9-month emergency and war-chest spread
@@ -426,82 +466,123 @@ unchanged.
 ## Slices
 
 Each slice ships with all five gates green (`pnpm format:check`, `pnpm lint`,
-`pnpm typecheck`, `pnpm test:ci`, `pnpm build`). No two slices share files.
-Order: S1, then S2, then S3 and S4 (S3 and S4 touch disjoint files and may run in
-parallel). The migration is applied by the owner after S2 merges and before S2's
-editor field is used.
+`pnpm typecheck`, `pnpm test:ci`, `pnpm build`) on its own: S1 to S3 only add
+code, and S4a switches callers before S4b deletes what they used.
 
-### Slice S1: pure math, recommendations, commitment shape
+### Slice S1: pure schedule, plan and recommendations (additive, new files only)
 
-- `src/features/household/lib/household-commitment.ts`: rewrite with the
-  schedule builder, `computeHouseholdPlan`, `householdRecommendations`; keep
-  `defaultShare`, `goalShare`, `budgetShare`.
-- `src/features/household/types.ts`: `GoalItem.dueDate: string | null`,
-  `HouseholdCommitment`, `DueEntry`, recommendation types; remove reserve/pace
-  types.
-- `src/features/household/schemas.ts`: drop the horizon input schema.
-- `src/features/household/actions/planner-actions.ts`: `getPlannerCommitment()`
-  returns the new shape (builds the schedule server-side, caller share and
-  `togetherSchedule` only).
-- `src/features/household/hooks/use-planner-commitment.ts`: no horizon argument.
-- `src/features/household/index.ts`: barrel exports.
-- `src/features/assets/lib/salary-plan.ts`: remove the reserve and pause path,
-  keep `householdMonthlyDeduction`, accept and ignore `householdReserve`,
-  state line, `computeShortfallImpact` without horizon coupling.
-- `src/features/assets/schemas.ts`, `src/features/assets/constants.ts`
-  (`SHORTFALL_IMPACT_MONTHS`): scenario field kept optional and documented as
-  ignored.
-- Tests (`household-commitment.test.ts`, `salary-plan.test.ts`): see Tests; one
-  describe block per recommendation kind plus ordering and cap.
-- Callers of removed fields (`salary-planner.tsx`, `planner-household.tsx`)
-  are edited in S4; until S4 lands, S1 keeps `typecheck` green by leaving the
-  removed output fields in place as deprecated constants (`householdReserve: 0`,
-  `investmentPaused: false`) that S4 deletes. S4 therefore also owns the final
-  removal of those two fields from `salary-plan.ts`; this is the only
-  cross-slice file and it is sequenced, not parallel (S1 before S4).
+- `src/features/household/lib/household-plan.ts` (new): input types, schedule
+  builder (latest-first placement), `computeHouseholdPlan`,
+  `householdRecommendations`. Imports `goalShare`, `budgetShare`, `defaultShare`
+  and `CommitmentSplit` from `household-commitment.ts` and `monthsUntil` from
+  `goal-stats.ts` without editing either file.
+- `src/features/household/lib/household-plan.test.ts` (new): see Tests; one
+  describe block per recommendation kind plus ordering, cap and the covered and
+  behind interactions.
 
-### Slice S2: migration, item due date in actions and goal editor
+No existing file is edited, so the slice cannot break anything.
 
-- `supabase/migrations/20261110000183_household_item_due_date.sql`:
+### Slice S2: migration and item due date (owner applies the migration first)
+
+- `supabase/migrations/20261110000183_household_item_due_date.sql` (new):
   `ALTER TABLE public.household_goal_items ADD COLUMN IF NOT EXISTS due_date DATE;`
-- `src/features/household/actions/goal-actions.ts`: read and write `due_date`
-  with the item; Zod schema accepts an optional ISO date (`z.iso.date()` or the
-  repo's existing date schema).
+- `src/features/household/actions/goal-actions.ts`: select, write and diff
+  `due_date` with the item (selects at `:83` and `:500`, item write
+  `:519-552`).
+- `src/features/household/types.ts`: `GoalItem.dueDate: string | null` only.
+- `src/features/household/schemas.ts`: optional ISO date on the item schema only
+  (item schemas at `:39` and `:52-53`).
 - `src/features/household/components/goal-editor-sheet.tsx`,
   `add-goal-item-dialog.tsx`, `goal-split-override.tsx`: the disclosures
   "Break down the cost" (with "Add payment dates" and "Got a final quote?") and
   "Different split"; auto-open when the goal already has the data.
-- Tests: action schema (date optional, rejects non-dates), editor disclosure
-  states, existing goals without dates round-trip.
+- Tests and fixtures that build a `GoalItem` gain `dueDate: null`; action schema
+  (date optional, rejects non-dates), editor disclosure states, existing goals
+  without dates round-trip.
 
-### Slice S3: household overview UI
+Order gate: the goal reads select `due_date`, so shipping this code before the
+column exists breaks every goal read in production (`main` deploys to Vercel).
+The migration is additive and idempotent, so the owner applies it BEFORE the S2
+code lands. S2, and every slice after it, is not pushed to `main` until the
+owner confirms the migration is applied. S1 has no such dependency.
 
-- `src/features/household/components/household-overview.tsx`: recommendation
-  list at the top (3 shown, "Show all"), shared "Together $X a month" line with
-  "before your savings", one-line split summary.
-- New `src/features/household/components/household-recommendations.tsx`:
-  renders typed recommendations as plain sentences with `mask`.
+### Slice S3: plan input action, hook, household overview UI
+
+- `src/features/household/actions/plan-actions.ts` (new): `getHouseholdPlanInput()`.
+- `src/features/household/hooks/use-household-plan.ts` (new): `useHouseholdPlan()`
+  under the `PLANNER_COMMITMENT_KEY` prefix imported from the existing hook file.
+- `src/features/household/lib/household-recommendation-copy.ts` (new): the one
+  formatter that turns a typed recommendation into a plain sentence.
+- `src/features/household/components/household-recommendations.tsx` (new): the
+  list, 3 shown, "Show all", `mask` on every amount.
+- `src/features/household/components/household-year-table.tsx` (new): the
+  per-year table with per-goal expansion, reused by the planner in S4a.
+- `src/features/household/components/household-overview.tsx`: list at the top,
+  shared "Together $X a month, before your savings" line, one-line split summary.
 - `src/features/household/components/planner-split-editor.tsx`: collapse behind
   the one-line summary.
-- Tests: component states (none, locked, ready, no recommendations, over 3).
+- `src/features/household/index.ts`: additive exports only.
+- Tests: copy formatter per kind, component states (none, locked, ready, no
+  recommendations, over 3, masked).
 
-### Slice S4: planner UI
+### Slice S4a: switch the planner and drop the old planner path
 
-- `src/features/assets/components/salary-planner.tsx`,
-  `planner-household.tsx`, `planner-targets.tsx`,
-  `planner-settings-sheet.tsx`: single "Set aside $X this month" Household line,
-  expand to per-goal lines and per-year table, recommendation list (max 3),
-  shortfall copy, remove the reserve bar and `HorizonField`, pass `surplus` into
-  `computeHouseholdPlan`, stop writing `householdReserve` to scenarios.
-- `src/features/assets/lib/salary-plan.ts`: delete the two deprecated constant
-  fields left by S1.
-- `src/features/assets/hooks`/`types.ts`: drop the horizon from planner state
-  (`householdHorizonMonths` stays an optional accepted field in
-  `assets/schemas.ts:45` and `profile/lib/export-validation.ts` for export
-  compatibility).
+- `src/features/assets/components/salary-planner.tsx`, `planner-household.tsx`,
+  `planner-targets.tsx`, `planner-settings-sheet.tsx`: single "Set aside $X this
+  month" Household line, expand to per-goal lines and the year table,
+  recommendation list (max 3), shortfall copy, remove the reserve bar and
+  `HorizonField`, pass `surplus` into `computeHouseholdPlan`, stop writing
+  `householdReserve` to scenarios.
+- `src/features/assets/lib/salary-plan.ts` and its test: remove the reserve and
+  pause path, accept and ignore `householdReserve`, `computeShortfallImpact`
+  without horizon coupling.
+- `src/features/assets/schemas.ts`, `src/features/assets/constants.ts`
+  (`SHORTFALL_IMPACT_MONTHS`): scenario field kept optional and documented as
+  ignored; `householdHorizonMonths` stays an optional accepted field in
+  `assets/schemas.ts:45` and `profile/lib/export-validation.ts:138` for export
+  compatibility.
 - Tests: states (none, locked, loading, error, ready, shortfall), masked
-  amounts in the Household line, table and recommendations, no horizon field.
+  amounts, no horizon field, no-household deep-equal.
 - Manual: 375px width, light and dark mode.
+
+After S4a nothing calls `getPlannerCommitment`, `usePlannerCommitment` or the
+reserve and pace types.
+
+### Slice S4b: delete the dead household code
+
+- `src/features/household/lib/household-commitment.ts`: remove
+  `computeHouseholdCommitment` and the bucket types; keep the share helpers and
+  `CommitmentSplit`.
+- `src/features/household/types.ts`: remove `PlannerCommitment*`.
+- `src/features/household/schemas.ts`: remove `plannerCommitmentInputSchema`
+  (`:190`).
+- `src/features/household/actions/planner-actions.ts`: remove
+  `getPlannerCommitment` and `emptyCommitment` (`:288`).
+- `src/features/household/hooks/use-planner-commitment.ts`: delete; move
+  `PLANNER_COMMITMENT_KEY` and `refreshPlannerCommitment` into
+  `use-household-plan.ts`; update the imports in `use-household.ts`,
+  `use-planner-split.ts` and `use-spending-budgets.ts`.
+- `src/features/household/index.ts`: remove the old exports (`:22`, `:38`,
+  `:51-53`).
+- Delete or trim the tests of the removed code.
+
+### Slice, file and order table
+
+| Slice | Files it owns                                                                                                                                                                                                                  | Needs                             | Parallel with |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- | ------------- |
+| S1    | `lib/household-plan.ts` and its test (both new)                                                                                                                                                                                | nothing                           | S2            |
+| S2    | migration (new), `goal-actions.ts`, `types.ts` (GoalItem), `schemas.ts` (item), `goal-editor-sheet.tsx`, `add-goal-item-dialog.tsx`, `goal-split-override.tsx`                                                                 | owner applies the migration first | S1            |
+| S3    | `plan-actions.ts`, `use-household-plan.ts`, `household-recommendation-copy.ts`, `household-recommendations.tsx`, `household-year-table.tsx` (new); `household-overview.tsx`, `planner-split-editor.tsx`, `index.ts` (additive) | S1 and S2                         | none          |
+| S4a   | the four planner components, `salary-plan.ts`, `assets/schemas.ts`, `assets/constants.ts`, their tests                                                                                                                         | S1 and S3 (hook, copy, table)     | none          |
+| S4b   | `household-commitment.ts`, `types.ts`, `schemas.ts`, `planner-actions.ts`, old hook, three hook import edits, `index.ts` (removals)                                                                                            | S4a                               | none          |
+
+Three files are edited by more than one slice: `types.ts` and `schemas.ts` (S2
+adds a field, S4b removes the old types) and `index.ts` (S3 adds exports, S4b
+removes them). They are sequenced S2 before S4b and S3 before S4b, never in
+parallel. Only S1 and S2 can run in parallel. S3 needs S1 (the plan types and
+functions it calls) and S2 (the `dueDate` field its action returns). S4a needs
+S3 because it consumes the hook, the copy formatter and the year table. S4b is
+last.
 
 ## Tests to add
 
@@ -515,11 +596,19 @@ editor field is used.
   the second changes which deadline is tightest.
 - Overdue and due-this-month entries use one month and appear as a draw
   through the shortfall path.
+- Latest-first placement: target 46,000, contributions 10,000, nothing paid,
+  deposit 10,000 at 2 months, balance 36,000 at 18 months gives a schedule of
+  36,000 at 18 months only (deposit covered, no next payment); contributions
+  5,000 gives 5,000 on the deposit and 36,000 on the balance; contributions
+  10,000 with the deposit paid gives the same as the first case.
 - Item without a date falls back to the goal target date; goal with no items
   places everything on the target date; target above the item total puts the
-  rest on the goal date; items above `remaining` trim the latest items.
-- No double count: contributions reduce `remaining` once; the schedule total
-  equals `remaining x share`.
+  rest on the goal date and it orders with the items by date; items above
+  `remaining` trim the earliest items.
+- Payment without a contribution: the schedule total is `R - max(0, P - c)` and
+  never above `R`.
+- No double count: contributions reduce `remaining` once; for `T >= E` and
+  `c >= P` the schedule total equals `remaining x share`.
 - Undated goal with no dated items is listed as missing data and contributes 0;
   funded goal is silent.
 - No household: `computeSalaryPlan` output is deep-equal to today's for every
@@ -532,6 +621,12 @@ editor field is used.
   partner-safety (output contains no field derived from the other member's
   share beyond the shared goal data), ordering across mixed kinds, cap at 3 and
   show-all, stable tie-break.
+- Behind and covered together (planner): a goal behind by contributions but
+  fully covered by the surplus emits only `covered`; a partly covered goal emits
+  `behind` with amount and catch-up computed after the offset; a goal whose
+  behind amount the surplus fully absorbs emits no `behind`; at most one of
+  `behind` and `monthly-pace` per goal; on the household page (surplus 0) no
+  `covered` appears and `behind` is unoffset.
 - Together total equals the schedule at share 1 and excludes the surplus.
 - Migration applied twice is a no-op (manual SQL check by the owner).
 
@@ -556,6 +651,9 @@ editor field is used.
 
 - [ ] `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test:ci`, `pnpm build` green for each slice
 - [ ] Migration applies cleanly twice, is nullable and forward-only; existing item RLS covers `due_date` for a member and denies a non-member
+- [ ] The owner confirmed the migration is applied before S2 (and S3, S4a, S4b) reach `main`
+- [ ] Contributions pay the earliest items first: the 46,000 / 10,000 example schedules only the 36,000 balance
+- [ ] Every slice is green alone; S1 edits no existing file; S4a switches callers before S4b deletes
 - [ ] A goal due in 23 months and in 25 months give continuous plans; no horizon bucket, `reserveGap` or `investmentPaused` path remains
 - [ ] Tightest-deadline function matches the worked example; `now` is an argument; surplus applies earliest first
 - [ ] Overdue and due-this-month amounts are due now and surface through the shortfall display
@@ -564,7 +662,7 @@ editor field is used.
 - [ ] Inventory (A): every row of the inventory table is implemented as keep, merge, hide or remove; no reserve, pace, horizon or excluded wording in any UI string
 - [ ] Planner shows one "Set aside $X this month" line; expand shows per-goal lines and a per-year table; all amounts masked via `useAmountVisibility`
 - [ ] Household page shows the same recommendation list, the caller's share and a "Together $X a month, before your savings" line derived without any personal input
-- [ ] Recommendations (B): all six kinds with the stated triggers and copy, max 3 shown, "Show all", partner-safe, no AI, no dependency
+- [ ] Recommendations (B): all six kinds with the stated triggers and copy, max 3 shown, "Show all", partner-safe, no AI, no dependency; a covered goal emits only `covered`, behind amounts are computed after the surplus offset, at most one of `behind` and `monthly-pace` per goal
 - [ ] Goal editor shows name, amount and date by default; items, due dates, quotes and different split are behind disclosures that open when data exists; existing overrides, quotes and items still render
 - [ ] Net line estimate stated in the implementation PR and reconciled with the actual diff
 - [ ] No `any`, no `console.log`, no `@ts-ignore`, no `eslint-disable`
@@ -587,12 +685,15 @@ editor field is used.
   guidance only, per Q1.
 - **Reversibility**: code is a git revert. The migration is additive and
   forward-only (§6.3); the column can stay unused after a revert.
-- **Backout plan**: revert the S3, S4, S2, S1 commits in reverse order; leave
-  the schema in place. Reverting S1 must keep the optional scenario fields
-  accepted. The horizon column and schema field are untouched throughout, so a
+- **Migration order**: the owner applies the additive migration before the S2
+  code lands, and S2 is not pushed until the owner confirms; otherwise goal reads
+  that select `due_date` fail in production.
+- **Backout plan**: revert S4b, S4a, S3, S2, S1 in reverse order; leave the
+  schema in place. Reverting S4a alone restores the old planner because S4b has
+  not yet deleted its code; reverting S4b needs S4a reverted first. The horizon column and schema field are untouched throughout, so a
   revert restores the old behaviour without data loss.
 - **Privacy**: the surplus exists only in the owner's browser as a function
-  argument; no action or table receives it. `togetherSchedule` is household data
+  argument; no action or table receives it. The shared total uses household data
   only.
 
 ## Open questions
@@ -606,8 +707,9 @@ Each has an owner (Clarence) and a recommended default; none is resolved yet.
       guidance only. Owner: Clarence. A:
 - [ ] Q2: When the goal target amount and the committed item total (`quote ??
 budget`) differ, which wins? Default: the goal target is authoritative
-      (`goal.remaining`), items only decide timing, and items above it are
-      trimmed latest first. Owner: Clarence. A:
+      (`goal.remaining`), items only decide timing, contributions pay the earliest
+      items first, and when items exceed the remainder the earliest items are
+      trimmed (the pot covers them). Owner: Clarence. A:
 - [ ] Q3: Undated goals. Keep them excluded and listed through the `missing-data`
       recommendation, or require a date on every goal? Default: keep excluded and
       listed. Owner: Clarence. A:
@@ -615,9 +717,12 @@ budget`) differ, which wins? Default: the goal target is authoritative
       (`salary-plan.ts:194-199`) stay as is? Default: unchanged. Owner: Clarence. A:
 - [ ] Q5: Drop `household_horizon_months` later via a separate forward
       migration? Default: leave the column. Owner: Clarence. A:
-- [ ] Q6: Should payments recorded against an item also lower what the goal still
-      owes, beyond lowering that item's unpaid amount? Default: no, `remaining`
-      stays target minus contributions; revisit with Q1. Owner: Clarence. A:
+- [ ] Q6: A payment recorded without a matching contribution lowers the item's
+      unpaid amount but not `goal.remaining`, so the schedule total falls below
+      `remaining` by `max(0, P - c)` while the goal card still shows it. Should
+      payments also lower `goal.remaining`? Default: no, `remaining` stays target
+      minus contributions and the planner treats the item as paid; revisit with
+      Q1. Owner: Clarence. A:
 - [ ] Q7: A stored scenario with `householdReserve > 0` now shows more
       investment than when saved. Proposed: ignore the field, leave
       `schemaVersion` at 1. Alternative: bump `schemaVersion` and label old
