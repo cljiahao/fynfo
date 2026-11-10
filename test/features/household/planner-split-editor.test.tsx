@@ -53,6 +53,20 @@ describe('PlannerSplitEditor', () => {
     expect(screen.getByLabelText(/your share/i)).toHaveValue(60);
   });
 
+  it('flags an unset default split on the collapsed summary only', async () => {
+    external.getPlannerSplit.mockResolvedValue({
+      members: { [ME]: 50, [PARTNER]: 50 },
+      goalOverrides: {},
+      isDefault: true,
+      userId: ME,
+    });
+    renderEditor();
+    const summary = await screen.findByRole('button', { name: /you pay 50%/i });
+    expect(screen.getByText(/not set yet/i)).toBeInTheDocument();
+    await userEvent.click(summary);
+    expect(screen.getAllByText(/not set yet/i)).toHaveLength(1);
+  });
+
   it('shows the default state, the partner notice, and saves the new split', async () => {
     external.getPlannerSplit.mockResolvedValue({
       members: { [ME]: 50, [PARTNER]: 50 },
