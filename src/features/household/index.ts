@@ -35,6 +35,8 @@ export {
 export { HouseholdRecommendations } from './components/household-recommendations';
 export { HouseholdYearTable } from './components/household-year-table';
 export { useHouseholdPlan } from './hooks/use-household-plan';
+export { householdGoalsSeries } from './lib/household-goal-series';
+export type { HouseholdGoalsSeries } from './lib/household-goal-series';
 export {
   NEXT_PAYMENT_DAYS,
   computeHouseholdPlan,
