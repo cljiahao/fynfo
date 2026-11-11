@@ -2,12 +2,12 @@
 id: '182'
 slug: statement-ocr
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-08
 approved: 2026-11-09 # YYYY-MM-DD, set on approval
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # no PR (direct to main), set on shipped
+shipped: 2026-11-10
+impl_pr: none (direct to main, cc24f7e)
 supersedes:
 constitution_satisfies:
   - '§2.1'
