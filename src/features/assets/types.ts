@@ -60,6 +60,12 @@ export interface PlannerSettingsData {
   householdHorizonMonths?: number;
   /** Percent of expenses added as a separate buffer line; the stored default is 0. */
   expenseBufferPct?: number;
+  /** Freedom projection: real return, percent a year; unset until the owner chooses. */
+  freedomRealReturnPct?: number;
+  /** Freedom projection: withdrawal rate, percent a year. */
+  freedomWithdrawalRatePct?: number;
+  /** Freedom projection: calendar year the owner aims for. */
+  freedomTargetYear?: number;
 }
 
 export interface ScenarioPayload {

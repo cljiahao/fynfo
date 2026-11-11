@@ -45,6 +45,9 @@ export const plannerSettingsSchema = z.object({
   // Retired from the planner; still accepted so older exports import.
   householdHorizonMonths: z.number().int().min(1).max(120).optional(),
   expenseBufferPct: z.number().min(0).max(100).optional(),
+  freedomRealReturnPct: z.number().min(0).max(12).optional(),
+  freedomWithdrawalRatePct: z.number().min(1).max(10).optional(),
+  freedomTargetYear: z.number().int().min(2000).max(2200).optional(),
 });
 
 // Bounds apply only to saved snapshots, not the live planner contract.
