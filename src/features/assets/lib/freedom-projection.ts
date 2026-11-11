@@ -82,6 +82,8 @@ export interface LeverContext {
   /** savings + bonds - emergencyFundGoal - warChestGoal - householdEarmark, before the 1,000 floor. */
   surplusAfterEarmark: number;
   expenseDriftPct: number | null;
+  /** Annual planner expenses alone, without buffer or household budgets; the drift applies to this part. */
+  expensesAnnual: number | null;
   /** Soonest end first; empty when household is unavailable. */
   householdGoalEnds: FreedomGoalEnd[];
 }
@@ -195,9 +197,13 @@ function inputsAreFinite(input: FreedomInput): boolean {
     finite(input.monthlyInvesting) &&
     finite(input.householdGoalsToday) &&
     finite(input.returnSpreadPct) &&
+    input.returnSpreadPct >= 0 &&
+    (input.capMonths === undefined || finite(input.capMonths)) &&
+    (input.targetYear === null || finite(input.targetYear)) &&
     finite(input.savingsMonthly) &&
     (input.withdrawalRatePct === null || finite(input.withdrawalRatePct)) &&
-    (input.realReturnPct === null || finite(input.realReturnPct)) &&
+    (input.realReturnPct === null ||
+      (finite(input.realReturnPct) && input.realReturnPct > -100)) &&
     (input.safetyRelease === null ||
       (finite(input.safetyRelease.monthly) &&
         finite(input.safetyRelease.fromMonth)))
@@ -368,10 +374,20 @@ export function computeFreedomLevers(
   }
 
   const drift = context.expenseDriftPct;
-  if (drift !== null && finite(drift) && drift > EXPENSE_DRIFT_THRESHOLD_PCT) {
+  const expensesAnnual = context.expensesAnnual;
+  if (
+    drift !== null &&
+    finite(drift) &&
+    drift > EXPENSE_DRIFT_THRESHOLD_PCT &&
+    expensesAnnual !== null &&
+    finite(expensesAnnual) &&
+    expensesAnnual > 0 &&
+    input.withdrawalRatePct !== null
+  ) {
+    const driftedCost = input.annualCost + (expensesAnnual * drift) / 100;
     const slower = monthsFor(
       input,
-      (target * (100 + drift)) / 100,
+      (driftedCost * 100) / input.withdrawalRatePct,
       returnPct,
       true
     );
