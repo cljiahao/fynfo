@@ -2,10 +2,10 @@
 id: '188'
 slug: statement-period-detection
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved
 author: Claude Code
 created: 2026-11-11
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-11
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # link to impl PR, set on shipped
 supersedes:
