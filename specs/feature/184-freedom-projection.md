@@ -125,10 +125,37 @@ The model deliberately omits: raises, one-off windfalls, CPF payouts, tax, seque
    - `budgetsMonthly` is the caller's monthly share of household budgets, from `computeHouseholdPlan(...).budgetsMonthly`. It is separate from goal set-asides because budgets are recurring living costs and goals are finite.
    - Insurance, tithe and allowance are excluded from living cost by default (Q5); the assumptions line says so.
 3. Monthly investing, `c_t`. Today's `investmentAmt` from `computeSalaryPlan` (`salary-plan.ts:207`), plus optional release of safety savings once the emergency fund and war chest are fully funded (`savingsAmt` joins investing from the month the goals are funded; `savingsAmt` is `:204`). Over time, household goals change it:
-   - the caller passes `householdGoalsMonthlyByYear`, a list where element `k` is the caller's average monthly goal set-aside during future year `k` (`k = 0` is the next 12 months). It is derived from the household plan's schedule (`computeHouseholdPlan` called with the same `surplus` the planner uses), with the tightest-deadline rule re-applied as time passes and goals end, falling to 0 once all goals are done;
-   - investing in year `k` = `max(0, investmentToday + goalsToday - householdGoalsMonthlyByYear[k])`, where `goalsToday` is the current `HouseholdPlan.goalsMonthly`;
+   - the caller passes `householdGoalsMonthlyByYear`, a list where element `k` is the caller's average monthly goal set-aside during future year `k` (`k = 0` is the next 12 months, months 12k to 12k+11 after `now`). It comes from the schedule walk below, run on the plan the planner already computes (one `computeHouseholdPlan` call with the planner's own `surplus` and `now`, never called again per year). Years after the last funded month are missing and read as 0;
+   - investing in year `k` = `max(0, investmentToday + goalsToday - (householdGoalsMonthlyByYear[k] ?? 0))`, where `goalsToday` is the current `HouseholdPlan.goalsMonthly`. In projection month `t` (month 1 is the month after `now`) the year index is `floor((t - 1) / 12)`;
    - budgets stay flat and are already inside `annualCost`;
-   - year 1 can differ slightly from today's figure because it is a year average; the detail table says "average over the year".
+   - year 0 can differ from today's figure because it is a year average (the walk's pace only falls over time); the detail table says "average over the year".
+
+### Household goals series (schedule walk)
+
+`householdGoalsMonthlyByYear` is a pure function of the plan the planner already has. It does not call `computeHouseholdPlan` again: re-running the planner with an advanced `now` is not valid, because overdue entries would count as one month instead of dropping out (`household-plan.ts:171`, `goal-stats.ts:16-19`), `placeGoal` uses today's `remaining` that later contributions would have reduced (`:104-107`), and the surplus offset would be applied again on every call (`:205-216`).
+
+Helper: `householdGoalsSeries(plan, now, capMonths = 720)` with `plan: Pick<HouseholdPlan, 'schedule' | 'goalsMonthly' | 'bindingMonths'>`, returning `{ monthly: number[]; byYear: number[] }`. It lives in the household slice, new file `src/features/household/lib/household-goal-series.ts`, exported from the household barrel (`@/features/household`). Reason: it must share the plan's schedule semantics and `monthsUntil` (`goal-stats.ts:16-23`), and keeping it there leaves the freedom lib free of household code (S1 stays independent of spec 183). It needs no change to `computeHouseholdPlan` and no export of `tightestDeadline`: it re-states the same rule in six lines over integer month counts from `monthsUntil`, and a test pins segment 1 to `plan.goalsMonthly` and `plan.bindingMonths`.
+
+Walk (`schedule` is the post-offset schedule, date ascending, so the surplus is already applied once):
+
+1. Let `m(e) = monthsUntil(e.date, now) ?? 1`: whole months from today to the date, partial months rounded up, overdue and this-month dates counting as one month, exactly as `tightestDeadline` counts them. `m` never decreases down the schedule.
+2. Segment 1 runs from `now` at pace `plan.goalsMonthly` for `plan.bindingMonths` months (call it `M1`). At its end every entry with `m(e) <= M1` is fully funded: for each such deadline `cumulative <= pace * m`, and at the binding deadline it is equal, so nothing spills into later entries.
+3. Drop those entries. For the remaining entries restart `cumulative` at 0 and measure months from the end of the previous segment as `m(e) - M1`, an integer subtraction, so no calendar re-measuring (month-end clamping cannot shift a boundary). Next pace = max over deadline dates of `cumulative / (m(e) - M1)`, taking the last entry of each date; the binding months are the months at the first date reaching that maximum. That gives the next segment's pace and length. Paces never rise from one segment to the next.
+4. Repeat until no entries remain. After that the pace is 0.
+5. `monthly[j]` is the pace in month `j` after `now` (`j = 0` is the first month). `byYear[k]` is the sum of `monthly[12k .. 12k+11]` divided by 12, so a partial last year averages in zeros. `monthly` stops after the last funded month and is truncated at `capMonths`. An empty schedule, `goalsMonthly` of 0 or a null `bindingMonths` returns empty arrays.
+
+Rounding consequence: months are whole, partial months round up, so a deadline 2.2 months away is paid over 3 months and a segment ends up to just under a month after the real date. This is the same rounding the planner uses, so month 0 matches what the planner shows. Undated goals are not in the schedule and contribute nothing. Budgets are not in the series (they stay in `budgetsMonthly` and inside `annualCost`).
+
+Invariants (each has a test): `monthly[0]` equals `plan.goalsMonthly`; the sum of `monthly` equals the sum of schedule amounts (uncapped); `monthly` is non-increasing; the surplus is applied once because only the single plan call applies it.
+
+Hand example (surplus 0, `now` 2026-01-15): entries A 2026-04-15 amount 600 (`m = 3`), B 2026-07-15 amount 300 (`m = 6`), C 2028-01-15 amount 900 (`m = 24`). Plan: 600/3 = 200, 900/6 = 150, 1,800/24 = 75, so `goalsMonthly = 200`, `bindingMonths = 3`.
+
+- Segment 1: 3 months at 200 (funds A, 600).
+- Segment 2: B and C remain, months 3 and 21. 300/3 = 100, 1,200/21 is about 57, so pace 100 for 3 months (funds B, 300).
+- Segment 3: C remains, `24 - 6 = 18` months, 900/18 = 50 for 18 months (funds C).
+- `monthly` = 200, 200, 200, 100, 100, 100, then 50 for 18 months (24 months in all); sum 1,800 = 600 + 300 + 900.
+- `byYear` = [100, 50]: year 0 is (600 + 300 + 6 _ 50) / 12 = 100, year 1 is 12 _ 50 / 12 = 50; year 2 onwards is missing, read as 0.
+
 4. Savings rate = `(investmentAmt + savingsAmt) / netAfterCpf`, shown as a percentage. Household goal set-asides are not counted as saving in this definition (they are a commitment, not a freedom contribution). Null when `netAfterCpf` is not positive.
 5. Dividend coverage = `expenseCoverage(averageMonthlyTTM(ttm), annualCost / 12)` from `@/features/equity` (a fraction, displayed as a percentage). `ttm` is `dividendSummary(...).trailing12m`, as in `dividend-summary.tsx:103`. It uses full living cost, so it can differ from the Dividend summary card's expenses-only figure; the caption says "of living cost". It is informational and never added to the projection (the portfolio's return already includes distributions).
 
@@ -207,7 +234,7 @@ Rules:
 `annualCost = 36,000`, `w = 4%`, so `F = 36,000 / 0.04 = 900,000`. `P = 180,000`, so progress = 20%.
 
 - Flat investing 3,000 a month: `(900,000 - 180,000) / 3,000 = 240` months (20 years).
-- Household goals: investing today is 2,000 a month and `householdGoalsToday` is 1,000, with the goals ending after 24 months, so investing is 2,000 for 24 months and 3,000 after (2,000 + 1,000 released). After 24 months the balance is `180,000 + 24 * 2,000 = 228,000`; remaining `672,000 / 3,000 = 224`; total 248 months. Goals move the date by `248 - 240 = 8` months versus the goals-removed run (investing 3,000 throughout).
+- Household goals: investing today is 2,000 a month and `householdGoalsToday` is 1,000, with the goals ending after 24 months, so investing is 2,000 for 24 months and 3,000 after (2,000 + 1,000 released). After 24 months the balance is `180,000 + 24 * 2,000 = 228,000`; remaining `672,000 / 3,000 = 224`; total 248 months. Goals move the date by `248 - 240 = 8` months versus the goals-removed run (investing 3,000 throughout). In series terms `householdGoalsMonthlyByYear = [1,000, 1,000]`: year 0 and year 1 are 2,000 investing, year 2 onwards reads as 0 and gives 3,000. The emergency-surplus lever does not enter this example; it changes `monthlyInvesting` only when the owner acts on it.
 - Flat investing 2,000 forever (no household change): `720,000 / 2,000 = 360` months (30 years).
 
 Compounding table for the test (`P = 0`, `c = 100`, annual return chosen so `r_m = 1%`, that is `r = 1.01^12 - 1`):
@@ -221,9 +248,23 @@ Compounding table for the test (`P = 0`, `c = 100`, annual return chosen so `r_m
 
 ### Levers: `computeFreedomLevers`
 
-Pure, rule-based, no AI, same pattern as the household recommendations (`householdRecommendations`): typed items, a copy formatter in the UI slice (`formatLever`), at most 3 shown with the rest behind "Show all". No asset, fund or platform is ever named. Defined in `freedom-projection.ts` (or a sibling `freedom-levers.ts` if it grows) and run only when `status === 'ok'` and `base.months !== null` unless stated.
+Pure, rule-based, no AI, same pattern as the household recommendations (`householdRecommendations`): typed items, a copy formatter in the UI slice (`formatLever`), at most 3 shown with the rest behind "Show all". No asset, fund or platform is ever named. Defined in `freedom-projection.ts` (or a sibling `freedom-levers.ts` if it grows) as `computeFreedomLevers(input: FreedomInput, context: LeverContext)` and run only when `status === 'ok'` and `base.months !== null` unless stated. The caller builds `LeverContext` from planner values and the household plan.
 
 ```ts
+interface LeverContext {
+  /** savings + bonds - emergencyFundGoal - warChestGoal - householdEarmark, before the 1,000 floor. */
+  surplusAfterEarmark: number;
+  /** From calcRecentAvgExpense versus the planner expenses; null when not computable. */
+  expenseDriftPct: number | null;
+  /** One entry per household goal in the plan schedule, soonest end first; empty when household is unavailable. */
+  householdGoalEnds: {
+    goalId: string;
+    name: string;
+    endMonth: string;
+    extraInvesting: number;
+  }[];
+}
+
 type FreedomLever =
   | { kind: 'extra-monthly'; amount: number; monthsEarlier: number }
   | { kind: 'expense-drift'; driftPct: number; monthsLater: number }
@@ -241,8 +282,8 @@ Triggers and copy (ordered by months moved, then as listed; at most 3 shown):
 
 1. `extra-monthly`: always when `base.months > 0` and the base run is reached. The step is the larger of 100 and 10 percent of `monthlyInvesting`, rounded to 50. `monthsEarlier = base.months - months(base with monthlyInvesting + step)`; shown only if `monthsEarlier >= 1`. Copy: "Investing $X more a month brings your date forward N months."
 2. `expense-drift`: when the latest completed month, or the 12-month average used by the planner, is more than 10 percent above the 12-month figure it is compared against (`calcRecentAvgExpense` average versus the planner `expenses` when an override is set; if no override is set, compare the most recent completed month with the 12-month average). `driftPct` is whole percent. `monthsLater` = months(base with `annualCost` scaled by the drift on the expenses portion) minus `base.months`, shown only if `>= 1`. Copy: "Spending is N% above your 12-month average. If it stays there, your date moves back M months." This lever needs a recent month and `monthsUsed >= 3`.
-3. `emergency-surplus`: when `savings + bonds` exceed `emergencyFundGoal + warChestGoal` plus the household earmark (`PlannerValues.householdEarmark`) by at least 1,000 (the same deployable surplus `computeInvestmentBreakdown` computes). `amount` = that surplus net of the earmark, rounded down to the nearest 100. Copy: "Your emergency fund is $X above target, available to invest if you choose." It does not say where to invest.
-4. `household-goal-ends`: for each household goal in the household plan's schedule whose set-aside ends within the next 60 months, `extraInvesting` = that goal's monthly set-aside released (floored at 0). Copy: "Household goal <name> ends in <Month Year>; your investing rises by $X a month after." `<name>` and `$X`go through`mask()`like every household goal name (spec 187:`CopyOptions.maskName`in`src/features/household/lib/household-recommendation-copy.ts:10`, `:30`, applied by `household-recommendations.tsx:35`). One lever per goal, soonest first. Needs household state `'ready'` and a non-empty schedule.
+3. `emergency-surplus`: when `surplusAfterEarmark` (`savings + bonds - emergencyFundGoal - warChestGoal - PlannerValues.householdEarmark`, the same deployable surplus `computeInvestmentBreakdown` computes at `investment-math.ts:203-205`) is at least 1,000. `amount` = `surplusAfterEarmark` rounded down to the nearest 100. Copy: "Your emergency fund is $X above target, available to invest if you choose." It does not say where to invest.
+4. `household-goal-ends`: for each household goal in the household plan's schedule whose last entry date falls within the next 60 months, `endMonth` is that date's month and `extraInvesting` = that goal's own `GoalPlan.monthly` (floored at 0), an estimate for that goal alone rather than the drop in the series. The goal name comes from the plan input's goals by `goalId` (schedule labels are item names). Copy: "Household goal <name> ends in <Month Year>; your investing rises by $X a month after." The goal name and the amount go through `mask()`, like every household goal name (spec 187:`CopyOptions.maskName`in`src/features/household/lib/household-recommendation-copy.ts:10`, `:30`, applied by `household-recommendations.tsx:35`). One lever per goal, soonest first. Needs household state `'ready'` and a non-empty schedule.
 
 If no lever triggers, the section is hidden (not an empty heading).
 
@@ -268,7 +309,7 @@ Migration file: `supabase/migrations/20261110000184_planner_freedom_assumptions.
 
 ### UI
 
-One card, "Freedom", in the Overview tab after `SalaryPlanner` in `dashboard-overview.tsx`. It receives its numbers by extending `PlannerValues` additively through the existing bridge (`salary-planner.tsx:58-64`, effect :312-328), which already carries `expenses` and `householdEarmark`: `savingsAmt`, `netAfterCpf`, `budgetsMonthly`, `bufferAmt`, `goalsMonthly`, `householdGoalsMonthlyByYear`. This mirrors `DividendSummary monthlyExpenses={plannerValues.expenses}`. The card gets the portfolio from the latest snapshot (the `latest` snapshot `dashboard-overview.tsx` already passes to `SalaryPlanner`) and dividend TTM from `@/features/equity`.
+One card, "Freedom", in the Overview tab after `SalaryPlanner` in `dashboard-overview.tsx`. It receives its numbers by extending `PlannerValues` additively through the existing bridge (`salary-planner.tsx:58-64`, effect :312-328), which already carries `expenses` and `householdEarmark`: `savingsAmt`, `netAfterCpf`, `budgetsMonthly`, `bufferAmt`, `goalsMonthly`, `householdGoalsMonthlyByYear`, and the household goal ends for the levers (name, end month, `GoalPlan.monthly`); the card builds `LeverContext` from these plus the snapshot and `householdEarmark`. This mirrors `DividendSummary monthlyExpenses={plannerValues.expenses}`. The card gets the portfolio from the latest snapshot (the `latest` snapshot `dashboard-overview.tsx` already passes to `SalaryPlanner`) and dividend TTM from `@/features/equity`.
 
 Collapsed state: one number and one sentence, for example "34% of the way. On track for 2041 to 2046." The number is the progress percentage; the sentence is the low-to-high date range. One tap opens detail (disclosure inside the same client component; no navigation):
 
@@ -304,7 +345,7 @@ Personal only. The card never renders for the household view and no household ac
 
 ## Slices
 
-Order: S1, then S2, then S3. Each slice is green on all five gates alone. S2's migration must be applied by the owner before S2's code is deployed. S3 uses `computeHouseholdPlan` (`src/features/household/lib/household-plan.ts`), `getHouseholdPlanInput` (`actions/plan-actions.ts`) and `useHouseholdPlan` (`hooks/use-household-plan.ts`), imported from `@/features/household`.
+Order: S1, then S2, then S3. Each slice is green on all five gates alone. S2's migration must be applied by the owner before S2's code is deployed. S3 uses `computeHouseholdPlan` (`src/features/household/lib/household-plan.ts`), `getHouseholdPlanInput` (`actions/plan-actions.ts`) and `useHouseholdPlan` (`hooks/use-household-plan.ts`), imported from `@/features/household`, plus the new `householdGoalsSeries` helper (additive export, no change to existing household behaviour).
 
 ### S1. Pure maths and levers (new files only)
 
@@ -325,11 +366,12 @@ No behaviour change anywhere. This slice does not depend on 183.
 
 ### S3. UI
 
+- `src/features/household/lib/household-goal-series.ts` (new, `householdGoalsSeries`), its test under `src/features/household/lib/__tests__/`, and one additive export line in `src/features/household/index.ts`.
 - `src/features/assets/components/freedom-card.tsx` (card, detail, assumptions form, `formatLever`).
-- `src/features/assets/components/salary-planner.tsx`: extend `PlannerValues` and the `onPlannerValuesChange` effect.
+- `src/features/assets/components/salary-planner.tsx`: extend `PlannerValues` and the `onPlannerValuesChange` effect; call `householdGoalsSeries(householdPlan, now)` on the plan it already computes (`:295-297`) and publish `byYear` as `householdGoalsMonthlyByYear` (empty unless the household input state is `'ready'`).
 - `src/app/dashboard/(overview)/dashboard-overview.tsx`: render the card after `SalaryPlanner`, pass planner values and snapshot.
 - `src/features/assets/components/scenario-dialog.tsx`: read-only projected date per scenario.
-- `src/features/assets/hooks/use-freedom-inputs.ts`: assembles inputs (portfolio, dividend TTM, household series).
+- `src/features/assets/hooks/use-freedom-inputs.ts`: assembles inputs (portfolio, dividend TTM, and the household series and lever context from `PlannerValues`).
 - Tests: component states, masking, scenario date.
 
 ## Tests to add
@@ -345,9 +387,18 @@ S1 (`freedom-projection.test.ts`):
 - Cap: investing so small that 720 months is not enough returns null, and a run needing exactly 720 months reports a date.
 - `projectFreedom` statuses: no assumptions, no expenses, invalid input, withdrawal rate 0.
 - Savings rate and dividend coverage: coverage equals `expenseCoverage(...) * 100`; null netAfterCpf gives null savings rate.
-- Levers per kind: `extra-monthly` months moved, `expense-drift` at 10 percent threshold (below does not fire), `emergency-surplus` at the 1,000 threshold measured net of the household earmark (surplus 3,000 with earmark 2,500 does not fire; surplus 3,000 with earmark 1,500 gives amount 1,500; earmark larger than the surplus does not fire), `household-goal-ends` ordering and the 60-month window; max-3 trimming order; no lever when nothing triggers; no asset name appears in any lever; `household-goal-ends` copy passes the goal name through the supplied mask function (a masking stub is applied to the name and amount).
+- Levers per kind: `extra-monthly` months moved, `expense-drift` at 10 percent threshold (below does not fire), `emergency-surplus` at the 1,000 threshold measured net of the household earmark (savings + bonds 3,000 above the funds' targets with earmark 2,500 gives net 500 and does not fire; earmark 1,500 gives net 1,500 and amount 1,500; earmark 1,410 gives net 1,590 and amount 1,500; earmark above the surplus does not fire), `household-goal-ends` ordering and the 60-month window; max-3 trimming order; no lever when nothing triggers; no asset name appears in any lever; `household-goal-ends` copy passes the goal name through the supplied mask function (a masking stub is applied to the name and amount).
 - Household unavailable: state `'none'`, state `'locked'`, query loading and query error each produce an empty `householdGoalsMonthlyByYear`, zero household budgets and goals, and a projection equal to the one with no household goals.
 - `now` is passed in (no `Date.now()`): the same input at two `now` values shifts only the dates.
+
+S3 household helper (`src/features/household/lib/__tests__/household-goal-series.test.ts`):
+
+- Hand example: the three-entry example gives `monthly` 200 x3, 100 x3, 50 x18 and `byYear` [100, 50].
+- Month 0 equals `plan.goalsMonthly` and segment 1 length equals `plan.bindingMonths`, for plans built by `computeHouseholdPlan` (including one with a surplus offset).
+- Sum of `monthly` equals the sum of schedule amounts; `monthly` is non-increasing.
+- Overdue and this-month entries count as one month (they land in segment 1); two entries on one date are one deadline.
+- Empty schedule, `goalsMonthly` 0 and null `bindingMonths` return empty arrays; undated goals contribute nothing; budgets never appear in the series (a plan with budgets gives the same series as without).
+- A single far-dated entry is truncated at `capMonths`; the surplus is applied once (the series sums to the post-offset total, not the raw total).
 
 S2: new optional fields round trip through the schema and export validator; upsert omits undefined freedom fields; the missing-column fallback still saves the old fields.
 
@@ -363,7 +414,8 @@ S3: component renders each state in the States table, including the household un
 - Inflation modelling beyond using a real return, salary raises and windfalls.
 - Sharing any freedom figure with the partner.
 - Changing `computeSalaryPlan` (no change needed).
-- Any change to the household plan contracts (specs 183, 185, 187).
+- Any change to `computeHouseholdPlan` or the `HouseholdPlan` contract (specs 183, 185, 187); the new helper is a separate additive export.
+- Re-running `computeHouseholdPlan` with an advanced `now`.
 
 ## Acceptance
 
@@ -381,13 +433,15 @@ S3: component renders each state in the States table, including the household un
 - [ ] The `emergency-surplus` lever is net of `PlannerValues.householdEarmark`, matching `computeInvestmentBreakdown`.
 - [ ] Household goal names in lever or detail copy go through `mask()`.
 - [ ] Household `'none'`, `'locked'`, loading and error all render the card with zero household contribution.
+- [ ] `householdGoalsSeries` takes the plan the planner already computed (no second `computeHouseholdPlan` call): month 0 equals `plan.goalsMonthly`, the monthly sum equals the schedule total, the series is non-increasing, budgets are excluded, and the hand example gives `byYear` [100, 50].
+- [ ] `computeHouseholdPlan` and `tightestDeadline` are unchanged.
 
 ## Risk & reversibility
 
 - Risk: a precise-looking date can be mistaken for a promise. Mitigation: range headline, assumptions beside every date, no pre-filled assumptions, the disclaimer line, and the "not reached" and "already reached" states.
 - Risk: double counting the portfolio. Mitigation: `P` is the snapshot investment categories only; live equity and savings are not added (Q7).
 - Risk: inputs drift from the planner (expenses override, buffer). Mitigation: the card reads the same `PlannerValues` bridge the planner already publishes.
-- Risk: the household series (S3) depends on the household plan's schedule semantics, including the surplus offset. Mitigation: S3 passes the planner's own `surplus` and reads only `HouseholdPlan` fields; S1 and S2 do not depend on it.
+- Risk: the household series (S3) restates the tightest-deadline rule in a second place, so the two could drift. Mitigation: the walk reads only `HouseholdPlan` fields from the planner's single plan call (surplus applied once), and tests pin segment 1 to `plan.goalsMonthly` and `plan.bindingMonths` and the monthly sum to the schedule total. Whole-month rounding can end a segment just under a month after the real date, the same as the planner. S1 and S2 do not depend on it.
 - Reversibility: S1 is new files only; S3 removes by deleting the card and the additive `PlannerValues` fields. S2's columns are nullable and unused if the UI is removed; a later migration may drop them (forward-only, §6.3).
 
 ## Open questions
