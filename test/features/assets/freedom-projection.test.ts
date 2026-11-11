@@ -33,6 +33,7 @@ function input(overrides: Partial<FreedomInput> = {}): FreedomInput {
 const NO_CONTEXT: LeverContext = {
   surplusAfterEarmark: 0,
   expenseDriftPct: null,
+  expensesAnnual: null,
   householdGoalEnds: [],
 };
 
@@ -131,16 +132,27 @@ describe('household schedule', () => {
     expect(p.householdMovesMonths).toBeNull();
   });
 
-  it.each(['none', 'locked', 'loading', 'error'])(
-    'household %s gives the same projection as no goals',
-    () => {
-      const unavailable = projectFreedom(
-        input({ householdGoalsToday: 0, householdGoalsMonthlyByYear: [] })
-      );
-      expect(unavailable).toEqual(projectFreedom(input()));
-      expect(unavailable.householdMovesMonths).toBe(0);
-    }
-  );
+  it('reads an empty series with zero goals as a flat run (240 months at 3,000, 360 at 2,000)', () => {
+    const flat3000 = projectFreedom(
+      input({ householdGoalsToday: 0, householdGoalsMonthlyByYear: [] })
+    );
+    expect(flat3000.base.months).toBe(240);
+    expect(flat3000.householdMovesMonths).toBe(0);
+    const flat2000 = projectFreedom(
+      input({
+        monthlyInvesting: 2_000,
+        householdGoalsToday: 0,
+        householdGoalsMonthlyByYear: [],
+      })
+    );
+    expect(flat2000.base.months).toBe(360);
+    expect(flat2000.householdMovesMonths).toBe(0);
+  });
+
+  it('reads years missing from a short series as 0 (the [1,000] case gives 244)', () => {
+    const p = projectFreedom(household([1_000]));
+    expect(p.base.months).toBe(244);
+  });
 });
 
 describe('safety release', () => {
@@ -243,6 +255,21 @@ describe('statuses', () => {
   });
 });
 
+describe('range and cap validation', () => {
+  it.each([
+    ['negative spread', { returnSpreadPct: -1 }],
+    ['real return of -100', { realReturnPct: -100 }],
+    ['real return below -100', { realReturnPct: -150 }],
+    ['non-finite capMonths', { capMonths: Number.NaN }],
+    ['infinite capMonths', { capMonths: Infinity }],
+    ['non-finite targetYear', { targetYear: Number.NaN }],
+  ])('is invalid for %s', (_label, override) => {
+    const p = projectFreedom(input(override));
+    expect(p.status).toBe('invalid');
+    expect(p.base.months).toBeNull();
+  });
+});
+
 describe('target year', () => {
   it('is null without a target and compares the base date otherwise', () => {
     expect(projectFreedom(input()).onTrackForTarget).toBeNull();
@@ -329,15 +356,39 @@ describe('computeFreedomLevers', () => {
   });
 
   it('expense-drift fires above 10 percent only', () => {
-    const none = computeFreedomLevers(input(), ctx({ expenseDriftPct: 10 }));
-    expect(none.some((l) => l.kind === 'expense-drift')).toBe(false);
-    const fired = computeFreedomLevers(input(), ctx({ expenseDriftPct: 11 }));
-    expect(fired.find((l) => l.kind === 'expense-drift')).toEqual({
+    const drift = (pct: number) =>
+      computeFreedomLevers(
+        input(),
+        ctx({ expenseDriftPct: pct, expensesAnnual: 30_000 })
+      ).find((l) => l.kind === 'expense-drift');
+    expect(drift(10)).toBeUndefined();
+    // Cost 36,000 + 30,000 * 11% = 39,300 -> F 982,500 -> 802,500 / 3,000 -> 268 months, 28 later.
+    expect(drift(11)).toEqual({
       kind: 'expense-drift',
       driftPct: 11,
-      monthsLater: 33,
+      monthsLater: 28,
     });
   });
+
+  it('expense-drift scales the expenses portion only', () => {
+    // Cost 36,000 + 30,000 * 20% = 42,000 -> F 1,050,000 -> 870,000 / 3,000 = 290 months, 50 later.
+    const lever = computeFreedomLevers(
+      input(),
+      ctx({ expenseDriftPct: 20, expensesAnnual: 30_000 })
+    ).find((l) => l.kind === 'expense-drift');
+    expect(lever).toMatchObject({ driftPct: 20, monthsLater: 50 });
+  });
+
+  it.each([null, 0, -1, Number.NaN])(
+    'expense-drift does not fire when expensesAnnual is %s',
+    (expensesAnnual) => {
+      const levers = computeFreedomLevers(
+        input(),
+        ctx({ expenseDriftPct: 20, expensesAnnual })
+      );
+      expect(levers.some((l) => l.kind === 'expense-drift')).toBe(false);
+    }
+  );
 
   it('emergency-surplus is measured net of the household earmark', () => {
     // Savings and bonds sit 3,000 above the funds' targets.
@@ -401,6 +452,7 @@ describe('computeFreedomLevers', () => {
       input(),
       ctx({
         expenseDriftPct: 11,
+        expensesAnnual: 30_000,
         surplusAfterEarmark: 1_590,
         householdGoalEnds: [
           {
@@ -446,6 +498,7 @@ describe('computeFreedomLevers', () => {
       input(),
       ctx({
         expenseDriftPct: 20,
+        expensesAnnual: 30_000,
         surplusAfterEarmark: 5_000,
         householdGoalEnds: [
           {
