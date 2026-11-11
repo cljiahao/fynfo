@@ -17,6 +17,22 @@ export {
   getLatestSnapshot,
   getPreviousSnapshot,
 } from './lib/calculations';
+export {
+  computeFreedomLevers,
+  projectFreedom,
+  visibleFreedomLevers,
+} from './lib/freedom-projection';
+export type {
+  FreedomGoalEnd,
+  FreedomInput,
+  FreedomLever,
+  FreedomProjection,
+  FreedomRun,
+  FreedomStatus,
+  FreedomYear,
+  LeverContext,
+  LeverOptions,
+} from './lib/freedom-projection';
 export { derivePersonalSurplus } from './lib/personal-surplus';
 export {
   calcRecentAvgExpense,
