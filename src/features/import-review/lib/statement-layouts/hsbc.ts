@@ -190,10 +190,19 @@ function scan(
 }
 
 const PERIOD_LABEL = /^Statement\s+period\b/i;
+// OCR glues day, month and year (`16SEP2026`), so whitespace between them is
+// optional here only; the shared grammar stays strict.
+const OCR_DATE = String.raw`(?:${DATE_TEXT}|\d{1,2}\s*[A-Za-z]{3,9}\s*\d{4})`;
 const PERIOD_VALUE = new RegExp(
-  `^From\\s+(${DATE_TEXT})\\s+to\\s+(${DATE_TEXT})`,
+  `^From\\s+(${OCR_DATE})\\s+to\\s+(${OCR_DATE})`,
   'i'
 );
+
+function ocrIsoDate(text: string): string | null {
+  return isoDate(
+    text.replace(/^(\d{1,2})\s*([A-Za-z]+)\s*(\d{4})$/, '$1 $2 $3')
+  );
+}
 
 // HSBC prints a period and no statement-date label; the date that trails the
 // value row is the payment due date and is never read.
@@ -204,8 +213,8 @@ function printedPeriod(lines: StatementLine[]): DetectedStatementPeriod | null {
     const next = lines[index + 1];
     if (next?.page !== line.page) continue;
     const match = PERIOD_VALUE.exec(flatText(next.text));
-    const from = match && isoDate(match[1]);
-    const to = match && isoDate(match[2]);
+    const from = match && ocrIsoDate(match[1]);
+    const to = match && ocrIsoDate(match[2]);
     if (from && to)
       results.push({ period: { from, to }, basis: 'printed-period' });
   }
