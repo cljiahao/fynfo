@@ -1,4 +1,5 @@
 import type { StatementLine } from '../../types';
+import type { DetectedStatementPeriod } from '../statement-dates';
 
 export interface StatementLayout {
   /** Pages whose transaction table this layout recognises. */
@@ -17,6 +18,12 @@ export interface StatementLayout {
     lines: StatementLine[],
     claimedPages: ReadonlySet<number>
   ): { totalCents: number; rowStarts: StatementLine[] }[];
+  /**
+   * Reads the statement date or period from this bank's own header shape.
+   * Returns null when the header is absent or ambiguous; the generic labelled
+   * detector then runs. The caller validates the result's bounds.
+   */
+  period?(lines: StatementLine[]): DetectedStatementPeriod | null;
   columns: {
     /** The single amount on a row is the billed SGD amount. */
     billedSgd: boolean;

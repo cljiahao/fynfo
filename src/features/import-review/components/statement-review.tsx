@@ -86,15 +86,31 @@ import { StatementViewer } from './statement-viewer';
 
 interface ExtractedStatement {
   lines: StatementLine[];
-  period: { from: string; to: string };
+  /** `source` records whether the user typed the dates, so a bank change knows
+   * whether it may re-read them. */
+  period: { from: string; to: string; source: 'manual' | 'detected' };
   basis: DetectedStatementPeriod['basis'] | null;
 }
+
+const NO_PERIOD_MESSAGE =
+  'We could not read a clear statement date or period. Enter the dates, then extract again.';
 
 const NO_BANK_MESSAGE =
   'We could not tell which bank this statement is from. Choose the bank above, then extract again.';
 
 function bankLabel(bank: StatementBank) {
   return STATEMENT_BANKS.find((entry) => entry.value === bank)?.label ?? bank;
+}
+
+/** The bank whose header reader applies, or undefined when auto-detect cannot
+ * name one and only the generic detector can run. */
+function periodBank(
+  lines: StatementLine[],
+  choice: StatementBankChoice
+): StatementBank | undefined {
+  if (choice !== 'auto') return choice;
+  const detection = detectStatementBank(lines);
+  return detection.status === 'match' ? detection.bank : undefined;
 }
 
 function ambiguousMessage(banks: StatementBank[]) {
@@ -292,7 +308,10 @@ function StatementReviewBody({
     let candidates: StatementCandidate[];
     let blocks: StatementTotalBlock[];
     try {
-      candidates = parseStatementLines(stored.lines, bank, stored.period);
+      candidates = parseStatementLines(stored.lines, bank, {
+        from: stored.period.from,
+        to: stored.period.to,
+      });
       blocks = statementTotalBlocks(stored.lines, bank);
     } catch {
       // Lines and PDF are kept so another bank can be tried without re-reading.
@@ -326,6 +345,33 @@ function StatementReviewBody({
     save.reset();
     setRowPage(0);
     setBankChoice(choice);
+    if (stored.period.source === 'detected') {
+      const detected = detectStatementPeriod(
+        stored.lines,
+        periodBank(stored.lines, choice)
+      );
+      if (!detected) {
+        // The old period was read for another bank's header, so rows are
+        // cleared; lines and PDF stay so the user can retry or type dates.
+        setResolvedBank(null);
+        setBankDetected(false);
+        setRows([]);
+        setTotalBlocks([]);
+        setSelected('');
+        setDetectedBasis(null);
+        setManualPeriod(true);
+        setFrom('');
+        setTo('');
+        setError(NO_PERIOD_MESSAGE);
+        return;
+      }
+      stored.period = { ...detected.period, source: 'detected' };
+      stored.basis = detected.basis;
+      setManualPeriod(false);
+      setFrom(detected.period.from);
+      setTo(detected.period.to);
+      setDetectedBasis(detected.basis);
+    }
     presentStatement(stored, choice);
   }
 
@@ -382,19 +428,23 @@ function StatementReviewBody({
         discardOpenedPdf();
         return;
       }
-      const detected = manualPeriod ? null : detectStatementPeriod(lines);
+      const detected = manualPeriod
+        ? null
+        : detectStatementPeriod(lines, periodBank(lines, bankChoice));
       const period = manualPeriod ? { from, to } : detected?.period;
       if (!period) {
         discardOpenedPdf();
         setManualPeriod(true);
         setFrom('');
         setTo('');
-        setError(
-          'We could not read a clear statement date or period. Enter the dates, then extract again.'
-        );
+        setError(NO_PERIOD_MESSAGE);
         return;
       }
-      const stored = { lines, period, basis: detected?.basis ?? null };
+      const stored: ExtractedStatement = {
+        lines,
+        period: { ...period, source: manualPeriod ? 'manual' : 'detected' },
+        basis: detected?.basis ?? null,
+      };
       extracted.current = stored;
       setFrom(period.from);
       setTo(period.to);

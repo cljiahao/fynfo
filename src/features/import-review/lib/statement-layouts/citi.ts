@@ -1,4 +1,11 @@
 import type { StatementLine } from '../../types';
+import {
+  agreedPeriod,
+  findDates,
+  flatText,
+  statementDatePeriod,
+  type DetectedStatementPeriod,
+} from '../statement-dates';
 import type { StatementLayout } from './types';
 
 const HEADER = /\bDATE\s+DESCRIPTION\s+AMOUNT\s*\(SGD\)/i;
@@ -24,7 +31,26 @@ function cleaned(line: StatementLine): StatementLine {
   return text === line.text ? line : { ...line, text };
 }
 
+// The text layer can put left-column text before the label, so the label is
+// found anywhere on the line. A payment due date never matches this label.
+const STATEMENT_DATE = /(?<![A-Za-z])Statement\s+Date\s*:?\s*(.*)$/i;
+const OTHER_STATEMENT = /\b(?:previous|prior|last|next)\s+$/i;
+
+function statementDate(lines: StatementLine[]): DetectedStatementPeriod | null {
+  const results: DetectedStatementPeriod[] = [];
+  for (const line of lines) {
+    const text = flatText(line.text);
+    const match = STATEMENT_DATE.exec(text);
+    if (!match || OTHER_STATEMENT.test(text.slice(0, match.index))) continue;
+    const dates = findDates(match[1]);
+    if (dates.length === 1 && dates[0].index === 0)
+      results.push(statementDatePeriod(dates[0].iso));
+  }
+  return agreedPeriod(results);
+}
+
 export const citiLayout: StatementLayout = {
+  period: statementDate,
   detect(lines) {
     return lines.some((line) => HEADER.test(line.text))
       ? new Set(lines.map((line) => line.page))

@@ -1,4 +1,5 @@
 import type { StatementLine } from '../../types';
+import { columnHeaderStatementDate } from '../statement-dates';
 import type { StatementLayout } from './types';
 
 const HEADER = /^DATE\s+DESCRIPTION\s+AMOUNT$/i;
@@ -9,7 +10,10 @@ const ROW_START =
   /^\d{1,2}\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b(?!\s+(?:19|20)\d{2}\b)\s+\S/i;
 const BOUNDARY = /^(?:PREVIOUS BALANCE|Total Balance Carried Forward)\b/i;
 
+const SUMMARY_HEADER = /^STATEMENT DATE\b.*\bMOBILE NUMBER\b/i;
+
 export const paylahLayout: StatementLayout = {
+  period: (lines) => columnHeaderStatementDate(lines, SUMMARY_HEADER),
   detect(lines) {
     return lines.some((line) => HEADER.test(line.text.trim()))
       ? new Set(lines.map((line) => line.page))

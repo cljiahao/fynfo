@@ -803,3 +803,73 @@ it('clears the stored lines on Clear review so a bank change needs a new extract
   expect(screen.queryByLabelText('Item / Brand')).not.toBeInTheDocument();
   expect(mocks.parse).not.toHaveBeenCalled();
 });
+
+const DBS_HEADER_LINES = [
+  'DBS TEST CARDS',
+  'STATEMENT DATE CREDIT LIMIT MINIMUM PAYMENT PAYMENT DUE DATE',
+  '15 Oct 2026 $9,999.00 $50.00 09 Nov 2026',
+  'Left column Statement Date October 10, 2026',
+  'DATE DESCRIPTION AMOUNT (S$)',
+  'NEW TRANSACTIONS TEST USER',
+  '20 SEP EXAMPLE MARKET 12.50',
+].map((text, index) => ({ page: 1, line: index + 1, text }));
+
+it('reads the period from the resolved bank header without typed dates', async () => {
+  mocks.extract.mockResolvedValue(DBS_HEADER_LINES);
+  setup(undefined, 4, false, 'auto');
+  expect(await screen.findByText('Detected: DBS')).toBeVisible();
+  expect(screen.getByLabelText('Date')).toHaveValue('2026-09-20');
+  fireEvent.click(screen.getByRole('button', { name: 'Change statement' }));
+  expect(screen.getByLabelText('Period start')).toHaveValue('2026-09-01');
+  expect(screen.getByLabelText('Period end')).toHaveValue('2026-10-15');
+});
+it('re-reads a detected period for the new bank without a second extraction', async () => {
+  mocks.extract.mockResolvedValue(DBS_HEADER_LINES);
+  setup(undefined, 4, false, 'auto');
+  expect(await screen.findByText('Detected: DBS')).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Change statement bank'), {
+    target: { value: 'citibank' },
+  });
+  await screen.findByText(/selected bank could not be identified/);
+  expect(screen.getByLabelText('Period start')).toHaveValue('2026-09-01');
+  expect(screen.getByLabelText('Period end')).toHaveValue('2026-10-10');
+  fireEvent.change(screen.getByLabelText('Statement bank'), {
+    target: { value: 'dbs' },
+  });
+  expect(await screen.findByText('Chosen: DBS')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Change statement' }));
+  expect(screen.getByLabelText('Period end')).toHaveValue('2026-10-15');
+  expect(mocks.open).toHaveBeenCalledTimes(1);
+  expect(mocks.extract).toHaveBeenCalledTimes(1);
+});
+it('asks for dates and keeps the PDF when the new bank has no readable period', async () => {
+  mocks.extract.mockResolvedValue(DBS_HEADER_LINES);
+  setup(undefined, 4, false, 'auto');
+  expect(await screen.findByText('Detected: DBS')).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Change statement bank'), {
+    target: { value: 'paylah' },
+  });
+  expect(
+    await screen.findByText(/We could not read a clear statement date/)
+  ).toBeVisible();
+  expect(screen.queryByLabelText('Item / Brand')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Period start')).toBeVisible();
+  expect(mocks.destroy).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText('Statement bank'), {
+    target: { value: 'dbs' },
+  });
+  expect(await screen.findByText('Chosen: DBS')).toBeVisible();
+  expect(mocks.open).toHaveBeenCalledTimes(1);
+  expect(mocks.extract).toHaveBeenCalledTimes(1);
+});
+it('keeps a typed period over detection and across a bank change', async () => {
+  mocks.extract.mockResolvedValue(DBS_HEADER_LINES);
+  setup(undefined, 4, true, 'auto');
+  expect(await screen.findByText('Detected: DBS')).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Change statement bank'), {
+    target: { value: 'citibank' },
+  });
+  await screen.findByText(/selected bank could not be identified/);
+  expect(screen.getByLabelText('Period start')).toHaveValue('2025-12-15');
+  expect(screen.getByLabelText('Period end')).toHaveValue('2026-01-14');
+});

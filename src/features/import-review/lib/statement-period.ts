@@ -1,57 +1,55 @@
-import { z } from 'zod';
-import type { StatementLine, StatementPeriod } from '../types';
+import type { StatementBank, StatementLine, StatementPeriod } from '../types';
+import {
+  DATE_TEXT,
+  findDates,
+  flatText,
+  isoDate,
+  monthNumber,
+  previousMonthStart,
+  statementDatePeriod,
+  type DetectedStatementPeriod,
+} from './statement-dates';
+import { getStatementLayout } from './statement-layouts';
 import { validStatementPeriod } from './statement-parser';
 
-const MONTHS = [
-  'january',
-  'february',
-  'march',
-  'april',
-  'may',
-  'june',
-  'july',
-  'august',
-  'september',
-  'october',
-  'november',
-  'december',
-];
-const DATE_TEXT = String.raw`(?:\d{4}-\d{2}-\d{2}|\d{1,2}[/.-]\d{1,2}[/.-]\d{4}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})`;
-const calendar = z.iso.date();
+export type { DetectedStatementPeriod };
 
-function monthNumber(text: string): number {
-  return (
-    MONTHS.findIndex(
-      (month) =>
-        month === text.toLowerCase() || month.slice(0, 3) === text.toLowerCase()
-    ) + 1
-  );
-}
-function isoDate(text: string): string | null {
-  let value = text;
-  const numeric = text.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/);
-  const named = text.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
-  if (numeric || named) {
-    const match = (numeric ?? named)!;
-    const month = numeric ? Number(match[2]) : monthNumber(match[2]);
-    value = `${match[3]}-${String(month).padStart(2, '0')}-${match[1].padStart(2, '0')}`;
-  }
-  return calendar.safeParse(value).success ? value : null;
-}
-function previousMonthStart(date: string): string {
-  const year = Number(date.slice(0, 4));
-  const month = Number(date.slice(5, 7));
-  return `${String(month === 1 ? year - 1 : year).padStart(4, '0')}-${String(month === 1 ? 12 : month - 1).padStart(2, '0')}-01`;
+const RANGE = new RegExp(
+  `(${DATE_TEXT})\\s*(?:to|until|–|-)\\s*(${DATE_TEXT})`,
+  'gi'
+);
+
+/** The range in the text, or null when it is not exactly one range. A range
+ * that fails the calendar is not a date and is ignored by the caller. */
+function readRange(text: string): StatementPeriod | null {
+  const matches = [...text.matchAll(RANGE)];
+  if (matches.length !== 1) return null;
+  const from = isoDate(matches[0][1]);
+  const to = isoDate(matches[0][2]);
+  return from && to ? { from, to } : null;
 }
 
-export interface DetectedStatementPeriod {
-  period: StatementPeriod;
-  basis: 'printed-period' | 'statement-date' | 'statement-month';
+function readMonth(text: string): string | null {
+  const match = text.match(/(?:^|\s)([A-Za-z]{3,9})\s+(\d{4})$/);
+  const month = match && monthNumber(match[1]);
+  return match && month
+    ? `${match[2]}-${String(month).padStart(2, '0')}`
+    : null;
+}
+
+/** A value read as one date: the whole text, else the only date in it. */
+function readDate(text: string): string | null {
+  const exact = isoDate(text);
+  if (exact) return exact;
+  const found = findDates(text);
+  return found.length === 1 ? found[0].iso : null;
 }
 
 /** Only labelled, full-year headers qualify. The anchor window is intentionally
- * bounded to this and the preceding month; unsupported older dates stay blocked. */
-export function detectStatementPeriod(
+ * bounded to this and the preceding month; unsupported older dates stay blocked.
+ * A labelled value that is not a date is ignored; two readable values that
+ * disagree return null. */
+function detectLabelled(
   lines: StatementLine[]
 ): DetectedStatementPeriod | null {
   const ranges: StatementPeriod[] = [];
@@ -59,43 +57,27 @@ export function detectStatementPeriod(
   const months: string[] = [];
   let invalid = false;
   for (const [index, line] of lines.entries()) {
-    const text = line.text.replace(/\s+/g, ' ').trim();
+    const text = flatText(line.text);
     const label = text.match(
       /^(Statement Period|Statement Date|Date of Statement|Statement Month|Statement For)\s*:?\s*(.*)$/i
     );
     if (!label) continue;
     const next = lines[index + 1];
-    const fromNext = !label[2] && next?.page === line.page;
-    let value = (label[2] || (fromNext ? next.text : ''))
-      .replace(/\s+/g, ' ')
-      .trim();
-    // A value line shared with other summary fields ends with the date.
-    if (fromNext && /date/i.test(label[1]) && !isoDate(value))
-      value = value.match(new RegExp(`(${DATE_TEXT})$`))?.[1] ?? value;
+    // A label followed by other column labels takes no value from the next
+    // line: that row may hold a payment due date.
+    const value =
+      label[2] || (next?.page === line.page ? flatText(next.text) : '');
     if (/period/i.test(label[1])) {
-      const match = value.match(
-        new RegExp(
-          `^(${DATE_TEXT})\\s*(?:to|until|–|-)\\s*(${DATE_TEXT})$`,
-          'i'
-        )
-      );
-      const from = match && isoDate(match[1]);
-      const to = match && isoDate(match[2]);
-      if (!from || !to || !validStatementPeriod({ from, to })) invalid = true;
-      else ranges.push({ from, to });
+      const range = readRange(value);
+      if (!range) continue;
+      if (!validStatementPeriod(range)) invalid = true;
+      else ranges.push(range);
     } else if (/date/i.test(label[1])) {
-      const date = isoDate(value);
-      if (!date) invalid = true;
-      else dates.push(date);
+      const date = readDate(value);
+      if (date) dates.push(date);
     } else {
-      const match = value.match(/^([A-Za-z]{3,9})\s+(\d{4})$/);
-      const month = match && monthNumber(match[1]);
-      const first =
-        match && month
-          ? `${match[2]}-${String(month).padStart(2, '0')}-01`
-          : null;
-      if (!first || !calendar.safeParse(first).success) invalid = true;
-      else months.push(first.slice(0, 7));
+      const month = readMonth(value);
+      if (month) months.push(month);
     }
   }
   const uniqueRanges = [
@@ -120,10 +102,8 @@ export function detectStatementPeriod(
     return { period: range, basis: 'printed-period' };
   }
   if (date) {
-    const period = { from: previousMonthStart(date), to: date };
-    return validStatementPeriod(period)
-      ? { period, basis: 'statement-date' }
-      : null;
+    const period = statementDatePeriod(date);
+    return validStatementPeriod(period.period) ? period : null;
   }
   if (month) {
     const first = `${month}-01`;
@@ -138,4 +118,15 @@ export function detectStatementPeriod(
       : null;
   }
   return null;
+}
+
+/** The bank's own header reader runs first when the bank is known; when it has
+ * none, or finds nothing it can vouch for, the generic labelled detector runs. */
+export function detectStatementPeriod(
+  lines: StatementLine[],
+  bank?: StatementBank
+): DetectedStatementPeriod | null {
+  const fromLayout = bank ? getStatementLayout(bank)?.period?.(lines) : null;
+  if (fromLayout && validStatementPeriod(fromLayout.period)) return fromLayout;
+  return detectLabelled(lines);
 }
