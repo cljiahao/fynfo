@@ -204,15 +204,106 @@ describe('statement period detection from real header shapes', () => {
     });
   });
 
-  it('reads the only date on a same-line value or a value line', () => {
+  it('reads a date that opens a same-line value or a value line', () => {
     expect(
       detectStatementPeriod(lines('Statement Date 15 Oct 2026 Page 1 of 3'))
         ?.period.to
     ).toBe('2026-10-15');
     expect(
-      detectStatementPeriod(lines('Statement Date', 'Total 15 Oct 2026 12.00'))
+      detectStatementPeriod(lines('Statement Date', '15 Oct 2026 12.00'))
         ?.period.to
     ).toBe('2026-10-15');
+  });
+
+  it('never reads a date behind another label or after other text', () => {
+    expect(
+      detectStatementPeriod(lines('Statement Date', 'Total 15 Oct 2026 12.00'))
+    ).toBeNull();
+    expect(
+      detectStatementPeriod(
+        lines('Statement Date', 'Payment Due Date 09 Nov 2026')
+      )
+    ).toBeNull();
+    expect(
+      detectStatementPeriod(lines('Statement Date: due 15 Oct 2026'))
+    ).toBeNull();
+  });
+
+  it('counts unparseable date-shaped tokens as dates', () => {
+    expect(
+      detectStatementPeriod(
+        lines('Statement Date: 15 Oct 26 Payment Due 09 Nov 2026')
+      )
+    ).toBeNull();
+    expect(
+      detectStatementPeriod(lines('Statement Date: 15 Oct 2026 31 Feb 2026'))
+    ).toBeNull();
+  });
+
+  it('does not read a range embedded in other text', () => {
+    expect(
+      detectStatementPeriod(
+        lines('Statement Period 15 Oct 2026 note: 1-2-2026 to 3-3-2026')
+      )
+    ).toBeNull();
+  });
+
+  it('returns null when the value line is missing after a bank label line', () => {
+    expect(
+      detectStatementPeriod(
+        lines(
+          'STATEMENT DATE CREDIT LIMIT MINIMUM PAYMENT PAYMENT DUE DATE',
+          'Thank you for banking with us'
+        ),
+        'dbs'
+      )
+    ).toBeNull();
+    expect(
+      detectStatementPeriod(
+        lines(
+          'STATEMENT DATE MOBILE NUMBER WALLET ACCOUNT',
+          'Thank you for using PayLah'
+        ),
+        'paylah'
+      )
+    ).toBeNull();
+    expect(
+      detectStatementPeriod(
+        lines('Statement Date', 'Payment Due Date November 09, 2026'),
+        'citibank'
+      )
+    ).toBeNull();
+  });
+
+  it.each(['16SEP 2026', '16 SEP2026', '16SEP2026'])(
+    'reads a glued HSBC period start %s',
+    (start) => {
+      expect(
+        detectStatementPeriod(
+          lines(
+            'Statement period Total Due Minimum Payment Payment Due Date',
+            `From ${start} to 15OCT2026 1,482.47 25.00 09 Nov 2026`
+          ),
+          'hsbc'
+        )
+      ).toEqual({
+        period: { from: '2026-09-16', to: '2026-10-15' },
+        basis: 'printed-period',
+      });
+    }
+  );
+
+  it('returns null for an HSBC range split across two lines', () => {
+    expect(
+      detectStatementPeriod(
+        lines(
+          'Statement period Total Due Minimum Payment Payment Due Date',
+          'From 16 SEP 2026',
+          'to 15 OCT 2026'
+        ),
+        'hsbc'
+      )
+    ).toBeNull();
   });
 
   it('does not pick between two dates on one value line or two clean headers', () => {

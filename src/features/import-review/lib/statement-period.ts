@@ -1,7 +1,6 @@
 import type { StatementBank, StatementLine, StatementPeriod } from '../types';
 import {
   DATE_TEXT,
-  findDates,
   flatText,
   isoDate,
   monthNumber,
@@ -14,18 +13,31 @@ import { validStatementPeriod } from './statement-parser';
 
 export type { DetectedStatementPeriod };
 
+// Anchored at the start of the value; only amounts or dates (such as a
+// payment due date) may trail the range, so a range buried in other text is
+// never taken.
 const RANGE = new RegExp(
-  `(${DATE_TEXT})\\s*(?:to|until|–|-)\\s*(${DATE_TEXT})`,
-  'gi'
+  `^(${DATE_TEXT})\\s*(?:to|until|–|-)\\s*(${DATE_TEXT})(?:\\s+(?:\\d[\\d,]*\\.\\d{2}|${DATE_TEXT}))*$`,
+  'i'
 );
 
-/** The range in the text, or null when it is not exactly one range. A range
- * that fails the calendar is not a date and is ignored by the caller. */
+// Looser than DATE_TEXT on purpose: tokens that look like dates but do not
+// parse (two-digit year, impossible day) still count as dates, so a value
+// holding one of them is ambiguous rather than "the only date".
+const DATE_SHAPED = new RegExp(
+  String.raw`\d{4}-\d{2}-\d{2}|\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},\s*\d{2,4}`,
+  'g'
+);
+// Column labels of a statement header; a value that carries one is another
+// column (payment due, printed date, limit), not the statement date.
+const HEADER_WORD = /\b(?:due|payment|printed|minimum|total|balance|limit)\b/i;
+
+/** The range at the start of the value, or null. A range that fails the
+ * calendar is not a date and is ignored by the caller. */
 function readRange(text: string): StatementPeriod | null {
-  const matches = [...text.matchAll(RANGE)];
-  if (matches.length !== 1) return null;
-  const from = isoDate(matches[0][1]);
-  const to = isoDate(matches[0][2]);
+  const match = RANGE.exec(text);
+  const from = match && isoDate(match[1]);
+  const to = match && isoDate(match[2]);
   return from && to ? { from, to } : null;
 }
 
@@ -37,12 +49,14 @@ function readMonth(text: string): string | null {
     : null;
 }
 
-/** A value read as one date: the whole text, else the only date in it. */
+/** A value read as a statement date: it must open with its one and only
+ * date-shaped token and carry no header label word, so a payment due date or a
+ * date behind another label is never taken. Trailing amounts are tolerated. */
 function readDate(text: string): string | null {
-  const exact = isoDate(text);
-  if (exact) return exact;
-  const found = findDates(text);
-  return found.length === 1 ? found[0].iso : null;
+  if (HEADER_WORD.test(text)) return null;
+  const shaped = [...text.matchAll(DATE_SHAPED)];
+  if (shaped.length !== 1 || shaped[0].index !== 0) return null;
+  return isoDate(shaped[0][0]);
 }
 
 /** Only labelled, full-year headers qualify. The anchor window is intentionally

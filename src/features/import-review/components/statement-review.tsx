@@ -362,6 +362,9 @@ function StatementReviewBody({
         setManualPeriod(true);
         setFrom('');
         setTo('');
+        // stored.period stays 'detected' on purpose: the next bank choice
+        // re-detects and overwrites it, and typing dates goes through reset(),
+        // which discards the stored statement, so the stale dates are never shown.
         setError(NO_PERIOD_MESSAGE);
         return;
       }
