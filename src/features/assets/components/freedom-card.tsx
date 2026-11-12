@@ -13,6 +13,7 @@ import {
   useFreedomAssumptions,
 } from '../hooks/use-freedom-inputs';
 import {
+  DEFAULT_RETURN_SPREAD_PCT,
   computeFreedomLevers,
   projectFreedom,
   visibleFreedomLevers,
@@ -50,9 +51,7 @@ function RunLine({
       <dd className="tabular-nums">
         {run.date === null
           ? `Not within ${CAP_YEARS} years`
-          : run.reached
-            ? 'Already reached'
-            : formatMonthLabel(run.date)}
+          : formatMonthLabel(run.date)}
       </dd>
     </div>
   );
@@ -64,7 +63,7 @@ export function FreedomCard({ planner, snapshot }: FreedomCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showAllLevers, setShowAllLevers] = useState(false);
   const dividendAvgMonthly = useDividendAvgMonthly();
-  const { assumptions, save, isSaving } = useFreedomAssumptions();
+  const { assumptions, save, isSaving, persisted } = useFreedomAssumptions();
 
   const input = useMemo(
     () =>
@@ -102,10 +101,16 @@ export function FreedomCard({ planner, snapshot }: FreedomCardProps) {
           {assumptions.realReturnPct !== null &&
             assumptions.withdrawalRatePct !== null && (
               <p className="text-muted-foreground text-xs">
-                Assumes {assumptions.realReturnPct}% real return (+/- 2),{' '}
-                {assumptions.withdrawalRatePct}% withdrawal rate.
+                Assumes {assumptions.realReturnPct}% real return (+/-{' '}
+                {DEFAULT_RETURN_SPREAD_PCT}), {assumptions.withdrawalRatePct}%
+                withdrawal rate.
               </p>
             )}
+          {!persisted && (
+            <p className="text-muted-foreground text-xs">
+              Not saved yet. These assumptions are used for this session only.
+            </p>
+          )}
           <p className="text-muted-foreground text-xs">
             Projection from your own assumptions, not a forecast or advice.
           </p>
@@ -220,7 +225,7 @@ export function FreedomCard({ planner, snapshot }: FreedomCardProps) {
                         : visibleFreedomLevers(levers).shown
                       ).map((lever, index) => (
                         <li key={`${lever.kind}-${index}`}>
-                          {formatLever(lever, mask)}
+                          {formatLever(lever, mask, planner.expensesOverridden)}
                         </li>
                       ))}
                     </ul>

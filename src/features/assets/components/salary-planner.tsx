@@ -80,6 +80,8 @@ export interface PlannerValues {
   householdGoalEnds: FreedomGoalEnd[];
   householdIncluded: boolean;
   expenseDriftPct: number | null;
+  /** True when the drift percent is measured against the owner's planner expenses rather than the 12-month average. */
+  expensesOverridden: boolean;
   /** Safety savings that join investing once the safety goals are funded. */
   safetyRelease: { monthly: number; fromMonth: number } | null;
 }
@@ -379,6 +381,7 @@ function SalaryPlannerInner({
     recentAvg,
     lastMonth: lastMonthSpend,
   });
+  const expensesOverridden = expensesOverride !== null;
   const safetyRelease =
     savingsAmt > 0
       ? {
@@ -406,6 +409,7 @@ function SalaryPlannerInner({
       householdGoalEnds,
       householdIncluded,
       expenseDriftPct,
+      expensesOverridden,
       safetyRelease:
         safetyMonthly > 0
           ? { monthly: safetyMonthly, fromMonth: safetyFromMonth }
@@ -426,6 +430,7 @@ function SalaryPlannerInner({
     householdGoalEnds,
     householdIncluded,
     expenseDriftPct,
+    expensesOverridden,
     safetyMonthly,
     safetyFromMonth,
     onPlannerValuesChange,
