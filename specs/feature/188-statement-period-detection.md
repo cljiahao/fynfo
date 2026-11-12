@@ -279,33 +279,115 @@ find out, and later slices are written only against what it records.
 
 ## Open questions
 
-- [ ] Q1: What are the failing header shapes on the four banks? — Owner:
+- [x] Q1: What are the failing header shapes on the four banks? — Owner:
       orchestrator (slice 1). — Proposed default: none; blocks slice 2. Appendix
       added before approval of slice 2's details.
-- [ ] Q2: Per-bank `period()` on `StatementLayout`, or one generic detector with
+      Answer: see Appendix A (captured 2026-11-12).
+- [x] Q2: Per-bank `period()` on `StatementLayout`, or one generic detector with
       more phrases? — Owner: Clarence. — Proposed default: per-bank optional
       reader with the hardened generic detector as fallback, because each bank
       prints its header differently and a shared grammar keeps growing.
-- [ ] Q3: Should `DD Mon YY` be accepted? — Owner: Clarence. — Proposed default:
+      Answer (Clarence, 2026-11-11): proposed default accepted.
+- [x] Q3: Should `DD Mon YY` be accepted? — Owner: Clarence. — Proposed default:
       only when the same statement prints a four-digit year that fixes the
       century; otherwise rejected (existing tests keep two-digit-year bare
       headers failing).
-- [ ] Q4: Should a failed re-read after a bank change clear the rows and ask for a
+      Answer (Clarence, 2026-11-11): proposed default accepted.
+- [x] Q4: Should a failed re-read after a bank change clear the rows and ask for a
       typed period, or keep the old period? — Owner: Clarence. — Proposed default:
       show the manual-entry message and clear rows, because the old period was
       read for a different bank's header and may be wrong.
-- [ ] Q5: Do any current statements print a period longer than 400 days, or a
+      Answer (Clarence, 2026-11-11): proposed default accepted.
+- [x] Q5: Do any current statements print a period longer than 400 days, or a
       statement date outside the preceding-month window the `statement-date` and
       `statement-month` bases assume? — Owner: Clarence. — Proposed default: no;
       keep the bounds and raise a follow-up spec if a real statement needs more.
-- [ ] Q6: For gap b, accept a four-digit year only when it equals a year of the
+      Answer (Clarence, 2026-11-11): proposed default accepted.
+- [x] Q6: For gap b, accept a four-digit year only when it equals a year of the
       period or one either side, or only an exact period year? — Owner: Clarence.
       — Proposed default: exact period years plus none other, since
       `statementDate` already only keeps dates inside the period.
-- [ ] Q7: observation e, the unreadable HSBC amount that is probably a credit:
+      Answer (Clarence, 2026-11-11): proposed default accepted.
+- [x] Q7: observation e, the unreadable HSBC amount that is probably a credit:
       investigate now or leave? — Owner: Clarence. — Proposed default: leave,
       document in the PR, and open a separate spec only if it recurs.
-- [ ] Q8: Slice 4: mock the OCR engine boundary with a synthetic image-only PDF,
+      Answer (Clarence, 2026-11-11): proposed default accepted.
+- [x] Q8: Slice 4: mock the OCR engine boundary with a synthetic image-only PDF,
       or spy on `extract` only? — Owner: Clarence. — Proposed default: counted
       fake recogniser first, `extract` spy as the fallback if no synthetic
       image-only PDF can be built without a dependency.
+      Answer (Clarence, 2026-11-11): proposed default accepted.
+
+## Appendix A: redacted header shapes (captured 2026-11-12)
+
+Method: admin OCR dump page on the deployed site, digit masking on, four real
+October 2026 statements, nothing saved. The dump page always runs OCR and never
+shows the pdfjs text layer, so for the three text-layer banks (DBS, Citibank,
+PayLah) the x/y values are OCR approximations; the text-layer line grouping for
+DBS and PayLah was confirmed separately from the 2026-11-08 layout notes. All
+shapes are on page 1 unless stated. Digits stay as D/M/Y placeholders.
+Coordinates are PDF points, y measured from the page bottom, page 595x842.
+
+### DBS card (text layer in the app)
+
+- The label line (y~618) carries four column labels on one line:
+  `STATEMENT DATE` x~83, `CREDIT LIMIT` x~220, `MINIMUM PAYMENT` x~336,
+  `PAYMENT DUE DATE` x~462.
+- The values are on the next line (y~603): `DD Mon YYYY` x~95, `$D,DDD.DD` x~228,
+  `$DD.DD` x~362, `DD Mon YYYY` x~479. The first date is the statement date, the
+  last is the payment due date.
+- No statement period is printed.
+- Page 3 footer: `STATEMENT PRINTED ON DD Mon YYYY` x~384, value on the same
+  line. It is a print date, not the statement-date label.
+- `Statement of Account` heads every page and is not a label.
+
+### Citibank (text layer in the app)
+
+- Right-hand summary block under `YOUR BILL SUMMARY` (x~309).
+- `Statement Date` x~310 with the value on the same line at x~447, format
+  `Month DD, YYYY` (full month name, comma). A stray glyph follows at x~579.
+- A later line: `Payment Due Date` x~310, value `Month DD, YYYY` x~447.
+- No statement period is printed.
+- Top line `Statement of Account ... Page D of D`.
+- Unverified: whether the text layer merges left-column text in front of the
+  `Statement Date` label (in OCR the line started at the label).
+
+### DBS PayLah (text layer in the app)
+
+- The label line (y~666) carries three column labels on one line:
+  `STATEMENT DATE` x~96, `MOBILE NUMBER` x~266, `WALLET ACCOUNT` x~430.
+- OCR missed the value line completely. From the text layer (2026-11-08 notes)
+  the next line starts `DD Mon YYYY`, followed by the mobile number and wallet
+  number.
+- No statement period is printed.
+
+### HSBC (image-only PDF, OCR in the app)
+
+- The label line (y~654) carries four column labels on one line:
+  `Statement period` x~59, `Total Due` x~239, `Minimum Payment` x~328,
+  `Payment Due Date` x~427.
+- The values are on the next line (y~638): `From` x~59, `DD` x~86, `MON` x~101,
+  `YYYY` x~125, `to` x~151, `DD` x~163, `MON` x~178, `YYYY` x~203 (month in
+  uppercase, each part a separate OCR token), then the total due amount x~240,
+  the minimum payment x~328, then `DD Mon YYYY` x~427.
+- Gap 3c answer: the trailing `DD Mon YYYY` is the payment due date, not a
+  statement date. HSBC prints an explicit period (`From ... to ...`) and no
+  "Statement date" label.
+
+### Why the current detector fails on all four
+
+- DBS, PayLah, HSBC: the label is followed on the same line by other column
+  labels, which the detector takes as the value and marks invalid; the real
+  value is on the next line, positioned under its label.
+- Citibank: the value is on the same line but in `Month DD, YYYY`, a format the
+  detector does not accept.
+
+### Implications for slice 2
+
+These are observations, not new requirements.
+
+- A multi-column label line needs the value read from the next line by column
+  position (first date for DBS and PayLah; the `From ... to ...` range for
+  HSBC), and a payment due date sharing that line must never be taken as the
+  statement date.
+- `Month DD, YYYY` needs to be a recognised date format.
