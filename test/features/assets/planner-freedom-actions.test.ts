@@ -116,6 +116,22 @@ describe('planner-actions - freedom assumptions', () => {
     expect(fake.calls.upsert).toHaveLength(0);
   });
 
+  it('writes null to clear a stored assumption', async () => {
+    const fake = setSupabase();
+    const { upsertPlannerSettings } =
+      await import('@/features/assets/actions/planner-actions');
+    await upsertPlannerSettings({
+      ...VALID_SETTINGS,
+      freedomRealReturnPct: null,
+      freedomWithdrawalRatePct: null,
+      freedomTargetYear: null,
+    });
+    const [payload] = fake.calls.upsert as Record<string, unknown>[];
+    expect(payload.freedom_real_return_pct).toBeNull();
+    expect(payload.freedom_withdrawal_rate_pct).toBeNull();
+    expect(payload.freedom_target_year).toBeNull();
+  });
+
   it('accepts each bound', async () => {
     const fake = setSupabase();
     const { upsertPlannerSettings } =

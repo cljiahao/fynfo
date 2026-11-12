@@ -21,6 +21,7 @@ import { computeSalaryPlan, type SalaryPlanInput } from '../lib/salary-plan';
 import { isScenarioPlanFinite } from '../lib/scenario-plan';
 import { scenarioPayloadSchema } from '../schemas';
 import type { ScenarioPayload, ScenarioRecord } from '../types';
+import { FreedomScenarioDate } from './freedom-scenario-date';
 import { PlannerInputs } from './planner-inputs';
 import { PlannerResults } from './planner-results';
 
@@ -273,6 +274,14 @@ export function ScenarioDialog({
             setEmergencyMonths={(value) => change('emergencyMonths', value)}
             setWarChestMonths={(value) => change('warChestMonths', value)}
           />
+          {inputsValid && (
+            <FreedomScenarioDate
+              expenses={payload.inputs.expenses}
+              investmentAmt={plan.investmentAmt}
+              netAfterCpf={plan.netAfterCpf}
+              savingsAmt={plan.savingsAmt}
+            />
+          )}
           {inputsValid ? (
             <PlannerResults
               idPrefix={ids}
