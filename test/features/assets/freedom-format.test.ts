@@ -111,6 +111,20 @@ describe('formatLever', () => {
     );
   });
 
+  it('words the drift lever from what was compared', () => {
+    const lever = {
+      kind: 'expense-drift' as const,
+      driftPct: 14.6,
+      monthsLater: 3,
+    };
+    expect(formatLever(lever, identity, true)).toBe(
+      'Your 12-month spending is 15% above the expenses entered in the planner. If it stays there, your date moves back 3 months.'
+    );
+    expect(formatLever(lever, identity, false)).toContain(
+      'above your 12-month average'
+    );
+  });
+
   it('uses the name as given, so masking is the caller job', () => {
     const lever = {
       kind: 'household-goal-ends' as const,

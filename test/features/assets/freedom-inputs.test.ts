@@ -23,6 +23,7 @@ const planner: PlannerValues = {
   householdGoalEnds: [],
   householdIncluded: true,
   expenseDriftPct: 12,
+  expensesOverridden: false,
   safetyRelease: { monthly: 500, fromMonth: 4 },
 };
 

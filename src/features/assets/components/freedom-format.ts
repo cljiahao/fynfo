@@ -61,12 +61,16 @@ export function freedomSummary(projection: FreedomProjection): string {
 
 export function formatLever(
   lever: FreedomLever,
-  mask: (text: string) => string
+  mask: (text: string) => string,
+  expensesOverridden = false
 ): string {
   switch (lever.kind) {
     case 'extra-monthly':
       return `Investing ${mask(formatSGDWhole(lever.amount))} more a month brings your date forward ${plural(lever.monthsEarlier, 'month')}.`;
     case 'expense-drift':
+      if (expensesOverridden) {
+        return `Your 12-month spending is ${Math.round(lever.driftPct)}% above the expenses entered in the planner. If it stays there, your date moves back ${plural(lever.monthsLater, 'month')}.`;
+      }
       return `Spending is ${Math.round(lever.driftPct)}% above your 12-month average. If it stays there, your date moves back ${plural(lever.monthsLater, 'month')}.`;
     case 'emergency-surplus':
       return `Your emergency fund is ${mask(formatSGDWhole(lever.amount))} above target, available to invest if you choose.`;

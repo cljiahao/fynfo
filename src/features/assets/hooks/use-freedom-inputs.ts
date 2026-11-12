@@ -55,6 +55,14 @@ export function assumptionsFromSettings(
   };
 }
 
+function isSet(assumptions: FreedomAssumptions): boolean {
+  return (
+    assumptions.realReturnPct !== null ||
+    assumptions.withdrawalRatePct !== null ||
+    assumptions.targetYear !== null
+  );
+}
+
 /** Invested portfolio today: the snapshot's investment categories only. */
 export function portfolioFromSnapshot(snapshot: SnapshotData | undefined) {
   if (!snapshot) return 0;
@@ -179,15 +187,22 @@ const FALLBACK_SETTINGS: PlannerSettingsData = {
 
 /**
  * The owner's saved freedom assumptions plus a save that writes all three, so
- * a blank field clears its stored value. The values just saved stay in force
- * for the session even when the columns are not there yet and the refetch
- * comes back empty.
+ * a blank field clears its stored value. Values just saved are kept for the
+ * session only while the refetch returns none of the fields (the columns are
+ * not there yet); once stored values come back they win, so a clear or an
+ * edit from another device is never hidden. `persisted` is false in that
+ * session-only case.
  */
 export function useFreedomAssumptions() {
   const { data: saved } = usePlannerSettings();
   const upsert = useUpsertPlannerSettings();
   const [session, setSession] = useState<FreedomAssumptions | null>(null);
-  const assumptions = session ?? assumptionsFromSettings(saved);
+  const fromSaved = assumptionsFromSettings(saved);
+  // Once stored values are seen the columns exist, so the session copy can only
+  // be staler than the server and must not outlive them.
+  if (session !== null && isSet(fromSaved)) setSession(null);
+  const sessionOnly = session !== null && isSet(session) && !isSet(fromSaved);
+  const assumptions = sessionOnly ? session : fromSaved;
 
   const { mutateAsync } = upsert;
   const save = useCallback(
@@ -203,5 +218,10 @@ export function useFreedomAssumptions() {
     [mutateAsync, saved]
   );
 
-  return { assumptions, save, isSaving: upsert.isPending };
+  return {
+    assumptions,
+    save,
+    isSaving: upsert.isPending,
+    persisted: !sessionOnly,
+  };
 }

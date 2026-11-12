@@ -2,10 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import {
-  assumptionsFromSettings,
   portfolioFromSnapshot,
+  useFreedomAssumptions,
 } from '../hooks/use-freedom-inputs';
-import { usePlannerSettings } from '../hooks/use-planner-settings';
 import { useSnapshots } from '../hooks/use-snapshots';
 import {
   DEFAULT_RETURN_SPREAD_PCT,
@@ -32,7 +31,7 @@ export function FreedomScenarioDate({
   savingsAmt,
 }: FreedomScenarioDateProps) {
   const { data: snapshots } = useSnapshots();
-  const { data: settings } = usePlannerSettings();
+  const { assumptions } = useFreedomAssumptions();
   const [now] = useState(() => new Date());
   const latest = (snapshots ?? []).reduce<
     NonNullable<typeof snapshots>[number] | undefined
@@ -41,7 +40,6 @@ export function FreedomScenarioDate({
       !current || snapshot.id > current.id ? snapshot : current,
     undefined
   );
-  const assumptions = assumptionsFromSettings(settings);
 
   const projection = useMemo(
     () =>
@@ -90,6 +88,11 @@ export function FreedomScenarioDate({
         : base.reached
           ? 'already reached'
           : formatMonthLabel(base.date)}
+      <span className="text-muted-foreground">
+        {' '}
+        (at {assumptions.realReturnPct}% real return,{' '}
+        {assumptions.withdrawalRatePct}% withdrawal rate)
+      </span>
     </p>
   );
 }

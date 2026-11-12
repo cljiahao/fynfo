@@ -67,6 +67,7 @@ function DashboardOverviewContent() {
     householdGoalEnds: [],
     householdIncluded: false,
     expenseDriftPct: null,
+    expensesOverridden: false,
     safetyRelease: null,
   });
   // The freedom card waits for the planner's first publish so it never flashes
