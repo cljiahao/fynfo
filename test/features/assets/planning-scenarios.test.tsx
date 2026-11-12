@@ -58,6 +58,7 @@ vi.mock('@/features/expenses', () => ({
 }));
 vi.mock('@/features/assets/hooks/use-snapshots', () => ({
   useUpsertSnapshot: state.snapshotWrites,
+  useSnapshots: () => ({ data: [], isLoading: false, isError: false }),
 }));
 const payload: ScenarioPayload = {
   schemaVersion: 1,

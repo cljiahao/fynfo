@@ -5,6 +5,7 @@ import { PageHeader, PageViews, QueryContent } from '@/components/widgets';
 import type { MarketBudgets, PlannerValues } from '@/features/assets';
 import {
   FirstRecordPrompt,
+  FreedomCard,
   InvestmentAllocation,
   InvestmentBreakdown,
   SalaryPlanner,
@@ -57,7 +58,20 @@ function DashboardOverviewContent() {
     warChestGoal: 0,
     householdEarmark: 0,
     expenses: 0,
+    savingsAmt: 0,
+    netAfterCpf: 0,
+    bufferAmt: 0,
+    budgetsMonthly: 0,
+    goalsMonthly: 0,
+    householdGoalsMonthlyByYear: [],
+    householdGoalEnds: [],
+    householdIncluded: false,
+    expenseDriftPct: null,
+    safetyRelease: null,
   });
+  // The freedom card waits for the planner's first publish so it never flashes
+  // an empty-expenses state before the real figures arrive.
+  const [plannerReady, setPlannerReady] = useState(false);
   const [marketBudgets, setMarketBudgets] = useState<MarketBudgets | null>(
     null
   );
@@ -65,6 +79,7 @@ function DashboardOverviewContent() {
   // useCallback justified: stabilizes references passed to child useEffects that notify parent of derived state
   const handlePlannerValuesChange = useCallback((values: PlannerValues) => {
     setPlannerValues(values);
+    setPlannerReady(true);
   }, []);
 
   const handleBudgetsChange = useCallback((budgets: MarketBudgets | null) => {
@@ -140,6 +155,10 @@ function DashboardOverviewContent() {
                   snapshot={latest}
                   onPlannerValuesChange={handlePlannerValuesChange}
                 />
+
+                {plannerReady && (
+                  <FreedomCard planner={plannerValues} snapshot={latest} />
+                )}
               </>
             ),
           },

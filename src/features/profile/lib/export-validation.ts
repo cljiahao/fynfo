@@ -136,9 +136,9 @@ const planner = z.strictObject({
   allowanceEnabled: z.boolean(),
   allowancePct: percentage,
   householdHorizonMonths: z.number().int().min(1).max(120).optional(),
-  freedomRealReturnPct: z.number().min(0).max(12).optional(),
-  freedomWithdrawalRatePct: z.number().min(1).max(10).optional(),
-  freedomTargetYear: z.number().int().min(2000).max(2200).optional(),
+  freedomRealReturnPct: z.number().min(0).max(12).nullable().optional(),
+  freedomWithdrawalRatePct: z.number().min(1).max(10).nullable().optional(),
+  freedomTargetYear: z.number().int().min(2000).max(2200).nullable().optional(),
 });
 const scenarioPayload = z
   .strictObject({

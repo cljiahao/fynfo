@@ -1,6 +1,7 @@
 export { AssetLineChart } from './asset-bar-chart';
 export { CategoryBreakdown } from './category-breakdown';
 export { FirstRecordPrompt } from './first-record-prompt';
+export { FreedomCard } from './freedom-card';
 export { InvestmentAllocation } from './investment-allocation';
 export { InvestmentBreakdown } from './investment-breakdown';
 export type { MarketBudgets } from './investment-breakdown';

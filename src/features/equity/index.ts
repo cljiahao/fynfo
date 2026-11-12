@@ -6,6 +6,7 @@ export type { DividendData, EquityTradeData } from './types';
 
 export { runDividendAutoScan, shouldAutoScan } from './lib/auto-scan';
 export { averageMonthlyTTM, expenseCoverage } from './lib/dividend-breakdown';
+export { dividendSummary } from './lib/dividend-metrics';
 export { computeHoldings, holdingMarkets } from './lib/holdings';
 export type { Holding } from './lib/holdings';
 export { getMarket, resolveMarket } from './lib/ticker-map';

@@ -43,6 +43,16 @@ describe('freedom assumptions in exports', () => {
     expect(reviewWithPlanner({ [field]: value }).ok).toBe(false);
   });
 
+  it('accepts null as a cleared assumption', () => {
+    expect(
+      reviewWithPlanner({
+        freedomRealReturnPct: null,
+        freedomWithdrawalRatePct: null,
+        freedomTargetYear: null,
+      }).ok
+    ).toBe(true);
+  });
+
   it('still rejects unknown planner keys', () => {
     expect(reviewWithPlanner({ freedomUnknown: 1 }).ok).toBe(false);
   });

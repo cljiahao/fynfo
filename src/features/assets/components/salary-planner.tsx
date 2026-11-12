@@ -2,8 +2,11 @@
 
 import {
   computeHouseholdPlan,
+  householdGoalsSeries,
   householdRecommendations,
   useHouseholdPlan,
+  type HouseholdPlan,
+  type HouseholdPlanInput,
 } from '@/features/household';
 import { useAmountVisibility } from '@/features/privacy';
 import { chartColor } from '@/lib/chart-palette';
@@ -23,16 +26,18 @@ import { useExpenses } from '@/features/expenses';
 import { trailingTwelveMonths, useSalaryRecords } from '@/features/salary';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DEFAULT_EMERGENCY_MONTHS,
   DEFAULT_WAR_CHEST_MONTHS,
 } from '../constants';
 import { useExpensesOverride } from '../hooks/use-expenses-override';
+import { computeExpenseDriftPct } from '../hooks/use-freedom-inputs';
 import {
   usePlannerSettings,
   useUpsertPlannerSettings,
 } from '../hooks/use-planner-settings';
+import type { FreedomGoalEnd } from '../lib/freedom-projection';
 import { derivePersonalSurplus } from '../lib/personal-surplus';
 import {
   calcRecentAvgExpense,
@@ -62,12 +67,58 @@ export interface PlannerValues {
   /** Spare savings the household plan already counts on; not deployable. */
   householdEarmark: number;
   expenses: number;
+  savingsAmt: number;
+  netAfterCpf: number;
+  bufferAmt: number;
+  /** Household budgets per month; 0 when the household is unavailable. */
+  budgetsMonthly: number;
+  /** Household goal set-aside per month today; 0 when the household is unavailable. */
+  goalsMonthly: number;
+  /** Average monthly goal set-aside per future year; empty when unavailable. */
+  householdGoalsMonthlyByYear: number[];
+  /** Goals with a scheduled end, soonest first; names are not masked. */
+  householdGoalEnds: FreedomGoalEnd[];
+  householdIncluded: boolean;
+  expenseDriftPct: number | null;
+  /** Safety savings that join investing once the safety goals are funded. */
+  safetyRelease: { monthly: number; fromMonth: number } | null;
 }
 
 interface SalaryPlannerProps {
   snapshot?: SnapshotData;
   isSnapshotReady?: boolean;
   onPlannerValuesChange?: (values: PlannerValues) => void;
+}
+
+// The plan is rebuilt every render, so arrays derived from it are re-identified
+// only when their content changes; otherwise the publish effect would loop
+// through the parent's state.
+function useStableValue<T>(value: T): T {
+  const key = JSON.stringify(value);
+  return useMemo(() => JSON.parse(key) as T, [key]);
+}
+
+function goalEnds(
+  input: HouseholdPlanInput,
+  plan: HouseholdPlan
+): FreedomGoalEnd[] {
+  const names = new Map(input.goals.map((goal) => [goal.id, goal.name]));
+  const monthly = new Map(plan.perGoal.map((g) => [g.goalId, g.monthly]));
+  const lastDate = new Map<string, string>();
+  for (const entry of plan.schedule) {
+    const seen = lastDate.get(entry.goalId);
+    if (seen === undefined || entry.date > seen) {
+      lastDate.set(entry.goalId, entry.date);
+    }
+  }
+  return [...lastDate.entries()]
+    .map(([goalId, date]) => ({
+      goalId,
+      name: names.get(goalId) ?? '',
+      endMonth: date.slice(0, 7),
+      extraInvesting: monthly.get(goalId) ?? 0,
+    }))
+    .sort((a, b) => a.endMonth.localeCompare(b.endMonth));
 }
 
 const DEFAULT_SETTINGS: PlannerSettingsData = {
@@ -142,6 +193,7 @@ export function SalaryPlanner(props: SalaryPlannerProps) {
     : { bonus: 0, oneTime: 0 };
   const now = new Date();
   const recentAvg = calcRecentAvgExpense(expenses, now, 12);
+  const lastMonthSpend = calcRecentAvgExpense(expenses, now, 1).average;
 
   return (
     <>
@@ -155,6 +207,7 @@ export function SalaryPlanner(props: SalaryPlannerProps) {
           otherIncome={otherIncome}
           initialSettings={savedSettings ?? DEFAULT_SETTINGS}
           recentAvg={recentAvg}
+          lastMonthSpend={lastMonthSpend}
           now={now}
         />
       </QueryContent>
@@ -169,12 +222,14 @@ function SalaryPlannerInner({
   otherIncome,
   initialSettings,
   recentAvg,
+  lastMonthSpend,
   now,
 }: SalaryPlannerProps & {
   salary: number;
   otherIncome: { bonus: number; oneTime: number };
   initialSettings: PlannerSettingsData;
   recentAvg: RecentAvgExpense;
+  lastMonthSpend: number;
   now: Date;
 }) {
   const { canReveal, getHideEpoch, mask } = useAmountVisibility();
@@ -309,6 +364,32 @@ function SalaryPlannerInner({
         })
       : [];
 
+  const { savingsAmt, netAfterCpf, bufferAmt, goalsNeeded, goalsFunded } = plan;
+  const budgetsMonthly = householdPlan?.budgetsMonthly ?? 0;
+  const goalsMonthly = householdPlan?.goalsMonthly ?? 0;
+  const householdIncluded = readyInput !== null;
+  const householdGoalsMonthlyByYear = useStableValue(
+    householdPlan ? householdGoalsSeries(householdPlan, now).byYear : []
+  );
+  const householdGoalEnds = useStableValue(
+    readyInput && householdPlan ? goalEnds(readyInput, householdPlan) : []
+  );
+  const expenseDriftPct = computeExpenseDriftPct({
+    override: expensesOverride,
+    recentAvg,
+    lastMonth: lastMonthSpend,
+  });
+  const safetyRelease =
+    savingsAmt > 0
+      ? {
+          monthly: savingsAmt,
+          fromMonth:
+            Math.ceil(Math.max(goalsNeeded - goalsFunded, 0) / savingsAmt) + 1,
+        }
+      : null;
+  const safetyMonthly = safetyRelease?.monthly ?? 0;
+  const safetyFromMonth = safetyRelease?.fromMonth ?? 0;
+
   useEffect(() => {
     onPlannerValuesChange?.({
       investmentAmount: investmentAmt,
@@ -316,6 +397,19 @@ function SalaryPlannerInner({
       warChestGoal,
       householdEarmark,
       expenses,
+      savingsAmt,
+      netAfterCpf,
+      bufferAmt,
+      budgetsMonthly,
+      goalsMonthly,
+      householdGoalsMonthlyByYear,
+      householdGoalEnds,
+      householdIncluded,
+      expenseDriftPct,
+      safetyRelease:
+        safetyMonthly > 0
+          ? { monthly: safetyMonthly, fromMonth: safetyFromMonth }
+          : null,
     });
   }, [
     investmentAmt,
@@ -323,6 +417,17 @@ function SalaryPlannerInner({
     warChestGoal,
     householdEarmark,
     expenses,
+    savingsAmt,
+    netAfterCpf,
+    bufferAmt,
+    budgetsMonthly,
+    goalsMonthly,
+    householdGoalsMonthlyByYear,
+    householdGoalEnds,
+    householdIncluded,
+    expenseDriftPct,
+    safetyMonthly,
+    safetyFromMonth,
     onPlannerValuesChange,
   ]);
 
