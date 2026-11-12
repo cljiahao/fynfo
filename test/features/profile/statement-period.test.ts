@@ -109,3 +109,122 @@ describe('statement period detection', () => {
     ]);
   });
 });
+
+describe('statement period detection from real header shapes', () => {
+  const DBS = lines(
+    'Statement of Account',
+    'STATEMENT DATE CREDIT LIMIT MINIMUM PAYMENT PAYMENT DUE DATE',
+    '15 Oct 2026 $9,999.00 $50.00 09 Nov 2026',
+    'STATEMENT PRINTED ON 20 Oct 2026'
+  );
+  const PAYLAH = lines(
+    'STATEMENT DATE MOBILE NUMBER WALLET ACCOUNT',
+    '15 Oct 2026 99999999 0000000000'
+  );
+  const CITI = lines(
+    'Some left column text YOUR BILL SUMMARY',
+    'Left column Statement Date October 15, 2026 ¬',
+    'Payment Due Date November 09, 2026'
+  );
+  const HSBC = lines(
+    'Statement period Total Due Minimum Payment Payment Due Date',
+    'From 16 SEP 2026 to 15 OCT 2026 1,482.47 25.00 09 Nov 2026'
+  );
+
+  it.each([
+    ['dbs', DBS, 'statement-date', '2026-09-01', '2026-10-15'],
+    ['paylah', PAYLAH, 'statement-date', '2026-09-01', '2026-10-15'],
+    ['citibank', CITI, 'statement-date', '2026-09-01', '2026-10-15'],
+    ['hsbc', HSBC, 'printed-period', '2026-09-16', '2026-10-15'],
+  ] as const)('reads the %s header', (bank, source, basis, from, to) => {
+    expect(detectStatementPeriod(source, bank)).toEqual({
+      period: { from, to },
+      basis,
+    });
+  });
+
+  it('never returns a payment due or print date as the statement date', () => {
+    const due = lines(
+      'STATEMENT DATE CREDIT LIMIT MINIMUM PAYMENT PAYMENT DUE DATE',
+      '$9,999.00 $50.00 09 Nov 2026',
+      'STATEMENT PRINTED ON 20 Oct 2026'
+    );
+    expect(detectStatementPeriod(due, 'dbs')).toBeNull();
+    expect(
+      detectStatementPeriod(
+        lines('Payment Due Date November 09, 2026'),
+        'citibank'
+      )
+    ).toBeNull();
+    expect(
+      detectStatementPeriod(
+        lines(
+          'Statement period Total Due Minimum Payment Payment Due Date',
+          '1,482.47 25.00 09 Nov 2026'
+        ),
+        'hsbc'
+      )
+    ).toBeNull();
+  });
+
+  it('returns null when a bank header disagrees with itself', () => {
+    const clash = lines(
+      'Statement Date October 15, 2026',
+      'Statement Date October 16, 2026'
+    );
+    expect(detectStatementPeriod(clash, 'citibank')).toBeNull();
+  });
+
+  it('falls back to the generic detector when the layout has no reader result', () => {
+    expect(
+      detectStatementPeriod(lines('Statement Date: 15 Oct 2026'), 'dbs')
+    ).toEqual({
+      period: { from: '2026-09-01', to: '2026-10-15' },
+      basis: 'statement-date',
+    });
+  });
+
+  it('accepts Mon D, YYYY and Sept in the generic detector', () => {
+    expect(
+      detectStatementPeriod(lines('Statement Date: Sept 15, 2026'))?.period
+    ).toEqual({ from: '2026-08-01', to: '2026-09-15' });
+  });
+
+  it('ignores an unparseable labelled line next to a clean one', () => {
+    expect(
+      detectStatementPeriod(
+        lines(
+          'Statement Date CREDIT LIMIT PAYMENT DUE DATE',
+          'Statement Date: 15 Oct 2026'
+        )
+      )
+    ).toEqual({
+      period: { from: '2026-09-01', to: '2026-10-15' },
+      basis: 'statement-date',
+    });
+  });
+
+  it('reads the only date on a same-line value or a value line', () => {
+    expect(
+      detectStatementPeriod(lines('Statement Date 15 Oct 2026 Page 1 of 3'))
+        ?.period.to
+    ).toBe('2026-10-15');
+    expect(
+      detectStatementPeriod(lines('Statement Date', 'Total 15 Oct 2026 12.00'))
+        ?.period.to
+    ).toBe('2026-10-15');
+  });
+
+  it('does not pick between two dates on one value line or two clean headers', () => {
+    expect(
+      detectStatementPeriod(
+        lines('Statement Date 15 Oct 2026 Payment Due Date 09 Nov 2026')
+      )
+    ).toBeNull();
+    expect(
+      detectStatementPeriod(
+        lines('Statement Date: 15 Oct 2026', 'Statement Date: 14 Oct 2026')
+      )
+    ).toBeNull();
+  });
+});

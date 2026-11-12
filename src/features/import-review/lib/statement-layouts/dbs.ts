@@ -1,4 +1,5 @@
 import type { StatementLine } from '../../types';
+import { columnHeaderStatementDate } from '../statement-dates';
 import type { StatementLayout } from './types';
 
 const HEADER = /\bDATE\s+DESCRIPTION\s+AMOUNT\s*\(S\$\)/i;
@@ -46,5 +47,8 @@ export const dbsLayout: StatementLayout = {
     }
     return groups;
   },
+  // The first value column is the statement date; the last is the payment due
+  // date, and the footer print date is never under this label line.
+  period: (lines) => columnHeaderStatementDate(lines, SUMMARY_HEADER),
   columns: { billedSgd: true, twoDate: false },
 };

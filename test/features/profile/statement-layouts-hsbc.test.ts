@@ -34,8 +34,29 @@ const SUMMARY_NOISE = {
   balance: ['9,999.99', 520, 5] as Cell,
 };
 
-function page1(statementDate: string, rows: PositionedStatementText[][]) {
-  const [day, month, year] = statementDate.split(' ');
+const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+/** HSBC prints a period, not a statement date; `periodEnd` is its last day and
+ * the period starts on the first of the previous month. */
+function page1(periodEnd: string, rows: PositionedStatementText[][]) {
+  const [day, month, year] = periodEnd.split(' ');
+  const monthIndex = MONTH_NAMES.indexOf(month);
+  const fromMonth = MONTH_NAMES[(monthIndex + 11) % 12].toUpperCase();
+  const fromYear = monthIndex === 0 ? String(Number(year) - 1) : year;
+  const fromDay = '01';
   return [
     line(
       620,
@@ -57,20 +78,38 @@ function page1(statementDate: string, rows: PositionedStatementText[][]) {
     ),
     line(
       590,
-      [],
       [
-        ['Statement', 388],
-        ['Date', 430],
+        ['Statement', 59],
+        ['period', 100],
+        ['Total', 239],
+        ['Due', 265],
+      ],
+      [
+        ['Minimum', 328],
+        ['Payment', 365],
+        ['Payment', 427],
+        ['Due', 460],
+        ['Date', 480],
       ]
     ),
     line(
       575,
-      [],
       [
-        ['SGD', 388],
-        [day, 427],
-        [month, 440],
-        [year, 461],
+        ['From', 59],
+        [fromDay, 86],
+        [fromMonth, 101],
+        [fromYear, 125],
+        ['to', 151],
+        [day, 163],
+        [month.toUpperCase(), 178],
+        [year, 203],
+        ['1,482.47', 240],
+      ],
+      [
+        ['25.00', 328],
+        ['01', 427],
+        ['OCT', 440],
+        ['2026', 461],
       ]
     ),
     line(
@@ -261,17 +300,18 @@ function statement(statementDate = '15 Sep 2026', rows = ROWS) {
     ...positionedStatementLines(page1(statementDate, rows), 1),
     ...positionedStatementLines(PAGE2, 2),
   ];
-  const period = detectStatementPeriod(lines)?.period;
-  if (!period) throw new Error('period not detected');
-  return { lines, period };
+  const detected = detectStatementPeriod(lines, 'hsbc');
+  if (!detected) throw new Error('period not detected');
+  return { lines, period: detected.period, basis: detected.basis };
 }
 
 describe('HSBC OCR layout', () => {
-  const { lines, period } = statement();
+  const { lines, period, basis } = statement();
   const rows = parseStatementLines(lines, 'hsbc', period);
 
-  it('infers the period from the page-1 statement date', () => {
+  it('reads the printed period and never the trailing payment due date', () => {
     expect(period).toEqual({ from: '2026-08-01', to: '2026-09-15' });
+    expect(basis).toBe('printed-period');
   });
 
   it('parses exactly the table rows with transaction dates', () => {

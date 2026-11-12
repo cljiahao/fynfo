@@ -1,4 +1,11 @@
 import type { StatementLine } from '../../types';
+import {
+  agreedPeriod,
+  DATE_TEXT,
+  flatText,
+  isoDate,
+  type DetectedStatementPeriod,
+} from '../statement-dates';
 import type { StatementLayout } from './types';
 
 // The account summary sits beside the transaction table and OCR merges both
@@ -182,7 +189,31 @@ function scan(
   return { rows, totalCents, previousCents };
 }
 
+const PERIOD_LABEL = /^Statement\s+period\b/i;
+const PERIOD_VALUE = new RegExp(
+  `^From\\s+(${DATE_TEXT})\\s+to\\s+(${DATE_TEXT})`,
+  'i'
+);
+
+// HSBC prints a period and no statement-date label; the date that trails the
+// value row is the payment due date and is never read.
+function printedPeriod(lines: StatementLine[]): DetectedStatementPeriod | null {
+  const results: DetectedStatementPeriod[] = [];
+  for (const [index, line] of lines.entries()) {
+    if (!PERIOD_LABEL.test(flatText(line.text))) continue;
+    const next = lines[index + 1];
+    if (next?.page !== line.page) continue;
+    const match = PERIOD_VALUE.exec(flatText(next.text));
+    const from = match && isoDate(match[1]);
+    const to = match && isoDate(match[2]);
+    if (from && to)
+      results.push({ period: { from, to }, basis: 'printed-period' });
+  }
+  return agreedPeriod(results);
+}
+
 export const hsbcLayout: StatementLayout = {
+  period: printedPeriod,
   detect(lines) {
     return lines.some((line) => HEADER.test(tableText(line)))
       ? new Set(lines.map((line) => line.page))
