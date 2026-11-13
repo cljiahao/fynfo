@@ -158,11 +158,20 @@ function scan(
   let previousCents: number | undefined;
   let inTable = false;
   let page = 0;
+  let firstPage = true;
+  const carriesRows = new Set<number>();
+  for (const line of lines) {
+    if (claimedPages.has(line.page) && parseRow(line))
+      carriesRows.add(line.page);
+  }
   for (const line of lines) {
     if (!claimedPages.has(line.page)) continue;
     if (line.page !== page) {
+      // A later page may continue the table without a repeated header, but only
+      // when it has row-shaped lines; terms pages must stay outside the table.
+      inTable = inTable && !firstPage && carriesRows.has(line.page);
       page = line.page;
-      inTable = false;
+      firstPage = false;
     }
     if (HEADER.test(tableText(line))) {
       inTable = true;

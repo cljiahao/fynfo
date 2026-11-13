@@ -178,7 +178,8 @@ describe('DBS credit card layout', () => {
     expect(parsed.map((row) => [row.date, row.amount])).toEqual([
       ['2025-12-20', '50.00'],
       ['2025-12-21', '3.20'],
-      ['', '4.00'],
+      ['2025-12-22', '4.00'],
     ]);
+    expect(parsed[2].description).toBe('1234 STORE');
   });
 });

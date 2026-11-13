@@ -429,6 +429,64 @@ describe('conservative local statement parsing', () => {
   });
 });
 
+describe('four digits after a row date', () => {
+  const parse = (...text: string[]) =>
+    parseStatementLines(lines('DBS', ...text), 'dbs', period);
+
+  it('keeps the date and leaves a store number in the description', () => {
+    const rows = parse(
+      '20 Dec 1234 SAMPLE STORE SGD 5.00',
+      '21 12 5678 OTHER STORE SGD 6.00',
+      '22 Dec 2024 OLD STORE SGD 7.00'
+    );
+    expect(rows.map((row) => row.date)).toEqual([
+      '2025-12-20',
+      '2025-12-21',
+      '2025-12-22',
+    ]);
+    expect(rows.map((row) => row.description)).toEqual([
+      '1234 SAMPLE STORE',
+      '5678 OTHER STORE',
+      '2024 OLD STORE',
+    ]);
+  });
+
+  it('reads a printed year that matches a period year', () => {
+    const rows = parse(
+      '20 Dec 2025 SAMPLE STORE SGD 5.00',
+      '05 01 2026 OTHER STORE SGD 6.00'
+    );
+    expect(rows.map((row) => row.date)).toEqual(['2025-12-20', '2026-01-05']);
+    expect(rows.map((row) => row.description)).toEqual([
+      'SAMPLE STORE',
+      'OTHER STORE',
+    ]);
+  });
+
+  it('applies to the transaction date of a UOB two-date row', () => {
+    const positioned = positionedStatementLines(
+      [
+        { text: 'UOB', x: 40, y: 700 },
+        { text: 'Post', x: 40, y: 650 },
+        { text: 'Trans', x: 90, y: 650 },
+        { text: 'Description of Transaction', x: 150, y: 650 },
+        { text: 'Transaction Amount', x: 450, y: 650 },
+        { text: 'Date', x: 40, y: 640 },
+        { text: 'Date', x: 90, y: 640 },
+        { text: 'SGD', x: 520, y: 640 },
+        { text: '22 DEC', x: 40, y: 600 },
+        { text: '20 DEC', x: 90, y: 600 },
+        { text: '4321 SAMPLE SHOP', x: 150, y: 600 },
+        { text: '14.70', x: 520, y: 600 },
+      ].reverse(),
+      1
+    );
+    const [row] = parseStatementLines(positioned, 'uob', period);
+    expect(row.date).toBe('2025-12-20');
+    expect(row.description).toBe('4321 SAMPLE SHOP');
+  });
+});
+
 describe('statement identity gate', () => {
   it('rejects text that does not identify the selected bank with the unchanged message', () => {
     expect(() =>

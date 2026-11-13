@@ -102,6 +102,23 @@ export function validStatementPeriod(period: StatementPeriod): boolean {
   return span >= 0 && span <= 400 * 86400000;
 }
 
+const DATE_PREFIX_NO_YEAR =
+  /^(\d{1,2})(?:[ /-](\d{1,2})|\s+([A-Za-z]{3,9}))\s+/;
+
+// Four digits after a date are a printed year only when they are a year of the
+// period; otherwise they open the description (a store number, say).
+function matchDatePrefix(
+  text: string,
+  period: StatementPeriod
+): RegExpMatchArray | null {
+  const match = text.match(DATE_PREFIX);
+  if (!match?.[4]) return match;
+  const periodYears = [period.from.slice(0, 4), period.to.slice(0, 4)];
+  return periodYears.includes(match[4])
+    ? match
+    : text.match(DATE_PREFIX_NO_YEAR);
+}
+
 function statementDate(
   match: RegExpMatchArray,
   period: StatementPeriod
@@ -253,9 +270,9 @@ function qualifyRow(
   // In this UOB layout the first date is posting, the second is transaction.
   // Currency/reference continuations remain source evidence, not billed values.
   const transaction = uobColumns ? source[0].text : raw;
-  const posting = transaction.match(DATE_PREFIX);
+  const posting = matchDatePrefix(transaction, period);
   const afterPosting = posting ? transaction.slice(posting[0].length) : '';
-  const match = uobColumns ? afterPosting.match(DATE_PREFIX) : posting;
+  const match = uobColumns ? matchDatePrefix(afterPosting, period) : posting;
   const date = match ? statementDate(match, period) : '';
   const body = match
     ? (uobColumns ? afterPosting : transaction).slice(match[0].length).trim()

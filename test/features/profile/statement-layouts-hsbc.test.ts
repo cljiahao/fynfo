@@ -517,6 +517,65 @@ describe('HSBC OCR layout', () => {
   });
 });
 
+describe('HSBC table continuing on a page without a column header', () => {
+  const page2Rows = [
+    line(
+      700,
+      [
+        ['02', 60],
+        ['Sep', 71],
+        ['04', 101],
+        ['Sep', 112],
+        ['PAGE TWO SHOP', 141],
+        ['20.00', 349],
+      ],
+      [SUMMARY_NOISE.total]
+    ),
+    line(680, [
+      ['05', 60],
+      ['Sep', 71],
+      ['06', 101],
+      ['Sep', 112],
+      ['SECOND PAGE CAFE', 141],
+      ['10.00', 349],
+    ]),
+  ].flat();
+
+  function twoPages(page2: PositionedStatementText[]) {
+    const lines: StatementLine[] = [
+      ...positionedStatementLines(page1('15 Sep 2026', withoutTotal), 1),
+      ...positionedStatementLines(page2, 2),
+    ];
+    const detected = detectStatementPeriod(lines, 'hsbc');
+    if (!detected) throw new Error('period not detected');
+    return { lines, period: detected.period };
+  }
+
+  it('keeps page-2 rows and reads Total Due from page 2', () => {
+    const { lines, period } = twoPages([
+      ...page2Rows,
+      ...totalLine('1,512.47'),
+    ]);
+    const parsed = parseStatementLines(lines, 'hsbc', period);
+    const descriptions = parsed.map((row) => row.description);
+    expect(descriptions).toContain('PAGE TWO SHOP');
+    expect(descriptions).toContain('SECOND PAGE CAFE');
+    const blocks = statementTotalBlocks(lines, 'hsbc');
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].rowIds).toHaveLength(parsed.length);
+  });
+
+  it('yields no page-2 rows when page 2 has only non-table text', () => {
+    const { lines, period } = twoPages(PAGE2);
+    const parsed = parseStatementLines(lines, 'hsbc', period);
+    expect(parsed.map((row) => row.description)).not.toContain('SAMPLE TERMS');
+    const { lines: alone, period: alonePeriod } = twoPages([]);
+    expect(parsed).toHaveLength(
+      parseStatementLines(alone, 'hsbc', alonePeriod).length
+    );
+  });
+});
+
 describe('HSBC identity discrimination', () => {
   const { lines, period } = statement();
   const asText = (texts: string[]): StatementLine[] =>
