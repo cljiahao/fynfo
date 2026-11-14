@@ -2,12 +2,12 @@
 id: '188'
 slug: statement-period-detection
 area: feature
-status: approved
+status: shipped
 author: Claude Code
 created: 2026-11-11
 approved: 2026-11-11
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # link to impl PR, set on shipped
+shipped: 2026-11-14
+impl_pr: none (direct to main, 403dfba, ad69b49, 8702bbc, 98b46d7, 54798ca)
 supersedes:
 constitution_satisfies:
   - '§2.1'
