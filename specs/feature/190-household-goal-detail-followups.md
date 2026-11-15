@@ -2,10 +2,10 @@
 id: '190'
 slug: household-goal-detail-followups
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-16
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-16 # owner-approved in chat 2026-11-16 as drafted, all recommended defaults
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # link to impl PR, set on shipped
 supersedes: # none; amends decisions of spec 189 (listed under "Decisions of 189 that change")
@@ -53,8 +53,8 @@ schema, migration, RLS, crypto or dependency change is needed (checked below).
   (barrel import `@/features/household`, named exports), `§3.1` (no dependency
   change), `§3.4` (kebab-case names), `§4.1` (all five gates).
 - Overrides: none. No HARD rule is touched.
-- Authorization: owner request in chat 2026-11-16 ("Yes, fix both"); approval of
-  this spec is still pending.
+- Authorization: owner request in chat 2026-11-16 ("Yes, fix both"); approved
+  2026-11-16.
 
 ## Data model: what "saved" and "paid" mean
 
@@ -487,26 +487,26 @@ contributed`; hidden state for a paid-basis goal shows labels "Progress" and
 
 ## Open questions
 
-- [ ] Q1: Switch the headline to "Paid" for items-first goals (basis rule
+- [x] Q1 (resolved 2026-11-16: yes): Switch the headline to "Paid" for items-first goals (basis rule
       above), and switch back to "Saved" as soon as the first contribution
       exists? — Owner: Clarence — Recommended: yes. Alternative: never switch
       automatically and add a per-goal toggle (needs storage; out of scope).
-- [ ] Q2: In the paid basis the chip means "no item is past its due date
+- [x] Q2 (resolved 2026-11-16: yes): In the paid basis the chip means "no item is past its due date
       unpaid" and fully paid shows "Paid in full". Accept, or hide the chip in
       this basis? — Owner: Clarence — Recommended: show it; with no due dates it
       reads "No date", which is neutral.
-- [ ] Q3: When `paid > contributed` (both exist), show the muted "{n} more than
+- [x] Q3 (resolved 2026-11-16: yes): When `paid > contributed` (both exist), show the muted "{n} more than
       saved" hint on Paid out? — Owner: Clarence — Recommended: yes (hint only,
       no warning banner).
-- [ ] Q4: Should the goal card's "Monthly share"/"Past target date" line also
+- [x] Q4 (resolved 2026-11-16: yes): Should the goal card's "Monthly share"/"Past target date" line also
       use `leftToPay` in the paid basis (as the page does)? — Owner: Clarence —
       Recommended: yes, same one-line change, so a fully paid goal never reads
       "Past target date" on either surface.
-- [ ] Q5: Denominator "budgeted": use the effective total (quote replaces the
+- [x] Q5 (resolved 2026-11-16: effective total): Denominator "budgeted": use the effective total (quote replaces the
       estimate, as item rows do) or `goal.budgeted` (estimates only)? — Owner:
       Clarence — Recommended: effective total; the two are equal until a quote
       is entered.
-- [ ] Q6: Two files on main share the number 189
+- [x] Q6 (resolved 2026-11-16: leave as is): Two files on main share the number 189
       (`189-household-goal-detail-redesign.md` and
       `189-statement-import-followups.md`). Renumber one? — Owner: Clarence —
       Recommended: leave as is; this spec is 190 and nothing here depends on the
