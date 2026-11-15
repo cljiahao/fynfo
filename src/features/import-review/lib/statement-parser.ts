@@ -18,8 +18,13 @@ import { getStatementLayout } from './statement-layouts';
 import {
   DATE_PREFIX,
   groupDateRows,
+  isDepositAccountHeader,
   MONEY,
 } from './statement-layouts/patterns';
+
+/** A statement the importer recognises but deliberately does not read; its
+ * message is safe to show to the user. */
+export class UnsupportedStatementError extends Error {}
 
 const calendar = z.iso.date();
 
@@ -395,6 +400,16 @@ export function parseStatementLines(
     );
   const layout = getStatementLayout(bank);
   const claimedPages = layout?.detect(lines) ?? new Set<number>();
+  // Without a claimed page the generic date-row fallback would read deposit
+  // and withdrawal lines as card expenses.
+  if (
+    bank === 'dbs' &&
+    claimedPages.size === 0 &&
+    lines.some((line) => isDepositAccountHeader(line.text))
+  )
+    throw new UnsupportedStatementError(
+      'Savings account statements are not supported yet. Import a card statement.'
+    );
   const unclaimed = lines.filter((line) => !claimedPages.has(line.page));
   const order = new Map(lines.map((line, index) => [line, index]));
   const groups = [

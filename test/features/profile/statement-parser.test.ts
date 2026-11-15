@@ -3,6 +3,7 @@ import {
   matchesStatementIdentity,
   parseStatementLines,
   positionedStatementLines,
+  UnsupportedStatementError,
   validStatementPeriod,
 } from '@/features/import-review/lib/statement-parser';
 import { describe, expect, it } from 'vitest';
@@ -514,5 +515,35 @@ describe('statement identity gate', () => {
     expect(matchesStatementIdentity('paylah', 'PayLah! AMOUNT (S$)')).toBe(
       false
     );
+  });
+});
+
+describe('deposit-account statements with bank DBS', () => {
+  const savings = [
+    'POSB SAVINGS ACCOUNT',
+    'DATE DESCRIPTION WITHDRAWAL DEPOSIT BALANCE',
+    '20 Sep EXAMPLE TRANSFER 9.99 9,999.99',
+  ];
+  const parse = (...text: string[]) =>
+    parseStatementLines(lines(...text), 'dbs', period);
+
+  it('rejects a savings column header with a message that names the limit', () => {
+    expect(() => parse(...savings)).toThrow(UnsupportedStatementError);
+    expect(() => parse(...savings)).toThrow(
+      'Savings account statements are not supported yet. Import a card statement.'
+    );
+  });
+
+  it('still parses a card statement whose description says DEPOSIT', () => {
+    const rows = parse(
+      'DBS TEST CARDS',
+      'DATE DESCRIPTION AMOUNT (S$)',
+      '20 DEC DEPOSIT BALANCE WITHDRAWAL SHOP 12.50'
+    );
+    expect(rows).toHaveLength(1);
+  });
+
+  it('still falls back for DBS text with no header of either kind', () => {
+    expect(parse('DBS', '20 Dec MARKET SGD 5.00')).toHaveLength(1);
   });
 });

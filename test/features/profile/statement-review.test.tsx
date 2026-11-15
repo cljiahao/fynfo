@@ -648,6 +648,11 @@ const DBS_LINES = [
   'NEW TRANSACTIONS TEST USER',
   '20 DEC EXAMPLE MARKET 12.50',
 ].map((text, index) => ({ page: 1, line: index + 1, text }));
+const SAVINGS_LINES = [
+  'POSB SAVINGS ACCOUNT',
+  'DATE DESCRIPTION WITHDRAWAL DEPOSIT BALANCE',
+  '20 Sep EXAMPLE TRANSFER 9.99 9,999.99',
+].map((text, index) => ({ page: 1, line: index + 1, text }));
 const UNKNOWN_LINES = [
   'SYNTHETIC UNRELATED DOCUMENT',
   '20 DEC EXAMPLE MARKET 12.50',
@@ -773,6 +778,16 @@ it('parses nothing when no bank is detected, then reparses stored lines on choos
   expect(mocks.parse).toHaveBeenCalledWith('uob');
   expect(mocks.open).toHaveBeenCalledTimes(1);
   expect(mocks.extract).toHaveBeenCalledTimes(1);
+});
+it('shows the savings message for a deposit-account statement with bank DBS', async () => {
+  mocks.extract.mockResolvedValue(SAVINGS_LINES);
+  setup(undefined, 4, true, 'dbs');
+  expect(
+    await screen.findByText(
+      'Savings account statements are not supported yet. Import a card statement.'
+    )
+  ).toBeVisible();
+  expect(screen.queryByLabelText('Item / Brand')).not.toBeInTheDocument();
 });
 it('shows no rows for an unrelated statement', async () => {
   mocks.extract.mockResolvedValue(UNKNOWN_LINES);

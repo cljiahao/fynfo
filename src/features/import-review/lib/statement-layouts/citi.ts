@@ -23,11 +23,16 @@ const TRAILING_REFERENCE = /\s+\d{16}\s*$/;
 const SGD_TRAILER =
   /\s+SGD\s+[\d,]+\.\d{2}\s+[\d,]+\.\d{2}(?=\s+\(?[\d,]+\.\d{2}\)?\s*$)/i;
 
+// A mid-line SGD figure followed by one last amount is description detail; the
+// last amount is the billed one, and keeping both reads as ambiguous columns.
+const SGD_MIDLINE = /\s+SGD\s+[\d,]+\.\d{2}(?=\s+\(?[\d,]+\.\d{2}\)?\s*$)/i;
+
 function cleaned(line: StatementLine): StatementLine {
   const text = line.text
     .trim()
     .replace(TRAILING_REFERENCE, '')
-    .replace(SGD_TRAILER, '');
+    .replace(SGD_TRAILER, '')
+    .replace(SGD_MIDLINE, '');
   return text === line.text ? line : { ...line, text };
 }
 

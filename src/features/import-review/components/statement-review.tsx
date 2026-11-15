@@ -22,8 +22,8 @@ import {
   type ExpenseType,
 } from '@/features/expenses';
 import {
-  MerchantRulesDialog,
   applyMerchantSuggestion,
+  MerchantRulesDialog,
   restoreMerchantSource,
   useMerchantRulebook,
   type MerchantRule,
@@ -61,6 +61,7 @@ import {
   getStatementReview,
   parseStatementLines,
   statementTotalBlocks,
+  UnsupportedStatementError,
   validStatementPeriod,
 } from '../lib/statement-parser';
 import {
@@ -313,7 +314,7 @@ function StatementReviewBody({
         to: stored.period.to,
       });
       blocks = statementTotalBlocks(stored.lines, bank);
-    } catch {
+    } catch (parseError) {
       // Lines and PDF are kept so another bank can be tried without re-reading.
       setResolvedBank(null);
       setBankDetected(false);
@@ -321,7 +322,9 @@ function StatementReviewBody({
       setTotalBlocks([]);
       setSelected('');
       setError(
-        'The selected bank could not be identified in this PDF. Choose a different bank or use Auto-detect.'
+        parseError instanceof UnsupportedStatementError
+          ? parseError.message
+          : 'The selected bank could not be identified in this PDF. Choose a different bank or use Auto-detect.'
       );
       return;
     }

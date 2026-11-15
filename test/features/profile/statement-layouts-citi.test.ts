@@ -121,3 +121,38 @@ describe('Citibank credit card layout', () => {
     ).toThrow('No supported transaction rows were found');
   });
 });
+
+describe('Citibank mid-line SGD figure before the billed amount', () => {
+  const parse = (...rows: string[]) =>
+    parseStatementLines(
+      pages(page1, [HEADER, 'TRANSACTIONS FOR CITI TEST ALPHA CARD', ...rows]),
+      'citibank',
+      period
+    );
+
+  it('takes the trailing amount without an ambiguity issue', () => {
+    const [row] = parse('20 DEC EXAMPLE SGD 99.99 9.99');
+    expect(row).toMatchObject({ amount: '9.99', status: 'candidate' });
+    expect(JSON.stringify(row)).not.toMatch(/ambiguous/);
+  });
+
+  it('keeps a parenthesised trailing amount a credit', () => {
+    const [row] = parse('20 DEC EXAMPLE SGD 99.99 (9.99)');
+    expect(row.amount).toBe('');
+    expect(row.classification).not.toBe('expense');
+    expect(row.status).not.toBe('candidate');
+  });
+
+  it('is unaffected by a FOREIGN AMOUNT line or a trailing reference', () => {
+    const rows = parse(
+      '20 DEC EXAMPLE SGD 99.99 9.99',
+      'FOREIGN AMOUNT JAPANESE YEN 4,500.00',
+      '21 DEC EXAMPLE SGD 99.99 9.99 1234567890123456'
+    );
+    expect(rows.map((row) => row.amount)).toEqual(['9.99', '9.99']);
+  });
+
+  it('reads a single SGD-tagged amount as before', () => {
+    expect(parse('20 DEC EXAMPLE SGD 12.50')[0].amount).toBe('12.50');
+  });
+});

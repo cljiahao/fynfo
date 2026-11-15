@@ -9,6 +9,16 @@ export const MONEY =
 // for plain presence checks.
 const MONEY_PRESENT = new RegExp(MONEY.source, 'i');
 
+/** True when one line labels withdrawal, deposit and balance columns, which a
+ * card statement never prints together. */
+export function isDepositAccountHeader(text: string): boolean {
+  return (
+    /\bWITHDRAWALS?\b/i.test(text) &&
+    /\bDEPOSITS?\b/i.test(text) &&
+    /\bBALANCE\b/i.test(text)
+  );
+}
+
 const NON_ROW_HEADING =
   /^(?:OPENING BALANCE|CLOSING BALANCE|TOTAL BALANCE|TOTAL\b|TRANSACTION DATE|STATEMENT PERIOD|DESCRIPTION\b|SYNTHETIC\b)/i;
 
