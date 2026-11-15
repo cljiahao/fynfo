@@ -9,6 +9,10 @@ export const GoalBurnUpChart = dynamic(
   () => import('./goal-burn-up-chart-content').then((m) => m.GoalBurnUpChart),
   {
     ssr: false,
-    loading: () => <Skeleton className="h-[220px] w-full" />,
+    loading: () => (
+      <div className="rounded-xl border p-3 sm:p-4">
+        <Skeleton className="h-[220px] w-full" />
+      </div>
+    ),
   }
 );

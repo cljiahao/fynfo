@@ -3,16 +3,28 @@
 import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
-import { StatCard } from '@/components/widgets';
-import { formatSGD } from '@/lib/utils/currency';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns/format';
 import { parseISO } from 'date-fns/parseISO';
-import { ChevronLeft, Lock, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  Lock,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import {
+  DEADLINE_SOON_DAYS,
   GOAL_ITEM_LIMIT,
   HOUSEHOLD_PATH,
   RECENT_ACTIVITY_LIMIT,
@@ -25,12 +37,13 @@ import {
   useUndoableDelete,
 } from '../hooks/use-undoable-delete';
 import {
-  breakdownSegments,
-  goalCommitted,
+  goalDeadline,
   goalPlanShare,
+  goalStatus,
   recentActivity,
   withoutPending,
   type ActivityEntry,
+  type GoalDeadline,
 } from '../lib/goal-stats';
 import type {
   GoalContribution,
@@ -41,10 +54,13 @@ import { AddContributionDialog } from './add-contribution-dialog';
 import { AddGoalItemDialog } from './add-goal-item-dialog';
 import { ConfirmDeleteDialog } from './confirm-delete-dialog';
 import { EditPaymentDialog } from './edit-payment-dialog';
+import { GoalActivity } from './goal-activity';
 import { GoalBurnUpChart } from './goal-burn-up-chart';
 import { GoalDetailSkeleton } from './goal-detail-skeleton';
 import { GoalEditorSheet } from './goal-editor-sheet';
 import { GoalItemList } from './goal-item-list';
+import { GoalStatusChip } from './goal-status-chip';
+import { GoalSummary } from './goal-summary';
 import { ItemBreakdownBar } from './item-breakdown-bar';
 
 const BACK_LINK_CLASS =
@@ -161,6 +177,7 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
   const deleteGoal = useDeleteGoal();
   // Remounting the sheet per open re-seeds its draft from the current goal.
   const [editor, setEditor] = useState({ open: false, session: 0 });
+  const [contribute, setContribute] = useState({ open: false, session: 0 });
   const [addItemOpen, setAddItemOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editingContribution, setEditingContribution] =
@@ -173,24 +190,28 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
   // deletion is in its undo window.
   const goal = withoutPending(source, pendingIds);
 
-  const self = goal.contributions
-    .filter((c) => c.isSelf)
-    .reduce((sum, c) => sum + c.amount, 0);
-  const selfPct =
-    goal.contributed > 0 ? Math.round((self / goal.contributed) * 100) : 0;
-  const funded = goal.targetAmount > 0 && goal.contributed >= goal.targetAmount;
+  const [now] = useState(() => new Date());
+  const status = goalStatus(goal, now);
+  const deadline = goalDeadline(goal, now);
   const jointMonthly = useJointGoalMonthly()?.get(goal.id) ?? null;
-  const pace = goalPlanShare(goal, new Date(), jointMonthly);
+  const pace = goalPlanShare(goal, now, jointMonthly);
   const hasItems = goal.items.length > 0;
   // Counted on the unfiltered goal: an item in its undo window still occupies a slot.
   const itemLimitReached = source.items.length >= GOAL_ITEM_LIMIT;
   const itemLimitReason = `A goal can have at most ${GOAL_ITEM_LIMIT} budget items`;
-  const { overCommitted } = breakdownSegments(goal);
   const activity = recentActivity(goal, RECENT_ACTIVITY_LIMIT);
 
   function openEditor() {
     if (canReveal())
       setEditor((current) => ({ open: true, session: current.session + 1 }));
+  }
+
+  function openContribute() {
+    if (canReveal())
+      setContribute((current) => ({
+        open: true,
+        session: current.session + 1,
+      }));
   }
 
   function openAddItem() {
@@ -224,22 +245,30 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:space-y-8">
       <header className="space-y-3">
         <BackLink />
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-2">
             <h1 className="text-2xl font-semibold break-words">
               {mask(goal.name)}
             </h1>
-            {goal.targetDate && (
-              <p className="text-muted-foreground text-sm">
-                by{' '}
-                {format(parseISO(goal.targetDate.slice(0, 10)), 'dd MMM yyyy')}
-              </p>
-            )}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              {!hidden && <GoalStatusChip status={status} />}
+              <DeadlineText deadline={deadline} dateOnly={hidden} />
+            </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              className="pointer-coarse:min-h-11"
+              disabled={hidden}
+              onClick={openContribute}
+            >
+              <Plus className="mr-1 size-3.5" />
+              Add to goal
+            </Button>
             <Button
               type="button"
               size="sm"
@@ -251,152 +280,114 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
               <Pencil className="mr-1 size-3.5" />
               Edit
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="text-destructive pointer-coarse:min-h-11"
-              disabled={hidden}
-              onClick={() => {
-                if (canReveal()) setDeleteOpen(true);
-              }}
-            >
-              <Trash2 className="mr-1 size-3.5" />
-              Delete
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="text-muted-foreground pointer-coarse:size-11"
+                  disabled={hidden}
+                  aria-label="Goal actions"
+                >
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => {
+                    if (canReveal()) setDeleteOpen(true);
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                  Delete goal
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-        <ItemBreakdownBar goal={goal} labels />
       </header>
 
-      <div className="space-y-2">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard
-            label="Contributed"
-            value={mask(formatSGD(goal.contributed))}
-            hint={`of ${mask(formatSGD(goal.targetAmount))}`}
-          />
-          <StatCard
-            label="Remaining"
-            value={mask(formatSGD(goal.remaining))}
-            tone={!hidden && funded ? 'gain' : 'default'}
-          />
-          {hasItems && (
-            <StatCard
-              label="Paid"
-              value={mask(formatSGD(goal.paid))}
-              tone={!hidden && goal.paid > goal.budgeted ? 'loss' : 'default'}
-              hint={`of ${mask(formatSGD(goal.budgeted))} budgeted`}
-            />
-          )}
-          <StatCard
-            label="Share of monthly plan"
-            value={
-              hidden
-                ? mask('')
-                : pace === null
-                  ? '-'
-                  : pace === 'past'
-                    ? 'Past target date'
-                    : pace === 0
-                      ? 'Nothing to set aside'
-                      : `${mask(formatSGD(pace))}/mo`
-            }
-          />
-        </div>
-        {goal.contributed > 0 && (
-          <p className="text-muted-foreground text-sm tabular-nums">
-            {mask(`You ${selfPct}% / Partner ${100 - selfPct}%`)}
-          </p>
-        )}
-      </div>
+      <GoalSummary goal={goal} pace={pace} />
 
-      <section className="space-y-3" aria-labelledby="burn-up-heading">
-        <h2 id="burn-up-heading" className="font-semibold">
-          Saved vs needed pace
-        </h2>
-        <GoalBurnUpChart goal={goal} />
-      </section>
-
-      <section className="space-y-3" aria-labelledby="items-heading">
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="items-heading" className="font-semibold">
-            Budget items
-          </h2>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="pointer-coarse:min-h-11"
-            disabled={hidden || itemLimitReached}
-            title={itemLimitReached ? itemLimitReason : undefined}
-            aria-describedby={
-              itemLimitReached ? 'item-limit-reason' : undefined
-            }
-            onClick={openAddItem}
-          >
-            <Plus className="mr-1 size-3.5" />
-            Add item
-          </Button>
-          {itemLimitReached && (
-            <span id="item-limit-reason" className="sr-only">
-              {itemLimitReason}
-            </span>
-          )}
-        </div>
-        {!hidden && overCommitted && (
-          <p role="status" className="text-warning text-xs">
-            Saved plus items still to pay total{' '}
-            {mask(formatSGD(goal.contributed + goalCommitted(goal)))}, above the{' '}
-            {mask(formatSGD(goal.targetAmount))} target.
-          </p>
-        )}
-        {hasItems ? (
-          <GoalItemList items={goal.items} />
-        ) : (
-          <p className="text-muted-foreground text-sm">
-            Split this goal into budget items to track what is paid.
-          </p>
-        )}
-      </section>
-
-      <section className="space-y-3" aria-labelledby="activity-heading">
-        <h2 id="activity-heading" className="font-semibold">
-          Recent activity
-        </h2>
-        {activity.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Nothing yet.</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {activity.map((entry) => (
-              <li
-                key={entry.id}
-                className="flex items-center justify-between gap-3"
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-x-8 lg:gap-y-8">
+        <section
+          className="space-y-3 lg:col-start-1 lg:row-span-2"
+          aria-labelledby="items-heading"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="items-heading" className="text-base font-semibold">
+              Budget items{' '}
+              {hasItems && (
+                <span className="text-muted-foreground text-sm font-normal">
+                  ({goal.items.length})
+                </span>
+              )}
+            </h2>
+            {hasItems && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="pointer-coarse:min-h-11"
+                disabled={hidden || itemLimitReached}
+                title={itemLimitReached ? itemLimitReason : undefined}
+                aria-describedby={
+                  itemLimitReached ? 'item-limit-reason' : undefined
+                }
+                onClick={openAddItem}
               >
-                <span className="min-w-0 break-words">
-                  {activityText(entry, mask)}
-                </span>
-                <span className="flex shrink-0 items-center gap-1">
-                  <span className="text-muted-foreground text-xs">
-                    {format(parseISO(entry.date.slice(0, 10)), 'dd MMM yyyy')}
-                  </span>
-                  <Button
-                    type="button"
-                    size="icon-xs"
-                    variant="ghost"
-                    className="text-muted-foreground relative after:absolute after:-inset-2.5 after:content-['']"
-                    disabled={hidden}
-                    aria-label={`Edit ${activityText(entry, mask)}`}
-                    onClick={() => editEntry(entry)}
-                  >
-                    <Pencil className="size-3" />
-                  </Button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+                <Plus className="mr-1 size-3.5" />
+                Add item
+              </Button>
+            )}
+            {itemLimitReached && (
+              <span id="item-limit-reason" className="sr-only">
+                {itemLimitReason}
+              </span>
+            )}
+          </div>
+          {hasItems ? (
+            <>
+              <ItemBreakdownBar goal={goal} labels showOverNote={false} />
+              <GoalItemList items={goal.items} />
+            </>
+          ) : (
+            <div className="rounded-xl border border-dashed py-8 text-center">
+              <p className="font-medium">No budget items yet</p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Split this goal into items to track what is paid.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="mt-4 pointer-coarse:min-h-11"
+                disabled={hidden}
+                onClick={openAddItem}
+              >
+                <Plus className="mr-1 size-3.5" />
+                Add item
+              </Button>
+            </div>
+          )}
+        </section>
+
+        <section
+          className="space-y-3 lg:col-start-2"
+          aria-labelledby="burn-up-heading"
+        >
+          <h2 id="burn-up-heading" className="text-base font-semibold">
+            Progress over time
+          </h2>
+          <GoalBurnUpChart goal={goal} />
+        </section>
+
+        <div className="lg:col-start-2">
+          <GoalActivity entries={activity} onEdit={editEntry} />
+        </div>
+      </div>
 
       <GoalEditorSheet
         key={editor.session}
@@ -409,6 +400,13 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
         goal={source}
         open={addItemOpen}
         onOpenChange={setAddItemOpen}
+      />
+      <AddContributionDialog
+        key={contribute.session}
+        goal={contribute.open ? goal : null}
+        onOpenChange={(open) =>
+          setContribute((current) => ({ ...current, open }))
+        }
       />
       <AddContributionDialog
         key={editingContribution?.id}
@@ -439,13 +437,35 @@ function plural(count: number, noun: string) {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
-function activityText(
-  entry: ActivityEntry,
-  mask: (value: string) => string
-): string {
-  const who = entry.isSelf ? 'You' : 'Partner';
-  const amount = mask(formatSGD(entry.amount));
-  return entry.kind === 'contribution'
-    ? `${who} added ${amount}`
-    : `${who} paid ${amount} to ${mask(entry.itemName ?? '')}`;
+/** `dateOnly` drops the funded/overdue distinction, which would reveal whether the goal is funded while amounts are hidden. */
+function DeadlineText({
+  deadline,
+  dateOnly,
+}: {
+  deadline: GoalDeadline;
+  dateOnly: boolean;
+}) {
+  if (deadline.kind === 'none') return null;
+  const date = format(parseISO(deadline.date), 'dd MMM yyyy');
+  return (
+    <p className="text-muted-foreground text-sm">
+      Target {date}
+      {!dateOnly &&
+        deadline.kind === 'upcoming' &&
+        ` · ${timeLeft(deadline.days)}`}
+      {!dateOnly && deadline.kind === 'overdue' && (
+        <>
+          {' · '}
+          <span className="text-loss-strong">Overdue</span> by{' '}
+          {plural(deadline.days, 'day')}
+        </>
+      )}
+    </p>
+  );
+}
+
+function timeLeft(days: number): string {
+  if (days === 0) return 'Due today';
+  if (days <= DEADLINE_SOON_DAYS) return `${plural(days, 'day')} left`;
+  return `about ${plural(Math.round(days / 30), 'month')} left`;
 }

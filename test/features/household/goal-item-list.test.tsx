@@ -119,6 +119,10 @@ function PageItems() {
   return <GoalItemList items={withoutPending(goal, pendingIds).items} />;
 }
 
+function showPayments() {
+  fireEvent.click(screen.getByRole('button', { name: /^2 payments$/ }));
+}
+
 function mount() {
   return render(
     <QueryClientProvider
@@ -228,6 +232,7 @@ describe('undoable removals', () => {
 
   it('hides a payment, restores it on Undo and never calls the mutation', async () => {
     mount();
+    showPayments();
     expect(
       screen.getAllByRole('button', { name: /payment on 02 Oct 2026/ })
     ).toHaveLength(2);
@@ -252,6 +257,7 @@ describe('undoable removals', () => {
 
   it('commits a payment delete once after the window', async () => {
     mount();
+    showPayments();
     fireEvent.click(
       screen.getByRole('button', {
         name: /payment on 02 Oct 2026 by Partner/,
@@ -265,6 +271,7 @@ describe('undoable removals', () => {
   it('restores a payment when its mutation fails', async () => {
     actions.deleteItemPayment.mockRejectedValue(new Error('boom'));
     mount();
+    showPayments();
     fireEvent.click(
       screen.getByRole('button', {
         name: /payment on 02 Oct 2026 by Partner/,
@@ -279,6 +286,7 @@ describe('undoable removals', () => {
 
   it('does not commit a pending payment delete separately once its item is deleted', async () => {
     mount();
+    showPayments();
     fireEvent.click(
       screen.getByRole('button', { name: /payment on 02 Oct 2026 by Partner/ })
     );
@@ -294,6 +302,7 @@ describe('undoable removals', () => {
 
 it('keeps two same-day payments distinct by who paid', async () => {
   mount();
+  showPayments();
   const labels = screen
     .getAllByRole('button', { name: /payment on/ })
     .map((button) => button.getAttribute('aria-label'));
@@ -303,6 +312,7 @@ it('keeps two same-day payments distinct by who paid', async () => {
 it('leaks no amount into delete labels when amounts are hidden', async () => {
   visibility.hidden = true;
   mount();
+  showPayments();
   const buttons = screen.getAllByRole('button', { name: /payment on/ });
   expect(buttons.length).toBeGreaterThan(0);
   for (const button of buttons) {
@@ -313,7 +323,7 @@ it('leaks no amount into delete labels when amounts are hidden', async () => {
 it('keeps the item track without a fill when amounts are hidden', async () => {
   const visible = mount();
   const trackClass = (root: HTMLElement) =>
-    root.querySelector('div.bg-muted.h-3')?.className.replace(/ ring-\S+/g, '');
+    root.querySelector('div.bg-muted.h-2')?.className.replace(/ ring-\S+/g, '');
   const shownClass = trackClass(visible.container);
   expect(visible.container.querySelectorAll('rect').length).toBeGreaterThan(0);
   cleanup();
@@ -330,10 +340,9 @@ describe('inline bar', () => {
     const [venue, photographer] = Array.from(
       container.querySelectorAll(':scope > ul > li')
     );
-    expect(venue.querySelector('.ring-loss\\/60')).not.toBeNull();
     expect(venue.querySelector('rect.fill-loss')).not.toBeNull();
     expect(screen.getByText('Over by $1,000.00')).toBeInTheDocument();
-    expect(photographer.querySelector('.ring-loss\\/60')).toBeNull();
+    expect(photographer.querySelector('rect.fill-loss')).toBeNull();
     expect(photographer.querySelector('rect.fill-primary')).not.toBeNull();
   });
 });
@@ -341,11 +350,70 @@ describe('inline bar', () => {
 describe('editing a payment', () => {
   it('opens the edit dialog from the pencil on a payment row', async () => {
     mount();
+    showPayments();
     const [edit] = screen.getAllByRole('button', { name: /^Edit \$4,500\.00/ });
     await userEvent.click(edit);
     expect(
       await screen.findByRole('dialog', { name: 'Edit payment' })
     ).toBeInTheDocument();
+  });
+});
+
+describe('payments disclosure', () => {
+  it('collapses payments by default and toggles them', () => {
+    mount();
+    const toggle = screen.getByRole('button', { name: /^2 payments$/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.queryByRole('button', { name: /payment on 02 Oct 2026/ })
+    ).toBeNull();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.getAllByRole('button', { name: /payment on 02 Oct 2026/ })
+    ).toHaveLength(2);
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('offers no disclosure for an item without payments', () => {
+    mount();
+    expect(
+      screen.getAllByRole('button', { name: /^\d+ payments?$/ })
+    ).toHaveLength(1);
+  });
+});
+
+describe('item facts', () => {
+  it('renders Record payment as a button that opens the form', async () => {
+    mount();
+    const [record] = screen.getAllByRole('button', { name: 'Record payment' });
+    await userEvent.click(record);
+    expect(
+      screen.getByRole('spinbutton', { name: /Payment amount for/ })
+    ).toBeInTheDocument();
+  });
+
+  it('shows a quote against the estimate', () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <UndoableDeleteProvider delayMs={DELAY}>
+          <GoalItemList
+            items={[{ ...goal.items[1], quote: 3400, remaining: 3400 }]}
+          />
+        </UndoableDeleteProvider>
+      </QueryClientProvider>
+    );
+    expect(
+      screen.getByText(/Quote \$3,400\.00 vs est\. \$3,000\.00/)
+    ).toBeInTheDocument();
+  });
+
+  it('masks the numbers and the over note when amounts are hidden', () => {
+    visibility.hidden = true;
+    mount();
+    expect(screen.queryByText(/1,000\.00/)).toBeNull();
+    expect(screen.queryByText(/3,000\.00/)).toBeNull();
   });
 });
 

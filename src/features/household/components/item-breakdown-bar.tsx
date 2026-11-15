@@ -19,6 +19,8 @@ interface ItemBreakdownBarProps {
   goal: Pick<HouseholdGoal, 'items' | 'targetAmount' | 'contributed'>;
   /** Legend with names and amounts under the bar; the goal card omits it. */
   labels?: boolean;
+  /** Set false when the page already states the over-commit fact elsewhere. */
+  showOverNote?: boolean;
   className?: string;
 }
 
@@ -29,6 +31,7 @@ function fillsFor(segment: BreakdownSegment, index: number) {
 export function ItemBreakdownBar({
   goal,
   labels = false,
+  showOverNote = true,
   className,
 }: ItemBreakdownBarProps) {
   const { hidden, mask } = useAmountVisibility();
@@ -134,7 +137,7 @@ export function ItemBreakdownBar({
           })}
         </ul>
       )}
-      {labels && !hidden && overCommitted && (
+      {labels && showOverNote && !hidden && overCommitted && (
         <p className="text-destructive text-xs">
           Saved plus what is still to pay is above the target.
         </p>
