@@ -24,6 +24,9 @@ export const GOAL_DETAIL_PATH = (id: string) => `${HOUSEHOLD_PATH}/goals/${id}`;
 
 export const RECENT_ACTIVITY_LIMIT = 8;
 
+/** Up to this many days the goal header counts days left; beyond it, months. */
+export const DEADLINE_SOON_DAYS = 60;
+
 export const NO_ITEMS_SUMMARY = 'Split into budget items';
 
 /** Item segments shown on a breakdown bar before the rest collapse into "Other". */
