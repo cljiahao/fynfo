@@ -6,32 +6,48 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { formatSGD } from '@/lib/utils/currency';
 import { PERSON_COLORS } from '../constants';
-import { breakdownSegments, goalCommitted } from '../lib/goal-stats';
+import {
+  breakdownSegments,
+  goalBasis,
+  goalCommitted,
+  plannedTotal,
+} from '../lib/goal-stats';
 import type { HouseholdGoal } from '../types';
 
 interface GoalSummaryProps {
   goal: HouseholdGoal;
-  /** Result of `goalPlanShare`: a monthly amount, 'past', or null when there is nothing to show. */
+  /** Result of `goalPace`: a monthly amount, 'past', or null when there is nothing to show. */
   pace: number | 'past' | null;
 }
 
 function Fact({
   label,
   hint,
+  hintClassName,
+  note,
   children,
 }: {
   label: string;
   hint?: string;
+  hintClassName?: string;
+  note?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="min-w-0 space-y-0.5">
       <p className="text-muted-foreground text-xs">{label}</p>
       {children}
-      {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
+      {hint && (
+        <p className={cn('text-muted-foreground text-xs', hintClassName)}>
+          {hint}
+        </p>
+      )}
+      {note && <p className="text-muted-foreground text-xs">{note}</p>}
     </div>
   );
 }
+
+const toCents = (amount: number) => Math.round(amount * 100);
 
 export function GoalSummary({ goal, pace }: GoalSummaryProps) {
   const { hidden, mask } = useAmountVisibility();
@@ -39,20 +55,38 @@ export function GoalSummary({ goal, pace }: GoalSummaryProps) {
   const hasItems = goal.items.length > 0;
   const { overCommitted } = breakdownSegments(goal);
 
-  const self = goal.contributions
-    .filter((c) => c.isSelf)
-    .reduce((sum, c) => sum + c.amount, 0);
-  const partner = goal.contributed - self;
-  const selfPct =
-    goal.contributed > 0 ? Math.round((self / goal.contributed) * 100) : 0;
-  const pct = Math.round(goal.pct);
+  // Hidden amounts must not reveal which basis the goal is on, so the card
+  // falls back to the saved layout and neutral labels while masked.
+  const paidBasis = goalBasis(goal) === 'paid' && !hidden;
+  const planned = plannedTotal(goal);
+  const leftToPay = goalCommitted(goal);
+
+  const total = paidBasis ? goal.paid : goal.contributed;
+  const entries = paidBasis
+    ? goal.items.flatMap((item) => item.payments)
+    : goal.contributions;
+  const self = entries
+    .filter((entry) => entry.isSelf)
+    .reduce((sum, entry) => sum + entry.amount, 0);
+  const partner = total - self;
+  const selfPct = total > 0 ? Math.round((self / total) * 100) : 0;
+  const pct = paidBasis
+    ? Math.min(100, Math.round((goal.paid / planned) * 100))
+    : Math.round(goal.pct);
 
   // A goal funded past its target scales to what was saved, so the bar is full.
-  const barScale = Math.max(goal.targetAmount, goal.contributed);
+  const barScale = paidBasis
+    ? Math.max(planned, goal.paid)
+    : Math.max(goal.targetAmount, goal.contributed);
   const widthOf = (amount: number) =>
     barScale > 0 ? Math.max(0, (amount / barScale) * 100) : 0;
   const youWidth = widthOf(self);
   const partnerWidth = widthOf(partner);
+  const legendVerb = paidBasis ? ' paid' : '';
+  // Always present while hidden, so its absence cannot show that nothing was recorded.
+  const showLegend = hidden || total > 0;
+  const paidAheadOfSaved =
+    !paidBasis && toCents(goal.paid) > toCents(goal.contributed);
 
   return (
     <section aria-label="Goal summary">
@@ -61,13 +95,17 @@ export function GoalSummary({ goal, pace }: GoalSummaryProps) {
           <div className="space-y-3">
             <div className="flex items-end justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-muted-foreground text-sm">Saved</p>
+                <p className="text-muted-foreground text-sm">
+                  {hidden ? 'Progress' : paidBasis ? 'Paid' : 'Saved'}
+                </p>
                 <p className="text-3xl font-semibold tabular-nums">
                   <span className="whitespace-nowrap">
-                    {mask(formatSGD(goal.contributed))}
+                    {mask(formatSGD(total))}
                   </span>{' '}
                   <span className="text-muted-foreground text-sm font-normal whitespace-nowrap">
-                    of {mask(formatSGD(goal.targetAmount))}
+                    of{' '}
+                    {mask(formatSGD(paidBasis ? planned : goal.targetAmount))}
+                    {paidBasis && ' budgeted'}
                   </span>
                 </p>
               </div>
@@ -97,7 +135,7 @@ export function GoalSummary({ goal, pace }: GoalSummaryProps) {
                 </svg>
               )}
             </div>
-            {goal.contributed > 0 && (
+            {showLegend && (
               <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums">
                 <li className="flex items-center gap-1.5">
                   <span
@@ -106,7 +144,7 @@ export function GoalSummary({ goal, pace }: GoalSummaryProps) {
                       PERSON_COLORS.you.dot
                     )}
                   />
-                  {mask(`You ${formatSGD(self)} (${selfPct}%)`)}
+                  {mask(`You${legendVerb} ${formatSGD(self)} (${selfPct}%)`)}
                 </li>
                 <li className="flex items-center gap-1.5">
                   <span
@@ -115,40 +153,82 @@ export function GoalSummary({ goal, pace }: GoalSummaryProps) {
                       PERSON_COLORS.partner.dot
                     )}
                   />
-                  {mask(`Partner ${formatSGD(partner)} (${100 - selfPct}%)`)}
+                  {mask(
+                    `Partner${legendVerb} ${formatSGD(partner)} (${100 - selfPct}%)`
+                  )}
                 </li>
               </ul>
             )}
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-4 sm:grid-cols-3">
-            <Fact
-              label="Remaining"
-              hint={!hidden && funded ? 'Target reached' : undefined}
-            >
-              <p
-                className={cn(
-                  'text-lg font-semibold whitespace-nowrap tabular-nums',
-                  !hidden && funded && 'text-gain'
-                )}
-              >
-                {mask(formatSGD(goal.remaining))}
-              </p>
-            </Fact>
-            {hasItems && (
-              <Fact
-                label="Paid out"
-                hint={`of ${mask(formatSGD(goal.budgeted))} budgeted`}
-              >
-                <p
-                  className={cn(
-                    'text-lg font-semibold whitespace-nowrap tabular-nums',
-                    !hidden && goal.paid > goal.budgeted && 'text-loss'
-                  )}
+            {paidBasis ? (
+              <>
+                <Fact
+                  label="Left to pay"
+                  hint={
+                    goal.paid > planned
+                      ? `Over budget by ${mask(formatSGD(goal.paid - planned))}`
+                      : leftToPay === 0
+                        ? 'All paid'
+                        : undefined
+                  }
+                  hintClassName={goal.paid > planned ? 'text-loss' : undefined}
                 >
-                  {mask(formatSGD(goal.paid))}
-                </p>
-              </Fact>
+                  <p
+                    className={cn(
+                      'text-lg font-semibold whitespace-nowrap tabular-nums',
+                      leftToPay === 0 && 'text-gain'
+                    )}
+                  >
+                    {mask(formatSGD(leftToPay))}
+                  </p>
+                </Fact>
+                <Fact
+                  label="Saved"
+                  hint={`of ${mask(formatSGD(goal.targetAmount))} target`}
+                >
+                  <p className="text-lg font-semibold whitespace-nowrap tabular-nums">
+                    {mask(formatSGD(goal.contributed))}
+                  </p>
+                </Fact>
+              </>
+            ) : (
+              <>
+                <Fact
+                  label="Remaining"
+                  hint={!hidden && funded ? 'Target reached' : undefined}
+                >
+                  <p
+                    className={cn(
+                      'text-lg font-semibold whitespace-nowrap tabular-nums',
+                      !hidden && funded && 'text-gain'
+                    )}
+                  >
+                    {mask(formatSGD(goal.remaining))}
+                  </p>
+                </Fact>
+                {hasItems && (
+                  <Fact
+                    label="Paid out"
+                    hint={`of ${mask(formatSGD(goal.budgeted))} budgeted`}
+                    note={
+                      !hidden && paidAheadOfSaved
+                        ? `${mask(formatSGD(goal.paid - goal.contributed))} more than saved`
+                        : undefined
+                    }
+                  >
+                    <p
+                      className={cn(
+                        'text-lg font-semibold whitespace-nowrap tabular-nums',
+                        !hidden && goal.paid > goal.budgeted && 'text-loss'
+                      )}
+                    >
+                      {mask(formatSGD(goal.paid))}
+                    </p>
+                  </Fact>
+                )}
+              </>
             )}
             <Fact
               label="Monthly share"
