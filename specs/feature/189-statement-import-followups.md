@@ -21,12 +21,12 @@ constitution_satisfies:
 constitution_overrides:
 ---
 
-# Spec 189: Statement import follow-ups (Citi billed amount, HSBC junk token, savings statements)
+# Spec 189: Statement import follow-ups (Citi billed amount, savings statements)
 
 ## Problem
 
 Owner testing of the deployed statement import (main at `b2ba380`, evidence
-date 2026-11-15) left three leftovers from specs 181, 182, 186 and 188. No
+date 2026-11-15) left two code changes and two closed observations from specs 181, 182, 186 and 188. No
 statement text is quoted in this spec; every shape below is redacted (digits as
 `9`, merchant letters as `a`, `x` is the left edge of the OCR or text token).
 
@@ -36,17 +36,13 @@ statement text is quoted in this spec; every shape below is redacted (digits as
   those rows is the mid-line figure, and the dialog flags the amount columns as
   ambiguous. The 5 "Needs review" rows were matched to these 5 rows by count
   only; that is the evidence level, not a row-by-row comparison.
-- **B. An HSBC row is kept at 0% confidence with an empty amount.** On a real
-  HSBC scan the amount of one row was read correctly but the row still came out
-  with no amount, and the statement total check (exact cents, no tolerance) was
-  off by 1.00.
-- **C. DBS or POSB savings statements are misparsed, not rejected.** Reasoned
+- **B. DBS or POSB savings statements are misparsed, not rejected.** Reasoned
   from the code, not run: with bank "DBS" chosen manually, a deposit-account
   statement is parsed by the generic date-row fallback, so a deposit line could
   be offered as an expense suggestion.
 
-Two further observations are recorded as closed or still open at the end of
-this section so they are not re-investigated.
+Three further observations are recorded as closed or still open so they are not
+re-investigated.
 
 - **Closed without change: Citi amount without a decimal point.** The admin OCR
   dump page always runs OCR (`components/ocr-dump.tsx`), while the review dialog
@@ -55,6 +51,8 @@ this section so they are not re-investigated.
   `MONEY` (`statement-layouts/patterns.ts:5-6`) requires a literal dot. The dump
   showed OCR dropping the dot; the value in the dialog came from the text layer.
   No code change.
+- **Closed without change: HSBC row kept at 0% confidence with an empty
+  amount.** See "Closed observation: HSBC unreadable-amount row" below.
 - **Still open, not addressed here:** a real end-to-end SAVE of an imported
   statement has never been done. That is an owner test on the deployed site, not
   a code change, and it is not a precondition of this spec.
@@ -105,39 +103,7 @@ Date, a one-word description, an `SGD` token at x~208, an amount at x~247, then
 the billed amount at x~551. Every Citi row's billed amount is the last token on
 the line (x~533-551).
 
-### Item B: HSBC
-
-Redacted OCR shape of the row:
-
-```text
-99 Sep 99 Sep aaa aaa aaa. aaa. aa aa   349|9.99   383|-—
-```
-
-The amount is read correctly at x~349 and a punctuation token sits at x~383.
-
-- `TABLE_MAX_X = 385` (`hsbc.ts:13`) and `AMOUNT_MIN_X = 300` (`hsbc.ts:16`), so
-  x 383 is inside the table and inside the amount column.
-- `trailingAmount` (`hsbc.ts:89-104`) tests only the last token against
-  `AMOUNT_WITH_CREDIT` (`hsbc.ts:26`), or a last token of `CR` plus the token
-  before it. A last token that is neither returns `undefined`, and `parseRow`
-  then sets confidence 0 and no amount (`hsbc.ts:125-127`).
-- Total check: `reconcileStatement` (`statement-guards.ts:54-80`) compares exact
-  cents with no tolerance, and it counts the empty-amount row as 0.
-
-**Correction to the request.** `tableTokens` already drops every token that has
-no ASCII letter or digit (`hsbc.ts:59`, unchanged since `b2881dc`, spec 182),
-before `trailingAmount` runs. A pure-punctuation token such as `-—` or `_—` is
-therefore never the last token. The existing fixture at
-`test/features/profile/statement-layouts-hsbc.test.ts:231-248` already puts a
-`_—` token at x=383 after a valid amount and expects the amount to be kept. So
-the mechanism in the request (a punctuation-only token surviving into
-`trailingAmount`) does not match the code. Either the real token contains at
-least one ASCII letter or digit that the redaction rendered as punctuation (for
-example a misread glyph such as `-I`, `_l`, `—1`), or the amount token itself
-carried an attached character that failed `AMOUNT_WITH_CREDIT`. This spec does
-not assume which; the first step below settles it.
-
-### Item C: DBS and POSB savings statements
+### Item B: DBS and POSB savings statements
 
 - Auto-detect returns none: `dbsLayout.detect` (`statement-layouts/dbs.ts:16-19`)
   claims pages only when a `DATE DESCRIPTION AMOUNT (S$)` header exists
@@ -204,78 +170,7 @@ Must NOT change:
 Out of scope for Item A: deciding what these 5 rows are; changing how the
 amount is chosen for any other bank; reading the amount column by x position.
 
-### Item B: HSBC junk token after the amount
-
-Step 0 (evidence, no source change, owner action, blocks the rule). The owner
-re-runs the admin OCR dump on that HSBC statement and records only the character
-classes of the token at x~383 (for example "one dash, one em dash, one lowercase
-letter"), whether it carries any ASCII letter or digit, and whether the amount
-token at x~349 is a clean `9.99` or has an attached character. This goes into an
-appendix of this spec as redacted shapes. The rule below is written for the
-likely case and is adjusted at approval if the appendix shows another cause.
-
-Alternatives considered:
-
-1. **Ignore trailing tokens with no letter or digit** (the request's proposal).
-   Already in force at `hsbc.ts:59`; it cannot be the missing piece. Rejected as
-   a change, kept as a regression test.
-2. **Skip any trailing token to the right of the amount band edge.** Rejected:
-   letter-bearing text right of an amount is evidence of a misread amount or a
-   different line, and silently dropping it widens what is accepted.
-3. **Skip one trailing junk token only when it is short (at most 2 characters),
-   not `CR`, sits at x >= 370 (the divider band at the table edge), and follows
-   a valid amount token; keep the amount but cap the row's confidence below
-   `OCR_CONFIDENCE_THRESHOLD` (80) so it is flagged.** Chosen. It recovers the
-   amount for the owner to confirm and never lets the row pass as clean.
-4. **Leave as is.** The row stays flagged and the total check stays red; the
-   owner types the amount. Safe but the import stays noisy; kept as the fallback
-   if Step 0 shows the cause is something this rule cannot express.
-
-Chosen rule (alternative 3), in `trailingAmount` / `parseRow` (`hsbc.ts:89-146`):
-
-- When the last token is not an amount and not `CR`, but the token before it is
-  a valid in-column amount (`AMOUNT_WORD` or `AMOUNT_WITH_CREDIT`), and the last
-  token is at most 2 characters, is not `CR` (case-insensitive) and has
-  `x >= 370`, the amount is taken from the earlier token, the junk token is
-  dropped from the row text, and the row confidence becomes
-  `min(real minimum confidence, 79)` (below `OCR_CONFIDENCE_THRESHOLD = 80`), so
-  `isLowConfidenceRow` (`statement-guards.ts:6-12`) flags it. Without x (text
-  layer) the rule does not apply; HSBC rows are OCR only.
-- A longer or otherwise letter-bearing trailing token still fails closed exactly
-  as today (no amount, confidence 0).
-- Separate-token `CR`, attached `CR` and pure-punctuation tokens keep today's
-  behaviour; this rule only adds a branch for the short-junk case.
-- Why the cap and not the real confidence. The request asked that the row keep
-  its real OCR confidence. That is right for a pure-punctuation token (already
-  the case, and tested). For a letter-bearing junk token the parser cannot tell
-  junk from a misread `CR`, and a silently accepted debit would add to expenses
-  what may be a credit. Keeping the real confidence would let a high-confidence
-  line pass unflagged, so the spec proposes the conservative cap. This is the
-  second open question for the owner.
-
-Edge cases the tests must pin:
-
-- Pure-punctuation trailing token (`-—`, `_—`) at x 383: amount kept, real
-  confidence kept (regression for the existing behaviour).
-- Short letter-bearing junk token (for example `Cl`, `l`, `1`... any 1-2
-  characters that are not `CR`) at x 383 after a valid amount: amount kept,
-  confidence capped at 79, row flagged, the junk absent from the row text.
-- Long letter-bearing token (3 or more characters) at x 383: no amount,
-  confidence 0 (unchanged fail-closed).
-- Short junk token at x < 370: no amount, confidence 0 (unchanged).
-- `CR` as separate token and attached (`1,000.00CR`): credit, unchanged.
-- Junk token plus `CR` after it (`9.99 x CR`): not covered; stays fail-closed.
-- Total check: with the synthetic fixture, the recovered amount makes
-  `reconcileStatement` return `matched` where it returned `mismatch` before.
-
-Explicitly out of scope for Item B: a second HSBC row whose amount token itself
-was OCR'd as letters (dates glued like `99Sep`, line confidence 1) is not
-recoverable by parsing and stays flagged. Observation e in spec 188
-(`specs/feature/188-statement-period-detection.md`, section "Slice 3",
-lines 199-202, and "Out of scope", lines 227-228) is the origin of this item;
-that spec deferred it and this spec picks it up for the junk-token case only.
-
-### Item C: reject deposit-account statements
+### Item B: reject deposit-account statements
 
 Rule. When the bank is `dbs` (the identity that also matches POSB), the layout
 claims no page, and the text carries a deposit-account column header (a line
@@ -328,24 +223,22 @@ header is missing) to misparsing unrelated statement types. This spec does not
 guard them; a later spec may generalise the check once a real sample of another
 bank's deposit statement exists.
 
-Out of scope for Item C: parsing savings statements; any real savings sample;
+Out of scope for Item B: parsing savings statements; any real savings sample;
 changes to bank identity patterns or auto-detect; guarding other banks.
 
 ## Files a later implementation may touch
 
 - `src/features/import-review/lib/statement-layouts/citi.ts` (Item A)
-- `src/features/import-review/lib/statement-layouts/hsbc.ts` (Item B)
-- `src/features/import-review/lib/statement-layouts/patterns.ts` (Item C
+- `src/features/import-review/lib/statement-layouts/patterns.ts` (Item B
   predicate)
-- `src/features/import-review/lib/statement-parser.ts` (Item C guard and error
+- `src/features/import-review/lib/statement-parser.ts` (Item B guard and error
   class only)
-- `src/features/import-review/components/statement-review.tsx` (Item C: show
+- `src/features/import-review/components/statement-review.tsx` (Item B: show
   the error message in the `catch` of `reparse()`)
-- `test/features/profile/statement-review.test.tsx` (Item C: the message reaches
+- `test/features/profile/statement-review.test.tsx` (Item B: the message reaches
   the dialog)
 - `test/features/profile/statement-layouts-citi.test.ts` (Item A tests)
-- `test/features/profile/statement-layouts-hsbc.test.ts` (Item B tests)
-- `test/features/profile/statement-parser.test.ts` (Item C tests)
+- `test/features/profile/statement-parser.test.ts` (Item B tests)
 - This spec file (appendix of redacted shapes, then status and ship fields)
 
 Nothing else. `test/features/profile/statement-layouts-dbs.test.ts`,
@@ -360,7 +253,9 @@ regression and must still pass.
   total-check tolerance.
 - Deciding what the 5 Citi rows are or changing how any other bank picks its
   amount.
-- The HSBC row whose amount token itself was OCR'd as letters.
+- Any HSBC parsing change (see the closed observation).
+- Re-OCR of a low-confidence line at higher scale: a possible future item, not
+  proposed or scoped here.
 - A decimal-point fix for Citi (closed without change, see Problem).
 - The end-to-end SAVE of an imported statement (owner test).
 - New banks, new dependencies, server changes, schema, payload or crypto changes.
@@ -380,11 +275,7 @@ regression and must still pass.
       result.
 - [ ] Item A, unchanged cases: the existing `SGD a b c` fixture and single-amount
       rows produce the same output as before (existing assertions untouched).
-- [ ] Item B: Step 0 appendix recorded and owner-reviewed before implementation.
-- [ ] Item B: tests for the pure-punctuation, short letter-bearing, long
-      letter-bearing, left-of-370 and `CR` cases listed above, plus the total
-      check going from `mismatch` to `matched` on the recovered row.
-- [ ] Item C: a synthetic savings-layout fixture first asserted to produce
+- [ ] Item B: a synthetic savings-layout fixture first asserted to produce
       candidate rows under the old code path (recorded in the PR body), then
       asserted to throw the savings message; card, PayLah and UOB fixtures
       unchanged.
@@ -392,25 +283,22 @@ regression and must still pass.
       `console.log`, no `@ts-ignore` (`§3.2`, `AGENTS.md §3`).
 - [ ] Only the files in "Files a later implementation may touch" changed.
 - [ ] Manual (owner, deployed site): the Citi statement shows the 5 rows with
-      the billed amount; the HSBC row shows the amount flagged for review; a
-      savings PDF with bank DBS chosen shows the "not supported yet" message.
+      the billed amount; a savings PDF with bank DBS chosen shows the "not supported yet" message.
 - [ ] Spec hash matches at impl PR time.
 
 ## Risk & reversibility
 
-- **Blast radius**: the statement import dialog only, three layouts. Item A
-  changes which amount a Citi row suggests; a wrong rule could suggest the wrong
-  figure for a row type not yet seen, so the pattern is anchored to the line end
-  and to exactly one further amount. Item B accepts a row it previously
-  rejected, bounded by the length, position and confidence cap above; the risk
-  is a misread `CR` taken as a debit, mitigated by the forced review flag. Item C
-  can only add a rejection, and only for a `dbs` parse with no claimed page and a
-  three-word column header.
+- **Blast radius**: the statement import dialog only, one layout and one guard.
+  Item A changes which amount a Citi row suggests; a wrong rule could suggest the
+  wrong figure for a row type not yet seen, so the pattern is anchored to the
+  line end and to exactly one further amount. Item B can only add a rejection,
+  and only for a `dbs` parse with no claimed page and a three-word column
+  header.
 - **Reversibility**: pure client logic; a single git revert per item. No data,
   migration or encryption path changes. Nothing is saved by this change.
 - **Backout plan**: revert the item's commit; items are independent.
-- **Residual**: the generic fallback exposure of other banks (Item C risk note)
-  and unrecoverable letter-misread HSBC amounts remain.
+- **Residual**: the generic fallback exposure of other banks (Item B risk note)
+  and unrecoverable letter-misread HSBC amounts (closed observation) remain.
 
 ## Open questions
 
@@ -419,23 +307,53 @@ regression and must still pass.
       The 5 rows were matched to the 5 "Needs review" rows by count only.
       Compare them against the paper statement before approving Item A; if the
       mid-line SGD figure is the right amount for any of them, the rule changes.
-- [ ] Q2: Is the HSBC row with the junk token at x~383 a credit on the paper
-      statement (the junk token may be a misread `CR`)? — Owner: Clarence. — A:
-      The parser cannot know. Proposed default: keep the amount but force the row
-      below the confidence threshold so it is flagged for review and never
-      silently accepted as a debit (alternative 3). If it is a credit, the
-      proposal still flags it and the owner marks it; if it is a debit, the flag
-      costs one confirmation.
-- [ ] Q3: Run Step 0 (re-run the OCR dump on that HSBC statement and record the
-      character classes of the token at x~383 and of the amount token)? — Owner:
-      Clarence. — A: required, because the code already drops pure-punctuation
-      tokens, so the real cause is unproven. If the appendix shows another cause,
-      Item B is rewritten before approval.
-- [ ] Q4: For Item C, is a single-line `WITHDRAWAL` + `DEPOSIT` + `BALANCE`
+- [ ] Q2: For Item B, is a single-line `WITHDRAWAL` + `DEPOSIT` + `BALANCE`
       header the right deposit-account signal, given no real savings statement
       has been examined? — Owner: Clarence. — Proposed default: yes; if a real
       savings PDF prints these labels on separate lines, the owner supplies a
       redacted shape and the predicate is adjusted.
-- [ ] Q5: Is the 2-character, x >= 370 bound for the HSBC junk token acceptable,
-      or should Item B stay at "leave as is" (alternative 4) until Step 0? —
-      Owner: Clarence. — Proposed default: alternative 3, adjusted by Step 0.
+
+## Closed observation: HSBC unreadable-amount row
+
+No code change. On the real HSBC scan one row was kept with an empty amount at
+0% confidence and the statement total check (`reconcileStatement`,
+`statement-guards.ts:54-80`, exact cents, no tolerance) was off by 1.00.
+Evidence (admin OCR dump, deployed main `b2ba380`, 2026-11-15, character
+classes only) shows the row is unreadable because OCR misread the entire line:
+line confidence 1, date and month glued, and the amount token is all letters.
+`parseRow` failing closed (empty amount, confidence 0, `hsbc.ts:125-127`) is the
+intended outcome: the row is flagged and the user types the amount in review. No
+parsing rule can recover letters that carry no amount. The total-check mismatch
+follows from that row counting as 0 in `reconcileStatement`. A 4-character
+amount token is consistent with a difference of 1.00, but the sign and value are
+not established.
+
+The earlier hypothesis, a punctuation-only token after a valid amount, is not the
+cause: `tableTokens` already drops tokens with no ASCII letter or digit
+(`hsbc.ts:59`), and `statement-layouts-hsbc.test.ts:231-248` covers it. Spec 188
+observation e (`specs/feature/188-statement-period-detection.md`, lines 199-202
+and 227-228) is the origin of this item.
+
+Possible future item, explicitly out of scope and not proposed: re-OCR of a
+low-confidence line at a higher scale.
+
+## Appendix A: redacted HSBC dump shapes
+
+The four row-shaped lines on page 1 of that statement. Classes: `U` upper case
+letter, `l` lower case letter, `9` digit, `~` non-ASCII character. Numbers before
+`|` are token x positions.
+
+- Line 20, confidence 90: lead `99 Ull 99 Ull`, amount column `334|9,999.99`. A
+  valid amount.
+- Line 22, confidence 50: lead `99 Ull 99 Ull`, amount column `349|9.99` then
+  `383|-~` (2 characters, no ASCII letter or digit). The junk token is dropped by
+  `tableTokens`, so the row parses normally. This is not the 0% row.
+- Line 23, confidence 1: lead `61|99Ull 102|99Ull` (date and month glued), amount
+  column one token `348|Ulll` (4 characters, one upper and three lower, no dot,
+  no digit). Substituting O->0, l or I->1, S->5, B->8 does not yield an amount.
+  This is the 0% row with an empty amount.
+- Line 25, confidence 58: lead `99 Ull 99 Ull`, amount column `332|9,999.99UU` (an
+  attached `CR`): a credit, excluded.
+
+This matches the review dialog: two rows with amounts, one excluded, one
+unreadable.
