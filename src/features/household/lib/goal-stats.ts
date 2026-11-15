@@ -206,6 +206,37 @@ export function goalStatus(
   return toCents(goal.contributed) >= toCents(expected) ? 'on-track' : 'behind';
 }
 
+export type GoalDeadline =
+  | { kind: 'none' }
+  | { kind: 'funded'; date: string }
+  | { kind: 'overdue'; date: string; days: number }
+  | { kind: 'upcoming'; date: string; days: number };
+
+/**
+ * Deadline facts for the goal header. Funded is decided exactly as in
+ * `goalStatus`, so the chip and the deadline line never disagree; `days` are
+ * whole calendar days.
+ */
+export function goalDeadline(
+  goal: Pick<
+    HouseholdGoal,
+    'targetDate' | 'remaining' | 'targetAmount' | 'contributed'
+  >,
+  now: Date
+): GoalDeadline {
+  if (!goal.targetDate) return { kind: 'none' };
+  const date = goal.targetDate.slice(0, 10);
+  const sound =
+    Number.isFinite(goal.targetAmount) &&
+    goal.targetAmount > 0 &&
+    Number.isFinite(goal.contributed);
+  if (sound && goal.remaining <= 0) return { kind: 'funded', date };
+  const days = differenceInCalendarDays(parseISO(date), startOfDay(now));
+  return days < 0
+    ? { kind: 'overdue', date, days: -days }
+    : { kind: 'upcoming', date, days };
+}
+
 export interface BreakdownSegment {
   id: string;
   name: string;

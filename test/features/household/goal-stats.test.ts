@@ -2,6 +2,7 @@ import {
   breakdownSegments,
   burnUpSeries,
   cumulativeContributions,
+  goalDeadline,
   monthlyPaceNeeded,
   recentActivity,
   summarizeBreakdown,
@@ -58,6 +59,57 @@ function goal(overrides: Partial<HouseholdGoal> = {}): HouseholdGoal {
     ...overrides,
   };
 }
+
+describe('goalDeadline', () => {
+  it('is none without a target date', () => {
+    expect(goalDeadline(goal(), NOW)).toEqual({ kind: 'none' });
+  });
+
+  it('is funded once remaining reaches zero, even past the date', () => {
+    expect(
+      goalDeadline(
+        goal({ targetDate: '2026-01-01', remaining: 0, contributed: 1200 }),
+        NOW
+      )
+    ).toEqual({ kind: 'funded', date: '2026-01-01' });
+  });
+
+  it('counts calendar days to an upcoming date and treats today as zero', () => {
+    expect(goalDeadline(goal({ targetDate: '2026-11-04' }), NOW)).toEqual({
+      kind: 'upcoming',
+      date: '2026-11-04',
+      days: 0,
+    });
+    expect(goalDeadline(goal({ targetDate: '2026-11-05' }), NOW)).toEqual({
+      kind: 'upcoming',
+      date: '2026-11-05',
+      days: 1,
+    });
+    expect(goalDeadline(goal({ targetDate: '2027-12-09' }), NOW)).toMatchObject(
+      { kind: 'upcoming', days: 400 }
+    );
+  });
+
+  it('reports how many days a past date is overdue', () => {
+    expect(goalDeadline(goal({ targetDate: '2026-11-03' }), NOW)).toEqual({
+      kind: 'overdue',
+      date: '2026-11-03',
+      days: 1,
+    });
+    expect(goalDeadline(goal({ targetDate: '2026-10-20' }), NOW)).toMatchObject(
+      { kind: 'overdue', days: 15 }
+    );
+  });
+
+  it('does not read a corrupt target as funded', () => {
+    expect(
+      goalDeadline(
+        goal({ targetDate: '2026-11-10', targetAmount: 0, remaining: 0 }),
+        NOW
+      )
+    ).toMatchObject({ kind: 'upcoming' });
+  });
+});
 
 describe('monthlyPaceNeeded', () => {
   it('divides the remainder across whole months to a future date', () => {
