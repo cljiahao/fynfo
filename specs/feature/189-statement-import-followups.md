@@ -2,12 +2,12 @@
 id: '189'
 slug: statement-import-followups
 area: feature
-status: approved
+status: shipped
 author: Claude Code
 created: 2026-11-15
 approved: 2026-11-15
-shipped:
-impl_pr:
+shipped: 2026-11-16
+impl_pr: none (direct to main, a8b6798, b8993d4, 82b4bfb, 7888ce8)
 supersedes:
 constitution_satisfies:
   - '§2.1'
