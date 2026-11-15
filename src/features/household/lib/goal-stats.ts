@@ -176,13 +176,88 @@ export function goalCommitted(goal: Pick<HouseholdGoal, 'items'>): number {
 
 export type GoalStatus = 'funded' | 'no-date' | 'on-track' | 'behind';
 
+export type GoalBasis = 'saved' | 'paid';
+
 const toCents = (amount: number) => Math.round(amount * 100);
+
+const DAY_FORMAT = 'yyyy-MM-dd';
+
+/** What every item is expected to cost together: quotes replace estimates. */
+export function plannedTotal(goal: Pick<HouseholdGoal, 'items'>): number {
+  return goal.items.reduce((sum, item) => sum + effectiveAmount(item), 0);
+}
+
+/** Items-first goals are tracked by payments until the first contribution arrives. */
+export function goalBasis(
+  goal: Pick<HouseholdGoal, 'contributed' | 'items'>
+): GoalBasis {
+  return goal.contributed <= 0 && plannedTotal(goal) > 0 ? 'paid' : 'saved';
+}
+
+/**
+ * `goalPlanShare` for whichever basis the goal leads with: in the paid basis
+ * the amount still to pay stands in for `remaining`, so a goal with every item
+ * paid never reads "Past target date" just because nothing was contributed.
+ */
+export function goalPace(
+  goal: Pick<
+    HouseholdGoal,
+    'targetDate' | 'remaining' | 'contributed' | 'items'
+  >,
+  now: Date,
+  monthly: number | null
+): number | 'past' | null {
+  const remaining =
+    goalBasis(goal) === 'paid' ? goalCommitted(goal) : goal.remaining;
+  return goalPlanShare(
+    { targetDate: goal.targetDate, remaining },
+    now,
+    monthly
+  );
+}
+
+/** Items are all paid once nothing is left to pay, compared in whole cents. */
+function paidInFull(goal: Pick<HouseholdGoal, 'items'>): boolean {
+  return toCents(goalCommitted(goal)) === 0;
+}
+
+/** Each item falls due on its own date, else the goal's date. */
+function itemDueDate(
+  item: Pick<GoalItem, 'dueDate'>,
+  targetDate: string | null
+): string | null {
+  const due = item.dueDate ?? targetDate;
+  return due ? due.slice(0, 10) : null;
+}
+
+/** Status for the paid basis: payments against what the items say is due. */
+function paidStatus(
+  goal: Pick<HouseholdGoal, 'targetDate' | 'items'>,
+  now: Date
+): GoalStatus {
+  if (paidInFull(goal)) return 'funded';
+  const today = format(startOfDay(now), DAY_FORMAT);
+  const overdue = goal.items.some((item) => {
+    const due = itemDueDate(item, goal.targetDate);
+    return (
+      due !== null &&
+      due < today &&
+      toCents(item.paid) < toCents(effectiveAmount(item))
+    );
+  });
+  if (overdue) return 'behind';
+  const anyDue = goal.items.some(
+    (item) => itemDueDate(item, goal.targetDate) !== null
+  );
+  return anyDue ? 'on-track' : 'no-date';
+}
 
 /**
  * Funded, undated, or on track against a straight line from creation to the
- * target date. Compared in whole cents so float noise never flips the chip.
+ * target date, measured by contributions. Compared in whole cents so float
+ * noise never flips the chip.
  */
-export function goalStatus(
+export function savedStatus(
   goal: Pick<
     HouseholdGoal,
     'targetAmount' | 'targetDate' | 'createdAt' | 'contributed' | 'remaining'
@@ -206,6 +281,27 @@ export function goalStatus(
   return toCents(goal.contributed) >= toCents(expected) ? 'on-track' : 'behind';
 }
 
+/**
+ * What the chip shows. Goals run through items (no contributions) compare
+ * payments with item due dates; every other goal uses `savedStatus`.
+ */
+export function goalStatus(
+  goal: Pick<
+    HouseholdGoal,
+    | 'targetAmount'
+    | 'targetDate'
+    | 'createdAt'
+    | 'contributed'
+    | 'remaining'
+    | 'items'
+  >,
+  now: Date
+): GoalStatus {
+  return goalBasis(goal) === 'paid'
+    ? paidStatus(goal, now)
+    : savedStatus(goal, now);
+}
+
 export type GoalDeadline =
   | { kind: 'none' }
   | { kind: 'funded'; date: string }
@@ -220,17 +316,21 @@ export type GoalDeadline =
 export function goalDeadline(
   goal: Pick<
     HouseholdGoal,
-    'targetDate' | 'remaining' | 'targetAmount' | 'contributed'
+    'targetDate' | 'remaining' | 'targetAmount' | 'contributed' | 'items'
   >,
   now: Date
 ): GoalDeadline {
   if (!goal.targetDate) return { kind: 'none' };
   const date = goal.targetDate.slice(0, 10);
-  const sound =
-    Number.isFinite(goal.targetAmount) &&
-    goal.targetAmount > 0 &&
-    Number.isFinite(goal.contributed);
-  if (sound && goal.remaining <= 0) return { kind: 'funded', date };
+  if (goalBasis(goal) === 'paid') {
+    if (paidInFull(goal)) return { kind: 'funded', date };
+  } else {
+    const sound =
+      Number.isFinite(goal.targetAmount) &&
+      goal.targetAmount > 0 &&
+      Number.isFinite(goal.contributed);
+    if (sound && goal.remaining <= 0) return { kind: 'funded', date };
+  }
   const days = differenceInCalendarDays(parseISO(date), startOfDay(now));
   return days < 0
     ? { kind: 'overdue', date, days: -days }
@@ -308,8 +408,6 @@ export interface BurnUpRow {
   needed: number | null;
 }
 
-const DAY_FORMAT = 'yyyy-MM-dd';
-
 /**
  * Cumulative saved against the straight pace needed to hit the target by its
  * date. The pace line runs from the first contribution (or creation when there
@@ -346,6 +444,75 @@ export function burnUpSeries(
   if (end && end >= start) {
     row(start).needed = 0;
     row(end).needed = goal.targetAmount;
+  }
+  return [...rows.values()].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0
+  );
+}
+
+export interface PaidRow {
+  date: string;
+  /** Cumulative paid; null where only the due line has a point. */
+  paid: number | null;
+  /** Cumulative amount due by this date; null where only paid has a point. */
+  due: number | null;
+}
+
+/**
+ * Cumulative item payments against the cumulative cost of items by their due
+ * date. Paid runs from the start to today; the due line is a step function
+ * that ends at the cost of the dated items, so it is exactly what the status
+ * chip compares payments with.
+ */
+export function paidSeries(
+  goal: Pick<HouseholdGoal, 'items' | 'createdAt' | 'targetDate'>,
+  now: Date
+): PaidRow[] {
+  const paidByDay = new Map<string, number>();
+  for (const item of goal.items) {
+    for (const payment of item.payments) {
+      const day = payment.date.slice(0, 10);
+      paidByDay.set(day, (paidByDay.get(day) ?? 0) + payment.amount);
+    }
+  }
+  const paidDays = [...paidByDay.keys()].sort();
+  const created = goal.createdAt.slice(0, 10);
+  const start =
+    paidDays.length > 0 && paidDays[0] < created ? paidDays[0] : created;
+  const today = format(now, DAY_FORMAT);
+
+  const rows = new Map<string, PaidRow>();
+  const row = (date: string) => {
+    const existing = rows.get(date);
+    if (existing) return existing;
+    const added: PaidRow = { date, paid: null, due: null };
+    rows.set(date, added);
+    return added;
+  };
+
+  let running = 0;
+  if (paidDays.length === 0 || paidDays[0] > start) row(start).paid = 0;
+  for (const day of paidDays) {
+    running += paidByDay.get(day) ?? 0;
+    row(day).paid = running;
+  }
+  const lastPaid = paidDays.length > 0 ? paidDays[paidDays.length - 1] : start;
+  if (today > lastPaid) row(today).paid = running;
+
+  const dueByDay = new Map<string, number>();
+  for (const item of goal.items) {
+    const due = itemDueDate(item, goal.targetDate);
+    if (due === null) continue;
+    const day = due < start ? start : due;
+    dueByDay.set(day, (dueByDay.get(day) ?? 0) + effectiveAmount(item));
+  }
+  if (dueByDay.size > 0) {
+    row(start).due = 0;
+    let owed = 0;
+    for (const day of [...dueByDay.keys()].sort()) {
+      owed += dueByDay.get(day) ?? 0;
+      row(day).due = owed;
+    }
   }
   return [...rows.values()].sort((a, b) =>
     a.date < b.date ? -1 : a.date > b.date ? 1 : 0

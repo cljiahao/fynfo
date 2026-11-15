@@ -67,6 +67,9 @@ export const GOAL_STATUS_LABEL: Record<GoalStatus, string> = {
   behind: 'Behind',
 };
 
+/** Funded label for goals tracked by payments, where nothing is "saved". */
+export const PAID_IN_FULL_LABEL = 'Paid in full';
+
 /** Full calendar months averaged for a suggested category budget. */
 export const BUDGET_SUGGESTION_MONTHS = 3;
 

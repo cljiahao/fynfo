@@ -1,7 +1,7 @@
 import { differenceInCalendarDays } from 'date-fns/differenceInCalendarDays';
 import { parseISO } from 'date-fns/parseISO';
 import { startOfDay } from 'date-fns/startOfDay';
-import { goalStatus, monthsUntil } from './goal-stats';
+import { monthsUntil, savedStatus } from './goal-stats';
 
 export interface PlanItem {
   id: string;
@@ -356,7 +356,7 @@ export function householdRecommendations(
 
     const { targetDate } = goal;
     let behindEmitted = false;
-    if (targetDate !== null && goalStatus(goal, now) === 'behind') {
+    if (targetDate !== null && savedStatus(goal, now) === 'behind') {
       const behind =
         (expectedSaved(goal, targetDate, now) - goal.contributed) *
           clampShare(goal.share) -
