@@ -37,8 +37,9 @@ import {
   useUndoableDelete,
 } from '../hooks/use-undoable-delete';
 import {
+  goalBasis,
   goalDeadline,
-  goalPlanShare,
+  goalPace,
   goalStatus,
   recentActivity,
   withoutPending,
@@ -194,7 +195,8 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
   const status = goalStatus(goal, now);
   const deadline = goalDeadline(goal, now);
   const jointMonthly = useJointGoalMonthly()?.get(goal.id) ?? null;
-  const pace = goalPlanShare(goal, now, jointMonthly);
+  const basis = goalBasis(goal);
+  const pace = goalPace(goal, now, jointMonthly);
   const hasItems = goal.items.length > 0;
   // Counted on the unfiltered goal: an item in its undo window still occupies a slot.
   const itemLimitReached = source.items.length >= GOAL_ITEM_LIMIT;
@@ -254,7 +256,7 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
               {mask(goal.name)}
             </h1>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              {!hidden && <GoalStatusChip status={status} />}
+              {!hidden && <GoalStatusChip status={status} basis={basis} />}
               <DeadlineText deadline={deadline} dateOnly={hidden} />
             </div>
           </div>
@@ -311,11 +313,8 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
 
       <GoalSummary goal={goal} pace={pace} />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-x-8 lg:gap-y-8">
-        <section
-          className="space-y-3 lg:col-start-1 lg:row-span-2"
-          aria-labelledby="items-heading"
-        >
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-x-8">
+        <section className="space-y-3" aria-labelledby="items-heading">
           <div className="flex items-center justify-between gap-3">
             <h2 id="items-heading" className="text-base font-semibold">
               Budget items{' '}
@@ -374,17 +373,17 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
           )}
         </section>
 
-        <section
-          className="space-y-3 lg:col-start-2"
-          aria-labelledby="burn-up-heading"
-        >
-          <h2 id="burn-up-heading" className="text-base font-semibold">
-            Progress over time
-          </h2>
-          <GoalBurnUpChart goal={goal} />
-        </section>
+        {/* One grid item, so a tall items list cannot stretch the chart's row and open a gap above the activity. */}
+        <div className="space-y-6 lg:space-y-8">
+          <section className="space-y-3" aria-labelledby="burn-up-heading">
+            <h2 id="burn-up-heading" className="text-base font-semibold">
+              {basis === 'paid' && !hidden
+                ? 'Payments over time'
+                : 'Progress over time'}
+            </h2>
+            <GoalBurnUpChart goal={goal} />
+          </section>
 
-        <div className="lg:col-start-2">
           <GoalActivity entries={activity} onEdit={editEntry} />
         </div>
       </div>

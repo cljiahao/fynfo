@@ -1,9 +1,15 @@
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
-import { GOAL_STATUS_LABEL } from '../constants';
-import type { GoalStatus } from '../lib/goal-stats';
+import { GOAL_STATUS_LABEL, PAID_IN_FULL_LABEL } from '../constants';
+import type { GoalBasis, GoalStatus } from '../lib/goal-stats';
 
-export function GoalStatusChip({ status }: { status: GoalStatus }) {
+export function GoalStatusChip({
+  status,
+  basis = 'saved',
+}: {
+  status: GoalStatus;
+  basis?: GoalBasis;
+}) {
   return (
     <span
       className={cn(
@@ -15,7 +21,9 @@ export function GoalStatusChip({ status }: { status: GoalStatus }) {
       )}
     >
       {status === 'funded' && <Check className="size-3" />}
-      {GOAL_STATUS_LABEL[status]}
+      {status === 'funded' && basis === 'paid'
+        ? PAID_IN_FULL_LABEL
+        : GOAL_STATUS_LABEL[status]}
     </span>
   );
 }

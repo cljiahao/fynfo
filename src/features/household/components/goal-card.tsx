@@ -17,8 +17,18 @@ import { parseISO } from 'date-fns/parseISO';
 import { Check, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
-import { GOAL_DETAIL_PATH, GOAL_STATUS_LABEL } from '../constants';
-import { goalCommitted, goalPlanShare, goalStatus } from '../lib/goal-stats';
+import {
+  GOAL_DETAIL_PATH,
+  GOAL_STATUS_LABEL,
+  PAID_IN_FULL_LABEL,
+} from '../constants';
+import {
+  goalBasis,
+  goalCommitted,
+  goalPace,
+  goalStatus,
+  plannedTotal,
+} from '../lib/goal-stats';
 import type { HouseholdGoal } from '../types';
 import { ItemBreakdownBar } from './item-breakdown-bar';
 
@@ -44,7 +54,9 @@ export function GoalCard({
   const [now] = useState(() => new Date());
   const status = goalStatus(goal, now);
   const funded = status === 'funded';
-  const pace = goalPlanShare(goal, now, monthly ?? null);
+  const pace = goalPace(goal, now, monthly ?? null);
+  // Masked cards keep the saved wording so the labels do not reveal the basis.
+  const paidBasis = goalBasis(goal) === 'paid' && !hidden;
 
   const overCommitted =
     goal.contributed + goalCommitted(goal) > goal.targetAmount;
@@ -103,7 +115,9 @@ export function GoalCard({
                 onAnimationEnd={() => setCelebrate(false)}
               >
                 {funded && <Check className="size-3" />}
-                {GOAL_STATUS_LABEL[status]}
+                {funded && paidBasis
+                  ? PAID_IN_FULL_LABEL
+                  : GOAL_STATUS_LABEL[status]}
               </span>
             )}
             <DropdownMenu>
@@ -142,15 +156,23 @@ export function GoalCard({
 
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
           <span className="font-medium tabular-nums">
-            {mask(formatSGD(goal.contributed))}{' '}
+            {paidBasis && 'Paid '}
+            {mask(formatSGD(paidBasis ? goal.paid : goal.contributed))}{' '}
             <span className="text-muted-foreground font-normal">
-              of {mask(formatSGD(goal.targetAmount))}
+              of{' '}
+              {mask(
+                formatSGD(paidBasis ? plannedTotal(goal) : goal.targetAmount)
+              )}
             </span>
           </span>
           <span className="text-muted-foreground text-xs">
-            {funded
-              ? 'Goal reached'
-              : `${mask(formatSGD(goal.remaining))} to go`}
+            {paidBasis
+              ? funded
+                ? 'All items paid'
+                : `${mask(formatSGD(goalCommitted(goal)))} left to pay`
+              : funded
+                ? 'Goal reached'
+                : `${mask(formatSGD(goal.remaining))} to go`}
           </span>
         </div>
 
