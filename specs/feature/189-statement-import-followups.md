@@ -2,10 +2,10 @@
 id: '189'
 slug: statement-import-followups
 area: feature
-status: draft
+status: approved
 author: Claude Code
 created: 2026-11-15
-approved:
+approved: 2026-11-15
 shipped:
 impl_pr:
 supersedes:
@@ -302,16 +302,19 @@ regression and must still pass.
 
 ## Open questions
 
-- [ ] Q1: What are the 5 Citi rows (fee, conversion or foreign-spend rows?) and
+- [x] Q1: What are the 5 Citi rows (fee, conversion or foreign-spend rows?) and
       is the trailing figure the right expense amount? — Owner: Clarence. — A:
       The 5 rows were matched to the 5 "Needs review" rows by count only.
       Compare them against the paper statement before approving Item A; if the
       mid-line SGD figure is the right amount for any of them, the rule changes.
-- [ ] Q2: For Item B, is a single-line `WITHDRAWAL` + `DEPOSIT` + `BALANCE`
+- [x] Q2: For Item B, is a single-line `WITHDRAWAL` + `DEPOSIT` + `BALANCE`
       header the right deposit-account signal, given no real savings statement
       has been examined? — Owner: Clarence. — Proposed default: yes; if a real
       savings PDF prints these labels on separate lines, the owner supplies a
       redacted shape and the predicate is adjusted.
+
+Owner decision (accepted 2026-11-15, "Approve as drafted"): the proposed defaults
+for Q1 and Q2 are accepted as written.
 
 ## Closed observation: HSBC unreadable-amount row
 
