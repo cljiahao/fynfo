@@ -1,5 +1,5 @@
 ---
-id: '189'
+id: '191'
 slug: statement-import-followups
 area: feature
 status: shipped
@@ -7,7 +7,7 @@ author: Claude Code
 created: 2026-11-15
 approved: 2026-11-15
 shipped: 2026-11-16
-impl_pr: none (direct to main, a8b6798, b8993d4, 82b4bfb, 7888ce8)
+impl_pr: none (direct to main, a8b6798, b8993d4, 82b4bfb, 7888ce8); committed under the number 189, renumbered to 191 on 2026-11-16
 supersedes:
 constitution_satisfies:
   - '§2.1'
@@ -21,7 +21,7 @@ constitution_satisfies:
 constitution_overrides:
 ---
 
-# Spec 189: Statement import follow-ups (Citi billed amount, savings statements)
+# Spec 191: Statement import follow-ups (Citi billed amount, savings statements)
 
 ## Problem
 
