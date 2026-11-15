@@ -5,6 +5,7 @@ import {
   goalStatus,
   paidSeries,
   plannedTotal,
+  savedStatus,
 } from '@/features/household/lib/goal-stats';
 import type { GoalItem, HouseholdGoal } from '@/features/household/types';
 import { describe, expect, it } from 'vitest';
@@ -241,5 +242,22 @@ describe('paidSeries', () => {
     const goal = itemsGoal([item('a', 100)], { targetDate: '2026-12-31' });
     const rows = paidSeries(goal, NOW);
     expect(rows.find((r) => r.date === '2026-12-31')?.due).toBe(100);
+  });
+});
+
+describe('savedStatus', () => {
+  it('ignores the paid basis so household plan status is unchanged', () => {
+    const goal = itemsGoal(
+      [
+        item('a', 100, {
+          dueDate: '2027-06-01',
+          payments: [{ amount: 100, date: '2026-10-02' }],
+        }),
+      ],
+      { targetDate: '2026-11-01', remaining: 100 }
+    );
+    expect(goalBasis(goal)).toBe('paid');
+    expect(goalStatus(goal, NOW)).toBe('funded');
+    expect(savedStatus(goal, NOW)).toBe('behind');
   });
 });
