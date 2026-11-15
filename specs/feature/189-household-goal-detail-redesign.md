@@ -2,10 +2,10 @@
 id: '189'
 slug: household-goal-detail-redesign
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-15
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-15 # owner-approved in chat 2026-11-15 as drafted, all recommended defaults
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # link to impl PR, set on shipped
 supersedes: # none; refines the page built by 171 and changed by 175 and 187
@@ -55,7 +55,7 @@ reconstructed from the components listed under "Files".
   change), `§3.4` (kebab-case file names), `§4.1` (all five gates).
 - Overrides: none. No HARD rule is touched. No server action, migration,
   schema, crypto or dependency change.
-- Authorization: owner request in chat. Implementation waits for `status: approved`.
+- Authorization: owner request in chat. Approved 2026-11-15.
 
 ## Critique (impeccable `critique`, Operate mode, incumbent-preserving)
 
@@ -493,24 +493,24 @@ days: number }`, with `days` in whole calendar days (`startOfDay` on both
 
 ## Open questions
 
-- [ ] Q1: The page has no way to add a contribution (only the card does). Add an
+- [x] Q1 (resolved 2026-11-15: yes): The page has no way to add a contribution (only the card does). Add an
       "Add to goal" button reusing the existing `AddContributionDialog`? — Owner:
       Clarence — Recommended: yes (no new action, one component reused; the page
       about a goal should let you add to it).
-- [ ] Q2: Keep the label "Share of monthly plan", or rename to "Monthly share"
+- [x] Q2 (resolved 2026-11-15: yes, "Monthly share" with hint "of your plan"): Keep the label "Share of monthly plan", or rename to "Monthly share"
       / "Set aside per month"? The value's meaning (the goal's slice of the plan)
       is unchanged. — Owner: Clarence — Recommended: "Monthly share" with the
       hint "of your plan".
-- [ ] Q3: Collapse payments under each item by default (they also appear in
+- [x] Q3 (resolved 2026-11-15: yes): Collapse payments under each item by default (they also appear in
       Recent activity)? — Owner: Clarence — Recommended: collapsed by default,
       count shown.
-- [ ] Q4: Merge the three per-item lanes (estimate, quote, paid) into one paid
+- [x] Q4 (resolved 2026-11-15: yes): Merge the three per-item lanes (estimate, quote, paid) into one paid
       lane with estimate and quote as text? — Owner: Clarence — Recommended: yes;
       the lanes are 4px high and have no legend.
-- [ ] Q5: Should `goal-card.tsx` adopt the new `GoalStatusChip` so the chip lives
+- [x] Q5 (resolved 2026-11-15: no, card unchanged): Should `goal-card.tsx` adopt the new `GoalStatusChip` so the chip lives
       in one place? — Owner: Clarence — Recommended: no for this spec (keeps the
       card out of the diff); follow up separately.
-- [ ] Q6: Desktop layout puts Budget items left and chart plus activity right at
+- [x] Q6 (resolved 2026-11-15: yes, two columns at lg): Desktop layout puts Budget items left and chart plus activity right at
       `lg`. Prefer a single column at every width instead? — Owner: Clarence —
       Recommended: the two-column layout; fall back to one column only if the
       right column feels cramped at 1024px.
