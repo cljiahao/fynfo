@@ -87,7 +87,9 @@ function item(index: number, budget: number, paid = 0) {
 it('renders only a placeholder for the burn-up chart when hidden', () => {
   visibility.hidden = true;
   render(<GoalBurnUpChart goal={goalWithItems} />);
-  expect(screen.getByText('Burn-up chart hidden')).toBeInTheDocument();
+  expect(
+    screen.getByText('Chart hidden while amounts are hidden')
+  ).toBeInTheDocument();
   expect(screen.queryByTestId('tooltip')).toBeNull();
   expect(screen.queryByTestId('x-axis')).toBeNull();
   expect(screen.queryByTestId('y-axis')).toBeNull();

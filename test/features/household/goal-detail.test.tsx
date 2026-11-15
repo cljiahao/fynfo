@@ -13,6 +13,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { goalWithItems, makeGoal } from './fixtures';
 
@@ -110,11 +111,13 @@ describe('with items', () => {
       'href',
       '/dashboard/household'
     );
-    expect(screen.getByText('Contributed')).toBeInTheDocument();
-    expect(screen.getByText('Paid')).toBeInTheDocument();
-    expect(screen.getByText('Share of monthly plan')).toBeInTheDocument();
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+    expect(screen.getByText('Remaining')).toBeInTheDocument();
+    expect(screen.getByText('Paid out')).toBeInTheDocument();
+    expect(screen.getByText('Monthly share')).toBeInTheDocument();
     expect(screen.getByText('burn-up chart')).toBeInTheDocument();
-    expect(screen.getByText(/^You \d+% \/ Partner \d+%$/)).toBeInTheDocument();
+    expect(screen.getByText(/^You .*600\.00 \(60%\)$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Partner .*400\.00 \(40%\)$/)).toBeInTheDocument();
     expect(screen.getAllByText('Venue').length).toBeGreaterThan(1);
     expect(screen.getAllByText('Photographer').length).toBeGreaterThan(1);
     expect(screen.getByText(/Partner paid .* to Venue/)).toBeInTheDocument();
@@ -127,9 +130,6 @@ describe('with items', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       /Saved plus items still to pay total .*11,000\.00, above the .*10,000\.00 target/
     );
-    expect(
-      screen.getByText('Saved plus what is still to pay is above the target.')
-    ).toBeInTheDocument();
   });
 
   it('stays quiet when items total above the target but nothing is over-committed', () => {
@@ -305,8 +305,12 @@ describe('with items', () => {
 
   it('confirms before deleting and returns to the household page', async () => {
     mount();
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
-    const confirm = screen.getByRole('button', { name: 'Delete goal' });
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Goal actions' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Delete goal' })
+    );
+    const confirm = await screen.findByRole('button', { name: 'Delete goal' });
     fireEvent.click(confirm);
     await waitFor(() =>
       expect(router.push).toHaveBeenCalledWith('/dashboard/household')
@@ -363,13 +367,70 @@ describe('without items', () => {
     setGoals([makeGoal()]);
   });
 
-  it('hides the Paid stat and shows the empty summary but offers Add item', () => {
+  it('hides the Paid out fact and offers a single Add item', () => {
     mount();
-    expect(screen.queryByText('Paid')).toBeNull();
-    expect(screen.getByText('Split into budget items')).toBeInTheDocument();
+    expect(screen.queryByText('Paid out')).toBeNull();
     expect(screen.getByText('burn-up chart')).toBeInTheDocument();
-    expect(screen.getByText('Nothing yet.')).toBeInTheDocument();
+    expect(screen.getByText(/No activity yet/)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Add item' })).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Add item' })).toBeEnabled();
+  });
+
+  it('shows no breakdown or percentage claims for an empty goal', () => {
+    const { container } = mount();
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+    expect(container.textContent).toMatch(/0%/);
+    expect(screen.queryByText(/^You /)).toBeNull();
+  });
+});
+
+describe('status and deadline', () => {
+  it('shows an overdue chip and deadline for a past target date', () => {
+    setGoals([{ ...goalWithItems, targetDate: '2020-01-01' }]);
+    mount();
+    expect(screen.getByText('Behind')).toBeInTheDocument();
+    expect(screen.getByText('Overdue')).toBeInTheDocument();
+  });
+
+  it('shows a funded chip without an overdue note', () => {
+    setGoals([
+      {
+        ...goalWithItems,
+        targetDate: '2020-01-01',
+        contributed: 10000,
+        remaining: 0,
+        pct: 100,
+      },
+    ]);
+    mount();
+    expect(screen.getByText('Funded')).toBeInTheDocument();
+    expect(screen.queryByText('Overdue')).toBeNull();
+    expect(screen.getByText('Target reached')).toBeInTheDocument();
+  });
+
+  it('omits the deadline text when there is no target date', () => {
+    mount();
+    expect(screen.queryByText(/^Target /)).toBeNull();
+  });
+});
+
+describe('page structure', () => {
+  it('orders the sections summary, items, progress, activity', () => {
+    mount();
+    const headings = screen
+      .getAllByRole('heading', { level: 2 })
+      .map((heading) => heading.textContent);
+    expect(headings).toEqual([
+      'Budget items (2)',
+      'Progress over time',
+      'Recent activity',
+    ]);
+  });
+
+  it('opens the contribution dialog from Add to goal', () => {
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: 'Add to goal' }));
+    expect(screen.getByRole('dialog')).toBeVisible();
   });
 });
 
@@ -425,11 +486,13 @@ describe('amounts hidden', () => {
     expect(container.textContent).not.toMatch(/\d{1,3},\d{3}/);
     expect(container.textContent).not.toContain('Wedding');
     expect(screen.queryByRole('status')).toBeNull();
-    expect(container.textContent).toMatch(/Share of monthly plan\s*Hidden/);
+    expect(container.textContent).toMatch(/Monthly share\s*Hidden/);
     expect(container.textContent).not.toMatch(/Past target date/);
+    expect(container.textContent).not.toMatch(/Overdue|On track|Behind/);
     expect(screen.getByRole('button', { name: 'Add item' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Add to goal' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Goal actions' })).toBeDisabled();
     expect(container.textContent).not.toMatch(/\d+%/);
   });
 });

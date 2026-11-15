@@ -9,9 +9,10 @@ import { cn } from '@/lib/utils';
 import { formatSGD } from '@/lib/utils/currency';
 import { format } from 'date-fns/format';
 import { parseISO } from 'date-fns/parseISO';
-import { Pencil, Trash2, X } from 'lucide-react';
+import { ChevronDown, Pencil, Trash2, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
+import { PERSON_COLORS } from '../constants';
 import {
   useAddItemPayment,
   useDeleteGoalItem,
@@ -40,7 +41,7 @@ export function GoalItemList({ items }: { items: GoalItem[] }) {
   }, [pendingIds]);
 
   return (
-    <ul className="space-y-3">
+    <ul className="divide-y rounded-xl border">
       {items.map((item) => (
         <ItemRow
           key={item.id}
@@ -63,6 +64,7 @@ function ItemRow({
   const { pendingIds, request } = useUndoableDelete();
   const fieldId = useId();
   const [paying, setPaying] = useState(false);
+  const [showPayments, setShowPayments] = useState(false);
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(today);
   const [errors, setErrors] = useState<Partial<Record<PaymentField, string>>>(
@@ -73,6 +75,7 @@ function ItemRow({
   const removePayment = useDeleteItemPayment();
   const amountId = `${fieldId}-pay-amount`;
   const dateId = `${fieldId}-pay-date`;
+  const paymentsId = `${fieldId}-payments`;
   const payments = item.payments.filter(
     (payment) => !pendingIds.has(payment.id)
   );
@@ -80,9 +83,8 @@ function ItemRow({
   const effective = effectiveAmount(item);
   const over = Math.max(0, item.paid - effective);
   const left = Math.max(0, effective - item.paid);
-  const scale = Math.max(item.budget, item.quote ?? 0, item.paid);
-  const widthOf = (amount: number) =>
-    scale > 0 ? Math.min(100, (amount / scale) * 100) : 0;
+  const scale = Math.max(effective, item.paid);
+  const paidWidth = scale > 0 ? Math.min(100, (item.paid / scale) * 100) : 0;
 
   function clearError(field: PaymentField) {
     setErrors((current) => omitError(current, field));
@@ -115,11 +117,13 @@ function ItemRow({
   }
 
   return (
-    <li className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2 text-sm">
-        <span className="min-w-0 truncate font-medium">{mask(item.name)}</span>
+    <li className="space-y-2 p-3 sm:p-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="min-w-0 truncate text-base font-medium">
+          {mask(item.name)}
+        </span>
         <span className="flex shrink-0 items-center gap-1">
-          <span className="tabular-nums">
+          <span className="text-sm whitespace-nowrap tabular-nums">
             {mask(formatSGD(item.paid))}
             <span className="text-muted-foreground">
               {' '}
@@ -148,54 +152,34 @@ function ItemRow({
         </span>
       </div>
       {/* The track stays when amounts are hidden so the row keeps its height;
-          a fill would leak the masked percentage. Estimate, quote and paid
-          share one scale, one thin lane each. */}
-      <div
-        className={cn(
-          'bg-muted h-3 w-full overflow-hidden rounded-sm',
-          !hidden && over > 0 && 'ring-loss/60 ring-1'
-        )}
-      >
+          a fill would leak the masked percentage. */}
+      <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
         {!hidden && (
           <svg aria-hidden="true" className="block h-full w-full">
             <rect
-              y="0"
-              height="33.4%"
-              width={`${widthOf(item.budget)}%`}
-              className="fill-muted-foreground/40"
-            />
-            {item.quote !== null && (
-              <rect
-                y="33.3%"
-                height="33.4%"
-                width={`${widthOf(item.quote)}%`}
-                className="fill-chart-3"
-              />
-            )}
-            <rect
-              y="66.6%"
-              height="33.4%"
-              width={`${widthOf(item.paid)}%`}
+              height="100%"
+              width={`${paidWidth}%`}
               className={over > 0 ? 'fill-loss' : 'fill-primary'}
             />
           </svg>
         )}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-        {!hidden && over > 0 ? (
-          <span className="text-loss-strong">Over by {formatSGD(over)}</span>
-        ) : (
-          <span className="text-muted-foreground">
-            {mask(formatSGD(left))} left
-            {item.quote !== null && ` · est ${mask(formatSGD(item.budget))}`}
-          </span>
-        )}
+        <span className="text-muted-foreground">
+          {!hidden && over > 0 ? (
+            <span className="text-loss-strong">Over by {formatSGD(over)}</span>
+          ) : (
+            <>{mask(formatSGD(left))} left</>
+          )}
+          {item.quote !== null &&
+            ` · Quote ${mask(formatSGD(item.quote))} vs est. ${mask(formatSGD(item.budget))}`}
+        </span>
         {!paying && (
           <Button
             type="button"
             size="sm"
-            variant="link"
-            className="h-auto p-0 text-xs pointer-coarse:min-h-11"
+            variant="outline"
+            className="min-h-9 pointer-coarse:min-h-11"
             disabled={hidden}
             onClick={() => {
               if (canReveal()) setPaying(true);
@@ -209,7 +193,7 @@ function ItemRow({
         <form
           onSubmit={submitPayment}
           noValidate
-          className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] gap-2"
+          className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]"
         >
           <div className="space-y-1">
             <Input
@@ -250,6 +234,7 @@ function ItemRow({
           <Button
             type="submit"
             size="sm"
+            className="pointer-coarse:min-h-11"
             disabled={hidden || addPayment.isPending}
           >
             Save
@@ -258,6 +243,7 @@ function ItemRow({
             type="button"
             size="sm"
             variant="ghost"
+            className="pointer-coarse:min-h-11"
             onClick={() => setPaying(false)}
           >
             Cancel
@@ -265,65 +251,97 @@ function ItemRow({
         </form>
       )}
       {payments.length > 0 && (
-        <ul className="text-muted-foreground space-y-0.5 text-xs">
-          {payments.map((payment) => (
-            <li
-              key={payment.id}
-              className="flex items-center justify-between gap-2"
-            >
-              <span>
-                {format(parseISO(payment.date.slice(0, 10)), 'dd MMM yyyy')} ·{' '}
-                {payment.isSelf ? 'You' : 'Partner'}
-              </span>
-              <span className="flex items-center gap-1 tabular-nums">
-                {mask(formatSGD(payment.amount))}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  className={TOUCH_TARGET}
-                  disabled={hidden}
-                  aria-label={`Edit ${mask(formatSGD(payment.amount))} on ${format(
-                    parseISO(payment.date.slice(0, 10)),
-                    'dd MMM yyyy'
-                  )} by ${payment.isSelf ? 'You' : 'Partner'}`}
-                  onClick={() => {
-                    if (canReveal()) setEditing(payment);
-                  }}
+        <div>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground -ml-2 min-h-9 px-2 text-xs pointer-coarse:min-h-11"
+            aria-expanded={showPayments}
+            aria-controls={paymentsId}
+            onClick={() => setShowPayments((current) => !current)}
+          >
+            <ChevronDown
+              className={cn(
+                'size-3.5 transition-transform',
+                showPayments && 'rotate-180'
+              )}
+            />
+            {payments.length} {payments.length === 1 ? 'payment' : 'payments'}
+          </Button>
+          <ul
+            id={paymentsId}
+            hidden={!showPayments}
+            className="text-muted-foreground space-y-0.5 text-xs"
+          >
+            {payments.map((payment) => {
+              const who = payment.isSelf ? 'You' : 'Partner';
+              const dot = payment.isSelf
+                ? PERSON_COLORS.you
+                : PERSON_COLORS.partner;
+              const day = format(
+                parseISO(payment.date.slice(0, 10)),
+                'dd MMM yyyy'
+              );
+              return (
+                <li
+                  key={payment.id}
+                  className="flex items-center justify-between gap-2"
                 >
-                  <Pencil className="size-3" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  className={`hover:text-destructive ${TOUCH_TARGET}`}
-                  disabled={hidden}
-                  aria-label={`Delete ${mask(formatSGD(payment.amount))} payment on ${format(
-                    parseISO(payment.date.slice(0, 10)),
-                    'dd MMM yyyy'
-                  )} by ${payment.isSelf ? 'You' : 'Partner'}`}
-                  onClick={() => {
-                    if (!canReveal()) return;
-                    request({
-                      id: payment.id,
-                      label: 'Payment deleted',
-                      // Deleting the item cascades to its payments, so a payment
-                      // commit after that would only fail.
-                      commit: async () => {
-                        if (isItemPending()) return;
-                        await removePayment.mutateAsync(payment.id);
-                      },
-                      errorMessage: 'Could not delete the payment',
-                    });
-                  }}
-                >
-                  <X className="size-3" />
-                </Button>
-              </span>
-            </li>
-          ))}
-        </ul>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className={cn('size-2 shrink-0 rounded-full', dot.dot)}
+                    />
+                    <span className="truncate">
+                      {day} · {who}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1 whitespace-nowrap tabular-nums">
+                    {mask(formatSGD(payment.amount))}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      className={TOUCH_TARGET}
+                      disabled={hidden}
+                      aria-label={`Edit ${mask(formatSGD(payment.amount))} on ${day} by ${who}`}
+                      onClick={() => {
+                        if (canReveal()) setEditing(payment);
+                      }}
+                    >
+                      <Pencil className="size-3" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      className={`hover:text-destructive ${TOUCH_TARGET}`}
+                      disabled={hidden}
+                      aria-label={`Delete ${mask(formatSGD(payment.amount))} payment on ${day} by ${who}`}
+                      onClick={() => {
+                        if (!canReveal()) return;
+                        request({
+                          id: payment.id,
+                          label: 'Payment deleted',
+                          // Deleting the item cascades to its payments, so a payment
+                          // commit after that would only fail.
+                          commit: async () => {
+                            if (isItemPending()) return;
+                            await removePayment.mutateAsync(payment.id);
+                          },
+                          errorMessage: 'Could not delete the payment',
+                        });
+                      }}
+                    >
+                      <X className="size-3" />
+                    </Button>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
       <EditPaymentDialog
         key={editing?.id}

@@ -15,20 +15,32 @@ import {
 import { formatSGDWhole } from '@/lib/utils/currency';
 import { format } from 'date-fns/format';
 import { parseISO } from 'date-fns/parseISO';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { burnUpSeries } from '../lib/goal-stats';
 import type { HouseholdGoal } from '../types';
 
 const SAVED_STROKE = 'var(--chart-2)';
 const SERIES_LABEL = { saved: 'Saved', needed: 'Needed pace' } as const;
 
+function Placeholder({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-xl border p-3 sm:p-4">
+      <p className="text-muted-foreground flex h-[220px] items-center justify-center text-center text-sm">
+        {children}
+      </p>
+    </div>
+  );
+}
+
 export function GoalBurnUpChart({ goal }: { goal: HouseholdGoal }) {
   const { hidden } = useAmountVisibility();
   const [now] = useState(() => new Date());
+  // Placeholders keep the chart's 220px so nothing shifts when amounts are
+  // hidden or the first contribution arrives.
   if (hidden)
-    return (
-      <p className="text-muted-foreground text-sm">Burn-up chart hidden</p>
-    );
+    return <Placeholder>Chart hidden while amounts are hidden</Placeholder>;
+  if (goal.contributions.length === 0)
+    return <Placeholder>Add to the goal to start the chart</Placeholder>;
   // A numeric time axis keeps the pace line straight when contributions are unevenly spaced.
   const data = burnUpSeries(goal, now).map((row) => ({
     t: parseISO(row.date).getTime(),
@@ -42,7 +54,7 @@ export function GoalBurnUpChart({ goal }: { goal: HouseholdGoal }) {
   const hasPace = data.some((row) => row.needed !== null);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 rounded-xl border p-3 sm:p-4">
       <div className="h-[220px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ left: 0, right: 8, top: 8 }}>
@@ -102,7 +114,7 @@ export function GoalBurnUpChart({ goal }: { goal: HouseholdGoal }) {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <p className="text-muted-foreground flex flex-wrap gap-x-4 text-xs">
+      <p className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs">
         <span className="flex items-center gap-1.5">
           <span
             aria-hidden="true"
@@ -110,7 +122,15 @@ export function GoalBurnUpChart({ goal }: { goal: HouseholdGoal }) {
           />
           Saved
         </span>
-        {hasPace && <span>Dashed: needed pace to the target date</span>}
+        {hasPace && (
+          <span className="flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              className="border-muted-foreground inline-block w-4 border-t-2 border-dashed"
+            />
+            Needed pace to the target date
+          </span>
+        )}
       </p>
     </div>
   );
