@@ -2,12 +2,12 @@
 id: '189'
 slug: household-goal-detail-redesign
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-15
 approved: 2026-11-15 # owner-approved in chat 2026-11-15 as drafted, all recommended defaults
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # link to impl PR, set on shipped
+shipped: 2026-11-16 # YYYY-MM-DD, set on impl merge
+impl_pr: https://github.com/cljiahao/fynfo/pull/78 # link to impl PR, set on shipped
 supersedes: # none; refines the page built by 171 and changed by 175 and 187
 constitution_satisfies:
   - '§2.1'
