@@ -68,7 +68,7 @@ export function GoalActivity({ entries, onEdit }: GoalActivityProps) {
                     type="button"
                     size="icon-xs"
                     variant="ghost"
-                    className="text-muted-foreground relative after:absolute after:-inset-2.5 after:content-['']"
+                    className="text-muted-foreground relative after:absolute after:-inset-2.5 after:content-[''] pointer-coarse:size-11 pointer-coarse:after:hidden"
                     disabled={hidden}
                     aria-label={`Edit ${text}`}
                     onClick={() => onEdit(entry)}
