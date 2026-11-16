@@ -2,12 +2,12 @@
 id: '190'
 slug: household-goal-detail-followups
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-16
 approved: 2026-11-16 # owner-approved in chat 2026-11-16 as drafted, all recommended defaults
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # link to impl PR, set on shipped
+shipped: 2026-11-16 # YYYY-MM-DD, set on impl merge
+impl_pr: https://github.com/cljiahao/fynfo/pull/79 # link to impl PR, set on shipped
 supersedes: # none; amends decisions of spec 189 (listed under "Decisions of 189 that change")
 constitution_satisfies:
   - '§2.1'
