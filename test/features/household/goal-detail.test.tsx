@@ -427,6 +427,25 @@ describe('page structure', () => {
     ]);
   });
 
+  it('keeps the single mobile column shrinkable so wide content cannot widen the page', () => {
+    mount();
+    const grid = screen.getByLabelText('Budget items (2)', {
+      selector: 'section',
+    }).parentElement;
+    expect(grid).toHaveClass('grid-cols-1');
+    for (const child of Array.from(grid?.children ?? [])) {
+      expect(child).toHaveClass('min-w-0');
+    }
+  });
+
+  it('gives the activity edit buttons a coarse-pointer hit target', () => {
+    mount();
+    const edit = screen.getAllByRole('button', { name: /^Edit (You|Partner)/ });
+    expect(edit.length).toBeGreaterThan(0);
+    for (const button of edit)
+      expect(button).toHaveClass('pointer-coarse:size-11');
+  });
+
   it('opens the contribution dialog from Add to goal', () => {
     mount();
     fireEvent.click(screen.getByRole('button', { name: 'Add to goal' }));

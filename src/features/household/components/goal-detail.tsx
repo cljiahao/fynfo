@@ -313,8 +313,9 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
 
       <GoalSummary goal={goal} pace={pace} />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-x-8">
-        <section className="space-y-3" aria-labelledby="items-heading">
+      {/* grid-cols-1 is minmax(0,1fr); the implicit auto column would grow to the chart's measured width and push the page wider than the viewport. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-x-8">
+        <section className="min-w-0 space-y-3" aria-labelledby="items-heading">
           <div className="flex items-center justify-between gap-3">
             <h2 id="items-heading" className="text-base font-semibold">
               Budget items{' '}
@@ -374,7 +375,7 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
         </section>
 
         {/* One grid item, so a tall items list cannot stretch the chart's row and open a gap above the activity. */}
-        <div className="space-y-6 lg:space-y-8">
+        <div className="min-w-0 space-y-6 lg:space-y-8">
           <section className="space-y-3" aria-labelledby="burn-up-heading">
             <h2 id="burn-up-heading" className="text-base font-semibold">
               {basis === 'paid' && !hidden
