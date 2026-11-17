@@ -1,3 +1,4 @@
+import { savedStatus } from '@/features/household/lib/goal-stats';
 import {
   computeHouseholdPlan,
   householdRecommendations,
@@ -486,6 +487,49 @@ describe('recommendation: behind', () => {
     if (r?.kind !== 'behind') throw new Error('expected behind');
     expect(r.amounts.behind).toBeCloseTo(300, 6);
     expect(r.amounts.catchUpPerMonth).toBeCloseTo(300, 6);
+  });
+
+  describe('paid basis', () => {
+    // No contributions and costed items: savedStatus would call this behind.
+    const itemsFirst = (items: PlanItem[]) =>
+      lagging({ contributed: 0, remaining: 5490, items });
+
+    it('never emits behind and paces instead', () => {
+      const g = itemsFirst([
+        item({ id: 'a', effective: 5490, paid: 2000, dueDate: '2027-01-15' }),
+      ]);
+      expect(savedStatus(g, NOW)).toBe('behind');
+      const list = recs([g]);
+      expect(list.map((r) => r.kind)).not.toContain('behind');
+      expect(list.map((r) => r.kind)).toContain('monthly-pace');
+    });
+
+    it('still surfaces an overdue unpaid item as next-payment', () => {
+      const g = itemsFirst([
+        item({
+          id: 'a',
+          name: 'Venue',
+          effective: 1000,
+          dueDate: '2025-12-01',
+        }),
+        item({ id: 'b', effective: 4490, dueDate: '2027-01-15' }),
+      ]);
+      const list = recs([g]);
+      expect(list.map((r) => r.kind)).not.toContain('behind');
+      expect(list.find((r) => r.kind === 'next-payment')).toMatchObject({
+        goalId: 'reno',
+        label: 'Venue',
+        dates: { due: '2025-12-01' },
+      });
+    });
+
+    it('keeps behind once a contribution moves it to the saved basis', () => {
+      const g = itemsFirst([item({ id: 'a', effective: 5490 })]);
+      const kinds = recs([{ ...g, contributed: 1000, remaining: 4490 }]).map(
+        (r) => r.kind
+      );
+      expect(kinds).toContain('behind');
+    });
   });
 
   it('is not emitted for an on-track goal', () => {

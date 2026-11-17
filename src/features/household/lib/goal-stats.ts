@@ -183,14 +183,17 @@ const toCents = (amount: number) => Math.round(amount * 100);
 const DAY_FORMAT = 'yyyy-MM-dd';
 
 /** What every item is expected to cost together: quotes replace estimates. */
-export function plannedTotal(goal: Pick<HouseholdGoal, 'items'>): number {
+export function plannedTotal(goal: {
+  items: ReadonlyArray<Pick<GoalItem, 'budget' | 'quote'>>;
+}): number {
   return goal.items.reduce((sum, item) => sum + effectiveAmount(item), 0);
 }
 
 /** Items-first goals are tracked by payments until the first contribution arrives. */
-export function goalBasis(
-  goal: Pick<HouseholdGoal, 'contributed' | 'items'>
-): GoalBasis {
+export function goalBasis(goal: {
+  contributed: number;
+  items: ReadonlyArray<Pick<GoalItem, 'budget' | 'quote'>>;
+}): GoalBasis {
   return goal.contributed <= 0 && plannedTotal(goal) > 0 ? 'paid' : 'saved';
 }
 

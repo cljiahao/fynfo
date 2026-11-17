@@ -1,7 +1,7 @@
 import { differenceInCalendarDays } from 'date-fns/differenceInCalendarDays';
 import { parseISO } from 'date-fns/parseISO';
 import { startOfDay } from 'date-fns/startOfDay';
-import { monthsUntil, savedStatus } from './goal-stats';
+import { goalBasis, monthsUntil, savedStatus } from './goal-stats';
 
 export interface PlanItem {
   id: string;
@@ -356,7 +356,18 @@ export function householdRecommendations(
 
     const { targetDate } = goal;
     let behindEmitted = false;
-    if (targetDate !== null && savedStatus(goal, now) === 'behind') {
+    // Paid-basis goals are judged by payments, as on the goal card, so the
+    // saved-basis straight line would contradict the "On track" chip.
+    const paidBasis =
+      goalBasis({
+        contributed: goal.contributed,
+        items: goal.items.map((i) => ({ budget: i.effective, quote: null })),
+      }) === 'paid';
+    if (
+      !paidBasis &&
+      targetDate !== null &&
+      savedStatus(goal, now) === 'behind'
+    ) {
       const behind =
         (expectedSaved(goal, targetDate, now) - goal.contributed) *
           clampShare(goal.share) -
