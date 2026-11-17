@@ -2,12 +2,12 @@
 id: '192'
 slug: household-behind-basis
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-17
 approved: 2026-11-17 # owner-approved in chat 2026-11-17 ("Approve, build it")
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # link to impl PR, set on shipped
+shipped: 2026-11-17 # YYYY-MM-DD, set on impl merge
+impl_pr: https://github.com/cljiahao/fynfo/pull/82 # link to impl PR, set on shipped
 supersedes: # none; builds on the paid basis defined in spec 190
 constitution_satisfies:
   - '§2.1'
