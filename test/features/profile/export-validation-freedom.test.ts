@@ -57,3 +57,15 @@ describe('freedom assumptions in exports', () => {
     expect(reviewWithPlanner({ freedomUnknown: 1 }).ok).toBe(false);
   });
 });
+
+describe('expense buffer in exports', () => {
+  it('accepts expenseBufferPct and files without it', () => {
+    expect(reviewWithPlanner({ expenseBufferPct: 10 }).ok).toBe(true);
+    expect(reviewWithPlanner({ expenseBufferPct: 0 }).ok).toBe(true);
+    expect(reviewWithPlanner({}).ok).toBe(true);
+  });
+
+  it.each([-1, 101])('rejects expenseBufferPct = %s', (value) => {
+    expect(reviewWithPlanner({ expenseBufferPct: value }).ok).toBe(false);
+  });
+});
