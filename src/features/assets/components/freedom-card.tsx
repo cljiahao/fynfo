@@ -20,6 +20,7 @@ import {
   type FreedomProjection,
 } from '../lib/freedom-projection';
 import type { SnapshotData } from '../types';
+import { DividendCoverageSection } from './dividend-coverage-section';
 import { FreedomAssumptionsForm } from './freedom-assumptions-form';
 import {
   CAP_YEARS,
@@ -199,13 +200,11 @@ export function FreedomCard({ planner, snapshot }: FreedomCardProps) {
                       ? 'Add a salary to see a savings rate.'
                       : `Savings rate ${Math.round(projection.savingsRatePct)}% of take-home.`}
                   </p>
-                  {projection.dividendCoveragePct !== null && (
-                    <p>
-                      Dividend coverage{' '}
-                      {Math.round(projection.dividendCoveragePct)}% of living
-                      cost.
-                    </p>
-                  )}
+                  <DividendCoverageSection
+                    ttmMonthlyAvg={dividendAvgMonthly}
+                    monthlyLivingCost={input.annualCost / 12}
+                    money={money}
+                  />
                   {planner.safetyRelease && (
                     <p className="text-muted-foreground">
                       Once your safety goals are funded (around month{' '}

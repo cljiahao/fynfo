@@ -23,13 +23,19 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryContent } from '@/components/widgets';
 import { useExpenses } from '@/features/expenses';
-import { trailingTwelveMonths, useSalaryRecords } from '@/features/salary';
+import {
+  calculateMonthlyCpfForPlanning,
+  trailingTwelveMonths,
+  useSalaryRecords,
+} from '@/features/salary';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DEFAULT_EMERGENCY_MONTHS,
+  DEFAULT_INSURANCE_PCT,
   DEFAULT_WAR_CHEST_MONTHS,
+  EXPENSE_TREND_WINDOW_MONTHS,
 } from '../constants';
 import { useExpensesOverride } from '../hooks/use-expenses-override';
 import { computeExpenseDriftPct } from '../hooks/use-freedom-inputs';
@@ -37,13 +43,17 @@ import {
   usePlannerSettings,
   useUpsertPlannerSettings,
 } from '../hooks/use-planner-settings';
+import { expenseTrend } from '../lib/expense-trend';
 import type { FreedomGoalEnd } from '../lib/freedom-projection';
 import { derivePersonalSurplus } from '../lib/personal-surplus';
 import {
   calcRecentAvgExpense,
+  calcRecentInsuranceAvg,
   computeSalaryPlan,
   computeShortfallImpact,
+  insuranceHintPct,
   planStateLine,
+  plannedSavingsRatePct,
   shortfallImpactMonths,
   sumByCategory,
   type RecentAvgExpense,
@@ -195,7 +205,12 @@ export function SalaryPlanner(props: SalaryPlannerProps) {
     : { bonus: 0, oneTime: 0 };
   const now = new Date();
   const recentAvg = calcRecentAvgExpense(expenses, now, 12);
-  const lastMonthSpend = calcRecentAvgExpense(expenses, now, 1).average;
+  const recentShort = calcRecentAvgExpense(
+    expenses,
+    now,
+    EXPENSE_TREND_WINDOW_MONTHS
+  );
+  const insuranceAvg = calcRecentInsuranceAvg(expenses, now, 12).average;
 
   return (
     <>
@@ -209,7 +224,8 @@ export function SalaryPlanner(props: SalaryPlannerProps) {
           otherIncome={otherIncome}
           initialSettings={savedSettings ?? DEFAULT_SETTINGS}
           recentAvg={recentAvg}
-          lastMonthSpend={lastMonthSpend}
+          recentShort={recentShort}
+          insuranceAvg={insuranceAvg}
           now={now}
         />
       </QueryContent>
@@ -224,14 +240,16 @@ function SalaryPlannerInner({
   otherIncome,
   initialSettings,
   recentAvg,
-  lastMonthSpend,
+  recentShort,
+  insuranceAvg,
   now,
 }: SalaryPlannerProps & {
   salary: number;
   otherIncome: { bonus: number; oneTime: number };
   initialSettings: PlannerSettingsData;
   recentAvg: RecentAvgExpense;
-  lastMonthSpend: number;
+  recentShort: RecentAvgExpense;
+  insuranceAvg: number;
   now: Date;
 }) {
   const { canReveal, getHideEpoch, mask } = useAmountVisibility();
@@ -354,7 +372,16 @@ function SalaryPlannerInner({
     : null;
   const householdMonthlyDeduction = householdPlan ? householdPlan.monthly : 0;
 
-  const plan = computeSalaryPlan({ ...planBase, householdMonthlyDeduction });
+  const employeeCpfMonthly = calculateMonthlyCpfForPlanning(
+    salary,
+    now.getFullYear(),
+    now.getMonth() + 1
+  );
+  const plan = computeSalaryPlan({
+    ...planBase,
+    householdMonthlyDeduction,
+    employeeCpfMonthly,
+  });
   const { investmentAmt, emergencyFundGoal, warChestGoal } = plan;
   const householdEarmark = householdPlan ? householdPlan.surplusUsed : 0;
   const shortfall = plan.householdShortfallAmt;
@@ -379,9 +406,18 @@ function SalaryPlannerInner({
   const expenseDriftPct = computeExpenseDriftPct({
     override: expensesOverride,
     recentAvg,
-    lastMonth: lastMonthSpend,
+    recentShort,
   });
   const expensesOverridden = expensesOverride !== null;
+  const trend = expenseTrend(
+    computeExpenseDriftPct({ override: null, recentAvg, recentShort })
+  );
+  const savingsRatePct = plannedSavingsRatePct(
+    netAfterCpf > 0 ? netAfterCpf : null,
+    investmentAmt,
+    savingsAmt
+  );
+  const premiumsPct = insuranceHintPct(insuranceAvg, netAfterCpf);
   const safetyRelease =
     savingsAmt > 0
       ? {
@@ -557,7 +593,7 @@ function SalaryPlannerInner({
       <CardHeader>
         <CardTitle>Planner</CardTitle>
         <CardDescription>
-          Where your monthly take-home goes, after 20% CPF
+          Where your monthly take-home goes, after CPF
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -597,6 +633,8 @@ function SalaryPlannerInner({
               isCustom={expensesOverride !== null}
               onChange={setExpensesOverride}
               onReset={() => setExpensesOverride(null)}
+              trend={trend}
+              savingsRatePct={salary > 0 ? savingsRatePct : null}
             />
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -608,6 +646,16 @@ function SalaryPlannerInner({
                 ? ` · Allowance ${mask(allowancePctInput)}%`
                 : ''}
             </p>
+            {premiumsPct !== null && (
+              <p
+                className="text-muted-foreground w-full text-xs"
+                data-testid="insurance-hint"
+              >
+                Insurance is planned at {DEFAULT_INSURANCE_PCT}% of take-home;
+                your premiums average {premiumsPct.toFixed(1)}% of take-home.
+                Premiums paid from MediSave do not appear in expenses.
+              </p>
+            )}
             <PlannerSettingsSheet
               values={settings}
               onChange={(patch) =>

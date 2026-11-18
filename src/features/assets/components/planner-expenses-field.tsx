@@ -2,6 +2,7 @@
 
 import { useAmountVisibility } from '@/features/privacy';
 import { formatSGD } from '@/lib/utils/currency';
+import type { ExpenseTrend } from '../lib/expense-trend';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,17 @@ interface PlannerExpensesFieldProps {
   isCustom: boolean;
   onChange: (value: number) => void;
   onReset: () => void;
+  /** Null hides the line until there are 3 full months of data. */
+  trend?: ExpenseTrend | null;
+  /** Planned share of take-home going to savings and investing. */
+  savingsRatePct?: number | null;
+}
+
+export function expenseTrendLabel(trend: ExpenseTrend): string {
+  if (trend.direction === 'steady') return 'Spending is steady';
+  return `Last 3 months ${trend.direction === 'up' ? '↑' : '↓'} ${trend.pct}% ${
+    trend.direction === 'up' ? 'above' : 'below'
+  } average`;
 }
 
 export function expensesSourceLabel(
@@ -39,6 +51,8 @@ export function PlannerExpensesField({
   isCustom,
   onChange,
   onReset,
+  trend = null,
+  savingsRatePct = null,
 }: PlannerExpensesFieldProps) {
   const { hidden, mask, canReveal } = useAmountVisibility();
   return (
@@ -76,6 +90,22 @@ export function PlannerExpensesField({
           </Button>
         )}
       </div>
+      {trend !== null && (
+        <p
+          className="text-muted-foreground text-xs"
+          data-testid="expense-trend"
+        >
+          {expenseTrendLabel(trend)}
+        </p>
+      )}
+      {savingsRatePct !== null && (
+        <p
+          className="text-muted-foreground text-xs"
+          data-testid="planned-savings-rate"
+        >
+          Planned savings rate {Math.round(savingsRatePct)}% of take-home
+        </p>
+      )}
     </div>
   );
 }
