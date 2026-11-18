@@ -25,3 +25,11 @@ Consumer decisions: `avgBuyPrice` and `costBasis` both become remaining cost per
 ## Acceptance and rollback
 
 Regression tests: buy-only unchanged, partial sell, buy/sell/buy blend, full sell then rebuy, buy fees included and sell fees ignored, out-of-order input. Five pnpm gates green. Rollback: revert the commit; no stored data changes.
+
+## Follow-up
+
+Finding: the first fix clamped running shares inside the walk and used localeCompare on dates, so share totals depended on same-day trade order (id is a TEXT key, not creation order). Nothing held, then buy 10 and sell 10 on one date with the sell listed first, left 10 shares where the plain sum gives 0.
+
+Fix: `shares` is again the plain sum of buys minus sells; only the cost walk keeps a separate running count. The walk orders by parsed time (`Date.parse`), then buys before sells, then input order. Running shares under 1e-9 reset remaining cost to 0, and holdings at or below 1e-9 shares are excluded so float residue leaves no phantom holding. An oversell removes all remaining cost, and `avgBuyPrice`/`costBasis` are 0 when the walk holds nothing.
+
+Tests: same-day sell-first full and partial, float-sized partial sells summing to the position, mixed date-only and ISO timestamp ordering.

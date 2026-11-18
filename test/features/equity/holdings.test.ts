@@ -245,4 +245,112 @@ describe('computeHoldings', () => {
       expect(h.costBasis).toBe(20);
     });
   });
+
+  describe('same-day ordering and float residue', () => {
+    const d = '2025-03-01';
+
+    it('same-day sell listed before buy leaves no holding', () => {
+      const h = computeHoldings([
+        makeTrade({
+          ticker: 'A',
+          action: 'sell',
+          shares: 10,
+          price: 12,
+          date: d,
+        }),
+        makeTrade({
+          ticker: 'A',
+          action: 'buy',
+          shares: 10,
+          price: 10,
+          date: d,
+        }),
+      ]);
+      expect(h).toEqual([]);
+    });
+
+    it('same-day sell-first partial keeps remaining shares at the buy price', () => {
+      const [h] = computeHoldings([
+        makeTrade({
+          ticker: 'A',
+          action: 'sell',
+          shares: 4,
+          price: 12,
+          date: d,
+        }),
+        makeTrade({
+          ticker: 'A',
+          action: 'buy',
+          shares: 10,
+          price: 10,
+          date: d,
+        }),
+      ]);
+      expect(h.shares).toBe(6);
+      expect(h.avgBuyPrice).toBeCloseTo(10);
+      expect(h.costBasis).toBeCloseTo(10);
+    });
+
+    it('float-sized partial sells summing to the position leave no phantom', () => {
+      const h = computeHoldings([
+        makeTrade({
+          ticker: 'A',
+          action: 'buy',
+          shares: 9.9999999,
+          price: 10,
+          date: '2025-01-01',
+        }),
+        makeTrade({
+          ticker: 'A',
+          action: 'sell',
+          shares: 3.3333333,
+          price: 11,
+          date: '2025-02-01',
+        }),
+        makeTrade({
+          ticker: 'A',
+          action: 'sell',
+          shares: 3.3333333,
+          price: 11,
+          date: '2025-02-02',
+        }),
+        makeTrade({
+          ticker: 'A',
+          action: 'sell',
+          shares: 3.3333333,
+          price: 11,
+          date: '2025-02-03',
+        }),
+      ]);
+      expect(h).toEqual([]);
+    });
+
+    it('sorts a date-only string and a full ISO timestamp on different days', () => {
+      const [h] = computeHoldings([
+        makeTrade({
+          ticker: 'A',
+          action: 'sell',
+          shares: 5,
+          price: 20,
+          date: '2025-01-02T09:00:00.000Z',
+        }),
+        makeTrade({
+          ticker: 'A',
+          action: 'buy',
+          shares: 10,
+          price: 10,
+          date: '2025-01-01',
+        }),
+        makeTrade({
+          ticker: 'A',
+          action: 'buy',
+          shares: 5,
+          price: 30,
+          date: '2025-01-03',
+        }),
+      ]);
+      expect(h.shares).toBe(10);
+      expect(h.avgBuyPrice).toBeCloseTo(20);
+    });
+  });
 });
