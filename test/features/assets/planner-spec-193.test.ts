@@ -40,6 +40,12 @@ describe('computeSalaryPlan insurance and CPF inputs', () => {
     expect(p5.investmentPct - p7.investmentPct).toBeCloseTo(0.02);
   });
 
+  it('falls back to the default for a non-finite insurance input', () => {
+    const p = computeSalaryPlan({ ...base, insurancePctInput: Number.NaN });
+    expect(p).toEqual(computeSalaryPlan(base));
+    expect(Number.isFinite(p.investmentAmt)).toBe(true);
+  });
+
   it('keeps salary * 0.8 when the CPF figure is absent or null', () => {
     expect(
       computeSalaryPlan({ ...base, employeeCpfMonthly: null }).netAfterCpf
@@ -108,6 +114,20 @@ describe('calcRecentInsuranceAvg and hint', () => {
     const r = calcRecentInsuranceAvg(list, NOW);
     expect(r.monthsUsed).toBe(3);
     expect(r.average).toBe(200);
+  });
+
+  it('spreads an annual premium over overall expense history', () => {
+    const list = [
+      exp({ date: '2026-01-01', type: 'food_drink', amount: 100 }),
+      exp({ date: '2026-09-01', amount: 1200 }),
+    ];
+    const r = calcRecentInsuranceAvg(list, NOW);
+    expect(r.monthsUsed).toBe(10);
+    expect(r.average).toBeCloseTo(120);
+    expect(calcRecentAvgExpense(list, NOW)).toEqual({
+      average: 10,
+      monthsUsed: 10,
+    });
   });
 
   it('computes percent of take-home and hides on bad net pay', () => {

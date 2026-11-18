@@ -40,7 +40,8 @@ function recentMonthlyAverage(
   expenses: ExpenseData[] | undefined,
   now: Date,
   months: number,
-  include: (e: ExpenseData) => boolean
+  include: (e: ExpenseData) => boolean,
+  historyInclude: (e: ExpenseData) => boolean = include
 ): RecentAvgExpense {
   if (!expenses?.length || months <= 0) return { average: 0, monthsUsed: 0 };
   const monthKey = (y: number, m: number) =>
@@ -50,15 +51,18 @@ function recentMonthlyAverage(
   const start = monthKey(startDate.getFullYear(), startDate.getMonth());
 
   const monthTotals = new Map<string, number>();
+  let first: string | null = null;
   for (const e of expenses) {
-    if (!include(e)) continue;
     const key = e.date.slice(0, 7);
     if (key < start || key >= end) continue;
+    if (historyInclude(e) && (first === null || key < first)) first = key;
+    if (!include(e)) continue;
     monthTotals.set(key, (monthTotals.get(key) ?? 0) + userExpenseAmount(e));
   }
-  if (monthTotals.size === 0) return { average: 0, monthsUsed: 0 };
+  if (monthTotals.size === 0 || first === null) {
+    return { average: 0, monthsUsed: 0 };
+  }
   const total = Array.from(monthTotals.values()).reduce((a, v) => a + v, 0);
-  const first = Array.from(monthTotals.keys()).sort()[0];
   const [fy, fm] = first.split('-').map(Number);
   const span = (now.getFullYear() - fy) * 12 + (now.getMonth() + 1 - fm);
   const monthsUsed = Math.min(months, Math.max(1, span));
@@ -85,7 +89,10 @@ export function calcRecentInsuranceAvg(
     expenses,
     now,
     months,
-    (e) => e.type === 'insurance'
+    (e) => e.type === 'insurance',
+    // Annual premiums land in one month; dividing by months since the first
+    // premium would overstate the monthly cost, so use overall history.
+    () => true
   );
 }
 
@@ -196,8 +203,14 @@ export function computeSalaryPlan(input: SalaryPlanInput): SalaryPlan {
       : salary * 0.8;
 
   const expensesPct = netAfterCpf > 0 ? expenses / netAfterCpf : 0;
+  const rawInsurancePct = input.insurancePctInput;
   const insurancePct =
-    Math.max(0, input.insurancePctInput ?? DEFAULT_INSURANCE_PCT) / 100;
+    Math.max(
+      0,
+      typeof rawInsurancePct === 'number' && Number.isFinite(rawInsurancePct)
+        ? rawInsurancePct
+        : DEFAULT_INSURANCE_PCT
+    ) / 100;
   const tithePct = titheEnabled ? tithePctInput / 100 : 0;
   const allowancePct = allowanceEnabled ? allowancePctInput / 100 : 0;
 
