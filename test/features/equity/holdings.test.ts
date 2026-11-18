@@ -82,7 +82,7 @@ describe('computeHoldings', () => {
     expect(holding.avgBuyPrice).toBe(150);
   });
 
-  it('costBasis only counts remaining shares after partial sell', () => {
+  it('costBasis stays at the average cost after a partial sell', () => {
     const trades = [
       makeTrade({
         ticker: 'AAPL',
@@ -94,8 +94,8 @@ describe('computeHoldings', () => {
       makeTrade({ ticker: 'AAPL', action: 'sell', shares: 5, price: 150 }),
     ];
     const [holding] = computeHoldings(trades);
-    // totalBuyCost = 1000, remaining shares = 5
-    expect(holding.costBasis).toBe(200);
+    expect(holding.costBasis).toBe(100);
+    expect(holding.avgBuyPrice).toBe(100);
     expect(holding.shares).toBe(5);
   });
 
@@ -130,5 +130,119 @@ describe('computeHoldings', () => {
     const msft = holdings.find((h) => h.ticker === 'MSFT');
     expect(aapl?.shares).toBe(5);
     expect(msft?.shares).toBe(3);
+  });
+
+  describe('average-cost method', () => {
+    it('removes sold lots from remaining cost', () => {
+      const [h] = computeHoldings([
+        makeTrade({ ticker: 'A', action: 'buy', shares: 100, price: 10 }),
+        makeTrade({ ticker: 'A', action: 'sell', shares: 50, price: 20 }),
+      ]);
+      expect(h.costBasis).toBe(10);
+      expect(h.avgBuyPrice * h.shares).toBe(500);
+    });
+
+    it('blends later buys with the remaining cost', () => {
+      const [h] = computeHoldings([
+        makeTrade({
+          ticker: 'A',
+          action: 'buy',
+          shares: 100,
+          price: 10,
+          date: '2025-01-01',
+        }),
+        makeTrade({
+          ticker: 'A',
+          action: 'sell',
+          shares: 50,
+          price: 20,
+          date: '2025-02-01',
+        }),
+        makeTrade({
+          ticker: 'A',
+          action: 'buy',
+          shares: 50,
+          price: 30,
+          date: '2025-03-01',
+        }),
+      ]);
+      expect(h.shares).toBe(100);
+      expect(h.avgBuyPrice).toBe(20);
+      expect(h.costBasis).toBe(20);
+    });
+
+    it('starts fresh after a full sell and rebuy', () => {
+      const [h] = computeHoldings([
+        makeTrade({
+          ticker: 'A',
+          action: 'buy',
+          shares: 10,
+          price: 100,
+          date: '2025-01-01',
+        }),
+        makeTrade({
+          ticker: 'A',
+          action: 'sell',
+          shares: 10,
+          price: 150,
+          date: '2025-02-01',
+        }),
+        makeTrade({
+          ticker: 'A',
+          action: 'buy',
+          shares: 10,
+          price: 50,
+          date: '2025-03-01',
+        }),
+      ]);
+      expect(h.costBasis).toBe(50);
+    });
+
+    it('includes buy fees and ignores sell fees', () => {
+      const [h] = computeHoldings([
+        makeTrade({
+          ticker: 'A',
+          action: 'buy',
+          shares: 100,
+          price: 10,
+          fees: 20,
+        }),
+        makeTrade({
+          ticker: 'A',
+          action: 'sell',
+          shares: 50,
+          price: 20,
+          fees: 99,
+        }),
+      ]);
+      expect(h.costBasis).toBe(10.2);
+    });
+
+    it('orders trades by date regardless of input order', () => {
+      const [h] = computeHoldings([
+        makeTrade({
+          ticker: 'A',
+          action: 'buy',
+          shares: 50,
+          price: 30,
+          date: '2025-03-01',
+        }),
+        makeTrade({
+          ticker: 'A',
+          action: 'sell',
+          shares: 50,
+          price: 20,
+          date: '2025-02-01',
+        }),
+        makeTrade({
+          ticker: 'A',
+          action: 'buy',
+          shares: 100,
+          price: 10,
+          date: '2025-01-01',
+        }),
+      ]);
+      expect(h.costBasis).toBe(20);
+    });
   });
 });
