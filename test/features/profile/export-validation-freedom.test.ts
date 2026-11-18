@@ -53,6 +53,25 @@ describe('freedom assumptions in exports', () => {
     ).toBe(true);
   });
 
+  it('accepts the coverage settings, null, and rejects out-of-range values', () => {
+    expect(
+      reviewWithPlanner({
+        insurancePct: 5,
+        dividendSpendThresholdPct: 25,
+        dividendSpendSharePct: 100,
+      }).ok
+    ).toBe(true);
+    expect(reviewWithPlanner({ insurancePct: null }).ok).toBe(true);
+    for (const field of [
+      'insurancePct',
+      'dividendSpendThresholdPct',
+      'dividendSpendSharePct',
+    ]) {
+      expect(reviewWithPlanner({ [field]: -1 }).ok).toBe(false);
+      expect(reviewWithPlanner({ [field]: 101 }).ok).toBe(false);
+    }
+  });
+
   it('still rejects unknown planner keys', () => {
     expect(reviewWithPlanner({ freedomUnknown: 1 }).ok).toBe(false);
   });

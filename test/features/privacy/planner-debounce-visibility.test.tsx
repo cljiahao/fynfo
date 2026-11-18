@@ -124,6 +124,9 @@ describe('actual salary planner delayed-save visibility', () => {
     expect(api.upsertPlannerSettings).toHaveBeenCalledWith({
       ...settings,
       expenseBufferPct: 0,
+      insurancePct: 5,
+      dividendSpendThresholdPct: 25,
+      dividendSpendSharePct: 50,
       emergencyMonths: 5,
     });
   });

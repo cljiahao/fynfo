@@ -170,8 +170,10 @@ export interface SalaryPlan {
 }
 
 /**
- * Monthly take-home allocation. Net is salary after a flat 20% CPF. Fixed
- * slices (expenses, 5% insurance, optional tithe/allowance) are taken first;
+ * Monthly take-home allocation. Net is salary after the employee CPF passed
+ * in (which honours the OW ceiling), or a flat 20% when none is given; saved
+ * scenarios always use the flat 20%. Fixed slices (expenses, insurance,
+ * optional tithe/allowance) are taken first;
  * the remainder funds savings until the emergency + war-chest goals are met,
  * then flows to investment. Pure — all inputs passed in.
  */

@@ -48,6 +48,9 @@ export const plannerSettingsSchema = z.object({
   freedomRealReturnPct: z.number().min(0).max(12).nullable().optional(),
   freedomWithdrawalRatePct: z.number().min(1).max(10).nullable().optional(),
   freedomTargetYear: z.number().int().min(2000).max(2200).nullable().optional(),
+  insurancePct: z.number().min(0).max(100).nullable().optional(),
+  dividendSpendThresholdPct: z.number().min(0).max(100).nullable().optional(),
+  dividendSpendSharePct: z.number().min(0).max(100).nullable().optional(),
 });
 
 // Bounds apply only to saved snapshots, not the live planner contract.

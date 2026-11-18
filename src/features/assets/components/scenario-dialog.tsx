@@ -222,8 +222,8 @@ export function ScenarioDialog({
             {record
               ? `saved ${new Date(record.updatedAt).toLocaleDateString()}`
               : `captured ${new Date(payload.capturedAt).toLocaleDateString()}`}{' '}
-            · SGD. Flat 20% CPF, fixed 5% insurance, reserves funded over 9
-            months.
+            · SGD. Flat 20% CPF (the live plan applies the CPF OW ceiling),
+            fixed 5% insurance, reserves funded over 9 months.
           </DialogDescription>
         </DialogHeader>
         <AmountsHiddenNotice />

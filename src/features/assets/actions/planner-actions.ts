@@ -13,9 +13,10 @@ const BASE_COLUMNS =
   'emergency_months, war_chest_months, tithe_enabled, tithe_pct, allowance_enabled, allowance_pct, household_horizon_months';
 const BUFFER_COLUMNS = `${BASE_COLUMNS}, expense_buffer_pct`;
 const FREEDOM_COLUMNS = `${BUFFER_COLUMNS}, freedom_real_return_pct, freedom_withdrawal_rate_pct, freedom_target_year`;
+const COVERAGE_COLUMNS = `${FREEDOM_COLUMNS}, insurance_pct, dividend_spend_threshold_pct, dividend_spend_share_pct`;
 
 // Postgres "undefined_column": a planner migration (buffer, freedom
-// assumptions) has not been applied yet, so the planner runs without those
+// assumptions, coverage settings) has not been applied yet, so the planner runs without those
 // stored values instead of failing.
 function isMissingColumn(error: { code?: string } | null): boolean {
   return error?.code === '42703';
@@ -33,6 +34,9 @@ interface PlannerRow {
   freedom_real_return_pct?: unknown;
   freedom_withdrawal_rate_pct?: unknown;
   freedom_target_year?: unknown;
+  insurance_pct?: unknown;
+  dividend_spend_threshold_pct?: unknown;
+  dividend_spend_share_pct?: unknown;
 }
 
 // NUMERIC columns arrive as strings and unset ones as null.
@@ -47,7 +51,12 @@ export async function getPlannerSettings(): Promise<PlannerSettingsData | null> 
 
   // Newest column set first; each missing-column error steps down to the set
   // that predates the unapplied migration.
-  const tiers = [FREEDOM_COLUMNS, BUFFER_COLUMNS, BASE_COLUMNS];
+  const tiers = [
+    COVERAGE_COLUMNS,
+    FREEDOM_COLUMNS,
+    BUFFER_COLUMNS,
+    BASE_COLUMNS,
+  ];
   let result = await supabase
     .from('planner_settings')
     .select(tiers[0])
@@ -70,6 +79,11 @@ export async function getPlannerSettings(): Promise<PlannerSettingsData | null> 
     data.freedom_withdrawal_rate_pct
   );
   const freedomTargetYear = optionalNumber(data.freedom_target_year);
+  const insurancePct = optionalNumber(data.insurance_pct);
+  const dividendSpendThresholdPct = optionalNumber(
+    data.dividend_spend_threshold_pct
+  );
+  const dividendSpendSharePct = optionalNumber(data.dividend_spend_share_pct);
 
   return {
     emergencyMonths: data.emergency_months,
@@ -86,6 +100,11 @@ export async function getPlannerSettings(): Promise<PlannerSettingsData | null> 
       ? {}
       : { freedomWithdrawalRatePct }),
     ...(freedomTargetYear === undefined ? {} : { freedomTargetYear }),
+    ...(insurancePct === undefined ? {} : { insurancePct }),
+    ...(dividendSpendThresholdPct === undefined
+      ? {}
+      : { dividendSpendThresholdPct }),
+    ...(dividendSpendSharePct === undefined ? {} : { dividendSpendSharePct }),
   };
 }
 
@@ -127,13 +146,26 @@ export async function upsertPlannerSettings(
       ? {}
       : { freedom_target_year: data.freedomTargetYear }),
   };
+  const coverageFields = {
+    ...(data.insurancePct === undefined
+      ? {}
+      : { insurance_pct: data.insurancePct }),
+    ...(data.dividendSpendThresholdPct === undefined
+      ? {}
+      : { dividend_spend_threshold_pct: data.dividendSpendThresholdPct }),
+    ...(data.dividendSpendSharePct === undefined
+      ? {}
+      : { dividend_spend_share_pct: data.dividendSpendSharePct }),
+  };
+  const hasCoverage = Object.keys(coverageFields).length > 0;
   const hasFreedom = Object.keys(freedomFields).length > 0;
   const hasBuffer = Object.keys(bufferFields).length > 0;
 
   // A missing-column error drops the newest unapplied group and retries, so
   // the older fields still save before the owner applies a migration.
   const attempts = [
-    { ...row, ...bufferFields, ...freedomFields },
+    { ...row, ...bufferFields, ...freedomFields, ...coverageFields },
+    ...(hasCoverage ? [{ ...row, ...bufferFields, ...freedomFields }] : []),
     ...(hasFreedom ? [{ ...row, ...bufferFields }] : []),
     ...(hasBuffer ? [row] : []),
   ];

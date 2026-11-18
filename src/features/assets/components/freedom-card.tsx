@@ -12,6 +12,7 @@ import {
   useDividendAvgMonthly,
   useFreedomAssumptions,
 } from '../hooks/use-freedom-inputs';
+import { usePlannerSettings } from '../hooks/use-planner-settings';
 import {
   DEFAULT_RETURN_SPREAD_PCT,
   computeFreedomLevers,
@@ -65,6 +66,7 @@ export function FreedomCard({ planner, snapshot }: FreedomCardProps) {
   const [showAllLevers, setShowAllLevers] = useState(false);
   const dividendAvgMonthly = useDividendAvgMonthly();
   const { assumptions, save, isSaving, persisted } = useFreedomAssumptions();
+  const { data: savedSettings } = usePlannerSettings();
 
   const input = useMemo(
     () =>
@@ -204,6 +206,10 @@ export function FreedomCard({ planner, snapshot }: FreedomCardProps) {
                     ttmMonthlyAvg={dividendAvgMonthly}
                     monthlyLivingCost={input.annualCost / 12}
                     money={money}
+                    thresholdPct={
+                      savedSettings?.dividendSpendThresholdPct ?? undefined
+                    }
+                    sharePct={savedSettings?.dividendSpendSharePct ?? undefined}
                   />
                   {planner.safetyRelease && (
                     <p className="text-muted-foreground">

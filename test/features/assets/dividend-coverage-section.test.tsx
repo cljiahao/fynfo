@@ -77,3 +77,31 @@ describe('DividendCoverageSection', () => {
     expect(screen.queryByTestId('dividend-coverage')).toBeNull();
   });
 });
+
+describe('DividendCoverageSection saved settings', () => {
+  it('applies the saved threshold and share', () => {
+    render(
+      <DividendCoverageSection
+        ttmMonthlyAvg={600}
+        monthlyLivingCost={2000}
+        money={money}
+        thresholdPct={20}
+        sharePct={100}
+      />
+    );
+    expect(screen.getByText(/spend up to \$600 a month/)).toBeTruthy();
+  });
+
+  it('hides the allowance when coverage is under a raised threshold', () => {
+    render(
+      <DividendCoverageSection
+        ttmMonthlyAvg={600}
+        monthlyLivingCost={2000}
+        money={money}
+        thresholdPct={40}
+        sharePct={50}
+      />
+    );
+    expect(screen.queryByText(/You may spend/)).toBeNull();
+  });
+});

@@ -266,6 +266,9 @@ it('uses salary and expenses to calculate goals and saves changed optional deduc
         allowanceEnabled: true,
         allowancePct: 7,
         expenseBufferPct: 0,
+        insurancePct: 5,
+        dividendSpendThresholdPct: 25,
+        dividendSpendSharePct: 50,
       }),
     { timeout: 2000 }
   );

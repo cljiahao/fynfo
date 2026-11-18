@@ -32,6 +32,8 @@ import { PAGE_ROUTES } from '@/lib/constants/routes';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  DEFAULT_DIVIDEND_SPEND_SHARE_PCT,
+  DEFAULT_DIVIDEND_SPEND_THRESHOLD_PCT,
   DEFAULT_EMERGENCY_MONTHS,
   DEFAULT_INSURANCE_PCT,
   DEFAULT_WAR_CHEST_MONTHS,
@@ -141,6 +143,9 @@ const DEFAULT_SETTINGS: PlannerSettingsData = {
   allowanceEnabled: false,
   allowancePct: 5,
   expenseBufferPct: 0,
+  insurancePct: DEFAULT_INSURANCE_PCT,
+  dividendSpendThresholdPct: DEFAULT_DIVIDEND_SPEND_THRESHOLD_PCT,
+  dividendSpendSharePct: DEFAULT_DIVIDEND_SPEND_SHARE_PCT,
 };
 
 export function SalaryPlanner(props: SalaryPlannerProps) {
@@ -272,6 +277,12 @@ function SalaryPlannerInner({
     allowanceEnabled: initialSettings.allowanceEnabled,
     allowancePctInput: initialSettings.allowancePct,
     expenseBufferPct: initialSettings.expenseBufferPct ?? 0,
+    insurancePct: initialSettings.insurancePct ?? DEFAULT_INSURANCE_PCT,
+    dividendSpendThresholdPct:
+      initialSettings.dividendSpendThresholdPct ??
+      DEFAULT_DIVIDEND_SPEND_THRESHOLD_PCT,
+    dividendSpendSharePct:
+      initialSettings.dividendSpendSharePct ?? DEFAULT_DIVIDEND_SPEND_SHARE_PCT,
   });
   const {
     emergencyMonths,
@@ -281,6 +292,9 @@ function SalaryPlannerInner({
     allowanceEnabled,
     allowancePctInput,
     expenseBufferPct,
+    insurancePct,
+    dividendSpendThresholdPct,
+    dividendSpendSharePct,
   } = settings;
 
   // Debounced auto-save using ref to avoid unstable dependency
@@ -318,6 +332,9 @@ function SalaryPlannerInner({
       allowanceEnabled,
       allowancePct: allowancePctInput,
       expenseBufferPct,
+      insurancePct,
+      dividendSpendThresholdPct,
+      dividendSpendSharePct,
     });
   }, [
     emergencyMonths,
@@ -327,6 +344,9 @@ function SalaryPlannerInner({
     allowanceEnabled,
     allowancePctInput,
     expenseBufferPct,
+    insurancePct,
+    dividendSpendThresholdPct,
+    dividendSpendSharePct,
     debouncedSave,
   ]);
 
@@ -357,6 +377,7 @@ function SalaryPlannerInner({
     currentSavings,
     currentBonds,
     expenseBufferPct,
+    insurancePctInput: insurancePct,
   };
   // The surplus depends only on savings, bonds and expenses, so it is known
   // before the household figure and the two steps never form a cycle.
@@ -651,8 +672,9 @@ function SalaryPlannerInner({
                 className="text-muted-foreground w-full text-xs"
                 data-testid="insurance-hint"
               >
-                Insurance is planned at {DEFAULT_INSURANCE_PCT}% of take-home;
-                your premiums average {premiumsPct.toFixed(1)}% of take-home.
+                Insurance is planned at{' '}
+                {Math.round(plan.insurancePct * 1000) / 10}% of take-home; your
+                premiums average {premiumsPct.toFixed(1)}% of take-home.
                 Premiums paid from MediSave do not appear in expenses.
               </p>
             )}

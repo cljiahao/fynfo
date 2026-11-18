@@ -141,7 +141,47 @@ describe('expense trend beside the expenses input', () => {
   });
 });
 
+describe('expense trend and an expenses override', () => {
+  it('ignores the override', async () => {
+    window.localStorage.setItem('fynfo:planner-expenses-override', '5000');
+    api.getExpenses.mockResolvedValue([
+      expense(4, 1000),
+      expense(3, 1500),
+      expense(2, 1500),
+      expense(1, 1500),
+    ]);
+    mount();
+    expect((await screen.findByTestId('expense-trend')).textContent).toMatch(
+      /9% above average/
+    );
+  });
+});
+
 describe('premiums hint', () => {
+  it('uses the saved insurance percent', async () => {
+    api.getPlannerSettings.mockResolvedValue({ ...SETTINGS, insurancePct: 8 });
+    api.getExpenses.mockResolvedValue([
+      expense(1, 1000),
+      expense(1, 300, 'insurance'),
+    ]);
+    mount();
+    expect((await screen.findByTestId('insurance-hint')).textContent).toMatch(
+      /planned at 8% of take-home/
+    );
+  });
+
+  it('nets a salary above the OW ceiling differently from the 80% path', async () => {
+    api.getSalaryRecords.mockResolvedValue([salaryRow('2026-02', 10000, 0)]);
+    api.getExpenses.mockResolvedValue([
+      expense(1, 1000),
+      expense(1, 300, 'insurance'),
+    ]);
+    mount();
+    const hint = await screen.findByTestId('insurance-hint');
+    // 300 / 8400 take-home (CPF capped at the ceiling), not 300 / 8000 (3.8%).
+    expect(hint.textContent).toMatch(/premiums average 3\.6% of take-home/);
+  });
+
   it('shows premiums as a share of take-home when insurance expenses exist', async () => {
     api.getExpenses.mockResolvedValue([
       expense(1, 1000),

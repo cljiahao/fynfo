@@ -19,6 +19,9 @@ const values: PlannerSettingsValues = {
   allowanceEnabled: false,
   allowancePctInput: 5,
   expenseBufferPct: 0,
+  insurancePct: 5,
+  dividendSpendThresholdPct: 25,
+  dividendSpendSharePct: 50,
 };
 
 async function openAndType(raw: string) {
@@ -48,5 +51,36 @@ describe('PlannerSettingsSheet expense buffer', () => {
   it('passes through in-range values', async () => {
     const onChange = await openAndType('15');
     expect(onChange).toHaveBeenCalledWith({ expenseBufferPct: 15 });
+  });
+});
+
+describe('PlannerSettingsSheet coverage fields', () => {
+  async function open() {
+    const onChange = vi.fn();
+    render(
+      <AmountVisibilityProvider>
+        <PlannerSettingsSheet values={values} onChange={onChange} />
+      </AmountVisibilityProvider>
+    );
+    await userEvent.click(screen.getByText('Adjust settings'));
+    return onChange;
+  }
+
+  it('shows the three values', async () => {
+    await open();
+    expect(screen.getByLabelText(/^Insurance/)).toHaveValue(5);
+    expect(screen.getByLabelText(/allowance starts/i)).toHaveValue(25);
+    expect(screen.getByLabelText(/share of dividends/i)).toHaveValue(50);
+  });
+
+  it.each([
+    [/^Insurance/, '8', { insurancePct: 8 }],
+    [/allowance starts/i, '40', { dividendSpendThresholdPct: 40 }],
+    [/share of dividends/i, '150', { dividendSpendSharePct: 100 }],
+    [/^Insurance/, '-3', { insurancePct: 0 }],
+  ])('reports %s edits clamped to 0-100', async (label, raw, patch) => {
+    const onChange = await open();
+    fireEvent.change(screen.getByLabelText(label), { target: { value: raw } });
+    expect(onChange).toHaveBeenCalledWith(patch);
   });
 });

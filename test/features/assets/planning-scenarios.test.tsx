@@ -129,7 +129,7 @@ describe('saved scenario isolation', () => {
     );
     const dialog = screen.getByRole('dialog');
     expect(
-      within(dialog).getByText(/Flat 20% CPF, fixed 5% insurance/)
+      within(dialog).getByText(/Flat 20% CPF .*fixed 5% insurance/)
     ).toBeVisible();
     expect(within(dialog).getByText(/Captured savings:/)).toHaveTextContent(
       '-$100'

@@ -23,7 +23,28 @@ export interface PlannerSettingsValues {
   allowanceEnabled: boolean;
   allowancePctInput: number;
   expenseBufferPct: number;
+  insurancePct: number;
+  dividendSpendThresholdPct: number;
+  dividendSpendSharePct: number;
 }
+
+const PERCENT_FIELDS = [
+  {
+    key: 'insurancePct',
+    id: 'planner-insurance',
+    label: 'Insurance (% of take-home)',
+  },
+  {
+    key: 'dividendSpendThresholdPct',
+    id: 'planner-dividend-threshold',
+    label: 'Dividend allowance starts at coverage',
+  },
+  {
+    key: 'dividendSpendSharePct',
+    id: 'planner-dividend-share',
+    label: 'Share of dividends above it',
+  },
+] as const;
 
 interface PlannerSettingsSheetProps {
   values: PlannerSettingsValues;
@@ -123,6 +144,36 @@ export function PlannerSettingsSheet({
             />
             <span className="text-muted-foreground text-xs">%</span>
           </div>
+        </section>
+
+        <section className="space-y-3">
+          <h3 className="text-sm font-medium">Insurance and dividends</h3>
+          {PERCENT_FIELDS.map((field) => (
+            <div key={field.key} className="flex items-center gap-1.5">
+              <Label htmlFor={field.id} className="text-xs">
+                {field.label}
+              </Label>
+              <Input
+                id={field.id}
+                type="number"
+                min="0"
+                max="100"
+                className="h-6 w-14 text-xs"
+                disabled={hidden}
+                value={hidden ? '' : values[field.key]}
+                onChange={(e) =>
+                  canReveal() &&
+                  onChange({
+                    [field.key]: Math.min(
+                      100,
+                      Math.max(0, Number(e.target.value) || 0)
+                    ),
+                  })
+                }
+              />
+              <span className="text-muted-foreground text-xs">%</span>
+            </div>
+          ))}
         </section>
 
         <section className="space-y-3">

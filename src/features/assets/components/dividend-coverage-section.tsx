@@ -13,6 +13,8 @@ interface DividendCoverageSectionProps {
   /** Living cost a month: expenses, buffer and household budgets. */
   monthlyLivingCost: number;
   money: (value: number) => string;
+  thresholdPct?: number;
+  sharePct?: number;
 }
 
 const pct = (fraction: number) => `${Math.round(fraction * 100)}%`;
@@ -21,6 +23,8 @@ export function DividendCoverageSection({
   ttmMonthlyAvg,
   monthlyLivingCost,
   money,
+  thresholdPct = DEFAULT_DIVIDEND_SPEND_THRESHOLD_PCT,
+  sharePct = DEFAULT_DIVIDEND_SPEND_SHARE_PCT,
 }: DividendCoverageSectionProps) {
   const { coverage, reached, next, gapTtmSgd } = computeDividendCoverage({
     ttmMonthlyAvg,
@@ -31,8 +35,8 @@ export function DividendCoverageSection({
   const allowance = computeDividendAllowance({
     ttmMonthlyAvg,
     coverage,
-    thresholdPct: DEFAULT_DIVIDEND_SPEND_THRESHOLD_PCT,
-    sharePct: DEFAULT_DIVIDEND_SPEND_SHARE_PCT,
+    thresholdPct,
+    sharePct,
   });
 
   return (

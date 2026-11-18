@@ -66,6 +66,12 @@ export interface PlannerSettingsData {
   freedomWithdrawalRatePct?: number | null;
   /** Freedom projection: calendar year the owner aims for. */
   freedomTargetYear?: number | null;
+  /** Insurance premiums, percent of salary; unset falls back to the default. Null clears it. */
+  insurancePct?: number | null;
+  /** Dividend coverage percent above which the allowance may draw on dividends. */
+  dividendSpendThresholdPct?: number | null;
+  /** Percent of dividends above the threshold the allowance may use. */
+  dividendSpendSharePct?: number | null;
 }
 
 export interface ScenarioPayload {

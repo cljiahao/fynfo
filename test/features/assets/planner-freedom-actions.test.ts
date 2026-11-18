@@ -152,6 +152,62 @@ describe('planner-actions - freedom assumptions', () => {
   });
 });
 
+describe('planner-actions - coverage settings', () => {
+  it('maps stored coverage settings and leaves NULLs out', async () => {
+    setSupabase({
+      selectData: {
+        ...FREEDOM_ROW,
+        insurance_pct: '7.5',
+        dividend_spend_threshold_pct: '30',
+        dividend_spend_share_pct: null,
+      },
+    });
+    const { getPlannerSettings } =
+      await import('@/features/assets/actions/planner-actions');
+    const result = await getPlannerSettings();
+    expect(result).toMatchObject({
+      insurancePct: 7.5,
+      dividendSpendThresholdPct: 30,
+    });
+    expect('dividendSpendSharePct' in (result ?? {})).toBe(false);
+  });
+
+  it('writes the coverage columns only when given', async () => {
+    const fake = setSupabase();
+    const { upsertPlannerSettings } =
+      await import('@/features/assets/actions/planner-actions');
+    await upsertPlannerSettings({
+      ...VALID_SETTINGS,
+      insurancePct: 6,
+      dividendSpendThresholdPct: 20,
+      dividendSpendSharePct: 75,
+    });
+    await upsertPlannerSettings(VALID_SETTINGS);
+    const [first, second] = fake.calls.upsert as Record<string, unknown>[];
+    expect(first).toMatchObject({
+      insurance_pct: 6,
+      dividend_spend_threshold_pct: 20,
+      dividend_spend_share_pct: 75,
+    });
+    expect('insurance_pct' in second).toBe(false);
+  });
+
+  it.each([
+    ['insurancePct', -1],
+    ['insurancePct', 101],
+    ['dividendSpendThresholdPct', 101],
+    ['dividendSpendSharePct', -0.5],
+  ])('rejects %s = %s', async (field, value) => {
+    const fake = setSupabase();
+    const { upsertPlannerSettings } =
+      await import('@/features/assets/actions/planner-actions');
+    await expect(
+      upsertPlannerSettings({ ...VALID_SETTINGS, [field]: value })
+    ).rejects.toThrow();
+    expect(fake.calls.upsert).toHaveLength(0);
+  });
+});
+
 describe('planner-actions - missing-column fallback', () => {
   const MISSING = { code: '42703', message: 'column does not exist' };
 
@@ -188,14 +244,15 @@ describe('planner-actions - missing-column fallback', () => {
       selects: [
         { data: null, error: MISSING },
         { data: null, error: MISSING },
+        { data: null, error: MISSING },
         { data: OLD_ROW, error: null },
       ],
     });
     const { getPlannerSettings } =
       await import('@/features/assets/actions/planner-actions');
     const result = await getPlannerSettings();
-    expect(selected).toHaveLength(3);
-    expect(selected[2]).not.toContain('expense_buffer_pct');
+    expect(selected).toHaveLength(4);
+    expect(selected[3]).not.toContain('expense_buffer_pct');
     expect(result).toMatchObject({ emergencyMonths: 6, expenseBufferPct: 0 });
     expect('freedomTargetYear' in (result ?? {})).toBe(false);
   });
