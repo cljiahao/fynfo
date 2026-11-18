@@ -1,5 +1,6 @@
 import {
   CPF_ANNUAL_WAGE_CEILING,
+  CPF_ORDINARY_WAGE_CEILINGS,
   HISTORICAL_TAX_BRACKETS,
   NON_RESIDENT_RATE,
   PERSONAL_RELIEF_CAP,
@@ -88,6 +89,24 @@ export function calculateMonthlyCpf(
 ): number | null {
   const ceiling = getCpfMonthlyCeiling(year, month);
   return ceiling === null ? null : employeeCpf(monthlySalary, 0, ceiling);
+}
+/**
+ * Employee CPF for a recurring monthly salary. A year past the ceiling table
+ * uses the newest known ceiling so planner take-home stays sensible until the
+ * constants are updated; null only for invalid input or years before 2023.
+ */
+export function calculateMonthlyCpfForPlanning(
+  monthlySalary: number,
+  year: number,
+  month: number
+): number | null {
+  const known = calculateMonthlyCpf(monthlySalary, year, month);
+  if (known !== null) return known;
+  const newest = Math.max(
+    ...Object.keys(CPF_ORDINARY_WAGE_CEILINGS).map(Number)
+  );
+  if (year <= newest) return null;
+  return calculateMonthlyCpf(monthlySalary, newest, 12);
 }
 /** Annual projection assumes equal salary and bonus payments in twelve months. */
 export function calculateAnnualCpf(

@@ -1,4 +1,5 @@
 import { expenseCoverage } from '@/features/equity';
+import { plannedSavingsRatePct } from './salary-plan';
 
 export const DEFAULT_CAP_MONTHS = 720;
 export const DEFAULT_RETURN_SPREAD_PCT = 2;
@@ -227,9 +228,11 @@ function emptyProjection(status: FreedomStatus): FreedomProjection {
 }
 
 function savingsRate(input: FreedomInput): number | null {
-  const net = input.netMonthlyIncome;
-  if (net === null || !finite(net) || net <= 0) return null;
-  return ((input.monthlyInvesting + input.savingsMonthly) / net) * 100;
+  return plannedSavingsRatePct(
+    input.netMonthlyIncome,
+    input.monthlyInvesting,
+    input.savingsMonthly
+  );
 }
 
 function dividendCoverage(input: FreedomInput): number | null {

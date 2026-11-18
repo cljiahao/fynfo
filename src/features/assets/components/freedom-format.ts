@@ -71,7 +71,7 @@ export function formatLever(
       if (expensesOverridden) {
         return `Your 12-month spending is ${Math.round(lever.driftPct)}% above the expenses entered in the planner. If it stays there, your date moves back ${plural(lever.monthsLater, 'month')}.`;
       }
-      return `Spending is ${Math.round(lever.driftPct)}% above your 12-month average. If it stays there, your date moves back ${plural(lever.monthsLater, 'month')}.`;
+      return `Your last 3 months of spending run ${Math.round(lever.driftPct)}% above your 12-month average. If it stays there, your date moves back ${plural(lever.monthsLater, 'month')}.`;
     case 'emergency-surplus':
       return `Your emergency fund is ${mask(formatSGDWhole(lever.amount))} above target, available to invest if you choose.`;
     case 'household-goal-ends':

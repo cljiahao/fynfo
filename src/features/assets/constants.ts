@@ -3,6 +3,18 @@ import type { AssetCategory } from './types';
 
 export const DEFAULT_EMERGENCY_MONTHS = 3;
 export const DEFAULT_WAR_CHEST_MONTHS = 9;
+export const DEFAULT_INSURANCE_PCT = 5;
+
+/** Fractions of monthly living cost that dividends cover. */
+export const DIVIDEND_COVERAGE_MILESTONES: readonly number[] = [
+  0.1, 0.25, 0.5, 1,
+];
+export const DEFAULT_DIVIDEND_SPEND_THRESHOLD_PCT = 25;
+export const DEFAULT_DIVIDEND_SPEND_SHARE_PCT = 50;
+
+export const EXPENSE_TREND_WINDOW_MONTHS = 3;
+/** Below this absolute percent the trend reads as steady. */
+export const EXPENSE_TREND_STEADY_PCT = 5;
 
 export const CATEGORIES: AssetCategory[] = [
   'savings',

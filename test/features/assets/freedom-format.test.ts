@@ -102,7 +102,7 @@ describe('formatLever', () => {
         masked
       )
     ).toBe(
-      'Spending is 15% above your 12-month average. If it stays there, your date moves back 3 months.'
+      'Your last 3 months of spending run 15% above your 12-month average. If it stays there, your date moves back 3 months.'
     );
     expect(
       formatLever({ kind: 'emergency-surplus', amount: 2400 }, masked)

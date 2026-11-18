@@ -12,6 +12,7 @@ import type { PlannerValues } from '../components/salary-planner';
 import {
   DEFAULT_EMERGENCY_MONTHS,
   DEFAULT_WAR_CHEST_MONTHS,
+  EXPENSE_TREND_WINDOW_MONTHS,
   INVESTMENT_CATEGORIES,
 } from '../constants';
 import {
@@ -80,20 +81,24 @@ interface DriftArgs {
   /** The owner's own planner figure when one is set. */
   override: number | null;
   recentAvg: RecentAvgExpense;
-  /** Spend of the last completed month. */
-  lastMonth: number;
+  /** Average over the last 3 full months; the short side of the trend. */
+  recentShort?: RecentAvgExpense;
+  /** Spend of the last completed month; used only when recentShort is absent. */
+  lastMonth?: number;
 }
 
 const MIN_DRIFT_MONTHS = 3;
 
 /**
  * Percent by which spending runs above its comparison figure. With an
- * override the 12-month average is compared against it; without one the last
- * completed month is compared against the 12-month average.
+ * override the 12-month average is compared against it; without one the
+ * 3-month average is compared against the 12-month average, and needs a full
+ * 3 months of data so one odd month cannot swing it.
  */
 export function computeExpenseDriftPct({
   override,
   recentAvg,
+  recentShort,
   lastMonth,
 }: DriftArgs): number | null {
   if (recentAvg.monthsUsed < MIN_DRIFT_MONTHS || !(recentAvg.average > 0)) {
@@ -103,8 +108,13 @@ export function computeExpenseDriftPct({
     if (!(override > 0)) return null;
     return ((recentAvg.average - override) / override) * 100;
   }
-  if (!(lastMonth > 0)) return null;
-  return ((lastMonth - recentAvg.average) / recentAvg.average) * 100;
+  if (recentShort === undefined) {
+    if (!(lastMonth !== undefined && lastMonth > 0)) return null;
+    return ((lastMonth - recentAvg.average) / recentAvg.average) * 100;
+  }
+  if (recentShort.monthsUsed < EXPENSE_TREND_WINDOW_MONTHS) return null;
+  if (!(recentShort.average > 0)) return null;
+  return ((recentShort.average - recentAvg.average) / recentAvg.average) * 100;
 }
 
 interface BuildArgs {

@@ -1,7 +1,7 @@
 import type { ExpenseData } from '@/features/expenses';
 import { isCountedInExpenseTotals } from '@/features/expenses';
 import { formatSGD } from '@/lib/utils/currency';
-import { SHORTFALL_IMPACT_MONTHS } from '../constants';
+import { DEFAULT_INSURANCE_PCT, SHORTFALL_IMPACT_MONTHS } from '../constants';
 import type { AssetCategory, SnapshotData } from '../types';
 
 export function ceilToThousand(value: number): number {
@@ -30,15 +30,17 @@ export interface RecentAvgExpense {
 }
 
 /**
- * Average of the user's own monthly expense over the last `months` full
- * calendar months, leaving out the current partial month so it cannot dilute
- * the figure. The divisor runs from the first month with any expense to the
- * last full month (at most `months`), so quiet months in between count as 0.
+ * Average of the user's own monthly spend over the last `months` full
+ * calendar months for the expenses `include` accepts, leaving out the current
+ * partial month so it cannot dilute the figure. The divisor runs from the
+ * first month with any matching expense to the last full month (at most
+ * `months`), so quiet months in between count as 0.
  */
-export function calcRecentAvgExpense(
+function recentMonthlyAverage(
   expenses: ExpenseData[] | undefined,
   now: Date,
-  months = 12
+  months: number,
+  include: (e: ExpenseData) => boolean
 ): RecentAvgExpense {
   if (!expenses?.length || months <= 0) return { average: 0, monthsUsed: 0 };
   const monthKey = (y: number, m: number) =>
@@ -49,7 +51,7 @@ export function calcRecentAvgExpense(
 
   const monthTotals = new Map<string, number>();
   for (const e of expenses) {
-    if (!isCountedInExpenseTotals(e.type)) continue;
+    if (!include(e)) continue;
     const key = e.date.slice(0, 7);
     if (key < start || key >= end) continue;
     monthTotals.set(key, (monthTotals.get(key) ?? 0) + userExpenseAmount(e));
@@ -61,6 +63,49 @@ export function calcRecentAvgExpense(
   const span = (now.getFullYear() - fy) * 12 + (now.getMonth() + 1 - fm);
   const monthsUsed = Math.min(months, Math.max(1, span));
   return { average: total / monthsUsed, monthsUsed };
+}
+
+export function calcRecentAvgExpense(
+  expenses: ExpenseData[] | undefined,
+  now: Date,
+  months = 12
+): RecentAvgExpense {
+  return recentMonthlyAverage(expenses, now, months, (e) =>
+    isCountedInExpenseTotals(e.type)
+  );
+}
+
+/** Insurance premiums are excluded from expense totals, so they are averaged separately. */
+export function calcRecentInsuranceAvg(
+  expenses: ExpenseData[] | undefined,
+  now: Date,
+  months = 12
+): RecentAvgExpense {
+  return recentMonthlyAverage(
+    expenses,
+    now,
+    months,
+    (e) => e.type === 'insurance'
+  );
+}
+
+/** Average monthly premiums as a percent of take-home; null hides the hint. */
+export function insuranceHintPct(
+  avgMonthly: number,
+  netAfterCpf: number
+): number | null {
+  if (!(netAfterCpf > 0) || !(avgMonthly > 0)) return null;
+  return (avgMonthly / netAfterCpf) * 100;
+}
+
+/** Share of take-home going to savings and investing, as a percent. */
+export function plannedSavingsRatePct(
+  net: number | null,
+  investing: number,
+  savings: number
+): number | null {
+  if (net === null || !Number.isFinite(net) || net <= 0) return null;
+  return ((investing + savings) / net) * 100;
 }
 
 export interface SalaryPlanInput {
@@ -80,6 +125,13 @@ export interface SalaryPlanInput {
   householdReserve?: number;
   /** Extra cushion on top of expenses, as a percent of expenses; default 0. */
   expenseBufferPct?: number;
+  /** Insurance slice as a percent of net pay; default DEFAULT_INSURANCE_PCT. */
+  insurancePctInput?: number;
+  /**
+   * Monthly employee CPF. When absent the legacy flat 20% applies, which keeps
+   * saved scenarios computing as before.
+   */
+  employeeCpfMonthly?: number | null;
 }
 
 export interface SalaryPlan {
@@ -136,10 +188,16 @@ export function computeSalaryPlan(input: SalaryPlanInput): SalaryPlan {
   const bufferInputPct = Math.max(0, input.expenseBufferPct ?? 0);
   const bufferAmt = (expenses * bufferInputPct) / 100;
 
-  const netAfterCpf = salary * 0.8;
+  const cpf = input.employeeCpfMonthly;
+  // Legacy flat 20% keeps saved scenarios (model allocation-flat-cpf-v1) stable.
+  const netAfterCpf =
+    cpf !== undefined && cpf !== null && Number.isFinite(cpf) && cpf >= 0
+      ? Math.max(0, salary - cpf)
+      : salary * 0.8;
 
   const expensesPct = netAfterCpf > 0 ? expenses / netAfterCpf : 0;
-  const insurancePct = 0.05;
+  const insurancePct =
+    Math.max(0, input.insurancePctInput ?? DEFAULT_INSURANCE_PCT) / 100;
   const tithePct = titheEnabled ? tithePctInput / 100 : 0;
   const allowancePct = allowanceEnabled ? allowancePctInput / 100 : 0;
 

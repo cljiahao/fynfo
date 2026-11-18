@@ -7,6 +7,10 @@ export {
   summarizeMonth,
   trailingTwelveMonths,
 } from './lib/income-aggregates';
+export {
+  calculateMonthlyCpf,
+  calculateMonthlyCpfForPlanning,
+} from './lib/tax-cpf';
 export type {
   IncomeLine,
   IncomeLineType,
