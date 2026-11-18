@@ -2,10 +2,10 @@
 id: '193'
 slug: dividend-coverage-planner
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-19
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-19 # owner-approved in chat 2026-11-19 ("Yes, approve"), all recommended answers accepted
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # no PR (direct to main), set on shipped
 supersedes:
@@ -107,9 +107,9 @@ All maths is pure, in `src/features/assets/lib/`, with no I/O.
    - The export/import path: `src/features/profile/lib/export-validation.ts:131-142` is a strictObject for the planner and must accept the three new optional fields. At draft time it also appears to lack `expenseBufferPct`, which `getPlannerSettings` always returns (`planner-actions.ts:83`); the implementer verifies this and, if so, fixes it in the same change as a one-line drift note in the PR body (AGENTS.md section 7).
 6. Expense trend indicator (extends `computeExpenseDriftPct`, `src/features/assets/hooks/use-freedom-inputs.ts:94-108`, `MIN_DRIFT_MONTHS = 3` at :87, which today compares the last completed month with the 12-month average and surfaces only as a freedom lever, `freedom-format.ts:72-74`, `salary-planner.tsx` around :379-432):
    - Shown beside the expenses input in `planner-expenses-field.tsx`: "Last 3 months are N% above/below your 12-month average" (up or down arrow; a percent, so no amount masking is involved), plus the planned savings rate. A 3-month average is less noisy than one month. It is information only: the planner still follows the average and nothing is capped.
-   - No parallel function. `computeExpenseDriftPct` takes the 3-month `RecentAvgExpense` (from `calcRecentAvgExpense(expenses, now, 3)`) in place of `lastMonth` for the no-override case; the override branch (12-month average against the entered figure) is unchanged. Returns null when the 12-month average has fewer than `MIN_DRIFT_MONTHS` months or is not positive, when the 3-month window has fewer than 3 months of data, or when the 3-month average is not positive. Whether the freedom lever also moves from the 1-month to the 3-month basis (one function, so they would agree) is Q8.
+   - No parallel function. `computeExpenseDriftPct` takes the 3-month `RecentAvgExpense` (from `calcRecentAvgExpense(expenses, now, 3)`) in place of `lastMonth` for the no-override case; the override branch (12-month average against the entered figure) is unchanged. Returns null when the 12-month average has fewer than `MIN_DRIFT_MONTHS` months or is not positive, when the 3-month window has fewer than 3 months of data, or when the 3-month average is not positive. Whether the freedom lever also moves from the 1-month to the 3-month basis (one function, so they would agree) is Q8, answered: yes, in scope; the lever wording in `freedom-format.ts:72-74` changes to the 3-month basis.
    - Planned savings rate reuses `savingsRate` at `freedom-projection.ts:229-233` (`(monthlyInvesting + savingsMonthly) / netMonthlyIncome`), extracted as an exported pure `plannedSavingsRatePct(net, investing, savings)` used by both, not recomputed. It is a plan figure, not a measured one (see Future work).
-7. UI (recommended, Q6): the coverage milestones, gap and "may spend" line replace the single coverage line in `freedom-card.tsx:202-208` and the allowance settings (threshold and share) sit in the existing `planner-settings-sheet.tsx`. Every amount goes through `useAmountVisibility` masking. Copy states these are estimates from logged dividends, not advice (§1.2).
+7. UI (Q6, approved): the coverage milestones, gap and "may spend" line replace the single coverage line in `freedom-card.tsx:202-208` and the allowance settings (threshold and share) sit in the existing `planner-settings-sheet.tsx`. Every amount goes through `useAmountVisibility` masking. Copy states these are estimates from logged dividends, not advice (§1.2).
 
 ## Out of scope
 
@@ -118,7 +118,7 @@ All maths is pure, in `src/features/assets/lib/`, with no I/O.
 - Changing the salary split or the freedom projection's `monthlyInvesting` based on milestones.
 - Household or partner surfaces, and sharing coverage with the partner.
 - Bonus CPF, additional-wage ceiling, tax, age-banded CPF rates, and CPF balance projection.
-- Rewriting the Investments tab `dividend-summary.tsx` coverage figure (its denominator question is Q5; any change is a follow-up).
+- Rewriting the Investments tab `dividend-summary.tsx` coverage figure (Q5: new surfaces use the living-cost denominator; aligning this tab is a follow-up, listed in Future work).
 - Forward or declared dividend estimates; only trailing-12-month received dividends are used.
 - Capping or enforcing spending; the trend is information only.
 - Changing the emergency top-up logic or the freedom number's finish-line role (see Problem, framing).
@@ -129,6 +129,7 @@ Not part of this spec, listed so they are not lost:
 
 - Tax reserve in the planner cash flow. The planner has no tax term today; tax lives only in the salary feature (`src/features/salary/lib/tax-cpf.ts`).
 - SRS and CPF top-up relief suggestions in the planner.
+- Align the Investments tab coverage figure (`dividend-summary.tsx`) to the living-cost denominator.
 - A measured (transaction-based) savings rate, instead of the planned rate from the plan.
 
 ## Acceptance
@@ -154,12 +155,12 @@ Not part of this spec, listed so they are not lost:
 
 ## Open questions
 
-- [ ] Q1: Milestone thresholds. Proposed 10%, 25%, 50%, 100% of monthly expenses. Add a 75% step, or make them configurable? The old notes also had absolute stages ("SGD 1,000 per year", "SGD 1,000 per month"); keep percentages only? — Owner: Clarence — A:
-- [ ] Q2: Spend-share rule and defaults. Proposed one threshold and one share: 0% of TTM dividends spendable below 25% coverage, 50% at or above it, both configurable (0-100). Alternatives: tiered shares per milestone; a share that ramps to 100% at full coverage. Should the allowance be per month of TTM average (proposed) or net of withholding tax? — Owner: Clarence — A:
-- [ ] Q3: Ceiling table ends at 2026. For a later year the helper returns null. Proposed: fall back to the newest known ceiling and rely on a yearly constants update. Alternative: fall back to the legacy flat 80%. — Owner: Clarence — A:
-- [ ] Q4: Annual wage ceiling (SGD 102,000) and bonuses. Proposed: monthly ordinary wage ceiling only, because the planner gross is recurring monthly pay (spec 179) and recurring pay alone stays under the annual limit at current ceilings; bonus CPF stays outside the planner. Confirm, or ask for a bonus-aware annual model (needs additional-wage input). Note a high earner's bonus CPF is not reflected in planner take-home. — Owner: Clarence — A:
-- [ ] Q5: Coverage denominator. Freedom card uses living cost (expenses + buffer + household budgets); the Investments tab uses planner expenses only; the brief says planner expenses or recent average. Proposed: the freedom-card living-cost figure everywhere new, so "100% = dividends cover living cost", with the 12-month recent average (`calcRecentAvgExpense`) only as the input behind planner expenses when no override is set. Align the Investments tab figure too (follow-up), or leave it? — Owner: Clarence — A:
-- [ ] Q6: Placement. There is no "Plan income" tab; the planner is a card on Overview. Proposed: replace the coverage line in the freedom card with the milestone row plus allowance line, with threshold and share in the planner settings sheet. Alternative: a standalone dividend coverage card beside `SalaryPlanner`, or a section in the planner results. — Owner: Clarence — A:
-- [ ] Q7: Planner CPF currently models age 55 and below at the full rate only (as the salary feature does). Acceptable for the planner, or should age be a setting? Proposed: acceptable, state the assumption in the settings copy. — Owner: Clarence — A:
-- [ ] Q8: Trend basis for the freedom lever. The planner trend uses 3-month versus 12-month. Should the freedom `expense-drift` lever (today last completed month versus 12-month average) switch to the same 3-month basis, which changes its wording in `freedom-format.ts:72-74`, or keep the 1-month basis? Proposed: switch, so both surfaces agree. — Owner: Clarence — A:
-- [ ] Q9: Trend display rules. Proposed: show up or down with the rounded percent only at 5% or more in either direction, otherwise "steady"; hidden until at least 3 full months of data. Different threshold? — Owner: Clarence — A:
+- [x] Q1: Milestone thresholds. Proposed 10%, 25%, 50%, 100% of monthly expenses. Add a 75% step, or make them configurable? The old notes also had absolute stages ("SGD 1,000 per year", "SGD 1,000 per month"); keep percentages only? — Owner: Clarence — A: 10/25/50/100% of expenses, percentages only, no absolute SGD stages, not configurable.
+- [x] Q2: Spend-share rule and defaults. Proposed one threshold and one share: 0% of TTM dividends spendable below 25% coverage, 50% at or above it, both configurable (0-100). Alternatives: tiered shares per milestone; a share that ramps to 100% at full coverage. Should the allowance be per month of TTM average (proposed) or net of withholding tax? — Owner: Clarence — A: 0% below 25% coverage, 50% at or above; both configurable 0-100; per month of TTM average.
+- [x] Q3: Ceiling table ends at 2026. For a later year the helper returns null. Proposed: fall back to the newest known ceiling and rely on a yearly constants update. Alternative: fall back to the legacy flat 80%. — Owner: Clarence — A: Fall back to the newest known ceiling; update the constants yearly.
+- [x] Q4: Annual wage ceiling (SGD 102,000) and bonuses. Proposed: monthly ordinary wage ceiling only, because the planner gross is recurring monthly pay (spec 179) and recurring pay alone stays under the annual limit at current ceilings; bonus CPF stays outside the planner. Confirm, or ask for a bonus-aware annual model (needs additional-wage input). Note a high earner's bonus CPF is not reflected in planner take-home. — Owner: Clarence — A: Monthly ordinary wage ceiling only; bonus CPF stays outside the planner.
+- [x] Q5: Coverage denominator. Freedom card uses living cost (expenses + buffer + household budgets); the Investments tab uses planner expenses only; the brief says planner expenses or recent average. Proposed: the freedom-card living-cost figure everywhere new, so "100% = dividends cover living cost", with the 12-month recent average (`calcRecentAvgExpense`) only as the input behind planner expenses when no override is set. Align the Investments tab figure too (follow-up), or leave it? — Owner: Clarence — A: Freedom-card living-cost denominator for new surfaces; aligning the Investments tab is a follow-up, out of scope.
+- [x] Q6: Placement. There is no "Plan income" tab; the planner is a card on Overview. Proposed: replace the coverage line in the freedom card with the milestone row plus allowance line, with threshold and share in the planner settings sheet. Alternative: a standalone dividend coverage card beside `SalaryPlanner`, or a section in the planner results. — Owner: Clarence — A: Replace the freedom card coverage line with the milestone row plus allowance line; threshold and share live in the planner settings sheet.
+- [x] Q7: Planner CPF currently models age 55 and below at the full rate only (as the salary feature does). Acceptable for the planner, or should age be a setting? Proposed: acceptable, state the assumption in the settings copy. — Owner: Clarence — A: Age 55 and below is assumed, and stated in the settings copy.
+- [x] Q8: Trend basis for the freedom lever. The planner trend uses 3-month versus 12-month. Should the freedom `expense-drift` lever (today last completed month versus 12-month average) switch to the same 3-month basis, which changes its wording in `freedom-format.ts:72-74`, or keep the 1-month basis? Proposed: switch, so both surfaces agree. — Owner: Clarence — A: Switch the freedom expense-drift lever to the 3-month basis and update its wording.
+- [x] Q9: Trend display rules. Proposed: show up or down with the rounded percent only at 5% or more in either direction, otherwise "steady"; hidden until at least 3 full months of data. Different threshold? — Owner: Clarence — A: Up or down with the rounded percent only at 5% or more either way, otherwise "steady"; hidden until 3 full months of data.
