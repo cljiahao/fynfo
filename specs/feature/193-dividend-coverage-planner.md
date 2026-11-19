@@ -2,12 +2,12 @@
 id: '193'
 slug: dividend-coverage-planner
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-19
 approved: 2026-11-19 # owner-approved in chat 2026-11-19 ("Yes, approve"), all recommended answers accepted
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # no PR (direct to main), set on shipped
+shipped: 2026-11-19 # YYYY-MM-DD, set on impl merge
+impl_pr: none (direct to main, 800e7db, ea28384, a2f19e0, 6a7d48e)
 supersedes:
 constitution_satisfies:
   - '§1.1'
