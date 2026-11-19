@@ -7,7 +7,11 @@ import { formatCurrency } from '@/lib/utils/currency';
 import { useMemo } from 'react';
 import { VALUATION_MARKETS } from '../constants';
 import { useStockPrices } from '../hooks/use-prices';
-import { computeHoldings, holdingMarkets } from '../lib/holdings';
+import {
+  computeHoldings,
+  holdingMarkets,
+  investedBasis,
+} from '../lib/holdings';
 import { buildCashFlows, verifiedIRR } from '../lib/mwr';
 import { marketValue, nativeCurrency } from '../lib/valuation';
 import type { EquityTradeData } from '../types';
@@ -33,16 +37,7 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
   const markets = VALUATION_MARKETS.map((market) => {
     const rows = holdings.filter((holding) => holding.market === market);
     const currency = nativeCurrency(market);
-    const rawInvested = rows.reduce(
-      (total, holding) => total + holding.totalBuyCost,
-      0
-    );
-    const rawCost = rows.reduce(
-      (total, holding) => total + holding.avgBuyPrice * holding.shares,
-      0
-    );
-    const invested = Number.isFinite(rawInvested) ? rawInvested : null;
-    const cost = Number.isFinite(rawCost) ? rawCost : null;
+    const invested = investedBasis(rows);
     const value = isError && rows.length > 0 ? null : marketValue(rows, prices);
     const flows =
       value === null ? [] : buildCashFlows(trades, rows, prices ?? {}, market);
@@ -53,9 +48,11 @@ export function PortfolioSummary({ trades }: PortfolioSummaryProps) {
       invested,
       value,
       pnl:
-        value === null || cost === null || !Number.isFinite(value - cost)
+        value === null ||
+        invested === null ||
+        !Number.isFinite(value - invested)
           ? null
-          : value - cost,
+          : value - invested,
       annualised: result !== null && Number.isFinite(result) ? result : null,
     };
   });

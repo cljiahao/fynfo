@@ -175,7 +175,6 @@ describe('yieldOnCost', () => {
     ticker: 'MLT',
     market: 'SG',
     shares: 1000,
-    totalBuyCost: 2000,
     totalBuyShares: 1000,
     avgBuyPrice: 2,
     costBasis: 2,

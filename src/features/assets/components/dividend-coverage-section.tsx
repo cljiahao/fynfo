@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import {
   DEFAULT_DIVIDEND_SPEND_SHARE_PCT,
   DEFAULT_DIVIDEND_SPEND_THRESHOLD_PCT,
@@ -17,6 +18,8 @@ interface DividendCoverageSectionProps {
   sharePct?: number;
 }
 
+const DIVIDENDS_TAB_HREF = '/dashboard/equity?tab=dividends';
+
 const pct = (fraction: number) => `${Math.round(fraction * 100)}%`;
 
 export function DividendCoverageSection({
@@ -31,6 +34,19 @@ export function DividendCoverageSection({
     monthlyExpenses: monthlyLivingCost,
   });
   if (coverage === null) return null;
+  if (coverage === 0) {
+    return (
+      <div className="space-y-1" data-testid="dividend-coverage">
+        <p className="text-muted-foreground">
+          No dividends logged in the last 12 months. Log dividends to see how
+          much of your living cost they cover.
+        </p>
+        <Link href={DIVIDENDS_TAB_HREF} className="text-primary underline">
+          Log dividends
+        </Link>
+      </div>
+    );
+  }
 
   const allowance = computeDividendAllowance({
     ttmMonthlyAvg,

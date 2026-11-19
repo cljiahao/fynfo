@@ -59,7 +59,6 @@ const holding = (ticker: string, shares: number): Holding => ({
   ticker,
   shares,
   market: 'SG',
-  totalBuyCost: shares * 10,
   totalBuyShares: shares,
   avgBuyPrice: 10,
   costBasis: shares * 10,

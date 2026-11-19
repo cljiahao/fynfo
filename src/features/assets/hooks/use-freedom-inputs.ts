@@ -170,12 +170,17 @@ export function buildLeverContext(
   };
 }
 
-/** Trailing-twelve-month dividends as a monthly average; null until they can be valued. */
+/**
+ * Trailing-twelve-month dividends as a monthly average; null until they can be
+ * valued, 0 once an empty list has loaded so "none logged" is distinct from
+ * "still loading".
+ */
 export function useDividendAvgMonthly(): number | null {
   const { data: dividends } = useDividends();
   const { data: rate, isError: rateError } = useExchangeRate('USD', 'SGD');
   return useMemo(() => {
-    if (!dividends || dividends.length === 0) return null;
+    if (!dividends) return null;
+    if (dividends.length === 0) return 0;
     const usdSgdRate = !rateError && validExchangeRate(rate) ? rate : null;
     const requiresRate = dividends.some((row) => row.currency === 'USD');
     if (requiresRate && usdSgdRate === null) return null;

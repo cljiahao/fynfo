@@ -1,4 +1,4 @@
-import { computeHoldings } from '@/features/equity/lib/holdings';
+import { computeHoldings, investedBasis } from '@/features/equity/lib/holdings';
 import type { EquityTradeData } from '@/features/equity/types';
 import { describe, expect, it } from 'vitest';
 
@@ -47,21 +47,7 @@ describe('computeHoldings', () => {
     expect(computeHoldings(trades)).toHaveLength(0);
   });
 
-  it('computes totalBuyCost including fees', () => {
-    const trades = [
-      makeTrade({
-        ticker: 'AAPL',
-        action: 'buy',
-        shares: 10,
-        price: 100,
-        fees: 5,
-      }),
-    ];
-    const [holding] = computeHoldings(trades);
-    expect(holding.totalBuyCost).toBe(1005);
-  });
-
-  it('computes avgBuyPrice from totalBuyCost / totalBuyShares', () => {
+  it('computes avgBuyPrice from buy cost / bought shares', () => {
     const trades = [
       makeTrade({
         ticker: 'AAPL',
@@ -352,5 +338,68 @@ describe('computeHoldings', () => {
       expect(h.shares).toBe(10);
       expect(h.avgBuyPrice).toBeCloseTo(20);
     });
+  });
+});
+
+describe('investedBasis', () => {
+  const buy = (ticker: string, shares: number, price: number, fees = 0) =>
+    makeTrade({ ticker, action: 'buy', shares, price, fees });
+  const sell = (ticker: string, shares: number, date = '2025-02-01') =>
+    makeTrade({ ticker, action: 'sell', shares, price: 150, date });
+
+  it('equals gross buys including fees when nothing was sold', () => {
+    const rows = computeHoldings([buy('AAPL', 10, 100, 5)]);
+    expect(investedBasis(rows)).toBeCloseTo(1005);
+  });
+
+  it('drops to average cost x remaining shares after a partial sell', () => {
+    const rows = computeHoldings([buy('AAPL', 10, 100), sell('AAPL', 4)]);
+    expect(investedBasis(rows)).toBeCloseTo(600);
+  });
+
+  it('uses the walk average for buy, sell, rebuy', () => {
+    const rows = computeHoldings([
+      buy('AAPL', 10, 100),
+      sell('AAPL', 5),
+      makeTrade({
+        ticker: 'AAPL',
+        action: 'buy',
+        shares: 5,
+        price: 200,
+        date: '2025-03-01',
+      }),
+    ]);
+    // 500 remaining + 1000 bought over 10 shares
+    expect(investedBasis(rows)).toBeCloseTo(1500);
+  });
+
+  it('counts a fully sold ticker as zero', () => {
+    const rows = computeHoldings([
+      buy('AAPL', 10, 100),
+      sell('AAPL', 10),
+      buy('MSFT', 1, 50),
+    ]);
+    expect(investedBasis(rows)).toBeCloseTo(50);
+    expect(investedBasis(computeHoldings([buy('A', 1, 1), sell('A', 1)]))).toBe(
+      0
+    );
+  });
+
+  it('sums only the rows it is given so markets stay separate', () => {
+    const rows = computeHoldings([
+      { ...buy('D05', 10, 10), market: 'SG' },
+      { ...buy('AAPL', 2, 100), market: 'US' },
+    ]);
+    expect(investedBasis(rows.filter((h) => h.market === 'SG'))).toBeCloseTo(
+      100
+    );
+    expect(investedBasis(rows.filter((h) => h.market === 'US'))).toBeCloseTo(
+      200
+    );
+  });
+
+  it('returns null for non-finite input', () => {
+    const [row] = computeHoldings([buy('AAPL', 1, 1)]);
+    expect(investedBasis([{ ...row, avgBuyPrice: Number.NaN }])).toBeNull();
   });
 });

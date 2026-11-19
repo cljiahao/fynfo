@@ -18,7 +18,6 @@ const holding = (o: Partial<Holding>): Holding => ({
   ticker: 'AAPL',
   market: 'US',
   shares: 10,
-  totalBuyCost: 51,
   totalBuyShares: 10,
   avgBuyPrice: 5.1,
   costBasis: 5.1,

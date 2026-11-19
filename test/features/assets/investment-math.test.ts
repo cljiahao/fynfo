@@ -58,7 +58,6 @@ const holding = (over: Partial<Holding>): Holding => ({
   ticker: 'X',
   market: 'SG',
   shares: 0,
-  totalBuyCost: 0,
   totalBuyShares: 0,
   avgBuyPrice: 0,
   costBasis: 0,

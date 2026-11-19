@@ -5,7 +5,6 @@ export interface Holding {
   ticker: string;
   market: 'SG' | 'US';
   shares: number;
-  totalBuyCost: number;
   totalBuyShares: number;
   avgBuyPrice: number;
   costBasis: number;
@@ -20,6 +19,19 @@ export function holdingMarkets(
 
 const EPSILON = 1e-9;
 
+/**
+ * Cost of the shares still held (average cost x shares) for one market's
+ * holdings, so it shares a denominator with unrealised P&L. Null when any
+ * input is non-finite.
+ */
+export function investedBasis(rows: Holding[]): number | null {
+  const total = rows.reduce(
+    (sum, holding) => sum + holding.avgBuyPrice * holding.shares,
+    0
+  );
+  return Number.isFinite(total) ? total : null;
+}
+
 export function computeHoldings(trades: EquityTradeData[]): Holding[] {
   const map = new Map<
     string,
@@ -27,7 +39,6 @@ export function computeHoldings(trades: EquityTradeData[]): Holding[] {
       shares: number;
       runningShares: number;
       costRemaining: number;
-      totalBuyCost: number;
       totalBuyShares: number;
       market: 'SG' | 'US';
     }
@@ -53,7 +64,6 @@ export function computeHoldings(trades: EquityTradeData[]): Holding[] {
       shares: 0,
       runningShares: 0,
       costRemaining: 0,
-      totalBuyCost: 0,
       totalBuyShares: 0,
       market: resolveMarket({ ticker, market: t.market }),
     };
@@ -64,7 +74,6 @@ export function computeHoldings(trades: EquityTradeData[]): Holding[] {
       existing.shares += t.shares;
       existing.runningShares += t.shares;
       existing.costRemaining += cost;
-      existing.totalBuyCost += cost;
       existing.totalBuyShares += t.shares;
     } else {
       // A sale removes its proportional share of cost; sell fees are realised
@@ -97,7 +106,6 @@ export function computeHoldings(trades: EquityTradeData[]): Holding[] {
         ticker,
         market: v.market,
         shares: v.shares,
-        totalBuyCost: v.totalBuyCost,
         totalBuyShares: v.totalBuyShares,
         avgBuyPrice: averageCost,
         costBasis: averageCost,

@@ -24,18 +24,22 @@ const states = () =>
     .map((li) => `${li.textContent}:${li.getAttribute('data-state')}`);
 
 describe('DividendCoverageSection', () => {
-  it('shows no milestone reached and no allowance with zero dividends', () => {
+  it('shows a log-dividends hint instead of milestones with zero dividends', () => {
     renderSection(0);
-    expect(states()).toEqual([
-      '10% next:next',
-      '25%:pending',
-      '50%:pending',
-      '100%:pending',
-    ]);
     expect(
-      screen.getByText(/\$2400 more dividends a year reaches 10%/)
+      screen.getByText(/No dividends logged in the last 12 months/)
     ).toBeTruthy();
-    expect(screen.queryByText(/You may spend/)).toBeNull();
+    expect(
+      screen.getByRole('link', { name: 'Log dividends' }).getAttribute('href')
+    ).toBe('/dashboard/equity?tab=dividends');
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+    expect(screen.queryByText(/0%/)).toBeNull();
+    expect(screen.queryByText(/Estimates from your logged/)).toBeNull();
+  });
+
+  it('renders nothing when the average is unknown', () => {
+    renderSection(null);
+    expect(screen.queryByTestId('dividend-coverage')).toBeNull();
   });
 
   it('marks reached milestones and hides the allowance below the threshold', () => {

@@ -1010,3 +1010,28 @@ it('keeps scanning queued tickers after one request throws', async () => {
   expect(await screen.findByText('Skipped: TEST0')).toBeTruthy();
   expect(api.error).not.toHaveBeenCalled();
 });
+
+it('shows Total Invested as average cost x shares after a partial sell', async () => {
+  api.fetchStockPrices.mockResolvedValue({
+    DBS: { price: 12, currency: 'SGD' },
+  });
+  mount(
+    <PortfolioSummary
+      trades={[
+        trade,
+        {
+          ...trade,
+          id: 'sell',
+          action: 'sell',
+          shares: 40,
+          date: '2026-02-01',
+        },
+      ]}
+    />
+  );
+  // 60 shares left at an average cost of 10: invested 600, value 720.
+  expect((await screen.findAllByText('$720.00')).length).toBeGreaterThan(0);
+  expect(screen.getAllByText('$600.00').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('+$120.00').length).toBeGreaterThan(0);
+  expect(screen.queryByText('$1,000.00')).toBeNull();
+});

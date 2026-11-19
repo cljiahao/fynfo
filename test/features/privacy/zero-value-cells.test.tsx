@@ -115,7 +115,6 @@ describe('uniform hidden finite financial cells', () => {
       ticker,
       market: 'SG' as const,
       shares: ticker === 'OCBC' ? 20 : 1,
-      totalBuyCost: 10,
       totalBuyShares: 1,
       avgBuyPrice: 10,
       costBasis: 10,

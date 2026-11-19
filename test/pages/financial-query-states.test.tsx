@@ -17,6 +17,9 @@ vi.mock('@/features/assets', () => ({
   useChartData: () => [],
   calculateTotal: () => 0,
 }));
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
+}));
 vi.mock('@/features/equity', () => ({ useTrades: () => query }));
 vi.mock('@/features/salary', () => ({ useSalaryRecords: () => query }));
 vi.mock('@/features/expenses', () => ({ useExpenses: () => query }));

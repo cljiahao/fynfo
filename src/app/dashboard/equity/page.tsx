@@ -13,10 +13,15 @@ import {
   useTrades,
 } from '@/features/equity';
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useState } from 'react';
 import { EquitySkeleton } from './equity-skeleton';
 
-export default function EquityPage() {
+function EquityContent() {
+  const tab = useSearchParams().get('tab');
+  const [view, setView] = useState(
+    tab === 'dividends' ? 'dividends' : 'holdings'
+  );
   const { data: trades, isLoading, isError, refetch } = useTrades();
   const [formOpen, setFormOpen] = useState(false);
   const [editTrade, setEditTrade] = useState<EquityTradeData | undefined>();
@@ -48,6 +53,8 @@ export default function EquityPage() {
       />
 
       <PageViews
+        value={view}
+        onValueChange={setView}
         label="Equity views"
         views={[
           {
@@ -79,5 +86,13 @@ export default function EquityPage() {
         editTrade={editTrade}
       />
     </div>
+  );
+}
+
+export default function EquityPage() {
+  return (
+    <Suspense>
+      <EquityContent />
+    </Suspense>
   );
 }

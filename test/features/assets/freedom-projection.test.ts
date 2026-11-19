@@ -316,6 +316,16 @@ describe('savings rate and dividend coverage', () => {
   });
 });
 
+describe('dividendAvgMonthly of zero', () => {
+  it('changes only the coverage figure compared with null', () => {
+    const none = projectFreedom(input({ dividendAvgMonthly: null }));
+    const zero = projectFreedom(input({ dividendAvgMonthly: 0 }));
+    expect(none.dividendCoveragePct).toBeNull();
+    expect(zero.dividendCoveragePct).toBe(0);
+    expect({ ...zero, dividendCoveragePct: null }).toEqual(none);
+  });
+});
+
 describe('now is an input', () => {
   it('shifts only the dates when now changes', () => {
     const a = projectFreedom(input({ now: new Date(2026, 0, 15) }));
