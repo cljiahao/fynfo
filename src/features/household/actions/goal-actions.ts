@@ -280,24 +280,79 @@ type GoalSupabase = Awaited<
   ReturnType<typeof requireHouseholdContext>
 >['supabase'];
 
+type PayerTarget =
+  | { kind: 'goal'; id: string }
+  | { kind: 'item'; id: string }
+  | { kind: 'payment'; id: string }
+  | { kind: 'contribution'; id: string };
+
+async function firstColumn(
+  supabase: GoalSupabase,
+  table: string,
+  column: string,
+  id: string
+): Promise<string> {
+  const { data, error } = await supabase
+    .from(table)
+    .select(column)
+    .eq('id', id);
+  throwIfSupabaseError(error, `${table} read`);
+  const row = (data ?? [])[0] as unknown as Record<string, string> | undefined;
+  const value = row?.[column];
+  if (!value) throw new AppError('NOT_FOUND', 'Goal not found');
+  return value;
+}
+
+/** Walks from the row being written up to the goal's household. */
+async function householdIdOf(
+  supabase: GoalSupabase,
+  target: PayerTarget
+): Promise<string> {
+  let goalId = target.id;
+  if (target.kind === 'payment') {
+    const itemId = await firstColumn(
+      supabase,
+      'household_goal_payments',
+      'item_id',
+      target.id
+    );
+    goalId = await firstColumn(
+      supabase,
+      'household_goal_items',
+      'goal_id',
+      itemId
+    );
+  } else if (target.kind === 'item') {
+    goalId = await firstColumn(
+      supabase,
+      'household_goal_items',
+      'goal_id',
+      target.id
+    );
+  } else if (target.kind === 'contribution') {
+    goalId = await firstColumn(
+      supabase,
+      'household_goal_contributions',
+      'goal_id',
+      target.id
+    );
+  }
+  return firstColumn(supabase, 'household_goals', 'household_id', goalId);
+}
+
 /**
- * Maps a role to a user id. The partner is read from the roster server-side so
- * the id is never client-supplied; the RLS member check is the backstop.
+ * Maps a role to a user id. The partner is read server-side from the roster of
+ * the target goal's own household (a caller may belong to several), so the id
+ * is never client-supplied; the RLS member check is the backstop.
  */
 async function resolvePayerId(
   supabase: GoalSupabase,
   userId: string,
-  paidBy: 'self' | 'partner' | undefined
+  paidBy: 'self' | 'partner' | undefined,
+  target: PayerTarget
 ): Promise<string> {
   if (paidBy !== 'partner') return userId;
-  const { data: mine, error: mineErr } = await supabase
-    .from('household_members')
-    .select('household_id')
-    .eq('user_id', userId);
-  throwIfSupabaseError(mineErr, 'household member read');
-  const householdId = ((mine ?? [])[0] as { household_id: string } | undefined)
-    ?.household_id;
-  if (!householdId) throw new AppError('NOT_FOUND', 'No household');
+  const householdId = await householdIdOf(supabase, target);
   const { data: roster, error: rosterErr } = await supabase
     .from('household_members')
     .select('user_id')
@@ -318,7 +373,10 @@ export async function addContribution(input: unknown): Promise<void> {
     'household.contribution.input'
   );
   const { userId, kh, supabase } = await requireHouseholdContext();
-  const contributorId = await resolvePayerId(supabase, userId, data.paidBy);
+  const contributorId = await resolvePayerId(supabase, userId, data.paidBy, {
+    kind: 'goal',
+    id: data.goalId,
+  });
 
   const { error } = await supabase.from('household_goal_contributions').insert({
     id: randomUUID(),
@@ -378,7 +436,10 @@ export async function addItemPayment(input: unknown): Promise<void> {
     'household.payment.input'
   );
   const { userId, kh, supabase } = await requireHouseholdContext();
-  const payerId = await resolvePayerId(supabase, userId, data.paidBy);
+  const payerId = await resolvePayerId(supabase, userId, data.paidBy, {
+    kind: 'item',
+    id: data.itemId,
+  });
   const { error } = await supabase.from('household_goal_payments').insert({
     id: randomUUID(),
     item_id: data.itemId,
@@ -413,7 +474,10 @@ export async function updateGoalPayment(input: unknown): Promise<void> {
     'household.payment.update.input'
   );
   const payerId = data.paidBy
-    ? await resolvePayerId(supabase, userId, data.paidBy)
+    ? await resolvePayerId(supabase, userId, data.paidBy, {
+        kind: 'payment',
+        id: data.paymentId,
+      })
     : undefined;
   const { data: rows, error } = await supabase
     .from('household_goal_payments')
@@ -441,7 +505,10 @@ export async function updateGoalContribution(input: unknown): Promise<void> {
     'household.contribution.update.input'
   );
   const contributorId = data.paidBy
-    ? await resolvePayerId(supabase, userId, data.paidBy)
+    ? await resolvePayerId(supabase, userId, data.paidBy, {
+        kind: 'contribution',
+        id: data.contributionId,
+      })
     : undefined;
   const { data: rows, error } = await supabase
     .from('household_goal_contributions')

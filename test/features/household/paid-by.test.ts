@@ -27,6 +27,10 @@ const TWO_MEMBERS = [
   { household_id: 'h1', user_id: PARTNER_ID },
 ];
 const ONE_MEMBER = [{ household_id: 'h1', user_id: USER_ID }];
+const CHAIN = {
+  household_goals: [{ household_id: 'h1' }],
+  household_goal_items: [{ goal_id: ID }],
+};
 
 function setSupabase(opts: FakeSupabaseOptions = {}) {
   const fake = makeFakeSupabase(opts);
@@ -68,7 +72,7 @@ describe('paid-by create actions', () => {
     const input = { ...base, amount: 10, date: DATE };
 
     let fake = setSupabase({
-      selectDataByTable: { household_members: TWO_MEMBERS },
+      selectDataByTable: { ...CHAIN, household_members: TWO_MEMBERS },
     });
     await actions[fn](input);
     expect((fake.calls.insert[0] as Record<string, string>)[column]).toBe(
@@ -76,7 +80,7 @@ describe('paid-by create actions', () => {
     );
 
     fake = setSupabase({
-      selectDataByTable: { household_members: TWO_MEMBERS },
+      selectDataByTable: { ...CHAIN, household_members: TWO_MEMBERS },
     });
     await actions[fn]({ ...input, paidBy: 'self' });
     expect((fake.calls.insert[0] as Record<string, string>)[column]).toBe(
@@ -84,7 +88,7 @@ describe('paid-by create actions', () => {
     );
 
     fake = setSupabase({
-      selectDataByTable: { household_members: TWO_MEMBERS },
+      selectDataByTable: { ...CHAIN, household_members: TWO_MEMBERS },
     });
     await actions[fn]({ ...input, paidBy: 'partner' });
     expect((fake.calls.insert[0] as Record<string, string>)[column]).toBe(
@@ -99,12 +103,54 @@ describe('paid-by create actions', () => {
     '%s rejects partner in a one-member household',
     async (fn, base) => {
       const fake = setSupabase({
-        selectDataByTable: { household_members: ONE_MEMBER },
+        selectDataByTable: { ...CHAIN, household_members: ONE_MEMBER },
       });
       const actions = await import('@/features/household/actions/goal-actions');
       await expect(
         actions[fn]({ ...base, amount: 10, date: DATE, paidBy: 'partner' })
       ).rejects.toMatchObject({ code: 'VALIDATION' });
+      expect(fake.calls.insert).toHaveLength(0);
+    }
+  );
+
+  it.each([
+    ['addItemPayment', { itemId: ID }],
+    ['addContribution', { goalId: ID }],
+  ] as const)(
+    '%s reads the partner from the goal household roster',
+    async (fn, base) => {
+      const fake = setSupabase({
+        selectDataByTable: {
+          ...CHAIN,
+          household_goals: [{ household_id: 'h2' }],
+          household_members: TWO_MEMBERS,
+        },
+      });
+      const actions = await import('@/features/household/actions/goal-actions');
+      await actions[fn]({ ...base, amount: 10, date: DATE, paidBy: 'partner' });
+      const roster = fake.calls.queries.find(
+        (q) => q.table === 'household_members'
+      );
+      expect(roster?.eq).toContainEqual({
+        column: 'household_id',
+        value: 'h2',
+      });
+    }
+  );
+
+  it.each([
+    ['addItemPayment', { itemId: ID }],
+    ['addContribution', { goalId: ID }],
+  ] as const)(
+    '%s writes nothing when the goal is not visible',
+    async (fn, base) => {
+      const fake = setSupabase({
+        selectDataByTable: { household_goals: [], household_goal_items: [] },
+      });
+      const actions = await import('@/features/household/actions/goal-actions');
+      await expect(
+        actions[fn]({ ...base, amount: 10, date: DATE, paidBy: 'partner' })
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
       expect(fake.calls.insert).toHaveLength(0);
     }
   );
@@ -138,7 +184,8 @@ describe.each([
   it('changes the attribution when paidBy is set', async () => {
     const fake = setSupabase({
       selectDataByTable: {
-        [table]: [{ id: ID }],
+        ...CHAIN,
+        [table]: [{ id: ID, item_id: ID, goal_id: ID }],
         household_members: TWO_MEMBERS,
       },
     });
@@ -147,5 +194,20 @@ describe.each([
     expect(fake.calls.update[0]).toMatchObject({ [column]: PARTNER_ID });
     await actions[fn]({ ...input, paidBy: 'self' });
     expect(fake.calls.update[1]).toMatchObject({ [column]: USER_ID });
+  });
+
+  it('writes nothing for partner in a one-member household', async () => {
+    const fake = setSupabase({
+      selectDataByTable: {
+        ...CHAIN,
+        [table]: [{ id: ID, item_id: ID, goal_id: ID }],
+        household_members: ONE_MEMBER,
+      },
+    });
+    const actions = await import('@/features/household/actions/goal-actions');
+    await expect(
+      actions[fn]({ ...input, paidBy: 'partner' })
+    ).rejects.toMatchObject({ code: 'VALIDATION' });
+    expect(fake.calls.update).toHaveLength(0);
   });
 });
