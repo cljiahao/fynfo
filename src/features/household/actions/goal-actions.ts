@@ -276,6 +276,40 @@ export async function updateGoal(input: unknown): Promise<void> {
   }
 }
 
+type GoalSupabase = Awaited<
+  ReturnType<typeof requireHouseholdContext>
+>['supabase'];
+
+/**
+ * Maps a role to a user id. The partner is read from the roster server-side so
+ * the id is never client-supplied; the RLS member check is the backstop.
+ */
+async function resolvePayerId(
+  supabase: GoalSupabase,
+  userId: string,
+  paidBy: 'self' | 'partner' | undefined
+): Promise<string> {
+  if (paidBy !== 'partner') return userId;
+  const { data: mine, error: mineErr } = await supabase
+    .from('household_members')
+    .select('household_id')
+    .eq('user_id', userId);
+  throwIfSupabaseError(mineErr, 'household member read');
+  const householdId = ((mine ?? [])[0] as { household_id: string } | undefined)
+    ?.household_id;
+  if (!householdId) throw new AppError('NOT_FOUND', 'No household');
+  const { data: roster, error: rosterErr } = await supabase
+    .from('household_members')
+    .select('user_id')
+    .eq('household_id', householdId);
+  throwIfSupabaseError(rosterErr, 'household roster read');
+  const partner = ((roster ?? []) as { user_id: string }[]).find(
+    (m) => m.user_id !== userId
+  );
+  if (!partner) throw new AppError('VALIDATION', 'No partner in household');
+  return partner.user_id;
+}
+
 /** Logs a contribution toward a goal, sealing amount + note under K_h. */
 export async function addContribution(input: unknown): Promise<void> {
   const data = parseOrThrow(
@@ -284,11 +318,12 @@ export async function addContribution(input: unknown): Promise<void> {
     'household.contribution.input'
   );
   const { userId, kh, supabase } = await requireHouseholdContext();
+  const contributorId = await resolvePayerId(supabase, userId, data.paidBy);
 
   const { error } = await supabase.from('household_goal_contributions').insert({
     id: randomUUID(),
     goal_id: data.goalId,
-    contributor_user_id: userId,
+    contributor_user_id: contributorId,
     amount: encryptPayload(data.amount.toString(), kh),
     note: data.note ? encryptPayload(data.note, kh) : null,
     date: data.date,
@@ -343,10 +378,11 @@ export async function addItemPayment(input: unknown): Promise<void> {
     'household.payment.input'
   );
   const { userId, kh, supabase } = await requireHouseholdContext();
+  const payerId = await resolvePayerId(supabase, userId, data.paidBy);
   const { error } = await supabase.from('household_goal_payments').insert({
     id: randomUUID(),
     item_id: data.itemId,
-    payer_user_id: userId,
+    payer_user_id: payerId,
     amount: encryptPayload(data.amount.toString(), kh),
     note: data.note ? encryptPayload(data.note, kh) : null,
     date: data.date,
@@ -365,20 +401,27 @@ export async function deleteItemPayment(id: string): Promise<void> {
   throwIfSupabaseError(error, 'household goal payment delete');
 }
 
-/** Edits a payment's amount, note and date; the payer and item never change. */
+/**
+ * Edits a payment's amount, note and date, and its payer when `paidBy` is
+ * given; the item never changes.
+ */
 export async function updateGoalPayment(input: unknown): Promise<void> {
-  const { kh, supabase } = await requireHouseholdContext();
+  const { userId, kh, supabase } = await requireHouseholdContext();
   const data = parseOrThrow(
     updateGoalPaymentSchema,
     input,
     'household.payment.update.input'
   );
+  const payerId = data.paidBy
+    ? await resolvePayerId(supabase, userId, data.paidBy)
+    : undefined;
   const { data: rows, error } = await supabase
     .from('household_goal_payments')
     .update({
       amount: encryptPayload(data.amount.toString(), kh),
       note: data.note ? encryptPayload(data.note, kh) : null,
       date: data.date,
+      ...(payerId ? { payer_user_id: payerId } : {}),
     })
     .eq('id', data.paymentId)
     .select('id');
@@ -389,20 +432,24 @@ export async function updateGoalPayment(input: unknown): Promise<void> {
   }
 }
 
-/** Edits a contribution's amount, note and date; the contributor never changes. */
+/** Edits a contribution's amount, note and date, and its contributor when `paidBy` is given. */
 export async function updateGoalContribution(input: unknown): Promise<void> {
-  const { kh, supabase } = await requireHouseholdContext();
+  const { userId, kh, supabase } = await requireHouseholdContext();
   const data = parseOrThrow(
     updateGoalContributionSchema,
     input,
     'household.contribution.update.input'
   );
+  const contributorId = data.paidBy
+    ? await resolvePayerId(supabase, userId, data.paidBy)
+    : undefined;
   const { data: rows, error } = await supabase
     .from('household_goal_contributions')
     .update({
       amount: encryptPayload(data.amount.toString(), kh),
       note: data.note ? encryptPayload(data.note, kh) : null,
       date: data.date,
+      ...(contributorId ? { contributor_user_id: contributorId } : {}),
     })
     .eq('id', data.contributionId)
     .select('id');

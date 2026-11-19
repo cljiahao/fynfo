@@ -17,7 +17,9 @@ import { Label } from '@/components/ui/label';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useUpdateGoalPayment } from '../hooks/use-household';
+import type { PaidBy } from '../schemas';
 import type { GoalItemPayment } from '../types';
+import { PaidByPicker, usePaidByEnabled } from './paid-by-picker';
 
 interface EditPaymentDialogProps {
   /** The payment being edited; the dialog is closed when null. */
@@ -36,6 +38,10 @@ export function EditPaymentDialog({
   const update = useUpdateGoalPayment();
   const [amount, setAmount] = useState(payment?.amount.toFixed(2) ?? '');
   const [note, setNote] = useState(payment?.note ?? '');
+  const paidByEnabled = usePaidByEnabled();
+  const [paidBy, setPaidBy] = useState<PaidBy>(
+    payment && !payment.isSelf ? 'partner' : 'self'
+  );
   const [date, setDate] = useState(payment?.date.slice(0, 10) ?? '');
   const [errors, setErrors] = useState<{ amount?: string; date?: string }>({});
 
@@ -55,6 +61,7 @@ export function EditPaymentDialog({
         amount: value,
         note: note.trim() || undefined,
         date,
+        ...(paidByEnabled ? { paidBy } : {}),
       },
       {
         onSuccess: () => {
@@ -78,6 +85,7 @@ export function EditPaymentDialog({
         <AmountsHiddenNotice />
 
         <div className="space-y-4">
+          <PaidByPicker value={paidBy} onChange={setPaidBy} disabled={hidden} />
           <div className="space-y-1.5">
             <Label htmlFor="payment-amount">Amount (SGD)</Label>
             <Input

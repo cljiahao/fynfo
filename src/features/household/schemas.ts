@@ -26,8 +26,13 @@ export const createGoalSchema = z.object({
 
 export const updateGoalSchema = createGoalSchema.extend({ goalId: z.uuid() });
 
+// A role, not a user id: the client has no roster, and the server resolves the
+// partner so a non-member can never be named.
+export const paidBySchema = z.enum(['self', 'partner']);
+
 export const addContributionSchema = z.object({
   goalId: z.uuid(),
+  paidBy: paidBySchema.optional(),
   amount: z.number().positive().finite(),
   note: z.string().trim().max(200).optional(),
   date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
@@ -55,6 +60,7 @@ export const addGoalItemSchema = z.object({
 
 export const addItemPaymentSchema = z.object({
   itemId: z.uuid(),
+  paidBy: paidBySchema.optional(),
   amount: z.number().positive().finite(),
   note: z.string().trim().max(200).optional(),
   date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
@@ -86,6 +92,7 @@ export const saveGoalSchema = z
 
 export const updateGoalPaymentSchema = z.object({
   paymentId: z.uuid(),
+  paidBy: paidBySchema.optional(),
   amount: z.number().positive().finite(),
   note: z.string().trim().max(200).optional(),
   date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
@@ -93,6 +100,7 @@ export const updateGoalPaymentSchema = z.object({
 
 export const updateGoalContributionSchema = z.object({
   contributionId: z.uuid(),
+  paidBy: paidBySchema.optional(),
   amount: z.number().positive().finite(),
   note: z.string().trim().max(200).optional(),
   date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
@@ -125,6 +133,7 @@ export type CreateHouseholdInput = z.infer<typeof createHouseholdSchema>;
 export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>;
 export type CreateGoalInput = z.infer<typeof createGoalSchema>;
 export type UpdateGoalInput = z.infer<typeof updateGoalSchema>;
+export type PaidBy = z.infer<typeof paidBySchema>;
 export type AddContributionInput = z.infer<typeof addContributionSchema>;
 export type AddGoalItemInput = z.infer<typeof addGoalItemSchema>;
 export type AddItemPaymentInput = z.infer<typeof addItemPaymentSchema>;

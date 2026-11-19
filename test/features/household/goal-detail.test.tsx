@@ -43,7 +43,9 @@ vi.mock('@/features/household/actions/goal-actions', () => ({
   updateGoalPayment: vi.fn(),
   updateGoalContribution: vi.fn(),
 }));
-vi.mock('@/features/household/actions/household-actions', () => ({}));
+vi.mock('@/features/household/actions/household-actions', () => ({
+  getHousehold: vi.fn().mockResolvedValue(null),
+}));
 vi.mock('@/features/household/components/goal-burn-up-chart', () => ({
   GoalBurnUpChart: () => <div>burn-up chart</div>,
 }));

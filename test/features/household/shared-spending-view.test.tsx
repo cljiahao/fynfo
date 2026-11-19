@@ -32,7 +32,9 @@ const budgetActions = vi.hoisted(() => ({
 }));
 vi.mock('@/features/household/actions/budget-actions', () => budgetActions);
 vi.mock('@/features/household/actions/goal-actions', () => ({}));
-vi.mock('@/features/household/actions/household-actions', () => ({}));
+vi.mock('@/features/household/actions/household-actions', () => ({
+  getHousehold: vi.fn().mockResolvedValue(null),
+}));
 
 const toasts = vi.hoisted(() => ({
   toast: vi.fn(),

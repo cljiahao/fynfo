@@ -21,8 +21,10 @@ import {
 import { useUndoableDelete } from '../hooks/use-undoable-delete';
 import { invalidProps, omitError } from '../lib/form-errors';
 import { effectiveAmount } from '../lib/goal-stats';
+import type { PaidBy } from '../schemas';
 import type { GoalItem, GoalItemPayment } from '../types';
 import { EditPaymentDialog } from './edit-payment-dialog';
+import { PaidByPicker, usePaidByEnabled } from './paid-by-picker';
 
 const today = () => format(new Date(), 'yyyy-MM-dd');
 
@@ -67,6 +69,8 @@ function ItemRow({
   const [showPayments, setShowPayments] = useState(false);
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(today);
+  const paidByEnabled = usePaidByEnabled();
+  const [paidBy, setPaidBy] = useState<PaidBy>('self');
   const [errors, setErrors] = useState<Partial<Record<PaymentField, string>>>(
     {}
   );
@@ -104,11 +108,17 @@ function ItemRow({
     }
     setErrors({});
     addPayment.mutate(
-      { itemId: item.id, amount: value, date },
+      {
+        itemId: item.id,
+        amount: value,
+        date,
+        ...(paidByEnabled ? { paidBy } : {}),
+      },
       {
         onSuccess: () => {
           setAmount('');
           setDate(today());
+          setPaidBy('self');
           setPaying(false);
         },
         onError: () => toast.error('Could not record the payment'),
@@ -231,6 +241,7 @@ function ItemRow({
             />
             <FieldError id={`${dateId}-error`}>{errors.date}</FieldError>
           </div>
+          <PaidByPicker value={paidBy} onChange={setPaidBy} disabled={hidden} />
           <Button
             type="submit"
             size="sm"

@@ -34,7 +34,9 @@ const actions = vi.hoisted(() => ({
   updateGoalContribution: vi.fn(),
 }));
 vi.mock('@/features/household/actions/goal-actions', () => actions);
-vi.mock('@/features/household/actions/household-actions', () => ({}));
+vi.mock('@/features/household/actions/household-actions', () => ({
+  getHousehold: vi.fn().mockResolvedValue(null),
+}));
 
 const toasts = vi.hoisted(() => ({
   toast: vi.fn(),
