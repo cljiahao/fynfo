@@ -2,12 +2,12 @@
 id: '194'
 slug: invested-basis-and-coverage-empty-state
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-19
 approved: 2026-11-19
-shipped:
-impl_pr:
+shipped: 2026-11-19
+impl_pr: b74d04f
 supersedes:
 constitution_satisfies:
   - '§1.1'
