@@ -2,10 +2,10 @@
 id: '195'
 slug: household-goal-paid-by
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-19
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-19 # owner-approved in chat 2026-11-19 ("Approve, build it"), open questions as drafted
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # link to impl PR, set on shipped
 supersedes: # none; reverses the "payer/contributor is the caller" rule of specs 149 and 175
