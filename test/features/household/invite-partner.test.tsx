@@ -58,11 +58,13 @@ const inviteButton = () =>
   screen.findByRole('button', { name: 'Invite partner' });
 
 describe('invite partner entry point', () => {
-  it('is shown to an owner with a free seat on both tabs', async () => {
+  it('is shown to an owner with a free seat, beside the spending link', async () => {
     mount(<HouseholdOverview />);
     expect(await inviteButton()).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('tab', { name: 'Spending' }));
-    expect(await inviteButton()).toBeInTheDocument();
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(
+      screen.getByRole('link', { name: 'Shared spending' })
+    ).toBeInTheDocument();
   });
 
   it('is shown while the household is locked, without the create action', async () => {

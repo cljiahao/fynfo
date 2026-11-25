@@ -20,6 +20,7 @@ export const QUICK_ADD_AMOUNT_ID = 'quick-add-amount';
 
 export const HOUSEHOLD_PATH = '/dashboard/household';
 
+export const HOUSEHOLD_SPENDING_PATH = `${HOUSEHOLD_PATH}/spending`;
 export const GOAL_DETAIL_PATH = (id: string) => `${HOUSEHOLD_PATH}/goals/${id}`;
 
 export const RECENT_ACTIVITY_LIMIT = 8;

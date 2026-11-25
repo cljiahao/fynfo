@@ -3,37 +3,25 @@
 import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/widgets';
-import { Lock, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
-import { toast } from 'sonner';
 import {
   HOUSEHOLD_MEMBER_CAP,
-  QUICK_ADD_AMOUNT_ID,
+  HOUSEHOLD_SPENDING_PATH,
   UNDO_DELAY_MS,
 } from '../constants';
-import {
-  useGoals,
-  useHousehold,
-  useSpaces,
-  useUnlockHousehold,
-} from '../hooks/use-household';
+import { useGoals, useHousehold } from '../hooks/use-household';
 import { UndoableDeleteProvider } from '../hooks/use-undoable-delete';
 import { GoalEditorSheet } from './goal-editor-sheet';
 import { GoalList } from './goal-list';
+import { HouseholdLocked } from './household-locked';
 import { HouseholdPlanSummary } from './household-plan-summary';
 import { HouseholdSetup } from './household-setup';
 import { HouseholdSkeleton } from './household-skeleton';
 import { InvitePartnerDialog } from './invite-partner-dialog';
 import { PlannerSplitEditor } from './planner-split-editor';
-import { SharedSpending } from './shared-spending';
-
-const VIEWS = [
-  { id: 'goals', label: 'Goals' },
-  { id: 'spending', label: 'Spending' },
-] as const;
-type View = (typeof VIEWS)[number]['id'];
 
 interface HouseholdOverviewProps {
   /** The caller's spare savings, computed in their browser; null if unknown. */
@@ -49,9 +37,6 @@ export function HouseholdOverview({
   // failed goals read — so a real DB error doesn't masquerade as "locked".
   const locked = !!household.data && household.data.locked;
   const goals = useGoals(!!household.data && !locked);
-  const [view, setView] = useState<View>('goals');
-  const spaces = useSpaces(!!household.data && !locked && view === 'spending');
-  const unlock = useUnlockHousehold();
   const [createOpen, setCreateOpen] = useState(false);
 
   if (household.isLoading) return <HouseholdSkeleton />;
@@ -82,21 +67,12 @@ export function HouseholdOverview({
   const isFull = household.data.memberCount >= HOUSEHOLD_MEMBER_CAP;
   const canInvite = household.data.role === 'owner' && !isFull;
 
-  const focusQuickAdd = () =>
-    document.getElementById(QUICK_ADD_AMOUNT_ID)?.focus();
-
-  const doUnlock = () =>
-    unlock.mutate(undefined, {
-      onError: () =>
-        toast.error('Unlock your personal vault first, then try again.'),
-    });
-
   return (
     <UndoableDeleteProvider delayMs={UNDO_DELAY_MS}>
       <div className="space-y-6">
         <PageHeader
           title={household.data.name}
-          description="Shared goals and spending for your household."
+          description="Shared goals for your household."
           action={
             <div className="flex flex-wrap items-center justify-end gap-2">
               {canInvite && <InvitePartnerDialog />}
@@ -110,8 +86,11 @@ export function HouseholdOverview({
                   Only the owner can invite a partner
                 </span>
               )}
-              {!locked &&
-                (view === 'goals' ? (
+              {!locked && (
+                <>
+                  <Button variant="outline" asChild>
+                    <Link href={HOUSEHOLD_SPENDING_PATH}>Shared spending</Link>
+                  </Button>
                   <Button
                     disabled={hidden || !goals.data}
                     onClick={() => {
@@ -121,97 +100,53 @@ export function HouseholdOverview({
                     <Plus className="mr-1.5 size-4" />
                     New goal
                   </Button>
-                ) : (
-                  <Button onClick={focusQuickAdd}>
-                    <Plus className="mr-1.5 size-4" />
-                    Add spending
-                  </Button>
-                ))}
+                </>
+              )}
             </div>
           }
         />
 
         {!locked && (
-          <Tabs value={view} onValueChange={(next) => setView(next as View)}>
-            <TabsList>
-              {VIEWS.map((option) => (
-                <TabsTrigger
-                  key={option.id}
-                  value={option.id}
-                  className="data-[state=active]:bg-card dark:data-[state=active]:bg-card"
-                >
-                  {option.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-
-            <TabsContent value="goals" className="space-y-6">
-              {goals.isLoading && <HouseholdSkeleton />}
-              {goals.isError && (
-                <div className="rounded-xl border border-dashed py-14 text-center">
-                  <p className="font-medium">Couldn&apos;t load your goals</p>
-                  <p className="text-muted-foreground mt-1 text-sm">
-                    Something went wrong reading this household. Refresh to try
-                    again.
-                  </p>
-                </div>
-              )}
-              {goals.data && (
-                <>
-                  <HouseholdPlanSummary personalSurplus={personalSurplus} />
-                  {household.data.memberCount === HOUSEHOLD_MEMBER_CAP && (
-                    <PlannerSplitEditor />
-                  )}
-                  <GoalList
-                    goals={goals.data}
-                    onCreate={() => {
-                      if (canReveal()) setCreateOpen(true);
-                    }}
-                  />
-                  <GoalEditorSheet
-                    open={createOpen}
-                    onOpenChange={setCreateOpen}
-                  />
-                </>
-              )}
-            </TabsContent>
-
-            <TabsContent value="spending" className="space-y-6">
-              {spaces.isLoading && <HouseholdSkeleton />}
-              {spaces.isError && (
-                <div className="rounded-xl border border-dashed py-14 text-center">
-                  <p className="font-medium">
-                    Couldn&apos;t load shared spending
-                  </p>
-                  <p className="text-muted-foreground mt-1 text-sm">
-                    Refresh to try again.
-                  </p>
-                </div>
-              )}
-              {spaces.data && <SharedSpending spaces={spaces.data} />}
-            </TabsContent>
-          </Tabs>
+          <>
+            {goals.isLoading && <HouseholdSkeleton />}
+            {goals.isError && (
+              <div className="rounded-xl border border-dashed py-14 text-center">
+                <p className="font-medium">Couldn&apos;t load your goals</p>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  Something went wrong reading this household. Refresh to try
+                  again.
+                </p>
+              </div>
+            )}
+            {goals.data && (
+              <>
+                <GoalList
+                  goals={goals.data}
+                  onCreate={() => {
+                    if (canReveal()) setCreateOpen(true);
+                  }}
+                />
+                <GoalEditorSheet
+                  open={createOpen}
+                  onOpenChange={setCreateOpen}
+                />
+                <details className="rounded-xl border px-4 py-3">
+                  <summary className="focus-visible:outline-ring cursor-pointer rounded-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-4">
+                    Monthly plan
+                  </summary>
+                  <div className="mt-4 space-y-6">
+                    <HouseholdPlanSummary personalSurplus={personalSurplus} />
+                    {household.data.memberCount === HOUSEHOLD_MEMBER_CAP && (
+                      <PlannerSplitEditor />
+                    )}
+                  </div>
+                </details>
+              </>
+            )}
+          </>
         )}
 
-        {locked && (
-          <div className="rounded-xl border py-14 text-center">
-            <div className="bg-muted flex-center mx-auto size-10 rounded-full">
-              <Lock className="size-5" />
-            </div>
-            <p className="mt-3 font-medium">Household locked</p>
-            <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-sm">
-              Unlock to view and edit shared goals. This uses the PIN you
-              already entered for your personal vault — no extra password.
-            </p>
-            <Button
-              className="mt-4"
-              onClick={doUnlock}
-              disabled={unlock.isPending}
-            >
-              Unlock household
-            </Button>
-          </div>
-        )}
+        {locked && <HouseholdLocked />}
       </div>
     </UndoableDeleteProvider>
   );

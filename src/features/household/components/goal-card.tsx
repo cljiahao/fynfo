@@ -25,7 +25,6 @@ import {
 import {
   goalBasis,
   goalCommitted,
-  goalPace,
   goalStatus,
   plannedTotal,
 } from '../lib/goal-stats';
@@ -37,8 +36,6 @@ interface GoalCardProps {
   onContribute: (goal: HouseholdGoal) => void;
   onEdit: (goal: HouseholdGoal) => void;
   onDelete: (goal: HouseholdGoal) => void;
-  /** Joint monthly figure from the household plan; absent until it is known. */
-  monthly?: number | null;
   className?: string;
 }
 
@@ -47,19 +44,14 @@ export function GoalCard({
   onContribute,
   onEdit,
   onDelete,
-  monthly = null,
   className,
 }: GoalCardProps) {
   const { hidden, mask, canReveal } = useAmountVisibility();
   const [now] = useState(() => new Date());
   const status = goalStatus(goal, now);
   const funded = status === 'funded';
-  const pace = goalPace(goal, now, monthly ?? null);
   // Masked cards keep the saved wording so the labels do not reveal the basis.
   const paidBasis = goalBasis(goal) === 'paid' && !hidden;
-
-  const overCommitted =
-    goal.contributed + goalCommitted(goal) > goal.targetAmount;
 
   // Derive-state-from-props keeps the one-shot celebration free of refs and
   // effects, so a goal that is already funded on mount never animates.
@@ -175,21 +167,6 @@ export function GoalCard({
                 : `${mask(formatSGD(goal.remaining))} to go`}
           </span>
         </div>
-
-        {!hidden && overCommitted && !funded && (
-          <p className="text-destructive text-xs">
-            Budget lines exceed the target
-          </p>
-        )}
-        {pace !== null && (
-          <p className="text-muted-foreground text-xs">
-            {pace === 'past'
-              ? 'Past target date'
-              : pace === 0
-                ? 'Nothing to set aside monthly'
-                : `${mask(formatSGD(pace))}/mo of the monthly plan`}
-          </p>
-        )}
       </CardContent>
     </Card>
   );

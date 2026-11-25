@@ -31,6 +31,8 @@ export {
   GoalDetail,
   GoalDetailSkeleton,
   HouseholdOverview,
+  HouseholdSkeleton,
+  HouseholdSpendingView,
 } from './components';
 export { HouseholdRecommendations } from './components/household-recommendations';
 export { HouseholdYearTable } from './components/household-year-table';
