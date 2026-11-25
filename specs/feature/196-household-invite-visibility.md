@@ -1,11 +1,11 @@
 ---
-id: '203'
+id: '196'
 slug: household-invite-visibility
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-25
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-25 # owner-approved in chat 2026-11-25 ("Approve all defaults"), all open-question defaults taken
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # link to impl PR, set on shipped
 supersedes: # none
@@ -19,7 +19,7 @@ constitution_satisfies:
 constitution_overrides: []
 ---
 
-# Spec 203: Make "Invite partner" discoverable on the household page
+# Spec 196: Make "Invite partner" discoverable on the household page
 
 ## Problem
 
@@ -206,23 +206,23 @@ pattern the neighbouring tests use). `HouseholdOverview` is rendered with the
 
 Each has a recommended default; approving with "all defaults" accepts every one.
 
-- [ ] Q1: Button style. Outline "Invite partner" beside the primary button, or
+- [x] Q1: Button style. Outline "Invite partner" beside the primary button, or
       the primary style? — Owner: Clarence — Default: outline, so New goal /
       Add spending stays the primary action.
-- [ ] Q2: Locked state. Show the working invite button while locked (the code
+- [x] Q2: Locked state. Show the working invite button while locked (the code
       shows it needs only the personal DEK), or hide it until unlocked as the
       original idea left open? — Owner: Clarence — Default: show it and let it
       work while locked.
-- [ ] Q3: Full household note wording. "2 of 2 members" alone, or
+- [x] Q3: Full household note wording. "2 of 2 members" alone, or
       "2 of 2 members. Your partner has joined"? — Owner: Clarence — Default:
       "2 of 2 members".
-- [ ] Q4: Non-owner note wording. "Only the owner can invite a partner". —
+- [x] Q4: Non-owner note wording. "Only the owner can invite a partner". —
       Owner: Clarence — Default: that wording.
-- [ ] Q5: Keep a short pointer inside the Goals tab empty state or plan summary
+- [x] Q5: Keep a short pointer inside the Goals tab empty state or plan summary
       for an owner who has not invited yet? — Owner: Clarence — Default: no;
       the header button on both tabs is enough, and a second entry point is
       extra surface to maintain.
-- [ ] Q6: Delete `invite-panel.tsx` outright (body moves into the dialog), or
+- [x] Q6: Delete `invite-panel.tsx` outright (body moves into the dialog), or
       keep it as the dialog's inner component? — Owner: Clarence — Default:
       delete and move the body into `invite-partner-dialog.tsx`; one component,
       no dead file.
