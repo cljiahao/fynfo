@@ -53,6 +53,7 @@ interface ItemRow {
   budget: string;
   quote: string | null;
   due_date: string | null;
+  description: string | null;
 }
 
 interface PaymentRow {
@@ -81,7 +82,7 @@ async function readGoalItems(
         (from, to) =>
           supabase
             .from('household_goal_items')
-            .select('id, goal_id, name, budget, quote, due_date', {
+            .select('id, goal_id, name, budget, quote, due_date, description', {
               count: 'exact',
             })
             .in('goal_id', ids)
@@ -134,6 +135,7 @@ async function readGoalItems(
       budget,
       quote: row.quote ? Number(decryptPayload(row.quote, kh)) : null,
       dueDate: row.due_date ? row.due_date.slice(0, 10) : null,
+      description: row.description ? decryptPayload(row.description, kh) : null,
       payments,
       ...computeItemBudget(
         budget,
@@ -403,6 +405,15 @@ export async function deleteGoal(id: string): Promise<void> {
   throwIfSupabaseError(error, 'household goal delete');
 }
 
+/** Blank or absent descriptions are stored as NULL, never as sealed empty text. */
+function sealDescription(
+  description: string | null | undefined,
+  kh: Parameters<typeof encryptPayload>[1]
+): string | null {
+  const trimmed = description?.trim();
+  return trimmed ? encryptPayload(trimmed, kh) : null;
+}
+
 /** Adds a budget line to a goal, sealing name + budget under K_h. */
 export async function addGoalItem(input: unknown): Promise<void> {
   const data = parseOrThrow(addGoalItemSchema, input, 'household.item.input');
@@ -413,6 +424,7 @@ export async function addGoalItem(input: unknown): Promise<void> {
     name: encryptPayload(data.name, kh),
     budget: encryptPayload(data.budget.toString(), kh),
     due_date: data.dueDate ?? null,
+    description: sealDescription(data.description, kh),
   });
   throwIfSupabaseError(error, 'household goal item create');
 }
@@ -531,6 +543,7 @@ interface ExistingItem {
   budget: number;
   quote: number | null;
   dueDate: string | null;
+  description: string | null;
 }
 
 /**
@@ -612,12 +625,17 @@ export async function saveGoal(input: unknown): Promise<SaveGoalResult> {
     const existing = new Map<string, ExistingItem>();
     if (goalExists) {
       const rows = await readAllRows<
-        Pick<ItemRow, 'id' | 'name' | 'budget' | 'quote' | 'due_date'>
+        Pick<
+          ItemRow,
+          'id' | 'name' | 'budget' | 'quote' | 'due_date' | 'description'
+        >
       >(
         (from, to) =>
           supabase
             .from('household_goal_items')
-            .select('id, name, budget, quote, due_date', { count: 'exact' })
+            .select('id, name, budget, quote, due_date, description', {
+              count: 'exact',
+            })
             .eq('goal_id', goalId)
             .order('created_at', { ascending: true })
             .order('id', { ascending: true })
@@ -630,15 +648,23 @@ export async function saveGoal(input: unknown): Promise<SaveGoalResult> {
           budget: Number(decryptPayload(row.budget, kh)),
           quote: row.quote ? Number(decryptPayload(row.quote, kh)) : null,
           dueDate: row.due_date ? row.due_date.slice(0, 10) : null,
+          description: row.description
+            ? decryptPayload(row.description, kh)
+            : null,
         });
       }
     }
 
+    // An undefined description means the caller (the editor sheet) does not
+    // manage it, so the column is left out and an update keeps the stored value.
     const seal = (item: (typeof draft)[number]) => ({
       name: encryptPayload(item.name, kh),
       budget: encryptPayload(item.budget.toString(), kh),
       quote: item.quote ? encryptPayload(item.quote.toString(), kh) : null,
       due_date: item.dueDate ?? null,
+      ...(item.description === undefined
+        ? {}
+        : { description: sealDescription(item.description, kh) }),
     });
 
     for (const item of draft) {
@@ -648,7 +674,9 @@ export async function saveGoal(input: unknown): Promise<SaveGoalResult> {
         before.name === item.name &&
         before.budget === item.budget &&
         before.quote === (item.quote ?? null) &&
-        before.dueDate === (item.dueDate ?? null);
+        before.dueDate === (item.dueDate ?? null) &&
+        (item.description === undefined ||
+          before.description === (item.description?.trim() || null));
       if (unchanged) continue;
       const { error } = await supabase
         .from('household_goal_items')

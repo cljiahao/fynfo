@@ -29,6 +29,7 @@ function item(
     budget,
     quote: null,
     dueDate: null,
+    description: null,
     paid,
     remaining: Math.max(0, budget - paid),
     over: Math.max(0, paid - budget),

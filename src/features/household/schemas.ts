@@ -51,11 +51,15 @@ const itemDueDate = z
     );
   }, 'date must be a real calendar date');
 
+/** Optional; blank is treated as no description when sealed. */
+const itemDescription = z.string().trim().max(120).nullish();
+
 export const addGoalItemSchema = z.object({
   goalId: z.uuid(),
   name: z.string().trim().min(1).max(80),
   budget: z.number().positive().finite(),
   dueDate: itemDueDate.nullish(),
+  description: itemDescription,
 });
 
 export const addItemPaymentSchema = z.object({
@@ -72,6 +76,7 @@ export const saveGoalItemSchema = z.object({
   budget: z.number().positive().finite(),
   quote: z.number().positive().finite().nullish(),
   dueDate: itemDueDate.nullish(),
+  description: itemDescription,
 });
 
 export const saveGoalSchema = z

@@ -32,6 +32,7 @@ type ItemErrors = {
   budget?: string;
   quote?: string;
   dueDate?: string;
+  description?: string;
 };
 
 function toAmount(value: string): number {
@@ -46,6 +47,7 @@ function existingItem(item: HouseholdGoal['items'][number]) {
     budget: toAmount(item.budget.toFixed(2)),
     quote: item.quote === null ? null : toAmount(item.quote.toFixed(2)),
     dueDate: item.dueDate,
+    description: item.description,
   };
 }
 
@@ -60,6 +62,7 @@ export function AddGoalItemDialog({
   const [budget, setBudget] = useState('');
   const [quote, setQuote] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<ItemErrors>({});
 
   const clear = (key: keyof ItemErrors) =>
@@ -73,6 +76,7 @@ export function AddGoalItemDialog({
       budget: toAmount(budget),
       quote: quote.trim() === '' ? null : toAmount(quote),
       dueDate: dueDate === '' ? null : dueDate,
+      description: description.trim() === '' ? null : description,
     });
     if (!parsed.success) {
       const next: ItemErrors = {};
@@ -82,6 +86,8 @@ export function AddGoalItemDialog({
         if (key === 'budget') next.budget ??= 'Enter an amount above 0';
         if (key === 'quote') next.quote ??= 'Enter an amount above 0';
         if (key === 'dueDate') next.dueDate ??= 'Enter a valid date';
+        if (key === 'description')
+          next.description ??= 'Keep it to 120 characters';
       }
       setErrors(next);
       return;
@@ -141,6 +147,29 @@ export function AddGoalItemDialog({
               autoFocus
             />
             <FieldError id="goal-item-name-error">{errors.name}</FieldError>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="goal-item-description">
+              Description (optional)
+            </Label>
+            <Input
+              id="goal-item-description"
+              disabled={hidden}
+              maxLength={120}
+              value={hidden ? '' : description}
+              aria-invalid={errors.description ? true : undefined}
+              aria-describedby={
+                errors.description ? 'goal-item-description-error' : undefined
+              }
+              onChange={(e) => {
+                if (!canReveal()) return;
+                setDescription(e.target.value);
+                clear('description');
+              }}
+            />
+            <FieldError id="goal-item-description-error">
+              {errors.description}
+            </FieldError>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

@@ -127,6 +127,7 @@ describe('goal list', () => {
             budget: 10,
             quote: null,
             dueDate: null,
+            description: null,
             payments: [],
             paid: 0,
             remaining: 10,

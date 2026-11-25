@@ -37,6 +37,7 @@ function paidItem(
     budget,
     quote: null,
     dueDate: null,
+    description: null,
     payments: payments.map((p, index) => ({
       id: `${id}-${index}`,
       amount: p.amount,

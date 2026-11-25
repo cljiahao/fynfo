@@ -37,6 +37,7 @@ function item(
     budget,
     quote: opts.quote ?? null,
     dueDate: opts.dueDate ?? null,
+    description: null,
     payments,
     paid,
     remaining: Math.max(0, effective - paid),

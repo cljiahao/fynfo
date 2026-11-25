@@ -82,6 +82,7 @@ const goal: HouseholdGoal = {
       budget: 8000,
       quote: null,
       dueDate: null,
+      description: 'Main hall, 80 guests',
       paid: 9000,
       remaining: 0,
       over: 1000,
@@ -108,6 +109,7 @@ const goal: HouseholdGoal = {
       budget: 3000,
       quote: null,
       dueDate: null,
+      description: null,
       paid: 0,
       remaining: 3000,
       over: 0,
@@ -174,6 +176,12 @@ it('lists every item with its over-budget and remaining text', () => {
   expect(screen.getByText('Photographer')).toBeInTheDocument();
   expect(screen.getByText(/Over by .*1,000\.00/)).toBeInTheDocument();
   expect(screen.getByText(/3,000\.00 left/)).toBeInTheDocument();
+});
+
+it('shows the description under the title only when one is set', () => {
+  mount();
+  expect(screen.getByText('Main hall, 80 guests')).toBeInTheDocument();
+  expect(document.querySelectorAll('li .text-xs.truncate')).toHaveLength(1);
 });
 
 it('records a payment against an item with the chosen date', async () => {

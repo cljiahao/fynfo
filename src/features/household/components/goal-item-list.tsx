@@ -82,8 +82,15 @@ function ItemRow({
   return (
     <li className="space-y-2 p-3 sm:p-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="min-w-0 truncate text-base font-medium">
-          {mask(item.name)}
+        <span className="min-w-0">
+          <span className="block truncate text-base font-medium">
+            {mask(item.name)}
+          </span>
+          {item.description ? (
+            <span className="text-muted-foreground block truncate text-xs">
+              {mask(item.description)}
+            </span>
+          ) : null}
         </span>
         <span className="flex shrink-0 items-center gap-1">
           <span className="text-sm whitespace-nowrap tabular-nums">

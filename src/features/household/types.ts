@@ -53,6 +53,8 @@ export interface GoalItem {
   quote: number | null;
   /** ISO date (YYYY-MM-DD) this line falls due; null means the goal's date. */
   dueDate: string | null;
+  /** Optional short note shown under the name; null when none. */
+  description: string | null;
   payments: GoalItemPayment[];
   paid: number;
   remaining: number;

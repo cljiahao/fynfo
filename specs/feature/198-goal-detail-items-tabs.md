@@ -191,7 +191,7 @@ only mounts it in the new modal.
       `pnpm build` green
 - [ ] Items and Savings render in separate tabs; charts and audit log unchanged
       and still visible beside them
-- [ ] Item card shows title, small description (only when set), `paid / budget`
+- [x] Item card shows title, small description (only when set), `paid / budget`
       and a trash button; trash keeps the undo/confirm behaviour
 - [ ] `Record payment` opens a modal; no inline payment form remains; adding a
       payment updates `paid` and the charts; validation errors show in the modal
@@ -200,10 +200,10 @@ only mounts it in the new modal.
 - [ ] `Record saving` is a visible primary button in the Savings tab and opens
       the dialog; `addContribution` unchanged; planner output for an existing
       dated goal unchanged
-- [ ] Existing items without a description render without an empty gap
-- [ ] Description round-trips encrypted: the stored value is ciphertext, never
+- [x] Existing items without a description render without an empty gap
+- [x] Description round-trips encrypted: the stored value is ciphertext, never
       plaintext (action test on the sealed payload)
-- [ ] Migration is forward-only and nullable
+- [x] Migration is forward-only and nullable
 - [ ] Spec hash matches at impl PR time
 
 Test plan (vitest, node default, `// @vitest-environment jsdom` per file for
@@ -241,3 +241,5 @@ component tests, under `test/features/household/`):
 ## Follow-up
 
 - The goal card menu item and add-contribution dialog copy were renamed from "Add to goal" to "Record saving" so the action has one name everywhere (AGENTS 7 drift).
+
+- 198b shipped: optional encrypted budget item description (add-item dialog and item card; the editor sheet leaves it untouched). Migration `20261125000198_household_item_description.sql` approved by owner 2026-11-25. Commit: SHA_PLACEHOLDER.

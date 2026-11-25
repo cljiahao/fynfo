@@ -136,6 +136,50 @@ describe('goal-actions — createGoal', () => {
   });
 });
 
+describe('goal-actions — addGoalItem description', () => {
+  const VALID = {
+    goalId: '123e4567-e89b-42d3-a456-426614174000',
+    name: 'Venue',
+    budget: 8000,
+  };
+
+  it('seals the description under the household key', async () => {
+    const fake = setSupabase();
+    const { addGoalItem } =
+      await import('@/features/household/actions/goal-actions');
+    await addGoalItem({ ...VALID, description: '  Main hall  ' });
+
+    const row = fake.calls.insert[0] as Record<string, string>;
+    expect(row.description).not.toContain('Main hall');
+    expect(decryptPayload(row.description, KH)).toBe('Main hall');
+  });
+
+  it('stores NULL when the description is absent or blank', async () => {
+    const fake = setSupabase();
+    const { addGoalItem } =
+      await import('@/features/household/actions/goal-actions');
+    await addGoalItem(VALID);
+    await addGoalItem({ ...VALID, description: '   ' });
+
+    expect((fake.calls.insert[0] as Record<string, unknown>).description).toBe(
+      null
+    );
+    expect((fake.calls.insert[1] as Record<string, unknown>).description).toBe(
+      null
+    );
+  });
+
+  it('rejects a description over 120 characters', async () => {
+    const fake = setSupabase();
+    const { addGoalItem } =
+      await import('@/features/household/actions/goal-actions');
+    await expect(
+      addGoalItem({ ...VALID, description: 'x'.repeat(121) })
+    ).rejects.toThrow();
+    expect(fake.calls.insert).toHaveLength(0);
+  });
+});
+
 describe('goal-actions — addContribution', () => {
   const VALID = {
     goalId: '123e4567-e89b-42d3-a456-426614174000',
