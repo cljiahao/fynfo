@@ -2,12 +2,12 @@
 id: '196'
 slug: household-invite-visibility
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-25
 approved: 2026-11-25 # owner-approved in chat 2026-11-25 ("Approve all defaults"), all open-question defaults taken
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # link to impl PR, set on shipped
+shipped: 2026-11-25 # YYYY-MM-DD, set on impl merge
+impl_pr: none (direct to main, 3abd2f1)
 supersedes: # none
 constitution_satisfies:
   - '§1.1'
