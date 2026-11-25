@@ -25,7 +25,7 @@ import { GoalList } from './goal-list';
 import { HouseholdPlanSummary } from './household-plan-summary';
 import { HouseholdSetup } from './household-setup';
 import { HouseholdSkeleton } from './household-skeleton';
-import { InvitePanel } from './invite-panel';
+import { InvitePartnerDialog } from './invite-partner-dialog';
 import { PlannerSplitEditor } from './planner-split-editor';
 import { SharedSpending } from './shared-spending';
 
@@ -79,9 +79,8 @@ export function HouseholdOverview({
     );
   }
 
-  const showInvite =
-    household.data.role === 'owner' &&
-    household.data.memberCount < HOUSEHOLD_MEMBER_CAP;
+  const isFull = household.data.memberCount >= HOUSEHOLD_MEMBER_CAP;
+  const canInvite = household.data.role === 'owner' && !isFull;
 
   const focusQuickAdd = () =>
     document.getElementById(QUICK_ADD_AMOUNT_ID)?.focus();
@@ -99,23 +98,36 @@ export function HouseholdOverview({
           title={household.data.name}
           description="Shared goals and spending for your household."
           action={
-            !locked &&
-            (view === 'goals' ? (
-              <Button
-                disabled={hidden || !goals.data}
-                onClick={() => {
-                  if (canReveal()) setCreateOpen(true);
-                }}
-              >
-                <Plus className="mr-1.5 size-4" />
-                New goal
-              </Button>
-            ) : (
-              <Button onClick={focusQuickAdd}>
-                <Plus className="mr-1.5 size-4" />
-                Add spending
-              </Button>
-            ))
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {canInvite && <InvitePartnerDialog />}
+              {isFull && (
+                <span className="text-muted-foreground text-xs">
+                  {household.data.memberCount} of {HOUSEHOLD_MEMBER_CAP} members
+                </span>
+              )}
+              {!isFull && !canInvite && (
+                <span className="text-muted-foreground text-xs">
+                  Only the owner can invite a partner
+                </span>
+              )}
+              {!locked &&
+                (view === 'goals' ? (
+                  <Button
+                    disabled={hidden || !goals.data}
+                    onClick={() => {
+                      if (canReveal()) setCreateOpen(true);
+                    }}
+                  >
+                    <Plus className="mr-1.5 size-4" />
+                    New goal
+                  </Button>
+                ) : (
+                  <Button onClick={focusQuickAdd}>
+                    <Plus className="mr-1.5 size-4" />
+                    Add spending
+                  </Button>
+                ))}
+            </div>
           }
         />
 
@@ -147,7 +159,6 @@ export function HouseholdOverview({
               {goals.data && (
                 <>
                   <HouseholdPlanSummary personalSurplus={personalSurplus} />
-                  {showInvite && <InvitePanel />}
                   {household.data.memberCount === HOUSEHOLD_MEMBER_CAP && (
                     <PlannerSplitEditor />
                   )}

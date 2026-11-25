@@ -40,8 +40,8 @@ vi.mock('@/features/household/hooks/use-household-plan', () => ({
 vi.mock('@/features/household/components/goal-list', () => ({
   GoalList: () => <div>Private goal</div>,
 }));
-vi.mock('@/features/household/components/invite-panel', () => ({
-  InvitePanel: () => <div>Private invite</div>,
+vi.mock('@/features/household/components/invite-partner-dialog', () => ({
+  InvitePartnerDialog: () => <button>Invite partner</button>,
 }));
 vi.mock('@/features/household/components/planner-split-editor', () => ({
   PlannerSplitEditor: () => <div>Split editor</div>,
@@ -90,11 +90,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-it('hides cached goals, invites, tabs and create actions while household locked', () => {
+it('hides cached goals, tabs and create actions while household locked, keeping the invite', () => {
   state.household = { ...state.household, locked: true };
   render(<HouseholdOverview />);
   expect(screen.queryByText('Private goal')).toBeNull();
-  expect(screen.queryByText('Private invite')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Invite partner' })).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'New goal' })).toBeNull();
   expect(screen.queryByRole('tablist')).toBeNull();
   expect(screen.getByRole('button', { name: 'Unlock household' })).toBeTruthy();
@@ -131,19 +131,26 @@ it('swaps the header action per tab and focuses the amount input', async () => {
   expect(screen.getByLabelText('Amount')).toHaveFocus();
 });
 
-it('shows the invite to an owner of a one-member household only', () => {
-  const first = render(<HouseholdOverview />);
-  expect(screen.getByText('Private invite')).toBeInTheDocument();
-  first.unmount();
+it('shows the invite to an owner of a one-member household on both tabs', async () => {
+  render(<HouseholdOverview />);
+  expect(screen.getByRole('button', { name: 'Invite partner' })).toBeTruthy();
+  await userEvent.click(screen.getByRole('tab', { name: 'Spending' }));
+  expect(screen.getByRole('button', { name: 'Invite partner' })).toBeTruthy();
+});
 
+it('explains the missing invite for a full household and for a non-owner', () => {
   state.household = { ...state.household, memberCount: 2 };
-  const second = render(<HouseholdOverview />);
-  expect(screen.queryByText('Private invite')).toBeNull();
-  second.unmount();
+  const full = render(<HouseholdOverview />);
+  expect(screen.queryByRole('button', { name: 'Invite partner' })).toBeNull();
+  expect(screen.getByText('2 of 2 members')).toBeInTheDocument();
+  full.unmount();
 
   state.household = { ...state.household, role: 'member', memberCount: 1 };
   render(<HouseholdOverview />);
-  expect(screen.queryByText('Private invite')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Invite partner' })).toBeNull();
+  expect(
+    screen.getByText('Only the owner can invite a partner')
+  ).toBeInTheDocument();
 });
 
 it('keeps a pending undo alive across a tab switch and commits once after the window', async () => {
