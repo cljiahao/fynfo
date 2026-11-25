@@ -211,7 +211,7 @@ it('conceals household values and progress geometry and prevents hidden goal act
     /9876\.54|1,234\.56|13%|8,641\.98/
   );
   expect(document.querySelector('[style*="width"]')).toBeNull();
-  for (const action of ['Add to goal', 'Delete', 'Edit']) {
+  for (const action of ['Record saving', 'Delete', 'Edit']) {
     await userEvent.click(screen.getByRole('button', { name: 'Goal actions' }));
     await userEvent.click(
       await screen.findByRole('menuitem', { name: action })

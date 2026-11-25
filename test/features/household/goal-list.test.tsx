@@ -210,9 +210,9 @@ describe('goal dialogs inline errors', () => {
 
   it('add-contribution shows an amount error, focuses it, and clears on edit', async () => {
     mount([makeGoal('a', 'Sofa', 1000)]);
-    await pickAction('Add to goal');
+    await pickAction('Record saving');
     await screen.findByRole('dialog');
-    fireEvent.click(screen.getByRole('button', { name: 'Add contribution' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Record saving' }));
 
     const amount = screen.getByLabelText('Amount (SGD)');
     expect(amount).toHaveAttribute('aria-invalid', 'true');
@@ -230,13 +230,13 @@ describe('goal dialogs inline errors', () => {
 
   it('add-contribution flags a cleared date', async () => {
     mount([makeGoal('a', 'Sofa', 1000)]);
-    await pickAction('Add to goal');
+    await pickAction('Record saving');
     await screen.findByRole('dialog');
     fireEvent.change(screen.getByLabelText('Amount (SGD)'), {
       target: { value: '5' },
     });
     fireEvent.change(screen.getByLabelText('Date'), { target: { value: '' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add contribution' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Record saving' }));
     expect(screen.getByLabelText('Date')).toHaveAttribute(
       'aria-invalid',
       'true'

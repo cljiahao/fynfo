@@ -38,7 +38,7 @@ export function AddContributionDialog({
   onOpenChange,
 }: AddContributionDialogProps) {
   const isEdit = !!contribution;
-  const { hidden, mask, canReveal } = useAmountVisibility();
+  const { hidden, canReveal } = useAmountVisibility();
   const addContribution = useAddContribution();
   const updateContribution = useUpdateGoalContribution();
   const pending = addContribution.isPending || updateContribution.isPending;
@@ -124,7 +124,7 @@ export function AddContributionDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {isEdit ? 'Edit contribution' : `Add to ${mask(goal?.name ?? '')}`}
+            {isEdit ? 'Edit contribution' : 'Record saving'}
           </DialogTitle>
           <DialogDescription>
             {isEdit
@@ -202,7 +202,7 @@ export function AddContributionDialog({
             Cancel
           </Button>
           <Button onClick={submit} disabled={pending}>
-            {isEdit ? 'Save changes' : 'Add contribution'}
+            {isEdit ? 'Save changes' : 'Record saving'}
           </Button>
         </DialogFooter>
       </DialogContent>

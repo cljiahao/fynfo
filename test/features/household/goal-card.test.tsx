@@ -193,7 +193,7 @@ describe('goal card presentation', () => {
     expect(container.querySelector('a button, button a, a a')).toBeNull();
   });
 
-  it('offers Add to goal, Edit and Delete from the menu', async () => {
+  it('offers Record saving, Edit and Delete from the menu', async () => {
     const onContribute = vi.fn();
     const onEdit = vi.fn();
     const onDelete = vi.fn();
@@ -211,7 +211,7 @@ describe('goal card presentation', () => {
       </QueryClientProvider>
     );
     for (const [name, handler] of [
-      ['Add to goal', onContribute],
+      ['Record saving', onContribute],
       ['Edit', onEdit],
       ['Delete', onDelete],
     ] as const) {

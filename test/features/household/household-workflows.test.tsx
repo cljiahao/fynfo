@@ -383,9 +383,9 @@ describe('household workflows with real mutation hooks', () => {
   });
   it('adds contribution with date and trimmed note then closes dialog', async () => {
     mount(<GoalList goals={[goal]} />);
-    await openGoalAction('Add to goal');
+    await openGoalAction('Record saving');
     await userEvent.click(
-      screen.getByRole('button', { name: 'Add contribution' })
+      screen.getByRole('button', { name: 'Record saving' })
     );
     expect(actions.addContribution).not.toHaveBeenCalled();
     await userEvent.type(screen.getByLabelText('Amount (SGD)'), '50');
@@ -394,7 +394,7 @@ describe('household workflows with real mutation hooks', () => {
       target: { value: '2026-10-08' },
     });
     await userEvent.click(
-      screen.getByRole('button', { name: 'Add contribution' })
+      screen.getByRole('button', { name: 'Record saving' })
     );
     await waitFor(() =>
       expect(actions.addContribution.mock.calls[0]?.[0]).toEqual({
@@ -428,10 +428,10 @@ describe('household workflows with real mutation hooks', () => {
     await waitFor(() =>
       expect(notices.success).toHaveBeenCalledWith('Goal deleted')
     );
-    await openGoalAction('Add to goal');
+    await openGoalAction('Record saving');
     await userEvent.type(screen.getByLabelText('Amount (SGD)'), '50');
     await userEvent.click(
-      screen.getByRole('button', { name: 'Add contribution' })
+      screen.getByRole('button', { name: 'Record saving' })
     );
     await waitFor(() =>
       expect(notices.error).toHaveBeenCalledWith(

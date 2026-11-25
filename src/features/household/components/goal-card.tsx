@@ -126,7 +126,7 @@ export function GoalCard({
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={run(onContribute)}>
                   <Plus className="size-4" />
-                  Add to goal
+                  Record saving
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={run(onEdit)}>
                   <Pencil className="size-4" />

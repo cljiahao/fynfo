@@ -237,3 +237,7 @@ component tests, under `test/features/household/`):
 - [x] Q2: Cap of 5 (`GOAL_ITEM_VISIBLE_ROWS`), scroll beyond, rows keyboard reachable. — resolved 2026-11-25
 - [x] Q3: Default tab Budget items when any item exists, else Savings. — resolved 2026-11-25
 - [x] Q4: Savings tab lists past contributions (existing data/components) and has a visible primary `Record saving` button opening the existing add-contribution dialog; the old hidden `Add to goal` trigger is removed. — resolved 2026-11-25
+
+## Follow-up
+
+- The goal card menu item and add-contribution dialog copy were renamed from "Add to goal" to "Record saving" so the action has one name everywhere (AGENTS 7 drift).

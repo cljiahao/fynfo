@@ -456,7 +456,7 @@ describe('page structure', () => {
 
   it('opens the contribution dialog from Record saving in the Savings tab', async () => {
     mount();
-    expect(screen.queryByRole('button', { name: 'Add to goal' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Record saving' })).toBeNull();
     await userEvent.click(screen.getByRole('tab', { name: 'Savings' }));
     await userEvent.click(
       screen.getByRole('button', { name: 'Record saving' })
