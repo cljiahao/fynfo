@@ -228,6 +228,18 @@ export async function getGoals(): Promise<HouseholdGoal[]> {
   });
 }
 
+/** A new goal starts with its creator as the first member (a goal keeps 1 to 4). */
+async function addCreatorAsMember(
+  supabase: GoalSupabase,
+  goalId: string,
+  userId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('household_goal_members')
+    .insert({ goal_id: goalId, user_id: userId });
+  throwIfSupabaseError(error, 'household goal member create');
+}
+
 /** Creates a goal in the caller's household, sealing name + target amount under K_h. */
 export async function createGoal(input: unknown): Promise<void> {
   const data = parseOrThrow(createGoalSchema, input, 'household.goal.input');
@@ -242,8 +254,9 @@ export async function createGoal(input: unknown): Promise<void> {
     ?.household_id;
   if (!householdId) throw new Error('No household');
 
+  const goalId = randomUUID();
   const { error } = await supabase.from('household_goals').insert({
-    id: randomUUID(),
+    id: goalId,
     household_id: householdId,
     name: encryptPayload(data.name, kh),
     target_amount: encryptPayload(data.targetAmount.toString(), kh),
@@ -251,6 +264,7 @@ export async function createGoal(input: unknown): Promise<void> {
     created_by: userId,
   });
   throwIfSupabaseError(error, 'household goal create');
+  await addCreatorAsMember(supabase, goalId, userId);
 }
 
 /** Re-seals a goal's name and target under K_h; an omitted date clears it. */
@@ -305,8 +319,8 @@ async function firstColumn(
   return value;
 }
 
-/** Walks from the row being written up to the goal's household. */
-async function householdIdOf(
+/** Walks from the row being written up to its goal. */
+async function goalIdOf(
   supabase: GoalSupabase,
   target: PayerTarget
 ): Promise<string> {
@@ -339,32 +353,76 @@ async function householdIdOf(
       target.id
     );
   }
-  return firstColumn(supabase, 'household_goals', 'household_id', goalId);
+  return goalId;
+}
+
+async function memberIds(
+  supabase: GoalSupabase,
+  table: 'household_members' | 'household_goal_members',
+  scopeColumn: 'household_id' | 'goal_id',
+  scopeId: string
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from(table)
+    .select('user_id')
+    .eq(scopeColumn, scopeId);
+  throwIfSupabaseError(error, `${table} read`);
+  return ((data ?? []) as { user_id: string }[]).map((m) => m.user_id);
+}
+
+interface PayerChoice {
+  paidBy?: 'self' | 'partner';
+  payerUserId?: string;
 }
 
 /**
- * Maps a role to a user id. The partner is read server-side from the roster of
- * the target goal's own household (a caller may belong to several), so the id
- * is never client-supplied; the RLS member check is the backstop.
+ * Resolves who a payment or contribution is attributed to. An explicit
+ * `payerUserId` must be on the roster of the target goal's own household (a
+ * caller may belong to several) and, when the goal has members, on the goal.
+ * The legacy `paidBy` role maps to the one other household member and is
+ * rejected when that is ambiguous. The RLS member check is the backstop.
  */
 async function resolvePayerId(
   supabase: GoalSupabase,
   userId: string,
-  paidBy: 'self' | 'partner' | undefined,
+  choice: PayerChoice,
   target: PayerTarget
 ): Promise<string> {
-  if (paidBy !== 'partner') return userId;
-  const householdId = await householdIdOf(supabase, target);
-  const { data: roster, error: rosterErr } = await supabase
-    .from('household_members')
-    .select('user_id')
-    .eq('household_id', householdId);
-  throwIfSupabaseError(rosterErr, 'household roster read');
-  const partner = ((roster ?? []) as { user_id: string }[]).find(
-    (m) => m.user_id !== userId
+  const { paidBy, payerUserId } = choice;
+  if (!payerUserId && paidBy !== 'partner') return userId;
+  const goalId = await goalIdOf(supabase, target);
+  const householdId = await firstColumn(
+    supabase,
+    'household_goals',
+    'household_id',
+    goalId
   );
-  if (!partner) throw new AppError('VALIDATION', 'No partner in household');
-  return partner.user_id;
+  const roster = await memberIds(
+    supabase,
+    'household_members',
+    'household_id',
+    householdId
+  );
+  if (payerUserId) {
+    if (!roster.includes(payerUserId)) {
+      throw new AppError('VALIDATION', 'Payer is not in the household');
+    }
+    const onGoal = await memberIds(
+      supabase,
+      'household_goal_members',
+      'goal_id',
+      goalId
+    );
+    if (onGoal.length > 0 && !onGoal.includes(payerUserId)) {
+      throw new AppError('VALIDATION', 'Payer is not on this goal');
+    }
+    return payerUserId;
+  }
+  const others = roster.filter((id) => id !== userId);
+  if (others.length !== 1) {
+    throw new AppError('VALIDATION', 'Name the payer explicitly');
+  }
+  return others[0];
 }
 
 /** Logs a contribution toward a goal, sealing amount + note under K_h. */
@@ -375,7 +433,7 @@ export async function addContribution(input: unknown): Promise<void> {
     'household.contribution.input'
   );
   const { userId, kh, supabase } = await requireHouseholdContext();
-  const contributorId = await resolvePayerId(supabase, userId, data.paidBy, {
+  const contributorId = await resolvePayerId(supabase, userId, data, {
     kind: 'goal',
     id: data.goalId,
   });
@@ -448,7 +506,7 @@ export async function addItemPayment(input: unknown): Promise<void> {
     'household.payment.input'
   );
   const { userId, kh, supabase } = await requireHouseholdContext();
-  const payerId = await resolvePayerId(supabase, userId, data.paidBy, {
+  const payerId = await resolvePayerId(supabase, userId, data, {
     kind: 'item',
     id: data.itemId,
   });
@@ -485,12 +543,13 @@ export async function updateGoalPayment(input: unknown): Promise<void> {
     input,
     'household.payment.update.input'
   );
-  const payerId = data.paidBy
-    ? await resolvePayerId(supabase, userId, data.paidBy, {
-        kind: 'payment',
-        id: data.paymentId,
-      })
-    : undefined;
+  const payerId =
+    data.paidBy || data.payerUserId
+      ? await resolvePayerId(supabase, userId, data, {
+          kind: 'payment',
+          id: data.paymentId,
+        })
+      : undefined;
   const { data: rows, error } = await supabase
     .from('household_goal_payments')
     .update({
@@ -516,12 +575,13 @@ export async function updateGoalContribution(input: unknown): Promise<void> {
     input,
     'household.contribution.update.input'
   );
-  const contributorId = data.paidBy
-    ? await resolvePayerId(supabase, userId, data.paidBy, {
-        kind: 'contribution',
-        id: data.contributionId,
-      })
-    : undefined;
+  const contributorId =
+    data.paidBy || data.payerUserId
+      ? await resolvePayerId(supabase, userId, data, {
+          kind: 'contribution',
+          id: data.contributionId,
+        })
+      : undefined;
   const { data: rows, error } = await supabase
     .from('household_goal_contributions')
     .update({
@@ -620,6 +680,7 @@ export async function saveGoal(input: unknown): Promise<SaveGoalResult> {
         created_by: userId,
       });
       throwIfSupabaseError(error, 'household goal create');
+      await addCreatorAsMember(supabase, goalId, userId);
     }
 
     const existing = new Map<string, ExistingItem>();

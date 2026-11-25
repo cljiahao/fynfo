@@ -11,6 +11,7 @@ export {
   updateGoalContribution,
   updateGoalPayment,
 } from './actions/goal-actions';
+export { joinGoal, leaveGoal } from './actions/goal-member-actions';
 export {
   acceptInvite,
   createHousehold,

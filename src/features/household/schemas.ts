@@ -26,13 +26,17 @@ export const createGoalSchema = z.object({
 
 export const updateGoalSchema = createGoalSchema.extend({ goalId: z.uuid() });
 
-// A role, not a user id: the client has no roster, and the server resolves the
-// partner so a non-member can never be named.
+// Legacy two-person role, resolved server-side from the roster. The member
+// list UI replaces it with payerUserId.
 export const paidBySchema = z.enum(['self', 'partner']);
+
+// The explicit payer; the server checks it against the household and the goal's members.
+export const payerUserIdSchema = z.uuid();
 
 export const addContributionSchema = z.object({
   goalId: z.uuid(),
   paidBy: paidBySchema.optional(),
+  payerUserId: payerUserIdSchema.optional(),
   amount: z.number().positive().finite(),
   note: z.string().trim().max(200).optional(),
   date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
@@ -65,6 +69,7 @@ export const addGoalItemSchema = z.object({
 export const addItemPaymentSchema = z.object({
   itemId: z.uuid(),
   paidBy: paidBySchema.optional(),
+  payerUserId: payerUserIdSchema.optional(),
   amount: z.number().positive().finite(),
   note: z.string().trim().max(200).optional(),
   date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
@@ -98,6 +103,7 @@ export const saveGoalSchema = z
 export const updateGoalPaymentSchema = z.object({
   paymentId: z.uuid(),
   paidBy: paidBySchema.optional(),
+  payerUserId: payerUserIdSchema.optional(),
   amount: z.number().positive().finite(),
   note: z.string().trim().max(200).optional(),
   date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
@@ -106,6 +112,7 @@ export const updateGoalPaymentSchema = z.object({
 export const updateGoalContributionSchema = z.object({
   contributionId: z.uuid(),
   paidBy: paidBySchema.optional(),
+  payerUserId: payerUserIdSchema.optional(),
   amount: z.number().positive().finite(),
   note: z.string().trim().max(200).optional(),
   date: z.string().regex(ISO_DATE, 'date must be ISO-8601'),
@@ -163,20 +170,30 @@ const PCT = z.number().int().min(0).max(100);
 const MAX_GOAL_OVERRIDES = 500;
 const MAX_BUDGET_OVERRIDES = 500;
 
-// A split always covers exactly the two household members and totals 100.
+// A split covers one to four members and totals 100.
 const pctMapSchema = z
   .record(z.uuid(), PCT)
-  .refine((map) => Object.keys(map).length === 2, {
-    message: 'a split covers exactly two members',
-  })
+  .refine(
+    (map) => {
+      const count = Object.keys(map).length;
+      return count >= 1 && count <= 4;
+    },
+    { message: 'a split covers one to four members' }
+  )
   .refine(
     (map) => Object.values(map).reduce((sum, pct) => sum + pct, 0) === 100,
     { message: 'a split must total 100' }
   );
 
+// The default split spans the whole household, so it needs someone to share with.
+const membersMapSchema = pctMapSchema.refine(
+  (map) => Object.keys(map).length >= 2,
+  { message: 'a household split covers at least two members' }
+);
+
 export const plannerSplitSchema = z
   .object({
-    members: pctMapSchema,
+    members: membersMapSchema,
     goalOverrides: z
       .record(z.uuid(), pctMapSchema)
       .refine((all) => Object.keys(all).length <= MAX_GOAL_OVERRIDES, {
@@ -192,14 +209,14 @@ export const plannerSplitSchema = z
   })
   .refine(
     ({ members, goalOverrides, budgetOverrides }) => {
-      const ids = Object.keys(members).sort().join();
+      const ids = new Set(Object.keys(members));
       return [
         ...Object.values(goalOverrides),
         ...Object.values(budgetOverrides),
-      ].every((map) => Object.keys(map).sort().join() === ids);
+      ].every((map) => Object.keys(map).every((id) => ids.has(id)));
     },
     {
-      message: 'overrides must cover the same two members',
+      message: 'overrides may only name household members',
       path: ['goalOverrides'],
     }
   );
@@ -209,7 +226,7 @@ export type PlannerSplitInput = z.infer<typeof plannerSplitSchema>;
 // Partial updates: the caller names only the part it edited, so a stale client
 // cache can never overwrite what the partner saved meanwhile.
 export const plannerSplitUpdateSchema = z.union([
-  z.object({ members: pctMapSchema }),
+  z.object({ members: membersMapSchema }),
   z.object({ goalId: z.uuid(), override: pctMapSchema.nullable() }),
   z.object({ budgetId: z.uuid(), override: pctMapSchema.nullable() }),
 ]);

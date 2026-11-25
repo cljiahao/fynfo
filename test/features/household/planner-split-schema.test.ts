@@ -9,6 +9,8 @@ const A = '11111111-1111-4111-8111-111111111111';
 const B = '22222222-2222-4222-8222-222222222222';
 const C = '33333333-3333-4333-8333-333333333333';
 const GOAL = '44444444-4444-4444-8444-444444444444';
+const D = '55555555-5555-4555-8555-555555555555';
+const E = '66666666-6666-4666-8666-666666666666';
 
 const ok = (input: unknown) => plannerSplitSchema.safeParse(input).success;
 
@@ -24,10 +26,25 @@ describe('plannerSplitSchema', () => {
     );
   });
 
-  it('rejects other than exactly two members', () => {
+  it('accepts three and four members that total 100', () => {
+    expect(
+      ok({ members: { [A]: 34, [B]: 33, [C]: 33 }, goalOverrides: {} })
+    ).toBe(true);
+    expect(
+      ok({
+        members: { [A]: 25, [B]: 25, [C]: 25, [D]: 25 },
+        goalOverrides: {},
+      })
+    ).toBe(true);
+  });
+
+  it('rejects a default split of one member or more than four', () => {
     expect(ok({ members: { [A]: 100 }, goalOverrides: {} })).toBe(false);
     expect(
-      ok({ members: { [A]: 50, [B]: 25, [C]: 25 }, goalOverrides: {} })
+      ok({
+        members: { [A]: 20, [B]: 20, [C]: 20, [D]: 20, [E]: 20 },
+        goalOverrides: {},
+      })
     ).toBe(false);
   });
 
@@ -51,6 +68,16 @@ describe('plannerSplitSchema', () => {
     expect(withOverride({ [A]: 20, [B]: 80 })).toBe(true);
     expect(withOverride({ [A]: 20, [B]: 70 })).toBe(false);
     expect(withOverride({ [A]: 20, [C]: 80 })).toBe(false);
+  });
+
+  it('lets an override cover a subset of the members', () => {
+    const three = { [A]: 34, [B]: 33, [C]: 33 };
+    expect(
+      ok({ members: three, goalOverrides: { [GOAL]: { [A]: 100 } } })
+    ).toBe(true);
+    expect(
+      ok({ members: three, goalOverrides: { [GOAL]: { [A]: 60, [B]: 40 } } })
+    ).toBe(true);
   });
 });
 

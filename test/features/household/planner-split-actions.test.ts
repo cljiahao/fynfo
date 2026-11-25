@@ -8,6 +8,7 @@ import {
 const ME = '11111111-1111-4111-8111-111111111111';
 const PARTNER = '22222222-2222-4222-8222-222222222222';
 const STRANGER = '33333333-3333-4333-8333-333333333333';
+const THIRD = '99999999-9999-4999-8999-999999999999';
 const KH = Buffer.alloc(32, 9);
 const HOUSEHOLD_ID = '7d1c6c0e-1f0a-4f55-8d0e-0a8e4b7a0c11';
 const LIVE_GOAL = '44444444-4444-4444-8444-444444444444';
@@ -339,13 +340,81 @@ describe('setPlannerSplit', () => {
     expect(writes(fake)).toHaveLength(0);
   });
 
-  it('rejects ids that are not the two household members', async () => {
+  it('rejects ids that are not the household members', async () => {
     const fake = setSupabase();
     const { setPlannerSplit } =
       await import('@/features/household/actions/planner-actions');
     await expect(
       setPlannerSplit({ members: { [ME]: 50, [STRANGER]: 50 } })
-    ).rejects.toThrow('both household members');
+    ).rejects.toThrow('household members');
+    expect(writes(fake)).toHaveLength(0);
+  });
+
+  it('rejects a default split that leaves a member out', async () => {
+    const fake = setSupabase({
+      selectDataByTable: {
+        household_members: [
+          { household_id: HOUSEHOLD_ID, user_id: ME },
+          { household_id: HOUSEHOLD_ID, user_id: PARTNER },
+          { household_id: HOUSEHOLD_ID, user_id: THIRD },
+        ],
+      },
+    });
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await expect(
+      setPlannerSplit({ members: { [ME]: 50, [PARTNER]: 50 } })
+    ).rejects.toThrow('household members');
+    expect(writes(fake)).toHaveLength(0);
+  });
+
+  it('accepts a default split across three members', async () => {
+    const fake = setSupabase({
+      selectDataByTable: {
+        household_members: [
+          { household_id: HOUSEHOLD_ID, user_id: ME },
+          { household_id: HOUSEHOLD_ID, user_id: PARTNER },
+          { household_id: HOUSEHOLD_ID, user_id: THIRD },
+        ],
+      },
+    });
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await setPlannerSplit({
+      members: { [ME]: 34, [PARTNER]: 33, [THIRD]: 33 },
+    });
+    expect(writes(fake)).toHaveLength(1);
+  });
+
+  it('accepts a goal override over a subset of the household', async () => {
+    const fake = setSupabase({
+      selectDataByTable: {
+        household_members: [
+          { household_id: HOUSEHOLD_ID, user_id: ME },
+          { household_id: HOUSEHOLD_ID, user_id: PARTNER },
+          { household_id: HOUSEHOLD_ID, user_id: THIRD },
+        ],
+      },
+    });
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await setPlannerSplit({
+      goalId: LIVE_GOAL,
+      override: { [ME]: 60, [THIRD]: 40 },
+    });
+    expect(writes(fake)).toHaveLength(1);
+  });
+
+  it('rejects a goal override naming a non-member', async () => {
+    const fake = setSupabase();
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await expect(
+      setPlannerSplit({
+        goalId: LIVE_GOAL,
+        override: { [ME]: 60, [STRANGER]: 40 },
+      })
+    ).rejects.toThrow('household members');
     expect(writes(fake)).toHaveLength(0);
   });
 
@@ -357,7 +426,7 @@ describe('setPlannerSplit', () => {
     });
     const { setPlannerSplit } =
       await import('@/features/household/actions/planner-actions');
-    await expect(setPlannerSplit(valid)).rejects.toThrow('both household');
+    await expect(setPlannerSplit(valid)).rejects.toThrow('household members');
     expect(writes(fake)).toHaveLength(0);
   });
 
@@ -391,6 +460,19 @@ describe('setPlannerSplit', () => {
           q.table === 'household_planner_settings' && q.operation === 'read'
       )
     ).toHaveLength(2);
+  });
+
+  it('re-merges until the write lands when three members race', async () => {
+    const fake = setSupabase({
+      selectDataByTable: {
+        household_planner_settings: storedSplit(stored),
+      },
+      updateResult: (call) => ({ data: call < 2 ? [] : [{}], error: null }),
+    });
+    const { setPlannerSplit } =
+      await import('@/features/household/actions/planner-actions');
+    await setPlannerSplit(valid);
+    expect(fake.calls.update).toHaveLength(3);
   });
 
   it('gives up with an opaque error after three lost races', async () => {

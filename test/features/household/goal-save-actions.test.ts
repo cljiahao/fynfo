@@ -67,10 +67,14 @@ describe('saveGoal', () => {
     expect(result.goalId).toBe(GOAL_ID);
     expect(result.itemIds[0]).toBe(ITEM_A);
     expect(result.itemIds).toHaveLength(2);
-    expect(fake.calls.insert).toHaveLength(3);
+    expect(fake.calls.insert).toHaveLength(4);
     const goalRow = fake.calls.insert[0] as Record<string, string>;
     expect(decryptPayload(goalRow.name, KH)).toBe('Wedding');
-    const second = fake.calls.insert[2] as Record<string, string>;
+    expect(fake.calls.insert[1]).toEqual({
+      goal_id: GOAL_ID,
+      user_id: expect.any(String),
+    });
+    const second = fake.calls.insert[3] as Record<string, string>;
     expect(decryptPayload(second.quote, KH)).toBe('700');
     expect(second.id).toBe(result.itemIds[1]);
   });
@@ -153,10 +157,10 @@ describe('saveGoal', () => {
       ],
     });
     expect(result.ok).toBe(true);
-    expect((fake.calls.insert[1] as Record<string, unknown>).due_date).toBe(
+    expect((fake.calls.insert[2] as Record<string, unknown>).due_date).toBe(
       '2027-01-15'
     );
-    expect((fake.calls.insert[2] as Record<string, unknown>).due_date).toBe(
+    expect((fake.calls.insert[3] as Record<string, unknown>).due_date).toBe(
       null
     );
   });

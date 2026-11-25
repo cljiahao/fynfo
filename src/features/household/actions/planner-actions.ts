@@ -7,6 +7,7 @@ import { logger } from '@/lib/logger';
 import { readAllRows } from '@/lib/read-all-rows';
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { plannerSplitSchema, plannerSplitUpdateSchema } from '../schemas';
+import { distributePct } from '../split-utils';
 import type { PlannerSplit } from '../types';
 
 const MAX_WRITE_ATTEMPTS = 3;
@@ -41,11 +42,7 @@ async function readRoster({ userId, supabase }: Context): Promise<Roster> {
 }
 
 function evenSplit(memberIds: string[]): Record<string, number> {
-  if (memberIds.length !== 2)
-    return Object.fromEntries(
-      memberIds.map((id) => [id, 100 / memberIds.length])
-    );
-  return { [memberIds[0]]: 50, [memberIds[1]]: 50 };
+  return distributePct(memberIds);
 }
 
 async function readGoalIds({ supabase }: Context): Promise<Set<string>> {
@@ -177,7 +174,7 @@ export async function getPlannerSplit(): Promise<PlannerSplit> {
 /**
  * Applies a partial edit to the stored split: a members edit keeps stored
  * overrides, an override edit touches only its goal or budget key. Merging server-side
- * means a stale client cache cannot discard the partner's newer changes.
+ * means a stale client cache cannot discard another member's newer changes.
  */
 export async function setPlannerSplit(input: unknown): Promise<void> {
   const ctx = await requireHouseholdContext();
@@ -190,18 +187,23 @@ export async function setPlannerSplit(input: unknown): Promise<void> {
   const { householdId, memberIds } = await readRoster(ctx);
 
   const edited = 'members' in data ? data.members : data.override;
-  if (
-    edited &&
-    (memberIds.length !== 2 || !sameIds(Object.keys(edited), memberIds))
-  )
-    throw new AppError('VALIDATION', 'Split must cover both household members');
+  if (edited) {
+    const editedIds = Object.keys(edited);
+    const invalidEdit =
+      memberIds.length < 2 ||
+      ('members' in data
+        ? !sameIds(editedIds, memberIds)
+        : editedIds.some((id) => !memberIds.includes(id)));
+    if (invalidEdit)
+      throw new AppError('VALIDATION', 'Split must name household members');
+  }
 
   const [goalIds, budgetIds] = await Promise.all([
     readGoalIds(ctx),
     readBudgetIds(ctx),
   ]);
 
-  // The blob is one row, so a partner's near-simultaneous edit would be
+  // The blob is one row, so another member's near-simultaneous edit would be
   // overwritten by a blind upsert. Writes are conditional on the version read.
   for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt += 1) {
     const row = await readStoredRowVersioned(ctx, householdId);
