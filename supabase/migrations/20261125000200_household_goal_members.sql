@@ -82,6 +82,9 @@ CREATE POLICY "Member joins goal as self" ON public.household_goal_members
 CREATE POLICY "Member leaves goal as self" ON public.household_goal_members
   FOR DELETE USING (user_id = auth.uid());
 
+-- No UPDATE: a membership row has nothing to edit, only to add or remove.
+GRANT SELECT, INSERT, DELETE ON TABLE public.household_goal_members TO authenticated;
+
 INSERT INTO public.household_goal_members (goal_id, user_id)
 SELECT g.id, m.user_id
 FROM public.household_goals g
