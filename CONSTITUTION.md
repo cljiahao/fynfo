@@ -1,7 +1,7 @@
 # Fynfo Constitution
 
-**Version:** 4.1.1
-**Effective:** 2026-05-25
+**Version:** 5.0.0
+**Effective:** 2026-11-25
 **Owner:** Clarence (cljiahao27@gmail.com)
 **Status:** Living document. Amendments tracked in git history.
 
@@ -17,7 +17,7 @@ Rules tagged `HARD` are never broken. `SOFT` rules are defaults; overrides requi
 
 Personal wealth management dashboard for a single Singapore user. Tracks savings, investments, equity trades, salary, expenses. Deployed on Vercel from `main`.
 
-Fynfo MAY link **two** accounts into a **household** for household-scoped data only (joint goals, shared planning). Each linked account stays single-user and zero-knowledge for its **personal** vault; the household introduces no third party and no server-readable key. Household data is encrypted under a shared household key the server cannot read (§5.1). Authorized by `specs/governance/052-household-two-person.md`.
+Fynfo MAY link up to **four** accounts into a **household** for household-scoped data only (joint goals, shared planning). Each linked account is an adult with their own login, stays single-user and zero-knowledge for its **personal** vault; the household introduces no third party and no server-readable key. Children and other dependents are never accounts: they MAY appear only as labels inside household data encrypted under the household key. Household data is encrypted under a shared household key the server cannot read (§5.1). Authorized by `specs/governance/052-household-two-person.md` and `specs/governance/197-household-up-to-four.md`.
 
 ### §1.2 What Fynfo is NOT
 
@@ -26,7 +26,7 @@ Fynfo MAY link **two** accounts into a **household** for household-scoped data o
 - Not a bank or aggregator. No bank-login sync, no live multi-currency — best-effort, owner-entered snapshots by design.
 - Not a paid multi-tenant SaaS — yet. Billing, plans, and horizontal scale are out of scope until a future `specs/governance/` amendment opts in.
 
-It MAY have a public marketing storefront, anonymous non-PII operational telemetry (§2.2 carve-out), and open account signup (OAuth or email/password). Each account stays single-user and zero-knowledge — more accounts do not weaken the per-user RLS + PIN-derived encryption model. **Exception (§1.1 household):** two accounts MAY share a household space whose data is encrypted under a shared household key the server cannot read; membership is capped at two and no personal vaults are merged.
+It MAY have a public marketing storefront, anonymous non-PII operational telemetry (§2.2 carve-out), and open account signup (OAuth or email/password). Each account stays single-user and zero-knowledge — more accounts do not weaken the per-user RLS + PIN-derived encryption model. **Exception (§1.1 household):** up to four accounts MAY share a household space whose data is encrypted under a shared household key the server cannot read; membership is capped at four, each account belongs to at most one household, and no personal vaults are merged.
 
 **Why:** The security model (zero-knowledge, per-user RLS — §2.1, §5) and the deployment model (single Vercel deployment, no horizontal scale) must hold regardless of how many accounts exist. Monetisation is gated behind an explicit governance decision, not drifted into.
 
@@ -165,7 +165,7 @@ Initial page load under 200KB JS gzipped per route. New dependency >50KB require
 - DEK lives only in HttpOnly cookie `fynfo_vault_dek` and process memory.
 - DEK derivation: PBKDF2 with Supabase user ID as salt. Iteration count is constitutional — changing it = migration spec + re-derivation flow.
 
-**§5.1a `HARD` Household key (`K_h`) invariant.** A per-household random AES-256 key `K_h` encrypts all household data. It is stored only **wrapped** (AES-256-GCM under each member's DEK) at rest, lives unwrapped only in the HttpOnly cookie `fynfo_household_kh` + process memory, and is never persisted raw nor sent to Supabase. No new PIN: `K_h` is unwrapped with the member's existing DEK. The one-time invite secret that bootstraps a second member's wrapped copy is high-entropy, hashed at rest, expiring, and consumed on accept.
+**§5.1a `HARD` Household key (`K_h`) invariant.** A per-household random AES-256 key `K_h` encrypts all household data. It is stored only **wrapped** (AES-256-GCM under each member's DEK) at rest, lives unwrapped only in the HttpOnly cookie `fynfo_household_kh` + process memory, and is never persisted raw nor sent to Supabase. No new PIN: `K_h` is unwrapped with the member's existing DEK. The one-time invite secret that bootstraps a new member's wrapped copy is high-entropy, hashed at rest, expiring, and consumed on accept. **Membership change:** adding a member wraps the current `K_h` under that member's DEK. Removing a member, or a member leaving, MUST be accompanied by `K_h` rotation (new `K_h`, all household ciphertext re-encrypted, remaining members re-wrapped) under its own spec; until that spec ships, no leave or remove action exists.
 
 ### §5.2 `HARD` RLS is mandatory on every table
 
@@ -297,3 +297,4 @@ edit; uncertainty alone does not prohibit read-only investigation.
 | 4.0.0   | 2026-10-08 | Owner-authorized audit/remediation path (§7.4); scoped permission for rulebooks and enforcement/CI edits (§8.2); explicit prohibition on secret reads; independent work continues while protected operations await approval. Authorized by `specs/governance/069-owner-authorized-audit-remediation.md`.                                                                                                                                                                                                           |
 | 4.1.0   | 2026-10-11 | §7.4 verification timing: targeted regressions and active hooks before commit; all full local gates before executable PR, allowing an unchanged pre-push run to supply them. Hooks, HARD quality/security rules and green CI before merge remain unchanged. Explicitly approved by Clarence in `specs/governance/126-verification-timing.md`.                                                                                                                                                                      |
 | 4.1.1   | 2026-10-24 | §1.1, §1.2, §6.1, §6.2 clarification: deployment wording matches reality (Vercel deploys `main`; no Raspberry Pi, Docker image or Watchtower). No rule loosened. Approved by Clarence in `specs/governance/153-deployment-wording-vercel.md`.                                                                                                                                                                                                                                                                      |
+| 5.0.0   | 2026-11-25 | §1.1, §1.2, §5.1a: households may hold up to four adult accounts (dependents are labels only, never accounts); membership change requires `K_h` rotation under its own spec. HARD rules changed, so MAJOR. Approved by Clarence in `specs/governance/197-household-up-to-four.md`.                                                                                                                                                                                                                                 |
