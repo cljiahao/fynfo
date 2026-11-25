@@ -242,4 +242,4 @@ component tests, under `test/features/household/`):
 
 - The goal card menu item and add-contribution dialog copy were renamed from "Add to goal" to "Record saving" so the action has one name everywhere (AGENTS 7 drift).
 
-- 198b shipped: optional encrypted budget item description (add-item dialog and item card; the editor sheet leaves it untouched). Migration `20261125000198_household_item_description.sql` approved by owner 2026-11-25. Commit: SHA_PLACEHOLDER.
+- 198b shipped: optional encrypted budget item description (add-item dialog and item card; the editor sheet leaves it untouched). Migration `20261125000198_household_item_description.sql` approved by owner 2026-11-25. Commit: b0c91fd.

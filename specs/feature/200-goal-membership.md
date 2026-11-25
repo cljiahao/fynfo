@@ -2,10 +2,10 @@
 id: '200'
 slug: goal-membership
 area: feature
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-25
-approved: # YYYY-MM-DD, set on approval; blocked until governance/197 is approved
+approved: 2026-11-25
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # link to impl PR, set on shipped
 supersedes: # none
