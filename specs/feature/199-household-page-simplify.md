@@ -2,11 +2,11 @@
 id: '199'
 slug: household-page-simplify
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-25
 approved: 2026-11-25 # YYYY-MM-DD, set on approval
-shipped: # YYYY-MM-DD, set on impl merge
+shipped: 2026-11-25 # YYYY-MM-DD, set on impl merge
 impl_pr: # link to impl PR, set on shipped
 supersedes: # none
 constitution_satisfies:
