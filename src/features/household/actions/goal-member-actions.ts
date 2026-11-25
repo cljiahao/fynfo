@@ -9,6 +9,17 @@ import { ROW_UUID } from '@/lib/zod-utils';
 export async function joinGoal(goalId: string): Promise<void> {
   parseOrThrow(ROW_UUID, goalId, 'household.joinGoal.id');
   const { userId, supabase } = await requireHouseholdContext();
+  // The cap trigger fires before ON CONFLICT, so an existing member of a full
+  // goal would be rejected without this check.
+  const { data: existing, error: readError } = await supabase
+    .from('household_goal_members')
+    .select('user_id')
+    .eq('goal_id', goalId);
+  throwIfSupabaseError(readError, 'household goal members read');
+  const members = ((existing ?? []) as { user_id: string }[]).map(
+    (m) => m.user_id
+  );
+  if (members.includes(userId)) return;
   const { error } = await supabase
     .from('household_goal_members')
     .upsert(

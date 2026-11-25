@@ -378,7 +378,7 @@ interface PayerChoice {
 /**
  * Resolves who a payment or contribution is attributed to. An explicit
  * `payerUserId` must be on the roster of the target goal's own household (a
- * caller may belong to several) and, when the goal has members, on the goal.
+ * user belongs to one household) and, when the goal has members, on the goal.
  * The legacy `paidBy` role maps to the one other household member and is
  * rejected when that is ambiguous. The RLS member check is the backstop.
  */

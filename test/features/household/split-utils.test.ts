@@ -28,6 +28,12 @@ describe('distributePct', () => {
     });
   });
 
+  it('assigns leftover points the same way for any input order', () => {
+    const expected = { a: 34, b: 33, c: 33 };
+    expect(distributePct(['c', 'a', 'b'])).toEqual(expected);
+    expect(distributePct(['b', 'c', 'a'])).toEqual(expected);
+  });
+
   it('keeps every share an integer', () => {
     for (const pct of Object.values(distributePct(IDS.slice(0, 3)))) {
       expect(Number.isInteger(pct)).toBe(true);

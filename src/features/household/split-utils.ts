@@ -20,7 +20,7 @@ export function distributePct(
   ids: readonly string[],
   total = 100
 ): Record<string, number> {
-  const unique = [...new Set(ids)];
+  const unique = [...new Set(ids)].sort();
   if (unique.length === 0) return {};
   const base = Math.floor(total / unique.length);
   const extra = total - base * unique.length;

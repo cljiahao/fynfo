@@ -43,8 +43,23 @@ describe('joinGoal', () => {
     const { joinGoal } =
       await import('@/features/household/actions/goal-member-actions');
     await joinGoal(GOAL);
-    expect(fake.calls.from).toEqual(['household_goal_members']);
+    expect(fake.calls.from).toEqual([
+      'household_goal_members',
+      'household_goal_members',
+    ]);
     expect(fake.calls.upsert).toEqual([{ goal_id: GOAL, user_id: USER_ID }]);
+  });
+
+  it('is a no-op for a caller already on a full goal', async () => {
+    const fake = setSupabase({
+      selectDataByTable: {
+        household_goal_members: rows(USER_ID, U2, U3, U4),
+      },
+    });
+    const { joinGoal } =
+      await import('@/features/household/actions/goal-member-actions');
+    await expect(joinGoal(GOAL)).resolves.toBeUndefined();
+    expect(fake.calls.upsert).toEqual([]);
   });
 
   it('rejects a malformed goal id before any database access', async () => {
