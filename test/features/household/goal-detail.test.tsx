@@ -369,8 +369,18 @@ describe('without items', () => {
     setGoals([makeGoal()]);
   });
 
-  it('hides the Paid out fact and offers a single Add item', () => {
+  it('defaults to the Savings tab and shows Record saving', () => {
     mount();
+    expect(screen.getByRole('tab', { name: 'Savings' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByRole('button', { name: 'Record saving' })).toBeEnabled();
+  });
+
+  it('hides the Paid out fact and offers a single Add item', async () => {
+    mount();
+    await userEvent.click(screen.getByRole('tab', { name: /Budget items/ }));
     expect(screen.queryByText('Paid out')).toBeNull();
     expect(screen.getByText('burn-up chart')).toBeInTheDocument();
     expect(screen.getByText(/No activity yet/)).toBeInTheDocument();
@@ -422,16 +432,12 @@ describe('page structure', () => {
     const headings = screen
       .getAllByRole('heading', { level: 2 })
       .map((heading) => heading.textContent);
-    expect(headings).toEqual([
-      'Budget items (2)',
-      'Progress over time',
-      'Recent activity',
-    ]);
+    expect(headings).toEqual(['Progress over time', 'Recent activity']);
   });
 
   it('keeps the single mobile column shrinkable so wide content cannot widen the page', () => {
     mount();
-    const grid = screen.getByLabelText('Budget items (2)', {
+    const grid = screen.getByLabelText('Budget items and savings', {
       selector: 'section',
     }).parentElement;
     expect(grid).toHaveClass('grid-cols-1');
@@ -448,10 +454,39 @@ describe('page structure', () => {
       expect(button).toHaveClass('pointer-coarse:size-11');
   });
 
-  it('opens the contribution dialog from Add to goal', () => {
+  it('opens the contribution dialog from Record saving in the Savings tab', async () => {
     mount();
-    fireEvent.click(screen.getByRole('button', { name: 'Add to goal' }));
+    expect(screen.queryByRole('button', { name: 'Add to goal' })).toBeNull();
+    await userEvent.click(screen.getByRole('tab', { name: 'Savings' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Record saving' })
+    );
     expect(screen.getByRole('dialog')).toBeVisible();
+  });
+
+  it('defaults to the Budget items tab when the goal has items', () => {
+    mount();
+    expect(screen.getByRole('tab', { name: /Budget items/ })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByRole('tab', { name: 'Savings' })).toHaveAttribute(
+      'aria-selected',
+      'false'
+    );
+    expect(screen.getByRole('button', { name: 'Add item' })).toBeVisible();
+  });
+
+  it('lists past contributions in the Savings tab', async () => {
+    mount();
+    await userEvent.click(screen.getByRole('tab', { name: 'Savings' }));
+    expect(screen.getByRole('tab', { name: 'Savings' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(
+      screen.getAllByRole('button', { name: /^Edit saving of/ }).length
+    ).toBeGreaterThan(0);
   });
 });
 
@@ -511,7 +546,6 @@ describe('amounts hidden', () => {
     expect(container.textContent).not.toMatch(/Past target date/);
     expect(container.textContent).not.toMatch(/Overdue|On track|Behind/);
     expect(screen.getByRole('button', { name: 'Add item' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Add to goal' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Goal actions' })).toBeDisabled();
     expect(container.textContent).not.toMatch(/\d+%/);

@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns/format';
 import { parseISO } from 'date-fns/parseISO';
 import {
@@ -60,12 +61,15 @@ import { GoalBurnUpChart } from './goal-burn-up-chart';
 import { GoalDetailSkeleton } from './goal-detail-skeleton';
 import { GoalEditorSheet } from './goal-editor-sheet';
 import { GoalItemList } from './goal-item-list';
+import { GoalSavingsList } from './goal-savings-list';
 import { GoalStatusChip } from './goal-status-chip';
 import { GoalSummary } from './goal-summary';
 import { ItemBreakdownBar } from './item-breakdown-bar';
 
 const BACK_LINK_CLASS =
   'text-muted-foreground hover:text-foreground -ml-1 inline-flex min-h-11 items-center gap-1 px-1 text-sm';
+
+type GoalTab = 'items' | 'savings';
 
 function BackLink() {
   return (
@@ -180,6 +184,9 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
   const [editor, setEditor] = useState({ open: false, session: 0 });
   const [contribute, setContribute] = useState({ open: false, session: 0 });
   const [addItemOpen, setAddItemOpen] = useState(false);
+  const [tab, setTab] = useState<GoalTab>(() =>
+    source.items.length > 0 ? 'items' : 'savings'
+  );
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editingContribution, setEditingContribution] =
     useState<GoalContribution | null>(null);
@@ -264,16 +271,6 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
             <Button
               type="button"
               size="sm"
-              className="pointer-coarse:min-h-11"
-              disabled={hidden}
-              onClick={openContribute}
-            >
-              <Plus className="mr-1 size-3.5" />
-              Add to goal
-            </Button>
-            <Button
-              type="button"
-              size="sm"
               variant="outline"
               className="pointer-coarse:min-h-11"
               disabled={hidden}
@@ -315,63 +312,83 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
 
       {/* grid-cols-1 is minmax(0,1fr); the implicit auto column would grow to the chart's measured width and push the page wider than the viewport. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-x-8">
-        <section className="min-w-0 space-y-3" aria-labelledby="items-heading">
-          <div className="flex items-center justify-between gap-3">
-            <h2 id="items-heading" className="text-base font-semibold">
-              Budget items{' '}
+        <section className="min-w-0" aria-label="Budget items and savings">
+          <Tabs
+            value={tab}
+            onValueChange={(next) => setTab(next as GoalTab)}
+            className="gap-3"
+          >
+            <TabsList>
+              <TabsTrigger value="items">
+                Budget items
+                {hasItems && (
+                  <span className="text-muted-foreground font-normal">
+                    ({goal.items.length})
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="savings">Savings</TabsTrigger>
+            </TabsList>
+            <TabsContent value="items" className="space-y-3">
               {hasItems && (
-                <span className="text-muted-foreground text-sm font-normal">
-                  ({goal.items.length})
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="pointer-coarse:min-h-11"
+                    disabled={hidden || itemLimitReached}
+                    title={itemLimitReached ? itemLimitReason : undefined}
+                    aria-describedby={
+                      itemLimitReached ? 'item-limit-reason' : undefined
+                    }
+                    onClick={openAddItem}
+                  >
+                    <Plus className="mr-1 size-3.5" />
+                    Add item
+                  </Button>
+                </div>
+              )}
+              {itemLimitReached && (
+                <span id="item-limit-reason" className="sr-only">
+                  {itemLimitReason}
                 </span>
               )}
-            </h2>
-            {hasItems && (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="pointer-coarse:min-h-11"
-                disabled={hidden || itemLimitReached}
-                title={itemLimitReached ? itemLimitReason : undefined}
-                aria-describedby={
-                  itemLimitReached ? 'item-limit-reason' : undefined
-                }
-                onClick={openAddItem}
-              >
-                <Plus className="mr-1 size-3.5" />
-                Add item
-              </Button>
-            )}
-            {itemLimitReached && (
-              <span id="item-limit-reason" className="sr-only">
-                {itemLimitReason}
-              </span>
-            )}
-          </div>
-          {hasItems ? (
-            <>
-              <ItemBreakdownBar goal={goal} labels showOverNote={false} />
-              <GoalItemList items={goal.items} />
-            </>
-          ) : (
-            <div className="rounded-xl border border-dashed py-8 text-center">
-              <p className="font-medium">No budget items yet</p>
-              <p className="text-muted-foreground mt-1 text-sm">
-                Split this goal into items to track what is paid.
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="mt-4 pointer-coarse:min-h-11"
-                disabled={hidden}
-                onClick={openAddItem}
-              >
-                <Plus className="mr-1 size-3.5" />
-                Add item
-              </Button>
-            </div>
-          )}
+              {hasItems ? (
+                <>
+                  <ItemBreakdownBar goal={goal} labels showOverNote={false} />
+                  <GoalItemList items={goal.items} />
+                </>
+              ) : (
+                <div className="rounded-xl border border-dashed py-8 text-center">
+                  <p className="font-medium">No budget items yet</p>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Split this goal into items to track what is paid.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-4 pointer-coarse:min-h-11"
+                    disabled={hidden}
+                    onClick={openAddItem}
+                  >
+                    <Plus className="mr-1 size-3.5" />
+                    Add item
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+            <TabsContent value="savings">
+              <GoalSavingsList
+                goal={goal}
+                onRecord={openContribute}
+                onEdit={(contribution) => {
+                  if (canReveal()) setEditingContribution(contribution);
+                }}
+              />
+            </TabsContent>
+          </Tabs>
         </section>
 
         {/* One grid item, so a tall items list cannot stretch the chart's row and open a gap above the activity. */}

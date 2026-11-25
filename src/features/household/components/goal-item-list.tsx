@@ -3,36 +3,29 @@
 import { useAmountVisibility } from '@/features/privacy';
 
 import { Button } from '@/components/ui/button';
-import { FieldError } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { formatSGD } from '@/lib/utils/currency';
 import { format } from 'date-fns/format';
 import { parseISO } from 'date-fns/parseISO';
 import { ChevronDown, Pencil, Trash2, X } from 'lucide-react';
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import { toast } from 'sonner';
+import { useEffect, useId, useRef, useState } from 'react';
 import { PERSON_COLORS } from '../constants';
 import {
-  useAddItemPayment,
   useDeleteGoalItem,
   useDeleteItemPayment,
 } from '../hooks/use-household';
 import { useUndoableDelete } from '../hooks/use-undoable-delete';
-import { invalidProps, omitError } from '../lib/form-errors';
 import { effectiveAmount } from '../lib/goal-stats';
-import type { PaidBy } from '../schemas';
 import type { GoalItem, GoalItemPayment } from '../types';
 import { EditPaymentDialog } from './edit-payment-dialog';
-import { PaidByPicker, usePaidByEnabled } from './paid-by-picker';
+import { RecordPaymentDialog } from './record-payment-dialog';
 
-const today = () => format(new Date(), 'yyyy-MM-dd');
+/** 5 collapsed rows of 7.5rem; keep in step with GOAL_ITEM_VISIBLE_ROWS (Tailwind needs the literal). */
+const ITEM_LIST_MAX_HEIGHT = 'max-h-[37.5rem]';
 
 /** Invisible 44px touch target that leaves row height untouched. */
 const TOUCH_TARGET =
   'relative after:absolute after:-inset-2.5 after:content-[""]';
-
-type PaymentField = 'amount' | 'date';
 
 /** Items already filtered of rows pending deletion; payments are filtered per row. */
 export function GoalItemList({ items }: { items: GoalItem[] }) {
@@ -43,7 +36,12 @@ export function GoalItemList({ items }: { items: GoalItem[] }) {
   }, [pendingIds]);
 
   return (
-    <ul className="divide-y rounded-xl border">
+    <ul
+      className={cn(
+        'divide-y overflow-y-auto overscroll-contain rounded-xl border',
+        ITEM_LIST_MAX_HEIGHT
+      )}
+    >
       {items.map((item) => (
         <ItemRow
           key={item.id}
@@ -65,20 +63,11 @@ function ItemRow({
   const { hidden, mask, canReveal } = useAmountVisibility();
   const { pendingIds, request } = useUndoableDelete();
   const fieldId = useId();
-  const [paying, setPaying] = useState(false);
+  // Remounting per open re-seeds the dialog fields.
+  const [paying, setPaying] = useState({ open: false, session: 0 });
   const [showPayments, setShowPayments] = useState(false);
-  const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(today);
-  const paidByEnabled = usePaidByEnabled();
-  const [paidBy, setPaidBy] = useState<PaidBy>('self');
-  const [errors, setErrors] = useState<Partial<Record<PaymentField, string>>>(
-    {}
-  );
-  const addPayment = useAddItemPayment();
   const removeItem = useDeleteGoalItem();
   const removePayment = useDeleteItemPayment();
-  const amountId = `${fieldId}-pay-amount`;
-  const dateId = `${fieldId}-pay-date`;
   const paymentsId = `${fieldId}-payments`;
   const payments = item.payments.filter(
     (payment) => !pendingIds.has(payment.id)
@@ -89,42 +78,6 @@ function ItemRow({
   const left = Math.max(0, effective - item.paid);
   const scale = Math.max(effective, item.paid);
   const paidWidth = scale > 0 ? Math.min(100, (item.paid / scale) * 100) : 0;
-
-  function clearError(field: PaymentField) {
-    setErrors((current) => omitError(current, field));
-  }
-
-  function submitPayment(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!canReveal()) return;
-    const value = parseFloat(amount);
-    const found: Partial<Record<PaymentField, string>> = {};
-    if (!value || value <= 0) found.amount = 'Enter an amount above 0';
-    if (!date) found.date = 'Pick a date';
-    if (found.amount || found.date) {
-      setErrors(found);
-      document.getElementById(found.amount ? amountId : dateId)?.focus();
-      return;
-    }
-    setErrors({});
-    addPayment.mutate(
-      {
-        itemId: item.id,
-        amount: value,
-        date,
-        ...(paidByEnabled ? { paidBy } : {}),
-      },
-      {
-        onSuccess: () => {
-          setAmount('');
-          setDate(today());
-          setPaidBy('self');
-          setPaying(false);
-        },
-        onError: () => toast.error('Could not record the payment'),
-      }
-    );
-  }
 
   return (
     <li className="space-y-2 p-3 sm:p-4">
@@ -184,83 +137,23 @@ function ItemRow({
           {item.quote !== null &&
             ` · Quote ${mask(formatSGD(item.quote))} vs est. ${mask(formatSGD(item.budget))}`}
         </span>
-        {!paying && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="min-h-9 pointer-coarse:min-h-11"
-            disabled={hidden}
-            onClick={() => {
-              if (canReveal()) setPaying(true);
-            }}
-          >
-            Record payment
-          </Button>
-        )}
-      </div>
-      {paying && (
-        <form
-          onSubmit={submitPayment}
-          noValidate
-          className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]"
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="min-h-9 pointer-coarse:min-h-11"
+          disabled={hidden}
+          onClick={() => {
+            if (canReveal())
+              setPaying((current) => ({
+                open: true,
+                session: current.session + 1,
+              }));
+          }}
         >
-          <div className="space-y-1">
-            <Input
-              id={amountId}
-              aria-label={`Payment amount for ${mask(item.name)}`}
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              className="text-right tabular-nums"
-              autoFocus
-              disabled={hidden}
-              value={hidden ? '' : amount}
-              {...invalidProps(amountId, errors.amount)}
-              onChange={(event) => {
-                if (!canReveal()) return;
-                setAmount(event.target.value);
-                clearError('amount');
-              }}
-            />
-            <FieldError id={`${amountId}-error`}>{errors.amount}</FieldError>
-          </div>
-          <div className="space-y-1">
-            <Input
-              id={dateId}
-              aria-label={`Payment date for ${mask(item.name)}`}
-              type="date"
-              disabled={hidden}
-              value={date}
-              {...invalidProps(dateId, errors.date)}
-              onChange={(event) => {
-                setDate(event.target.value);
-                clearError('date');
-              }}
-            />
-            <FieldError id={`${dateId}-error`}>{errors.date}</FieldError>
-          </div>
-          <PaidByPicker value={paidBy} onChange={setPaidBy} disabled={hidden} />
-          <Button
-            type="submit"
-            size="sm"
-            className="pointer-coarse:min-h-11"
-            disabled={hidden || addPayment.isPending}
-          >
-            Save
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="pointer-coarse:min-h-11"
-            onClick={() => setPaying(false)}
-          >
-            Cancel
-          </Button>
-        </form>
-      )}
+          Record payment
+        </Button>
+      </div>
       {payments.length > 0 && (
         <div>
           <Button
@@ -354,6 +247,13 @@ function ItemRow({
           </ul>
         </div>
       )}
+      <RecordPaymentDialog
+        key={paying.session}
+        open={paying.open}
+        itemId={item.id}
+        itemName={item.name}
+        onOpenChange={(open) => setPaying((current) => ({ ...current, open }))}
+      />
       <EditPaymentDialog
         key={editing?.id}
         payment={editing}

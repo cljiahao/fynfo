@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { GoalItemList } from '@/features/household/components/goal-item-list';
+import { GOAL_ITEM_VISIBLE_ROWS } from '@/features/household/constants';
 import {
   UndoableDeleteProvider,
   useUndoableDelete,
@@ -15,6 +16,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -180,14 +182,11 @@ it('records a payment against an item with the chosen date', async () => {
     name: 'Record payment',
   });
   await userEvent.click(photographerPay);
-  await userEvent.type(
-    screen.getByLabelText('Payment amount for Photographer'),
-    '500'
-  );
-  const date = screen.getByLabelText('Payment date for Photographer');
+  await userEvent.type(screen.getByLabelText('Amount (SGD)'), '500');
+  const date = screen.getByLabelText('Date');
   await userEvent.clear(date);
   await userEvent.type(date, '2026-10-20');
-  await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Save payment' }));
   await waitFor(() =>
     expect(actions.addItemPayment).toHaveBeenCalledWith(
       { itemId: 'i2', amount: 500, date: '2026-10-20' },
@@ -386,14 +385,45 @@ describe('payments disclosure', () => {
   });
 });
 
+describe('row cap', () => {
+  it('limits the list to five rows tall and scrolls beyond', () => {
+    const items = Array.from({ length: 8 }, (_, index) => ({
+      ...goal.items[0],
+      id: `many-${index}`,
+      name: `Item ${index}`,
+    }));
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <UndoableDeleteProvider delayMs={DELAY}>
+          <GoalItemList items={items} />
+        </UndoableDeleteProvider>
+      </QueryClientProvider>
+    );
+    const list = screen.getByText('Item 0').closest('ul');
+    expect(list).toHaveClass('overflow-y-auto');
+    expect(list).toHaveClass(`max-h-[${GOAL_ITEM_VISIBLE_ROWS * 7.5}rem]`);
+    expect(
+      screen.getAllByRole('button', { name: 'Record payment' })
+    ).toHaveLength(8);
+  });
+});
+
 describe('item facts', () => {
-  it('renders Record payment as a button that opens the form', async () => {
+  it('opens a Record payment modal with no inline form', async () => {
     mount();
     const [record] = screen.getAllByRole('button', { name: 'Record payment' });
     await userEvent.click(record);
     expect(
-      screen.getByRole('spinbutton', { name: /Payment amount for/ })
+      within(screen.getByRole('dialog')).getByRole('spinbutton', {
+        name: 'Amount (SGD)',
+      })
     ).toBeInTheDocument();
+  });
+
+  it('shows no payment fields until the modal is opened', () => {
+    mount();
+    expect(screen.queryByRole('spinbutton')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('shows a quote against the estimate', () => {
@@ -426,8 +456,8 @@ describe('inline errors', () => {
       name: 'Record payment',
     });
     await userEvent.click(photographerPay);
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
-    const amount = screen.getByLabelText('Payment amount for Photographer');
+    await userEvent.click(screen.getByRole('button', { name: 'Save payment' }));
+    const amount = screen.getByLabelText('Amount (SGD)');
     expect(amount).toHaveAttribute('aria-invalid', 'true');
     expect(amount).toHaveFocus();
     expect(
