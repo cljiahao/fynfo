@@ -36,7 +36,8 @@ export function SpendingSummary({
   ];
   const { label, colorIndex } = buildMemberLabels(roster, selfId);
   const summary = summarizeSpending(entries, roster);
-  const owes = (name: string) => (name === 'You' ? 'You owe' : `${name} owes`);
+  const owes = (from: string) =>
+    from === selfId ? 'You owe' : `${label(from)} owes`;
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -55,26 +56,29 @@ export function SpendingSummary({
           ))}
         </span>
       </div>
-      <div className="space-y-0.5">
-        {summary.settlements.length === 0 ? (
-          <p className="text-sm font-medium">Nothing to settle</p>
-        ) : (
-          summary.settlements.map((transfer) => (
-            <p
-              key={`${transfer.from}-${transfer.to}`}
-              className="text-sm font-medium"
-            >
-              {owes(label(transfer.from))}{' '}
-              {transfer.to === selfId ? 'you' : label(transfer.to)}{' '}
-              {mask(formatSGD(transfer.amount))}
-            </p>
-          ))
-        )}
-        <p className="text-muted-foreground text-xs">
-          Everything shared is split equally between members. Whoever paid more
-          than their share is owed the difference.
-        </p>
-      </div>
+      {/* Equal shares need the full roster; before it loads only payers are known. */}
+      {household && (
+        <div className="space-y-0.5">
+          {summary.settlements.length === 0 ? (
+            <p className="text-sm font-medium">Nothing to settle</p>
+          ) : (
+            summary.settlements.map((transfer) => (
+              <p
+                key={`${transfer.from}-${transfer.to}`}
+                className="text-sm font-medium"
+              >
+                {owes(transfer.from)}{' '}
+                {transfer.to === selfId ? 'you' : label(transfer.to)}{' '}
+                {mask(formatSGD(transfer.amount))}
+              </p>
+            ))
+          )}
+          <p className="text-muted-foreground text-xs">
+            Everything shared is split equally between members. Whoever paid
+            more than their share is owed the difference.
+          </p>
+        </div>
+      )}
       {showCategories && (
         <ul className="space-y-1 text-sm">
           {summary.byCategory.slice(0, 5).map((row) => (

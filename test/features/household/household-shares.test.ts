@@ -16,7 +16,7 @@ const NOW = new Date(2026, 10, 4);
 
 const split: CommitmentSplit = {
   members: { me: 60, partner: 40 },
-  goalOverrides: { g1: { me: 25 } },
+  goalOverrides: { g1: { me: 25, partner: 75 } },
   budgetOverrides: { b1: { me: 80 } },
 };
 
@@ -77,6 +77,20 @@ describe('goalShare across goal members', () => {
     const members = ['a', 'b', 'c'];
     expect(goalShare(split, 'g', 'a', members)).toBeCloseTo(0.5);
     expect(goalShare(split, 'g', 'c', members)).toBeCloseTo(0.2);
+  });
+
+  it('falls back to an even share when a member left after the override was stored', () => {
+    const split = { ...base, goalOverrides: { g: { a: 60, b: 40 } } };
+    expect(goalShare(split, 'g', 'a', ['a'])).toBeCloseTo(1);
+    expect(goalShare(split, 'g', 'b', ['a'])).toBe(0);
+  });
+
+  it('gives a member who joined an even share instead of nothing', () => {
+    const split = { ...base, goalOverrides: { g: { a: 60, b: 40 } } };
+    const members = ['a', 'b', 'c'];
+    const shares = members.map((id) => goalShare(split, 'g', id, members));
+    expect(shares.reduce((a, b) => a + b, 0)).toBeCloseTo(1);
+    expect(shares[2]).toBeGreaterThan(0.3);
   });
 });
 

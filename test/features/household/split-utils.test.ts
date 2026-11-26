@@ -74,9 +74,19 @@ describe('goalPctsFor', () => {
     });
   });
 
-  it('prefers a stored override', () => {
+  it('prefers a stored override that covers exactly the members', () => {
     const override = { a: 70, b: 30 };
-    expect(goalPctsFor(override, ['a', 'b', 'c'])).toBe(override);
+    expect(goalPctsFor(override, ['a', 'b'])).toBe(override);
+  });
+
+  it('ignores an override left stale by a member joining or leaving', () => {
+    const override = { a: 70, b: 30 };
+    expect(goalPctsFor(override, ['a', 'b', 'c'])).toEqual({
+      a: 34,
+      b: 33,
+      c: 33,
+    });
+    expect(goalPctsFor(override, ['a'])).toEqual({ a: 100 });
   });
 });
 

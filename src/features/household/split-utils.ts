@@ -39,14 +39,20 @@ export function goalMemberIds(
 }
 
 /**
- * Percent per member for a goal: its stored override when present, else an
- * even share across the goal's members.
+ * Percent per member for a goal: its stored override while it covers exactly
+ * the goal's current members, else an even share across them. A member who
+ * joined or left makes the stored map stale, and a stale map would give the
+ * joiner nothing or leave a leaver's share unassigned.
  */
 export function goalPctsFor(
   override: Record<string, number> | undefined,
   memberIds: readonly string[]
 ): Record<string, number> {
-  return override ?? distributePct(memberIds);
+  const current =
+    override !== undefined &&
+    Object.keys(override).length === memberIds.length &&
+    memberIds.every((id) => id in override);
+  return current ? override : distributePct(memberIds);
 }
 
 /** Percent per member as typed in the form; a missing member reads as 0. */

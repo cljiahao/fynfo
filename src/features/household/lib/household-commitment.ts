@@ -22,7 +22,8 @@ export function defaultShare(split: CommitmentSplit, userId: string): number {
 
 /**
  * Caller's fraction of one goal. A goal's members carry it: a stored override
- * wins, otherwise the share is even across them. A goal with no membership
+ * wins while it covers exactly those members, otherwise the share is even
+ * across them. A goal with no membership
  * rows covers the whole household, and a member who is not on the goal
  * carries nothing for it.
  */
@@ -34,11 +35,8 @@ export function goalShare(
 ): number {
   const members = goalMemberIds(Object.keys(split.members), goalMembers);
   if (!members.includes(userId)) return 0;
-  const override = split.goalOverrides[goalId];
-  const pct = override
-    ? (override[userId] ?? 0)
-    : (goalPctsFor(undefined, members)[userId] ?? 0);
-  return pct / 100;
+  const pcts = goalPctsFor(split.goalOverrides[goalId], members);
+  return (pcts[userId] ?? 0) / 100;
 }
 
 /** Caller's fraction of one budget: its override when present, else the default. */

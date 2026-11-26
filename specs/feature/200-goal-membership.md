@@ -7,7 +7,7 @@ author: Claude Code
 created: 2026-11-25
 approved: 2026-11-25
 shipped: 2026-11-26 # YYYY-MM-DD, set on impl merge
-impl_pr: 'direct to main: 0004321, 3cade0b, 7e1c20d, 2486423, ccf128b, 7b53b48, de160b3, slice B2 commit' # link to impl PR, set on shipped
+impl_pr: 'direct to main: 0004321, 3cade0b, 7e1c20d, 2486423, ccf128b, 7b53b48, de160b3, 83b6659, 614bd43' # link to impl PR, set on shipped
 supersedes: # none
 constitution_satisfies:
   - '§1.1'
@@ -138,6 +138,13 @@ A member who is not on a goal carries nothing for it. `computeHouseholdPlan` and
 recommendation copy must iterate the caller's own share only, so no code assumes a second person.
 The surplus earmark logic (`surplus`, `surplusUsed`) is per caller and is unchanged.
 
+Decided: the default for a goal is an even share across the goal's members, not
+`PlannerSplit.members`. A stored per-goal override applies only while its member set equals the
+goal's current members; after a member joins or leaves it is ignored and the even share applies,
+so a joiner is never charged nothing and a leaver's share is never left unassigned. `budgetShare`
+deliberately still uses `split.members`, because budgets are not membership-scoped. Existing
+households with a non-50/50 default will see their goal deductions move to an even share.
+
 ### Dependents without login
 
 Defer. Recommendation: this spec does not model dependents. Kids have no account, no money of their
@@ -164,6 +171,8 @@ none of the layout files.
 - Changes to personal vault code or encryption.
 
 ## Acceptance
+
+Unticked boxes below are covered by the slice A tests and the owner's prod migration, not by a slice B check.
 
 - [ ] Spec 197 approved and committed before any code.
 - [ ] A household can accept a 3rd and 4th member; a 5th is rejected ("household is full"); a user

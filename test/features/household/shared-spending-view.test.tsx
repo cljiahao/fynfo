@@ -32,8 +32,9 @@ const budgetActions = vi.hoisted(() => ({
 }));
 vi.mock('@/features/household/actions/budget-actions', () => budgetActions);
 vi.mock('@/features/household/actions/goal-actions', () => ({}));
+const householdActions = vi.hoisted(() => ({ getHousehold: vi.fn() }));
 vi.mock('@/features/household/actions/household-actions', () => ({
-  getHousehold: vi.fn().mockResolvedValue(null),
+  getHousehold: householdActions.getHousehold,
 }));
 
 const toasts = vi.hoisted(() => ({
@@ -161,10 +162,16 @@ it('offers one click to start when nothing is tracked yet', async () => {
   );
 });
 
-it("summarises only this month's household spending with an equal-share settle-up", () => {
+it("summarises only this month's household spending with an equal-share settle-up", async () => {
+  householdActions.getHousehold.mockResolvedValueOnce({
+    memberIds: ['me', 'other'],
+    userId: 'me',
+  });
   mount(spaces);
   expect(screen.getAllByText(/\$140\.00/).length).toBeGreaterThan(0);
-  expect(screen.getByText(/Member 2 owes you .*30\.00/)).toBeInTheDocument();
+  expect(
+    await screen.findByText(/Member 2 owes you .*30\.00/)
+  ).toBeInTheDocument();
   expect(screen.getByText(/split equally between members/)).toBeInTheDocument();
   expect(screen.queryByText('Old')).toBeNull();
   expect(

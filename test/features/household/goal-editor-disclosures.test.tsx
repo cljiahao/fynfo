@@ -207,4 +207,40 @@ describe('goal editor disclosures', () => {
       within(screen.getByTestId('goal-split')).getByDisplayValue('70')
     ).toBeInTheDocument();
   });
+
+  it('reseeds an even split when the stored override no longer matches the goal members', () => {
+    external.split.current = split({ g1: { [ME]: 60, gone: 40 } });
+    mount(makeGoal({ memberIds: [ME, PARTNER] }));
+    expect(
+      within(screen.getByTestId('goal-split')).getByText(
+        'You 50%, Member 2 50%'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('does not block review on a stale split the user never touched', async () => {
+    const id = '33333333-3333-4333-8333-333333333333';
+    external.split.current = split({ [id]: { [ME]: 60, gone: 40 } });
+    mount(makeGoal({ id, memberIds: [ME, PARTNER] }));
+    await userEvent.clear(screen.getByLabelText('Target amount (SGD)'));
+    await userEvent.type(screen.getByLabelText('Target amount (SGD)'), '500');
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Review changes' })
+    );
+    expect(await screen.findByLabelText('Changes to save')).toBeInTheDocument();
+  });
+
+  it('says the shares must total 100 when every value is a valid percent', async () => {
+    external.split.current = split({ g1: { [ME]: 70, [PARTNER]: 30 } });
+    mount(makeGoal({ memberIds: [ME, PARTNER] }));
+    const share = screen.getByLabelText('You share (%)');
+    await userEvent.clear(share);
+    await userEvent.type(share, '60');
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Review changes' })
+    );
+    expect(screen.getAllByText('Shares must total 100%').length).toBe(2);
+    expect(screen.queryByText('Enter a whole number from 0 to 100')).toBeNull();
+    expect(screen.queryByLabelText('Changes to save')).toBeNull();
+  });
 });

@@ -43,6 +43,7 @@ import { saveGoalSchema } from '../schemas';
 import {
   goalMemberIds,
   goalPctsFor,
+  parsePct,
   parsePctMap,
   pctMapToText,
   seedPctsFor,
@@ -195,10 +196,9 @@ function GoalEditorForm({
     splitEdit ??
     (splitData
       ? pctMapToText(
-          splitData.goalOverrides[goalId] ??
-            (goal
-              ? goalPctsFor(undefined, splitMemberIds)
-              : seedPctsFor(splitData, splitMemberIds)),
+          goal
+            ? goalPctsFor(splitData.goalOverrides[goalId], splitMemberIds)
+            : seedPctsFor(splitData, splitMemberIds),
           splitMemberIds
         )
       : {});
@@ -230,8 +230,16 @@ function GoalEditorForm({
 
   const review = form.handleSubmit((values) => {
     if (!canReveal()) return;
-    if (splitData && splitPcts === null) {
-      setErrors({ split: 'Enter a whole number from 0 to 100' });
+    // An untouched split is always the seeded one, so it never blocks other edits.
+    if (splitData && splitEdit !== null && splitPcts === null) {
+      const typed = splitMemberIds.every(
+        (id) => parsePct(splitText[id] ?? '') !== null
+      );
+      setErrors({
+        split: typed
+          ? 'Shares must total 100%'
+          : 'Enter a whole number from 0 to 100',
+      });
       setSplitChoice(true);
       return;
     }
