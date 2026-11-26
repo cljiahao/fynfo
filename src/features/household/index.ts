@@ -38,6 +38,7 @@ export {
 export { HouseholdRecommendations } from './components/household-recommendations';
 export { HouseholdYearTable } from './components/household-year-table';
 export { useHouseholdPlan } from './hooks/use-household-plan';
+export { useMemberLabels } from './hooks/use-member-labels';
 export { householdGoalsSeries } from './lib/household-goal-series';
 export type { HouseholdGoalsSeries } from './lib/household-goal-series';
 export {
@@ -53,6 +54,8 @@ export type {
   ScheduleEntry,
 } from './lib/household-plan';
 export { recommendationSentence } from './lib/household-recommendation-copy';
+export { buildMemberLabels } from './member-labels';
+export type { MemberLabels, MemberNames } from './member-labels';
 export type {
   AcceptInviteResult,
   CreateHouseholdResult,

@@ -9,11 +9,12 @@ import { format } from 'date-fns/format';
 import { parseISO } from 'date-fns/parseISO';
 import { ChevronDown, Pencil, Trash2, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
-import { PERSON_COLORS } from '../constants';
+import { MEMBER_COLORS } from '../constants';
 import {
   useDeleteGoalItem,
   useDeleteItemPayment,
 } from '../hooks/use-household';
+import { useMemberLabels } from '../hooks/use-member-labels';
 import { useUndoableDelete } from '../hooks/use-undoable-delete';
 import { effectiveAmount } from '../lib/goal-stats';
 import type { GoalItem, GoalItemPayment } from '../types';
@@ -28,7 +29,13 @@ const TOUCH_TARGET =
   'relative after:absolute after:-inset-2.5 after:content-[""]';
 
 /** Items already filtered of rows pending deletion; payments are filtered per row. */
-export function GoalItemList({ items }: { items: GoalItem[] }) {
+export function GoalItemList({
+  items,
+  memberIds,
+}: {
+  items: GoalItem[];
+  memberIds?: readonly string[];
+}) {
   const { pendingIds } = useUndoableDelete();
   const pendingRef = useRef(pendingIds);
   useEffect(() => {
@@ -46,6 +53,7 @@ export function GoalItemList({ items }: { items: GoalItem[] }) {
         <ItemRow
           key={item.id}
           item={item}
+          memberIds={memberIds}
           isItemPending={() => pendingRef.current.has(item.id)}
         />
       ))}
@@ -55,12 +63,15 @@ export function GoalItemList({ items }: { items: GoalItem[] }) {
 
 function ItemRow({
   item,
+  memberIds,
   isItemPending,
 }: {
   item: GoalItem;
+  memberIds?: readonly string[];
   isItemPending: () => boolean;
 }) {
   const { hidden, mask, canReveal } = useAmountVisibility();
+  const { label, colorIndex } = useMemberLabels();
   const { pendingIds, request } = useUndoableDelete();
   const fieldId = useId();
   // Remounting per open re-seeds the dialog fields.
@@ -186,10 +197,8 @@ function ItemRow({
             className="text-muted-foreground space-y-0.5 text-xs"
           >
             {payments.map((payment) => {
-              const who = payment.isSelf ? 'You' : 'Partner';
-              const dot = payment.isSelf
-                ? PERSON_COLORS.you
-                : PERSON_COLORS.partner;
+              const who = label(payment.userId);
+              const dot = MEMBER_COLORS[colorIndex(payment.userId)];
               const day = format(
                 parseISO(payment.date.slice(0, 10)),
                 'dd MMM yyyy'
@@ -259,12 +268,14 @@ function ItemRow({
         open={paying.open}
         itemId={item.id}
         itemName={item.name}
+        goalMemberIds={memberIds}
         onOpenChange={(open) => setPaying((current) => ({ ...current, open }))}
       />
       <EditPaymentDialog
         key={editing?.id}
         payment={editing}
         itemName={item.name}
+        goalMemberIds={memberIds}
         onOpenChange={(open) => !open && setEditing(null)}
       />
     </li>

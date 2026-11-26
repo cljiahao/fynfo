@@ -21,6 +21,7 @@ import {
   updateGoalContribution,
   updateGoalPayment,
 } from '../actions/goal-actions';
+import { joinGoal, leaveGoal } from '../actions/goal-member-actions';
 import {
   acceptInvite,
   createHousehold,
@@ -129,6 +130,22 @@ export function useDeleteGoal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: deleteGoal,
+    onSuccess: () => refreshGoalsAndCommitment(qc),
+  });
+}
+
+export function useJoinGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: joinGoal,
+    onSuccess: () => refreshGoalsAndCommitment(qc),
+  });
+}
+
+export function useLeaveGoal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: leaveGoal,
     onSuccess: () => refreshGoalsAndCommitment(qc),
   });
 }

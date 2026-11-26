@@ -215,21 +215,6 @@ describe('payer resolution with an explicit payer', () => {
     expect(roster?.eq).toContainEqual({ column: 'household_id', value: 'h9' });
   });
 
-  it('rejects the legacy partner role when it is ambiguous', async () => {
-    const fake = setSupabase({
-      selectDataByTable: {
-        ...chain,
-        household_members: rows(USER_ID, U2, U3),
-      },
-    });
-    const { addContribution } =
-      await import('@/features/household/actions/goal-actions');
-    await expect(
-      addContribution({ ...input, paidBy: 'partner' })
-    ).rejects.toMatchObject({ code: 'VALIDATION' });
-    expect(fake.calls.insert).toHaveLength(0);
-  });
-
   it('rejects a payer that is not a uuid', async () => {
     const { addContribution } =
       await import('@/features/household/actions/goal-actions');

@@ -26,16 +26,11 @@ export const createGoalSchema = z.object({
 
 export const updateGoalSchema = createGoalSchema.extend({ goalId: z.uuid() });
 
-// Legacy two-person role, resolved server-side from the roster. The member
-// list UI replaces it with payerUserId.
-export const paidBySchema = z.enum(['self', 'partner']);
-
 // The explicit payer; the server checks it against the household and the goal's members.
 export const payerUserIdSchema = z.uuid();
 
 export const addContributionSchema = z.object({
   goalId: z.uuid(),
-  paidBy: paidBySchema.optional(),
   payerUserId: payerUserIdSchema.optional(),
   amount: z.number().positive().finite(),
   note: z.string().trim().max(200).optional(),
@@ -68,7 +63,6 @@ export const addGoalItemSchema = z.object({
 
 export const addItemPaymentSchema = z.object({
   itemId: z.uuid(),
-  paidBy: paidBySchema.optional(),
   payerUserId: payerUserIdSchema.optional(),
   amount: z.number().positive().finite(),
   note: z.string().trim().max(200).optional(),
@@ -102,7 +96,6 @@ export const saveGoalSchema = z
 
 export const updateGoalPaymentSchema = z.object({
   paymentId: z.uuid(),
-  paidBy: paidBySchema.optional(),
   payerUserId: payerUserIdSchema.optional(),
   amount: z.number().positive().finite(),
   note: z.string().trim().max(200).optional(),
@@ -111,7 +104,6 @@ export const updateGoalPaymentSchema = z.object({
 
 export const updateGoalContributionSchema = z.object({
   contributionId: z.uuid(),
-  paidBy: paidBySchema.optional(),
   payerUserId: payerUserIdSchema.optional(),
   amount: z.number().positive().finite(),
   note: z.string().trim().max(200).optional(),
@@ -145,7 +137,6 @@ export type CreateHouseholdInput = z.infer<typeof createHouseholdSchema>;
 export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>;
 export type CreateGoalInput = z.infer<typeof createGoalSchema>;
 export type UpdateGoalInput = z.infer<typeof updateGoalSchema>;
-export type PaidBy = z.infer<typeof paidBySchema>;
 export type AddContributionInput = z.infer<typeof addContributionSchema>;
 export type AddGoalItemInput = z.infer<typeof addGoalItemSchema>;
 export type AddItemPaymentInput = z.infer<typeof addItemPaymentSchema>;
@@ -224,7 +215,7 @@ export const plannerSplitSchema = z
 export type PlannerSplitInput = z.infer<typeof plannerSplitSchema>;
 
 // Partial updates: the caller names only the part it edited, so a stale client
-// cache can never overwrite what the partner saved meanwhile.
+// cache can never overwrite what another member saved meanwhile.
 export const plannerSplitUpdateSchema = z.union([
   z.object({ members: membersMapSchema }),
   z.object({ goalId: z.uuid(), override: pctMapSchema.nullable() }),

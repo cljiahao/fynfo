@@ -357,7 +357,7 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
               {hasItems ? (
                 <>
                   <ItemBreakdownBar goal={goal} labels showOverNote={false} />
-                  <GoalItemList items={goal.items} />
+                  <GoalItemList items={goal.items} memberIds={goal.memberIds} />
                 </>
               ) : (
                 <div className="rounded-xl border border-dashed py-8 text-center">
@@ -435,6 +435,7 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
         key={editingPayment?.payment.id}
         payment={editingPayment?.payment ?? null}
         itemName={editingPayment?.itemName ?? ''}
+        goalMemberIds={goal.memberIds}
         onOpenChange={(open) => !open && setEditingPayment(null)}
       />
       <ConfirmDeleteDialog

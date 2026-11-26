@@ -21,9 +21,8 @@ import {
   useAddContribution,
   useUpdateGoalContribution,
 } from '../hooks/use-household';
-import type { PaidBy } from '../schemas';
 import type { GoalContribution, HouseholdGoal } from '../types';
-import { PaidByPicker, usePaidByEnabled } from './paid-by-picker';
+import { PaidByPicker, usePayerOptions } from './paid-by-picker';
 
 interface AddContributionDialogProps {
   goal: HouseholdGoal | null;
@@ -46,9 +45,9 @@ export function AddContributionDialog({
     contribution ? contribution.amount.toFixed(2) : ''
   );
   const [note, setNote] = useState(contribution?.note ?? '');
-  const paidByEnabled = usePaidByEnabled();
-  const [paidBy, setPaidBy] = useState<PaidBy>(
-    contribution && !contribution.isSelf ? 'partner' : 'self'
+  const payerOptions = usePayerOptions(goal?.memberIds);
+  const [payer, setPayer] = useState<string | null>(
+    contribution?.userId ?? null
   );
   const [date, setDate] = useState(
     contribution
@@ -64,7 +63,7 @@ export function AddContributionDialog({
     setErrors({});
     setAmount('');
     setNote('');
-    setPaidBy('self');
+    setPayer(null);
     setDate(format(new Date(), 'yyyy-MM-dd'));
   };
 
@@ -81,6 +80,9 @@ export function AddContributionDialog({
       return;
     }
     const trimmed = note.trim() || undefined;
+    const chosenPayer = payer ?? payerOptions.selfId;
+    const payerField =
+      payerOptions.enabled && chosenPayer ? { payerUserId: chosenPayer } : {};
     if (contribution) {
       updateContribution.mutate(
         {
@@ -88,7 +90,7 @@ export function AddContributionDialog({
           amount: value,
           note: trimmed,
           date,
-          ...(paidByEnabled ? { paidBy } : {}),
+          ...payerField,
         },
         {
           onSuccess: () => {
@@ -106,7 +108,7 @@ export function AddContributionDialog({
         amount: value,
         note: trimmed,
         date,
-        ...(paidByEnabled ? { paidBy } : {}),
+        ...payerField,
       },
       {
         onSuccess: () => {
@@ -135,7 +137,13 @@ export function AddContributionDialog({
         <AmountsHiddenNotice />
 
         <div className="space-y-4">
-          <PaidByPicker value={paidBy} onChange={setPaidBy} disabled={hidden} />
+          <PaidByPicker
+            value={payer}
+            onChange={setPayer}
+            options={payerOptions.options}
+            selfId={payerOptions.selfId}
+            disabled={hidden}
+          />
           <div className="space-y-1.5">
             <Label htmlFor="contrib-amount">Amount (SGD)</Label>
             <Input

@@ -10,8 +10,8 @@ import {
   type FakeSupabaseOptions,
 } from '../../helpers/fake-supabase';
 
-const USER_ID = 'user-1';
-const PARTNER_ID = 'user-2';
+const USER_ID = '11111111-1111-4111-8111-111111111111';
+const OTHER_ID = '22222222-2222-4222-8222-222222222222';
 const KH = Buffer.alloc(32, 9);
 const ID = '123e4567-e89b-42d3-a456-426614174000';
 const DATE = '2026-11-19';
@@ -24,7 +24,7 @@ vi.mock('@/lib/action-guard', () => ({
 
 const TWO_MEMBERS = [
   { household_id: 'h1', user_id: USER_ID },
-  { household_id: 'h1', user_id: PARTNER_ID },
+  { household_id: 'h1', user_id: OTHER_ID },
 ];
 const ONE_MEMBER = [{ household_id: 'h1', user_id: USER_ID }];
 const CHAIN = {
@@ -51,23 +51,23 @@ describe.each([
     updateGoalContributionSchema,
     { contributionId: ID },
   ],
-] as const)('%s paidBy', (_name, schema, base) => {
+] as const)('%s payerUserId', (_name, schema, base) => {
   const input = { ...base, amount: 5, date: DATE };
 
-  it.each([undefined, 'self', 'partner'])('accepts %s', (paidBy) => {
-    expect(schema.safeParse({ ...input, paidBy }).success).toBe(true);
+  it.each([undefined, OTHER_ID])('accepts %s', (payerUserId) => {
+    expect(schema.safeParse({ ...input, payerUserId }).success).toBe(true);
   });
 
-  it.each(['other', ID, ''])('rejects %s', (paidBy) => {
-    expect(schema.safeParse({ ...input, paidBy }).success).toBe(false);
+  it.each(['self', 'partner', 'other', ''])('rejects %s', (payerUserId) => {
+    expect(schema.safeParse({ ...input, payerUserId }).success).toBe(false);
   });
 });
 
-describe('paid-by create actions', () => {
+describe('payer create actions', () => {
   it.each([
     ['addItemPayment', 'payer_user_id', { itemId: ID }],
     ['addContribution', 'contributor_user_id', { goalId: ID }],
-  ] as const)('%s attributes by role', async (fn, column, base) => {
+  ] as const)('%s attributes to the named payer', async (fn, column, base) => {
     const actions = await import('@/features/household/actions/goal-actions');
     const input = { ...base, amount: 10, date: DATE };
 
@@ -82,7 +82,7 @@ describe('paid-by create actions', () => {
     fake = setSupabase({
       selectDataByTable: { ...CHAIN, household_members: TWO_MEMBERS },
     });
-    await actions[fn]({ ...input, paidBy: 'self' });
+    await actions[fn]({ ...input, payerUserId: USER_ID });
     expect((fake.calls.insert[0] as Record<string, string>)[column]).toBe(
       USER_ID
     );
@@ -90,53 +90,52 @@ describe('paid-by create actions', () => {
     fake = setSupabase({
       selectDataByTable: { ...CHAIN, household_members: TWO_MEMBERS },
     });
-    await actions[fn]({ ...input, paidBy: 'partner' });
+    await actions[fn]({ ...input, payerUserId: OTHER_ID });
     expect((fake.calls.insert[0] as Record<string, string>)[column]).toBe(
-      PARTNER_ID
+      OTHER_ID
     );
   });
 
   it.each([
     ['addItemPayment', { itemId: ID }],
     ['addContribution', { goalId: ID }],
-  ] as const)(
-    '%s rejects partner in a one-member household',
-    async (fn, base) => {
-      const fake = setSupabase({
-        selectDataByTable: { ...CHAIN, household_members: ONE_MEMBER },
-      });
-      const actions = await import('@/features/household/actions/goal-actions');
-      await expect(
-        actions[fn]({ ...base, amount: 10, date: DATE, paidBy: 'partner' })
-      ).rejects.toMatchObject({ code: 'VALIDATION' });
-      expect(fake.calls.insert).toHaveLength(0);
-    }
-  );
+  ] as const)('%s rejects a payer outside the household', async (fn, base) => {
+    const fake = setSupabase({
+      selectDataByTable: { ...CHAIN, household_members: ONE_MEMBER },
+    });
+    const actions = await import('@/features/household/actions/goal-actions');
+    await expect(
+      actions[fn]({ ...base, amount: 10, date: DATE, payerUserId: OTHER_ID })
+    ).rejects.toMatchObject({ code: 'VALIDATION' });
+    expect(fake.calls.insert).toHaveLength(0);
+  });
 
   it.each([
     ['addItemPayment', { itemId: ID }],
     ['addContribution', { goalId: ID }],
-  ] as const)(
-    '%s reads the partner from the goal household roster',
-    async (fn, base) => {
-      const fake = setSupabase({
-        selectDataByTable: {
-          ...CHAIN,
-          household_goals: [{ household_id: 'h2' }],
-          household_members: TWO_MEMBERS,
-        },
-      });
-      const actions = await import('@/features/household/actions/goal-actions');
-      await actions[fn]({ ...base, amount: 10, date: DATE, paidBy: 'partner' });
-      const roster = fake.calls.queries.find(
-        (q) => q.table === 'household_members'
-      );
-      expect(roster?.eq).toContainEqual({
-        column: 'household_id',
-        value: 'h2',
-      });
-    }
-  );
+  ] as const)('%s reads the roster of the goal household', async (fn, base) => {
+    const fake = setSupabase({
+      selectDataByTable: {
+        ...CHAIN,
+        household_goals: [{ household_id: 'h2' }],
+        household_members: TWO_MEMBERS,
+      },
+    });
+    const actions = await import('@/features/household/actions/goal-actions');
+    await actions[fn]({
+      ...base,
+      amount: 10,
+      date: DATE,
+      payerUserId: OTHER_ID,
+    });
+    const roster = fake.calls.queries.find(
+      (q) => q.table === 'household_members'
+    );
+    expect(roster?.eq).toContainEqual({
+      column: 'household_id',
+      value: 'h2',
+    });
+  });
 
   it.each([
     ['addItemPayment', { itemId: ID }],
@@ -149,7 +148,7 @@ describe('paid-by create actions', () => {
       });
       const actions = await import('@/features/household/actions/goal-actions');
       await expect(
-        actions[fn]({ ...base, amount: 10, date: DATE, paidBy: 'partner' })
+        actions[fn]({ ...base, amount: 10, date: DATE, payerUserId: OTHER_ID })
       ).rejects.toMatchObject({ code: 'NOT_FOUND' });
       expect(fake.calls.insert).toHaveLength(0);
     }
@@ -169,10 +168,10 @@ describe.each([
     'contributor_user_id',
     'household_goal_contributions',
   ],
-] as const)('%s paidBy', (fn, base, column, table) => {
+] as const)('%s payerUserId', (fn, base, column, table) => {
   const input = { ...base, amount: 10, date: DATE };
 
-  it('leaves the attribution column out when paidBy is omitted', async () => {
+  it('leaves the attribution column out when payerUserId is omitted', async () => {
     const fake = setSupabase({
       selectDataByTable: { [table]: [{ id: ID }] },
     });
@@ -181,7 +180,7 @@ describe.each([
     expect(fake.calls.update[0]).not.toHaveProperty(column);
   });
 
-  it('changes the attribution when paidBy is set', async () => {
+  it('changes the attribution when payerUserId is set', async () => {
     const fake = setSupabase({
       selectDataByTable: {
         ...CHAIN,
@@ -190,13 +189,13 @@ describe.each([
       },
     });
     const actions = await import('@/features/household/actions/goal-actions');
-    await actions[fn]({ ...input, paidBy: 'partner' });
-    expect(fake.calls.update[0]).toMatchObject({ [column]: PARTNER_ID });
-    await actions[fn]({ ...input, paidBy: 'self' });
+    await actions[fn]({ ...input, payerUserId: OTHER_ID });
+    expect(fake.calls.update[0]).toMatchObject({ [column]: OTHER_ID });
+    await actions[fn]({ ...input, payerUserId: USER_ID });
     expect(fake.calls.update[1]).toMatchObject({ [column]: USER_ID });
   });
 
-  it('writes nothing for partner in a one-member household', async () => {
+  it('writes nothing for a payer outside the household', async () => {
     const fake = setSupabase({
       selectDataByTable: {
         ...CHAIN,
@@ -206,7 +205,7 @@ describe.each([
     });
     const actions = await import('@/features/household/actions/goal-actions');
     await expect(
-      actions[fn]({ ...input, paidBy: 'partner' })
+      actions[fn]({ ...input, payerUserId: OTHER_ID })
     ).rejects.toMatchObject({ code: 'VALIDATION' });
     expect(fake.calls.update).toHaveLength(0);
   });

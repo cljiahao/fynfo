@@ -37,6 +37,7 @@ function item(
       id: `${id}-p${index}`,
       note: null,
       date: '2026-10-01',
+      userId: 'user-self',
       isSelf: true,
       ...p,
     })),
@@ -50,6 +51,7 @@ function goal(overrides: Partial<HouseholdGoal> = {}): HouseholdGoal {
     targetAmount: 1200,
     targetDate: null,
     createdAt: '2026-01-01',
+    memberIds: ['user-self'],
     contributions: [],
     contributed: 0,
     remaining: 1200,
@@ -159,6 +161,7 @@ const contribution = (id: string, amount: number, date: string) => ({
   amount,
   date,
   note: null,
+  userId: 'user-self',
   isSelf: true,
 });
 
@@ -281,6 +284,7 @@ describe('burnUpSeries', () => {
     const rows = burnUpSeries(
       goal({
         createdAt: '2026-09-01',
+        memberIds: ['user-self'],
         targetDate: '2027-01-01',
         contributions: [contribution('a', 300, '2026-10-01')],
         contributed: 300,
@@ -302,6 +306,7 @@ describe('burnUpSeries', () => {
     const rows = burnUpSeries(
       goal({
         createdAt: '2026-08-01',
+        memberIds: ['user-self'],
         targetDate: '2026-09-01',
         contributions: [contribution('a', 300, '2026-08-10')],
         contributed: 300,
@@ -336,6 +341,7 @@ describe('recentActivity', () => {
         amount: 100,
         date: '2026-10-03',
         note: null,
+        userId: 'user-self',
         isSelf: true,
       },
       {
@@ -343,13 +349,19 @@ describe('recentActivity', () => {
         amount: 40,
         date: '2026-10-09',
         note: null,
+        userId: 'user-other',
         isSelf: false,
       },
     ],
     items: [
       item('v', 500, [
-        { amount: 200, date: '2026-10-06', isSelf: false },
-        { amount: 50, date: '2026-10-01', isSelf: true },
+        {
+          amount: 200,
+          date: '2026-10-06',
+          userId: 'user-other',
+          isSelf: false,
+        },
+        { amount: 50, date: '2026-10-01', userId: 'user-self', isSelf: true },
       ]),
     ],
   });
@@ -367,11 +379,13 @@ describe('recentActivity', () => {
     const entries = recentActivity(data, 10);
     expect(entries[0]).toMatchObject({
       kind: 'contribution',
+      userId: 'user-other',
       isSelf: false,
       itemName: null,
     });
     expect(entries[1]).toMatchObject({
       kind: 'payment',
+      userId: 'user-other',
       isSelf: false,
       itemName: 'Item v',
     });

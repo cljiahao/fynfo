@@ -33,6 +33,7 @@ const goal: HouseholdGoal = {
   targetAmount: 10000,
   targetDate: null,
   createdAt: '2026-10-01',
+  memberIds: ['user-self'],
   contributions: [],
   contributed: 0,
   remaining: 10000,

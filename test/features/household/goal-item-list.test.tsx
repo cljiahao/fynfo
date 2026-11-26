@@ -21,6 +21,13 @@ import {
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@/features/household/hooks/use-member-labels', async () => {
+  const { buildMemberLabels } =
+    await import('@/features/household/member-labels');
+  const labels = buildMemberLabels(['user-self', 'user-other'], 'user-self');
+  return { useMemberLabels: () => labels };
+});
+
 const actions = vi.hoisted(() => ({
   getGoals: vi.fn(),
   addGoalItem: vi.fn(),
@@ -71,6 +78,7 @@ const goal: HouseholdGoal = {
   targetAmount: 10000,
   targetDate: null,
   createdAt: '2026-10-01',
+  memberIds: ['user-self'],
   contributions: [],
   contributed: 0,
   remaining: 10000,
@@ -92,6 +100,7 @@ const goal: HouseholdGoal = {
           amount: 4500,
           note: null,
           date: '2026-10-02',
+          userId: 'user-other',
           isSelf: false,
         },
         {
@@ -99,6 +108,7 @@ const goal: HouseholdGoal = {
           amount: 4500,
           note: null,
           date: '2026-10-02',
+          userId: 'user-self',
           isSelf: true,
         },
       ],
@@ -247,7 +257,7 @@ describe('undoable removals', () => {
     ).toHaveLength(2);
     fireEvent.click(
       screen.getByRole('button', {
-        name: /payment on 02 Oct 2026 by Partner/,
+        name: /payment on 02 Oct 2026 by Member 1/,
       })
     );
     expect(
@@ -269,7 +279,7 @@ describe('undoable removals', () => {
     showPayments();
     fireEvent.click(
       screen.getByRole('button', {
-        name: /payment on 02 Oct 2026 by Partner/,
+        name: /payment on 02 Oct 2026 by Member 1/,
       })
     );
     await tick(DELAY);
@@ -283,7 +293,7 @@ describe('undoable removals', () => {
     showPayments();
     fireEvent.click(
       screen.getByRole('button', {
-        name: /payment on 02 Oct 2026 by Partner/,
+        name: /payment on 02 Oct 2026 by Member 1/,
       })
     );
     await tick(DELAY);
@@ -297,7 +307,7 @@ describe('undoable removals', () => {
     mount();
     showPayments();
     fireEvent.click(
-      screen.getByRole('button', { name: /payment on 02 Oct 2026 by Partner/ })
+      screen.getByRole('button', { name: /payment on 02 Oct 2026 by Member 1/ })
     );
     await tick(1000);
     fireEvent.click(screen.getByRole('button', { name: 'Delete item Venue' }));

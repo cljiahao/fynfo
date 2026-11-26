@@ -110,6 +110,10 @@ export async function getHousehold(): Promise<HouseholdSummary | null> {
     role: row.role,
     createdAt: row.households.created_at,
     memberCount: (roster ?? []).length,
+    memberIds: ((roster ?? []) as { user_id: string }[])
+      .map((m) => m.user_id)
+      .sort(),
+    userId,
     locked: kh === null,
   };
 }

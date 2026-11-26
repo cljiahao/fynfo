@@ -19,8 +19,7 @@ import { useId, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useAddItemPayment } from '../hooks/use-household';
 import { invalidProps, omitError } from '../lib/form-errors';
-import type { PaidBy } from '../schemas';
-import { PaidByPicker, usePaidByEnabled } from './paid-by-picker';
+import { PaidByPicker, usePayerOptions } from './paid-by-picker';
 
 type PaymentField = 'amount' | 'date';
 
@@ -28,6 +27,8 @@ interface RecordPaymentDialogProps {
   open: boolean;
   itemId: string;
   itemName: string;
+  /** Members of the goal the item belongs to; the roster when empty. */
+  goalMemberIds?: readonly string[];
   onOpenChange: (open: boolean) => void;
 }
 
@@ -36,11 +37,12 @@ export function RecordPaymentDialog({
   open,
   itemId,
   itemName,
+  goalMemberIds,
   onOpenChange,
 }: RecordPaymentDialogProps) {
   const { hidden, mask, canReveal } = useAmountVisibility();
   const addPayment = useAddItemPayment();
-  const paidByEnabled = usePaidByEnabled();
+  const payerOptions = usePayerOptions(goalMemberIds);
   const fieldId = useId();
   const amountId = `${fieldId}-amount`;
   const dateId = `${fieldId}-date`;
@@ -48,7 +50,7 @@ export function RecordPaymentDialog({
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [note, setNote] = useState('');
-  const [paidBy, setPaidBy] = useState<PaidBy>('self');
+  const [payer, setPayer] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<PaymentField, string>>>(
     {}
   );
@@ -72,7 +74,9 @@ export function RecordPaymentDialog({
         amount: value,
         date,
         note: note.trim() || undefined,
-        ...(paidByEnabled ? { paidBy } : {}),
+        ...(payerOptions.enabled && (payer ?? payerOptions.selfId)
+          ? { payerUserId: payer ?? payerOptions.selfId }
+          : {}),
       },
       {
         onSuccess: () => onOpenChange(false),
@@ -92,7 +96,13 @@ export function RecordPaymentDialog({
             </DialogDescription>
           </DialogHeader>
           <AmountsHiddenNotice />
-          <PaidByPicker value={paidBy} onChange={setPaidBy} disabled={hidden} />
+          <PaidByPicker
+            value={payer}
+            onChange={setPayer}
+            options={payerOptions.options}
+            selfId={payerOptions.selfId}
+            disabled={hidden}
+          />
           <div className="space-y-1.5">
             <Label htmlFor={amountId}>Amount (SGD)</Label>
             <Input

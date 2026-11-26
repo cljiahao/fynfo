@@ -8,7 +8,8 @@ import { formatSGD } from '@/lib/utils/currency';
 import { format } from 'date-fns/format';
 import { parseISO } from 'date-fns/parseISO';
 import { Pencil, Plus } from 'lucide-react';
-import { PERSON_COLORS } from '../constants';
+import { MEMBER_COLORS } from '../constants';
+import { useMemberLabels } from '../hooks/use-member-labels';
 import type { GoalContribution, HouseholdGoal } from '../types';
 
 interface GoalSavingsListProps {
@@ -23,6 +24,7 @@ export function GoalSavingsList({
   onEdit,
 }: GoalSavingsListProps) {
   const { hidden, mask } = useAmountVisibility();
+  const { label, colorIndex } = useMemberLabels();
   const entries = [...goal.contributions].sort(
     (a, b) => Date.parse(b.date) - Date.parse(a.date)
   );
@@ -58,10 +60,8 @@ export function GoalSavingsList({
       ) : (
         <ul className="divide-y rounded-xl border">
           {entries.map((entry) => {
-            const dot = entry.isSelf
-              ? PERSON_COLORS.you
-              : PERSON_COLORS.partner;
-            const who = entry.isSelf ? 'You' : 'Partner';
+            const dot = MEMBER_COLORS[colorIndex(entry.userId)];
+            const who = label(entry.userId);
             const day = format(
               parseISO(entry.date.slice(0, 10)),
               'dd MMM yyyy'

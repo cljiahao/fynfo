@@ -48,6 +48,7 @@ const goal: HouseholdGoal = {
   targetAmount: 1000,
   targetDate: '2027-01-01',
   createdAt: '2026-10-01',
+  memberIds: ['user-self'],
   items: [],
   budgeted: 0,
   paid: 0,
@@ -55,8 +56,22 @@ const goal: HouseholdGoal = {
   remaining: 700,
   pct: 30,
   contributions: [
-    { id: 'c1', amount: 100, note: null, date: '2026-10-01', isSelf: true },
-    { id: 'c2', amount: 200, note: 'Bonus', date: '2026-10-02', isSelf: false },
+    {
+      id: 'c1',
+      amount: 100,
+      note: null,
+      date: '2026-10-01',
+      userId: 'user-self',
+      isSelf: true,
+    },
+    {
+      id: 'c2',
+      amount: 200,
+      note: 'Bonus',
+      date: '2026-10-02',
+      userId: 'user-other',
+      isSelf: false,
+    },
   ],
 };
 function mount(node: React.ReactNode) {

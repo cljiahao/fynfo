@@ -188,6 +188,7 @@ it('conceals household values and progress geometry and prevents hidden goal act
               id: 'synthetic-goal',
               name: 'Synthetic 9876.54',
               createdAt: '2026-10-11',
+              memberIds: ['user-self'],
               items: [],
               budgeted: 0,
               paid: 0,

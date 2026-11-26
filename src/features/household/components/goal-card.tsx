@@ -29,6 +29,7 @@ import {
   plannedTotal,
 } from '../lib/goal-stats';
 import type { HouseholdGoal } from '../types';
+import { GoalMembers } from './goal-members';
 import { ItemBreakdownBar } from './item-breakdown-bar';
 
 interface GoalCardProps {
@@ -145,6 +146,8 @@ export function GoalCard({
         </div>
 
         <ItemBreakdownBar goal={goal} />
+
+        <GoalMembers goal={goal} />
 
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
           <span className="font-medium tabular-nums">

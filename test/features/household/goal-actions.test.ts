@@ -27,7 +27,7 @@ beforeEach(() => {
 });
 
 describe('goal-actions — getGoals', () => {
-  it('decrypts goals + contributions and attaches progress, flagging self vs partner', async () => {
+  it('decrypts goals + contributions and attaches progress, flagging self vs other member', async () => {
     setSupabase({
       selectDataByTable: {
         household_goals: [
@@ -71,8 +71,16 @@ describe('goal-actions — getGoals', () => {
     expect(g.remaining).toBe(500);
     expect(g.pct).toBe(50);
     expect(g.contributions).toHaveLength(2);
-    expect(g.contributions[0]).toMatchObject({ amount: 300, isSelf: true });
-    expect(g.contributions[1]).toMatchObject({ amount: 200, isSelf: false });
+    expect(g.contributions[0]).toMatchObject({
+      amount: 300,
+      userId: USER_ID,
+      isSelf: true,
+    });
+    expect(g.contributions[1]).toMatchObject({
+      amount: 200,
+      userId: PARTNER_ID,
+      isSelf: false,
+    });
   });
 
   it('returns [] when there are no goals (skips the contributions read)', async () => {

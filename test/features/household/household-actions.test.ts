@@ -83,6 +83,7 @@ describe('household-actions — getHousehold', () => {
       selectData: [
         {
           role: 'owner',
+          user_id: USER_ID,
           households: { id: 'h1', name: 'Home', created_at: '2026-06-26' },
         },
       ],
@@ -95,6 +96,8 @@ describe('household-actions — getHousehold', () => {
       role: 'owner',
       createdAt: '2026-06-26',
       memberCount: 1,
+      memberIds: [USER_ID],
+      userId: USER_ID,
       locked: true,
     });
   });

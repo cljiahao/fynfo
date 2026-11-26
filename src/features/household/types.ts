@@ -8,6 +8,9 @@ export interface HouseholdSummary {
   createdAt: string;
   /** Roster size; lets the UI hide the invite once the household is full. */
   memberCount: number;
+  /** Roster user ids in a stable order, with the caller's own id in `userId`. */
+  memberIds: string[];
+  userId: string;
   /** True when the household key is not in the session (needs unlock). */
   locked: boolean;
 }
@@ -30,6 +33,8 @@ export interface GoalContribution {
   amount: number;
   note: string | null;
   date: string;
+  /** The member who logged this contribution. */
+  userId: string;
   /** True if the current caller logged this contribution ("you" vs another member). */
   isSelf: boolean;
 }
@@ -39,6 +44,8 @@ export interface GoalItemPayment {
   amount: number;
   note: string | null;
   date: string;
+  /** The member who recorded this payment. */
+  userId: string;
   /** True if the current caller recorded this payment. */
   isSelf: boolean;
 }
@@ -68,6 +75,8 @@ export interface HouseholdGoal {
   targetAmount: number;
   targetDate: string | null;
   createdAt: string;
+  /** Members of the goal (one to four), in a stable order. */
+  memberIds: string[];
   contributions: GoalContribution[];
   contributed: number;
   remaining: number;

@@ -34,7 +34,14 @@ describe('computeGoalDelta', () => {
       remaining: 70,
       over: 0,
       payments: [
-        { id: 'p1', amount: 30, note: null, date: '2026-10-01', isSelf: true },
+        {
+          id: 'p1',
+          amount: 30,
+          note: null,
+          date: '2026-10-01',
+          userId: 'user-self',
+          isSelf: true,
+        },
       ],
     };
     const plain = { ...paid, id: 'i2', name: 'Legs', paid: 0, payments: [] };

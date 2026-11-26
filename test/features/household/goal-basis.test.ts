@@ -27,6 +27,7 @@ function item(
     amount: p.amount,
     note: null,
     date: p.date,
+    userId: p.isSelf === false ? 'user-other' : 'user-self',
     isSelf: p.isSelf ?? true,
   }));
   const paid = payments.reduce((sum, p) => sum + p.amount, 0);

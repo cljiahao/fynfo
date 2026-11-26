@@ -11,6 +11,13 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { goalWithItems, makeGoal } from './fixtures';
 
+vi.mock('@/features/household/hooks/use-member-labels', async () => {
+  const { buildMemberLabels } =
+    await import('@/features/household/member-labels');
+  const labels = buildMemberLabels(['user-self', 'user-other'], 'user-self');
+  return { useMemberLabels: () => labels };
+});
+
 const visibility = vi.hoisted(() => ({ hidden: false }));
 vi.mock('@/features/privacy', () => ({
   useAmountVisibility: () => ({
@@ -43,6 +50,7 @@ function paidItem(
       amount: p.amount,
       note: null,
       date: '2026-10-10',
+      userId: p.isSelf ? 'user-self' : 'user-other',
       isSelf: p.isSelf,
     })),
     paid,
@@ -52,6 +60,7 @@ function paidItem(
 }
 
 const paymentsOnly: HouseholdGoal = makeGoal({
+  memberIds: ['user-self', 'user-other'],
   targetAmount: 10000,
   items: [
     paidItem('a', 800, [
@@ -86,7 +95,7 @@ describe('GoalSummary in the paid basis', () => {
     expect(container.textContent).toMatch(/budgeted/);
     expect(container.textContent).toMatch(/40%/);
     expect(screen.getByText(/^You paid .*300\.00 \(75%\)$/)).toBeVisible();
-    expect(screen.getByText(/^Partner paid .*100\.00 \(25%\)$/)).toBeVisible();
+    expect(screen.getByText(/^Member 1 paid .*100\.00 \(25%\)$/)).toBeVisible();
     expect(screen.getByText('Left to pay')).toBeInTheDocument();
     expect(screen.queryByText('Behind')).toBeNull();
   });

@@ -8,6 +8,13 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { goalWithItems, makeGoal } from './fixtures';
 
+vi.mock('@/features/household/hooks/use-member-labels', async () => {
+  const { buildMemberLabels } =
+    await import('@/features/household/member-labels');
+  const labels = buildMemberLabels(['user-self', 'user-other'], 'user-self');
+  return { useMemberLabels: () => labels };
+});
+
 const visibility = vi.hoisted(() => ({ hidden: false }));
 vi.mock('@/features/privacy', () => ({
   useAmountVisibility: () => ({

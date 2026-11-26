@@ -85,6 +85,7 @@ export interface ActivityEntry {
   kind: 'contribution' | 'payment';
   amount: number;
   date: string;
+  userId: string;
   isSelf: boolean;
   /** Item the payment went to; null for contributions. */
   itemName: string | null;
@@ -101,6 +102,7 @@ export function recentActivity(
       kind: 'contribution' as const,
       amount: c.amount,
       date: c.date,
+      userId: c.userId,
       isSelf: c.isSelf,
       itemName: null,
     })),
@@ -110,6 +112,7 @@ export function recentActivity(
         kind: 'payment' as const,
         amount: p.amount,
         date: p.date,
+        userId: p.userId,
         isSelf: p.isSelf,
         itemName: item.name,
       }))

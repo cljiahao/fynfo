@@ -8,14 +8,15 @@ import { formatSGD } from '@/lib/utils/currency';
 import { format } from 'date-fns/format';
 import { parseISO } from 'date-fns/parseISO';
 import { Pencil } from 'lucide-react';
-import { PERSON_COLORS } from '../constants';
+import { MEMBER_COLORS } from '../constants';
+import { useMemberLabels } from '../hooks/use-member-labels';
 import type { ActivityEntry } from '../lib/goal-stats';
 
 export function activityText(
   entry: ActivityEntry,
-  mask: (value: string) => string
+  mask: (value: string) => string,
+  who: string
 ): string {
-  const who = entry.isSelf ? 'You' : 'Partner';
   const amount = mask(formatSGD(entry.amount));
   return entry.kind === 'contribution'
     ? `${who} added ${amount}`
@@ -29,6 +30,7 @@ interface GoalActivityProps {
 
 export function GoalActivity({ entries, onEdit }: GoalActivityProps) {
   const { hidden, mask } = useAmountVisibility();
+  const { label, colorIndex } = useMemberLabels();
 
   return (
     <section className="space-y-3" aria-labelledby="activity-heading">
@@ -44,10 +46,8 @@ export function GoalActivity({ entries, onEdit }: GoalActivityProps) {
       ) : (
         <ul className="divide-y rounded-xl border">
           {entries.map((entry) => {
-            const dot = entry.isSelf
-              ? PERSON_COLORS.you
-              : PERSON_COLORS.partner;
-            const text = activityText(entry, mask);
+            const dot = MEMBER_COLORS[colorIndex(entry.userId)];
+            const text = activityText(entry, mask, label(entry.userId));
             return (
               <li
                 key={entry.id}

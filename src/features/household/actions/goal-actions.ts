@@ -118,6 +118,7 @@ async function readGoalItems(
         amount: Number(decryptPayload(p.amount, kh)),
         note: p.note ? decryptPayload(p.note, kh) : null,
         date: p.date,
+        userId: p.payer_user_id,
         isSelf: p.payer_user_id === userId,
       });
       paymentsByItem.set(p.item_id, list);
@@ -145,6 +146,34 @@ async function readGoalItems(
     itemsByGoal.set(row.goal_id, list);
   }
   return itemsByGoal;
+}
+
+/** Goal members per goal, sorted by user id so every viewer sees one order. */
+async function readGoalMembers(
+  supabase: GoalSupabase,
+  goalIds: string[]
+): Promise<Map<string, string[]>> {
+  const byGoal = new Map<string, string[]>();
+  for (let offset = 0; offset < goalIds.length; offset += 100) {
+    const ids = goalIds.slice(offset, offset + 100);
+    const rows = await readAllRows<{ goal_id: string; user_id: string }>(
+      (from, to) =>
+        supabase
+          .from('household_goal_members')
+          .select('goal_id, user_id', { count: 'exact' })
+          .in('goal_id', ids)
+          .order('goal_id', { ascending: true })
+          .order('user_id', { ascending: true })
+          .range(from, to),
+      'household goal members read'
+    );
+    for (const row of rows) {
+      const list = byGoal.get(row.goal_id) ?? [];
+      list.push(row.user_id);
+      byGoal.set(row.goal_id, list);
+    }
+  }
+  return byGoal;
 }
 
 /** Reads the caller's household goals + contributions, decrypts, attaches progress. */
@@ -189,6 +218,7 @@ export async function getGoals(): Promise<HouseholdGoal[]> {
         amount: Number(decryptPayload(c.amount, kh)),
         note: c.note ? decryptPayload(c.note, kh) : null,
         date: c.date,
+        userId: c.contributor_user_id,
         isSelf: c.contributor_user_id === userId,
       };
       const list = contribByGoal.get(c.goal_id) ?? [];
@@ -199,6 +229,11 @@ export async function getGoals(): Promise<HouseholdGoal[]> {
 
   const itemsByGoal = await readGoalItems(
     context,
+    goals.map((goal) => goal.id)
+  );
+
+  const membersByGoal = await readGoalMembers(
+    supabase,
     goals.map((goal) => goal.id)
   );
 
@@ -217,6 +252,7 @@ export async function getGoals(): Promise<HouseholdGoal[]> {
       targetAmount,
       targetDate: g.target_date,
       createdAt: g.created_at,
+      memberIds: membersByGoal.get(g.id) ?? [],
       contributions,
       contributed: progress.contributed,
       remaining: progress.remaining,
@@ -371,7 +407,6 @@ async function memberIds(
 }
 
 interface PayerChoice {
-  paidBy?: 'self' | 'partner';
   payerUserId?: string;
 }
 
@@ -379,8 +414,7 @@ interface PayerChoice {
  * Resolves who a payment or contribution is attributed to. An explicit
  * `payerUserId` must be on the roster of the target goal's own household (a
  * user belongs to one household) and, when the goal has members, on the goal.
- * The legacy `paidBy` role maps to the one other household member and is
- * rejected when that is ambiguous. The RLS member check is the backstop.
+ * Without one the caller is the payer. The RLS member check is the backstop.
  */
 async function resolvePayerId(
   supabase: GoalSupabase,
@@ -388,8 +422,8 @@ async function resolvePayerId(
   choice: PayerChoice,
   target: PayerTarget
 ): Promise<string> {
-  const { paidBy, payerUserId } = choice;
-  if (!payerUserId && paidBy !== 'partner') return userId;
+  const { payerUserId } = choice;
+  if (!payerUserId) return userId;
   const goalId = await goalIdOf(supabase, target);
   const householdId = await firstColumn(
     supabase,
@@ -403,26 +437,19 @@ async function resolvePayerId(
     'household_id',
     householdId
   );
-  if (payerUserId) {
-    if (!roster.includes(payerUserId)) {
-      throw new AppError('VALIDATION', 'Payer is not in the household');
-    }
-    const onGoal = await memberIds(
-      supabase,
-      'household_goal_members',
-      'goal_id',
-      goalId
-    );
-    if (onGoal.length > 0 && !onGoal.includes(payerUserId)) {
-      throw new AppError('VALIDATION', 'Payer is not on this goal');
-    }
-    return payerUserId;
+  if (!roster.includes(payerUserId)) {
+    throw new AppError('VALIDATION', 'Payer is not in the household');
   }
-  const others = roster.filter((id) => id !== userId);
-  if (others.length !== 1) {
-    throw new AppError('VALIDATION', 'Name the payer explicitly');
+  const onGoal = await memberIds(
+    supabase,
+    'household_goal_members',
+    'goal_id',
+    goalId
+  );
+  if (onGoal.length > 0 && !onGoal.includes(payerUserId)) {
+    throw new AppError('VALIDATION', 'Payer is not on this goal');
   }
-  return others[0];
+  return payerUserId;
 }
 
 /** Logs a contribution toward a goal, sealing amount + note under K_h. */
@@ -533,7 +560,7 @@ export async function deleteItemPayment(id: string): Promise<void> {
 }
 
 /**
- * Edits a payment's amount, note and date, and its payer when `paidBy` is
+ * Edits a payment's amount, note and date, and its payer when `payerUserId` is
  * given; the item never changes.
  */
 export async function updateGoalPayment(input: unknown): Promise<void> {
@@ -543,13 +570,12 @@ export async function updateGoalPayment(input: unknown): Promise<void> {
     input,
     'household.payment.update.input'
   );
-  const payerId =
-    data.paidBy || data.payerUserId
-      ? await resolvePayerId(supabase, userId, data, {
-          kind: 'payment',
-          id: data.paymentId,
-        })
-      : undefined;
+  const payerId = data.payerUserId
+    ? await resolvePayerId(supabase, userId, data, {
+        kind: 'payment',
+        id: data.paymentId,
+      })
+    : undefined;
   const { data: rows, error } = await supabase
     .from('household_goal_payments')
     .update({
@@ -567,7 +593,7 @@ export async function updateGoalPayment(input: unknown): Promise<void> {
   }
 }
 
-/** Edits a contribution's amount, note and date, and its contributor when `paidBy` is given. */
+/** Edits a contribution's amount, note and date, and its contributor when `payerUserId` is given. */
 export async function updateGoalContribution(input: unknown): Promise<void> {
   const { userId, kh, supabase } = await requireHouseholdContext();
   const data = parseOrThrow(
@@ -575,13 +601,12 @@ export async function updateGoalContribution(input: unknown): Promise<void> {
     input,
     'household.contribution.update.input'
   );
-  const contributorId =
-    data.paidBy || data.payerUserId
-      ? await resolvePayerId(supabase, userId, data, {
-          kind: 'contribution',
-          id: data.contributionId,
-        })
-      : undefined;
+  const contributorId = data.payerUserId
+    ? await resolvePayerId(supabase, userId, data, {
+        kind: 'contribution',
+        id: data.contributionId,
+      })
+    : undefined;
   const { data: rows, error } = await supabase
     .from('household_goal_contributions')
     .update({

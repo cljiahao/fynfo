@@ -3,8 +3,11 @@ import type { GoalStatus } from './lib/goal-stats';
 /** Invite secret lifetime before it expires unaccepted. */
 export const INVITE_TTL_HOURS = 48;
 
-/** A household links exactly two accounts (constitution §1.1). */
-export const HOUSEHOLD_MEMBER_CAP = 2;
+/** A household links up to four accounts. */
+export const HOUSEHOLD_MEMBER_CAP = 4;
+
+/** A goal keeps one to four members. */
+export const GOAL_MEMBER_CAP = 4;
 
 /** Window in which a deferred delete can still be undone. */
 export const UNDO_DELAY_MS = 6000;
@@ -14,6 +17,14 @@ export const PERSON_COLORS = {
   you: { fill: 'fill-brand', dot: 'bg-brand' },
   partner: { fill: 'fill-chart-4', dot: 'bg-chart-4' },
 } as const;
+
+/** One colour per goal member (a goal keeps at most four), in roster order; literal classes so Tailwind sees them. */
+export const MEMBER_COLORS = [
+  { fill: 'fill-brand', dot: 'bg-brand' },
+  { fill: 'fill-chart-4', dot: 'bg-chart-4' },
+  { fill: 'fill-chart-3', dot: 'bg-chart-3' },
+  { fill: 'fill-chart-6', dot: 'bg-chart-6' },
+] as const;
 
 /** Lets the Spending tab header action focus the quick-add amount field. */
 export const QUICK_ADD_AMOUNT_ID = 'quick-add-amount';
@@ -89,10 +100,10 @@ export const BUDGET_BAR_COLORS = {
 /** Literal classes so Tailwind sees them: `base` is the unpaid part, `paid` the shaded paid part. */
 export const ITEM_BAR_FILLS = [
   { base: 'fill-chart-1/35', paid: 'fill-chart-1', dot: 'bg-chart-1' },
-  { base: 'fill-chart-2/35', paid: 'fill-chart-2', dot: 'bg-chart-2' },
+  { base: 'fill-chart-3/35', paid: 'fill-chart-3', dot: 'bg-chart-3' },
   { base: 'fill-chart-3/35', paid: 'fill-chart-3', dot: 'bg-chart-3' },
   { base: 'fill-chart-4/35', paid: 'fill-chart-4', dot: 'bg-chart-4' },
-  { base: 'fill-chart-5/35', paid: 'fill-chart-5', dot: 'bg-chart-5' },
+  { base: 'fill-chart-5/35', paid: 'fill-chart-6', dot: 'bg-chart-6' },
   { base: 'fill-chart-6/35', paid: 'fill-chart-6', dot: 'bg-chart-6' },
 ] as const;
 

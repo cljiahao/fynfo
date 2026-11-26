@@ -145,7 +145,7 @@ export function GoalEditorSheet({
           <SheetDescription>
             {isEdit
               ? 'Change the goal and its budget lines, then review before saving.'
-              : 'A big item you and your partner are saving toward.'}
+              : 'A big item your household is saving toward.'}
           </SheetDescription>
         </SheetHeader>
         <GoalEditorForm

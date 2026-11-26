@@ -5,7 +5,8 @@ import { useAmountVisibility } from '@/features/privacy';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { formatSGD } from '@/lib/utils/currency';
-import { PERSON_COLORS } from '../constants';
+import { MEMBER_COLORS } from '../constants';
+import { useMemberLabels } from '../hooks/use-member-labels';
 import {
   breakdownSegments,
   goalBasis,
@@ -51,6 +52,7 @@ const toCents = (amount: number) => Math.round(amount * 100);
 
 export function GoalSummary({ goal, pace }: GoalSummaryProps) {
   const { hidden, mask } = useAmountVisibility();
+  const { label, colorIndex } = useMemberLabels();
   const funded = goal.targetAmount > 0 && goal.contributed >= goal.targetAmount;
   const hasItems = goal.items.length > 0;
   const { overCommitted } = breakdownSegments(goal);
@@ -65,11 +67,21 @@ export function GoalSummary({ goal, pace }: GoalSummaryProps) {
   const entries = paidBasis
     ? goal.items.flatMap((item) => item.payments)
     : goal.contributions;
-  const self = entries
-    .filter((entry) => entry.isSelf)
-    .reduce((sum, entry) => sum + entry.amount, 0);
-  const partner = total - self;
-  const selfPct = total > 0 ? Math.round((self / total) * 100) : 0;
+  // Masked cards list the goal's members instead, so the rows never reveal who paid.
+  const totals = new Map<string, number>(
+    hidden ? goal.memberIds.map((id) => [id, 0]) : []
+  );
+  for (const entry of hidden ? [] : entries) {
+    totals.set(entry.userId, (totals.get(entry.userId) ?? 0) + entry.amount);
+  }
+  const shares = [...totals.entries()]
+    .map(([userId, amount]) => ({
+      userId,
+      amount,
+      color: MEMBER_COLORS[colorIndex(userId)],
+      label: label(userId),
+    }))
+    .sort((a, b) => colorIndex(a.userId) - colorIndex(b.userId));
   const pct = paidBasis
     ? Math.min(100, Math.round((goal.paid / planned) * 100))
     : Math.round(goal.pct);
@@ -80,8 +92,6 @@ export function GoalSummary({ goal, pace }: GoalSummaryProps) {
     : Math.max(goal.targetAmount, goal.contributed);
   const widthOf = (amount: number) =>
     barScale > 0 ? Math.max(0, (amount / barScale) * 100) : 0;
-  const youWidth = widthOf(self);
-  const partnerWidth = widthOf(partner);
   const legendVerb = paidBasis ? ' paid' : '';
   // Always present while hidden, so its absence cannot show that nothing was recorded.
   const showLegend = hidden || total > 0;
@@ -117,46 +127,33 @@ export function GoalSummary({ goal, pace }: GoalSummaryProps) {
             <div className="bg-muted h-3 w-full overflow-hidden rounded-full">
               {!hidden && (
                 <svg aria-hidden="true" className="block h-full w-full">
-                  <rect
-                    x="0"
-                    width={`${youWidth}%`}
-                    height="100%"
-                    className={cn(PERSON_COLORS.you.fill, 'stroke-background')}
-                  />
-                  <rect
-                    x={`${youWidth}%`}
-                    width={`${partnerWidth}%`}
-                    height="100%"
-                    className={cn(
-                      PERSON_COLORS.partner.fill,
-                      'stroke-background'
-                    )}
-                  />
+                  {shares.map((share, index) => (
+                    <rect
+                      key={share.userId}
+                      x={`${shares.slice(0, index).reduce((sum, prior) => sum + widthOf(prior.amount), 0)}%`}
+                      width={`${widthOf(share.amount)}%`}
+                      height="100%"
+                      className={cn(share.color.fill, 'stroke-background')}
+                    />
+                  ))}
                 </svg>
               )}
             </div>
             {showLegend && (
               <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums">
-                <li className="flex items-center gap-1.5">
-                  <span
-                    className={cn(
-                      'size-2 shrink-0 rounded-full',
-                      PERSON_COLORS.you.dot
+                {shares.map((share) => (
+                  <li key={share.userId} className="flex items-center gap-1.5">
+                    <span
+                      className={cn(
+                        'size-2 shrink-0 rounded-full',
+                        share.color.dot
+                      )}
+                    />
+                    {mask(
+                      `${share.label}${legendVerb} ${formatSGD(share.amount)} (${total > 0 ? Math.round((share.amount / total) * 100) : 0}%)`
                     )}
-                  />
-                  {mask(`You${legendVerb} ${formatSGD(self)} (${selfPct}%)`)}
-                </li>
-                <li className="flex items-center gap-1.5">
-                  <span
-                    className={cn(
-                      'size-2 shrink-0 rounded-full',
-                      PERSON_COLORS.partner.dot
-                    )}
-                  />
-                  {mask(
-                    `Partner${legendVerb} ${formatSGD(partner)} (${100 - selfPct}%)`
-                  )}
-                </li>
+                  </li>
+                ))}
               </ul>
             )}
           </div>

@@ -17,6 +17,13 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { goalWithItems, makeGoal } from './fixtures';
 
+vi.mock('@/features/household/hooks/use-member-labels', async () => {
+  const { buildMemberLabels } =
+    await import('@/features/household/member-labels');
+  const labels = buildMemberLabels(['user-self', 'user-other'], 'user-self');
+  return { useMemberLabels: () => labels };
+});
+
 const state = vi.hoisted(() => ({
   household: { data: {} } as Record<string, unknown>,
   goals: { data: [] } as Record<string, unknown>,
@@ -119,10 +126,12 @@ describe('with items', () => {
     expect(screen.getByText('Monthly share')).toBeInTheDocument();
     expect(screen.getByText('burn-up chart')).toBeInTheDocument();
     expect(screen.getByText(/^You .*600\.00 \(60%\)$/)).toBeInTheDocument();
-    expect(screen.getByText(/^Partner .*400\.00 \(40%\)$/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/^Member 1 .*400\.00 \(40%\)$/)
+    ).toBeInTheDocument();
     expect(screen.getAllByText('Venue').length).toBeGreaterThan(1);
     expect(screen.getAllByText('Photographer').length).toBeGreaterThan(1);
-    expect(screen.getByText(/Partner paid .* to Venue/)).toBeInTheDocument();
+    expect(screen.getByText(/Member 1 paid .* to Venue/)).toBeInTheDocument();
     expect(screen.getByText(/You added /)).toBeInTheDocument();
   });
 
@@ -336,7 +345,7 @@ describe('with items', () => {
   it('edits a payment and a contribution from recent activity', () => {
     mount();
     fireEvent.click(
-      screen.getByRole('button', { name: /^Edit Partner paid .* to Venue$/ })
+      screen.getByRole('button', { name: /^Edit Member 1 paid .* to Venue$/ })
     );
     expect(screen.getByRole('dialog', { name: 'Edit payment' })).toBeVisible();
     cleanup();
@@ -363,6 +372,7 @@ describe('with items', () => {
                 amount: 500,
                 note: null,
                 date: '2026-10-06',
+                userId: 'user-self',
                 isSelf: true,
               },
             ],
@@ -462,7 +472,9 @@ describe('page structure', () => {
 
   it('gives the activity edit buttons a coarse-pointer hit target', () => {
     mount();
-    const edit = screen.getAllByRole('button', { name: /^Edit (You|Partner)/ });
+    const edit = screen.getAllByRole('button', {
+      name: /^Edit (You|Member 1)/,
+    });
     expect(edit.length).toBeGreaterThan(0);
     for (const button of edit)
       expect(button).toHaveClass('pointer-coarse:size-11');

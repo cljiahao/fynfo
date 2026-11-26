@@ -53,7 +53,7 @@ describe('project budget math', () => {
 });
 
 describe('getGoals with budget items', () => {
-  it('decrypts items and payments, totals them, and flags self vs partner', async () => {
+  it('decrypts items and payments, totals them, and flags self vs other member', async () => {
     setSupabase({
       selectDataByTable: {
         household_goals: [
@@ -111,6 +111,7 @@ describe('getGoals with budget items', () => {
         amount: 5000,
         note: null,
         date: '2026-10-02',
+        userId: USER_ID,
         isSelf: true,
       },
       {
@@ -118,6 +119,7 @@ describe('getGoals with budget items', () => {
         amount: 8000,
         note: 'Deposit',
         date: '2026-10-03',
+        userId: PARTNER_ID,
         isSelf: false,
       },
     ]);

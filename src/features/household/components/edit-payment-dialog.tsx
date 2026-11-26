@@ -17,14 +17,15 @@ import { Label } from '@/components/ui/label';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useUpdateGoalPayment } from '../hooks/use-household';
-import type { PaidBy } from '../schemas';
 import type { GoalItemPayment } from '../types';
-import { PaidByPicker, usePaidByEnabled } from './paid-by-picker';
+import { PaidByPicker, usePayerOptions } from './paid-by-picker';
 
 interface EditPaymentDialogProps {
   /** The payment being edited; the dialog is closed when null. */
   payment: GoalItemPayment | null;
   itemName: string;
+  /** Members of the goal the payment belongs to; the roster when empty. */
+  goalMemberIds?: readonly string[];
   onOpenChange: (open: boolean) => void;
 }
 
@@ -32,16 +33,15 @@ interface EditPaymentDialogProps {
 export function EditPaymentDialog({
   payment,
   itemName,
+  goalMemberIds,
   onOpenChange,
 }: EditPaymentDialogProps) {
   const { hidden, mask, canReveal } = useAmountVisibility();
   const update = useUpdateGoalPayment();
   const [amount, setAmount] = useState(payment?.amount.toFixed(2) ?? '');
   const [note, setNote] = useState(payment?.note ?? '');
-  const paidByEnabled = usePaidByEnabled();
-  const [paidBy, setPaidBy] = useState<PaidBy>(
-    payment && !payment.isSelf ? 'partner' : 'self'
-  );
+  const payerOptions = usePayerOptions(goalMemberIds);
+  const [payer, setPayer] = useState<string | null>(payment?.userId ?? null);
   const [date, setDate] = useState(payment?.date.slice(0, 10) ?? '');
   const [errors, setErrors] = useState<{ amount?: string; date?: string }>({});
 
@@ -61,7 +61,9 @@ export function EditPaymentDialog({
         amount: value,
         note: note.trim() || undefined,
         date,
-        ...(paidByEnabled ? { paidBy } : {}),
+        ...(payerOptions.enabled && (payer ?? payerOptions.selfId)
+          ? { payerUserId: payer ?? payerOptions.selfId }
+          : {}),
       },
       {
         onSuccess: () => {
@@ -85,7 +87,13 @@ export function EditPaymentDialog({
         <AmountsHiddenNotice />
 
         <div className="space-y-4">
-          <PaidByPicker value={paidBy} onChange={setPaidBy} disabled={hidden} />
+          <PaidByPicker
+            value={payer}
+            onChange={setPayer}
+            options={payerOptions.options}
+            selfId={payerOptions.selfId}
+            disabled={hidden}
+          />
           <div className="space-y-1.5">
             <Label htmlFor="payment-amount">Amount (SGD)</Label>
             <Input

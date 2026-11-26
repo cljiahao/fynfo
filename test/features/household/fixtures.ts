@@ -9,6 +9,7 @@ export function makeGoal(
     targetAmount: 10000,
     targetDate: null,
     createdAt: '2026-10-01',
+    memberIds: ['user-self'],
     contributions: [],
     contributed: 0,
     remaining: 10000,
@@ -22,8 +23,22 @@ export function makeGoal(
 
 export const goalWithItems: HouseholdGoal = makeGoal({
   contributions: [
-    { id: 'c1', amount: 600, note: null, date: '2026-10-03', isSelf: true },
-    { id: 'c2', amount: 400, note: null, date: '2026-10-09', isSelf: false },
+    {
+      id: 'c1',
+      amount: 600,
+      note: null,
+      date: '2026-10-03',
+      userId: 'user-self',
+      isSelf: true,
+    },
+    {
+      id: 'c2',
+      amount: 400,
+      note: null,
+      date: '2026-10-09',
+      userId: 'user-other',
+      isSelf: false,
+    },
   ],
   contributed: 1000,
   remaining: 9000,
@@ -45,6 +60,7 @@ export const goalWithItems: HouseholdGoal = makeGoal({
           amount: 4500,
           note: null,
           date: '2026-10-02',
+          userId: 'user-other',
           isSelf: false,
         },
         {
@@ -52,6 +68,7 @@ export const goalWithItems: HouseholdGoal = makeGoal({
           amount: 4500,
           note: null,
           date: '2026-10-04',
+          userId: 'user-self',
           isSelf: true,
         },
       ],
