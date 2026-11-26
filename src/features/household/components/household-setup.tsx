@@ -11,7 +11,7 @@ import { useAcceptInvite, useCreateHousehold } from '../hooks/use-household';
 
 /**
  * Shown when the signed-in user is in no household yet: create a new one, or
- * join an existing one with a partner's one-time invite code.
+ * join an existing one with a one-time invite code from a member.
  */
 export function HouseholdSetup() {
   const createHousehold = useCreateHousehold();
@@ -32,7 +32,7 @@ export function HouseholdSetup() {
 
   const join = () => {
     if (!code.trim()) {
-      toast.error('Enter the invite code your partner shared');
+      toast.error('Enter the invite code a household member shared');
       return;
     }
     acceptInvite.mutate(code.trim(), {
@@ -52,8 +52,8 @@ export function HouseholdSetup() {
             <h2 className="font-semibold">Start a household</h2>
           </div>
           <p className="text-muted-foreground text-sm">
-            Create a shared space for joint goals. Your personal vault stays
-            private — only what you add here is shared.
+            Create a shared space for up to four people. Your personal vault
+            stays private — only what you add here is shared.
           </p>
           <div className="space-y-1.5">
             <Label htmlFor="household-name">Household name</Label>
@@ -80,8 +80,7 @@ export function HouseholdSetup() {
             <h2 className="font-semibold">Join with a code</h2>
           </div>
           <p className="text-muted-foreground text-sm">
-            Your partner created the household and shared a one-time invite
-            code. Enter it to join.
+            A household member shared a one-time invite code. Enter it to join.
           </p>
           <div className="space-y-1.5">
             <Label htmlFor="invite-code">Invite code</Label>

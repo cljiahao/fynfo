@@ -30,7 +30,7 @@ export interface GoalContribution {
   amount: number;
   note: string | null;
   date: string;
-  /** True if the current caller logged this contribution ("you" vs "partner"). */
+  /** True if the current caller logged this contribution ("you" vs another member). */
   isSelf: boolean;
 }
 

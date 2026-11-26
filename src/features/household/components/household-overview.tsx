@@ -20,7 +20,7 @@ import { HouseholdLocked } from './household-locked';
 import { HouseholdPlanSummary } from './household-plan-summary';
 import { HouseholdSetup } from './household-setup';
 import { HouseholdSkeleton } from './household-skeleton';
-import { InvitePartnerDialog } from './invite-partner-dialog';
+import { InviteMemberDialog } from './invite-member-dialog';
 import { PlannerSplitEditor } from './planner-split-editor';
 
 interface HouseholdOverviewProps {
@@ -75,7 +75,9 @@ export function HouseholdOverview({
           description="Shared goals for your household."
           action={
             <div className="flex flex-wrap items-center justify-end gap-2">
-              {canInvite && <InvitePartnerDialog />}
+              {canInvite && (
+                <InviteMemberDialog memberCount={household.data.memberCount} />
+              )}
               {isFull && (
                 <span className="text-muted-foreground text-xs">
                   {household.data.memberCount} of {HOUSEHOLD_MEMBER_CAP} members
@@ -83,7 +85,7 @@ export function HouseholdOverview({
               )}
               {!isFull && !canInvite && (
                 <span className="text-muted-foreground text-xs">
-                  Only the owner can invite a partner
+                  Only the owner can invite members
                 </span>
               )}
               {!locked && (

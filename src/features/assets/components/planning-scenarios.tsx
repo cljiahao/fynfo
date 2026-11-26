@@ -142,7 +142,7 @@ export function PlanningScenarios({
             %) as a named what-if plan, then reopen or compare it later.
             Scenarios are snapshots only: they never change your real salary,
             expense or asset records. Stored encrypted in your personal vault;
-            your household partner can&apos;t see them.
+            other household members can&apos;t see them.
           </PopoverContent>
         </Popover>
       </div>

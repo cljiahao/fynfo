@@ -3,7 +3,7 @@ import { GoalEditorSheet } from '@/features/household/components/goal-editor-she
 import { GoalList } from '@/features/household/components/goal-list';
 import { HouseholdOverview } from '@/features/household/components/household-overview';
 import { HouseholdSetup } from '@/features/household/components/household-setup';
-import { InvitePartnerDialog } from '@/features/household/components/invite-partner-dialog';
+import { InviteMemberDialog } from '@/features/household/components/invite-member-dialog';
 import { UndoableDeleteProvider } from '@/features/household/hooks/use-undoable-delete';
 import type { HouseholdGoal } from '@/features/household/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -121,7 +121,7 @@ describe('household overview read and unlock boundaries', () => {
     );
     expect(await screen.findByText('Sofa')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Invite partner' })
+      screen.getByRole('button', { name: 'Invite member' })
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'New goal' }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -233,8 +233,8 @@ describe('household workflows with real mutation hooks', () => {
   it('reveals generated invite once and copies precisely that invite', async () => {
     const user = userEvent.setup();
     const copy = vi.spyOn(navigator.clipboard, 'writeText');
-    mount(<InvitePartnerDialog />);
-    await user.click(screen.getByRole('button', { name: 'Invite partner' }));
+    mount(<InviteMemberDialog memberCount={1} cap={4} />);
+    await user.click(screen.getByRole('button', { name: 'Invite member' }));
     await user.click(
       screen.getByRole('button', { name: 'Generate invite code' })
     );
@@ -250,9 +250,9 @@ describe('household workflows with real mutation hooks', () => {
   });
   it('does not reveal an invite when generation fails', async () => {
     actions.createInvite.mockRejectedValue(new Error('failed'));
-    mount(<InvitePartnerDialog />);
+    mount(<InviteMemberDialog memberCount={1} cap={4} />);
     await userEvent.click(
-      screen.getByRole('button', { name: 'Invite partner' })
+      screen.getByRole('button', { name: 'Invite member' })
     );
     await userEvent.click(
       screen.getByRole('button', { name: 'Generate invite code' })
@@ -269,8 +269,8 @@ describe('household workflows with real mutation hooks', () => {
     vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(
       new Error('denied')
     );
-    mount(<InvitePartnerDialog />);
-    await user.click(screen.getByRole('button', { name: 'Invite partner' }));
+    mount(<InviteMemberDialog memberCount={1} cap={4} />);
+    await user.click(screen.getByRole('button', { name: 'Invite member' }));
     await user.click(
       screen.getByRole('button', { name: 'Generate invite code' })
     );

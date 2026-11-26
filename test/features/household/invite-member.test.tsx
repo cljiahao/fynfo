@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { HouseholdOverview } from '@/features/household/components/household-overview';
-import { InvitePartnerDialog } from '@/features/household/components/invite-partner-dialog';
+import { InviteMemberDialog } from '@/features/household/components/invite-member-dialog';
+import { HOUSEHOLD_MEMBER_CAP } from '@/features/household/constants';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
@@ -55,9 +56,9 @@ beforeEach(() => {
 afterEach(cleanup);
 
 const inviteButton = () =>
-  screen.findByRole('button', { name: 'Invite partner' });
+  screen.findByRole('button', { name: 'Invite member' });
 
-describe('invite partner entry point', () => {
+describe('invite member entry point', () => {
   it('is shown to an owner with a free seat, beside the spending link', async () => {
     mount(<HouseholdOverview />);
     expect(await inviteButton()).toBeInTheDocument();
@@ -75,29 +76,36 @@ describe('invite partner entry point', () => {
   });
 
   it('is replaced by a members note when the household is full', async () => {
-    actions.getHousehold.mockResolvedValue({ ...household, memberCount: 2 });
+    actions.getHousehold.mockResolvedValue({
+      ...household,
+      memberCount: HOUSEHOLD_MEMBER_CAP,
+    });
     mount(<HouseholdOverview />);
-    expect(await screen.findByText('2 of 2 members')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Invite partner' })).toBeNull();
+    expect(
+      await screen.findByText(
+        `${HOUSEHOLD_MEMBER_CAP} of ${HOUSEHOLD_MEMBER_CAP} members`
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Invite member' })).toBeNull();
   });
 
   it('tells a non-owner that only the owner can invite', async () => {
     actions.getHousehold.mockResolvedValue({ ...household, role: 'member' });
     mount(<HouseholdOverview />);
     expect(
-      await screen.findByText('Only the owner can invite a partner')
+      await screen.findByText('Only the owner can invite members')
     ).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Invite partner' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Invite member' })).toBeNull();
   });
 });
 
-describe('invite partner dialog', () => {
+describe('invite member dialog', () => {
   it('generates once, copies the code and forgets it when closed', async () => {
     const user = userEvent.setup();
     const copy = vi.spyOn(navigator.clipboard, 'writeText');
-    mount(<InvitePartnerDialog />);
+    mount(<InviteMemberDialog memberCount={1} cap={4} />);
 
-    await user.click(screen.getByRole('button', { name: 'Invite partner' }));
+    await user.click(screen.getByRole('button', { name: 'Invite member' }));
     await user.click(
       screen.getByRole('button', { name: 'Generate invite code' })
     );
@@ -115,10 +123,29 @@ describe('invite partner dialog', () => {
       expect(screen.queryByLabelText('One-time invite code')).toBeNull()
     );
 
-    await user.click(screen.getByRole('button', { name: 'Invite partner' }));
+    await user.click(screen.getByRole('button', { name: 'Invite member' }));
     expect(
       await screen.findByRole('button', { name: 'Generate invite code' })
     ).toBeInTheDocument();
     expect(screen.queryByLabelText('One-time invite code')).toBeNull();
+  });
+});
+
+describe('invite member dialog capacity', () => {
+  it('shows how many of the four seats are taken', async () => {
+    const user = userEvent.setup();
+    mount(<InviteMemberDialog memberCount={3} cap={4} />);
+    await user.click(screen.getByRole('button', { name: 'Invite member' }));
+    expect(screen.getByText('3 of 4 members')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Generate invite code' })
+    ).toBeEnabled();
+  });
+
+  it('blocks inviting at four members', async () => {
+    mount(<InviteMemberDialog memberCount={4} cap={4} />);
+    expect(
+      screen.getByRole('button', { name: 'Invite member' })
+    ).toBeDisabled();
   });
 });

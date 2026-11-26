@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { HouseholdOverview } from '@/features/household/components/household-overview';
+import { HOUSEHOLD_MEMBER_CAP } from '@/features/household/constants';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -22,8 +23,8 @@ vi.mock('@/features/household/hooks/use-household-plan', () => ({
 vi.mock('@/features/household/components/goal-list', () => ({
   GoalList: () => <div>Private goal</div>,
 }));
-vi.mock('@/features/household/components/invite-partner-dialog', () => ({
-  InvitePartnerDialog: () => <button>Invite partner</button>,
+vi.mock('@/features/household/components/invite-member-dialog', () => ({
+  InviteMemberDialog: () => <button>Invite member</button>,
 }));
 vi.mock('@/features/household/components/planner-split-editor', () => ({
   PlannerSplitEditor: () => <div>Split editor</div>,
@@ -45,7 +46,7 @@ it('hides cached goals, spending link and create actions while household locked,
   state.household = { ...state.household, locked: true };
   render(<HouseholdOverview />);
   expect(screen.queryByText('Private goal')).toBeNull();
-  expect(screen.getByRole('button', { name: 'Invite partner' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Invite member' })).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'New goal' })).toBeNull();
   expect(screen.queryByRole('link', { name: 'Shared spending' })).toBeNull();
   expect(screen.getByRole('button', { name: 'Unlock household' })).toBeTruthy();
@@ -58,7 +59,7 @@ it('has no tabs and links to shared spending next to the invite and New goal', (
     'href',
     '/dashboard/household/spending'
   );
-  expect(screen.getByRole('button', { name: 'Invite partner' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Invite member' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'New goal' })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Add spending' })).toBeNull();
 });
@@ -70,16 +71,20 @@ it('keeps the monthly plan in a disclosure that starts collapsed', () => {
 });
 
 it('explains the missing invite for a full household and for a non-owner', () => {
-  state.household = { ...state.household, memberCount: 2 };
+  state.household = { ...state.household, memberCount: HOUSEHOLD_MEMBER_CAP };
   const full = render(<HouseholdOverview />);
-  expect(screen.queryByRole('button', { name: 'Invite partner' })).toBeNull();
-  expect(screen.getByText('2 of 2 members')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Invite member' })).toBeNull();
+  expect(
+    screen.getByText(
+      `${HOUSEHOLD_MEMBER_CAP} of ${HOUSEHOLD_MEMBER_CAP} members`
+    )
+  ).toBeInTheDocument();
   full.unmount();
 
   state.household = { ...state.household, role: 'member', memberCount: 1 };
   render(<HouseholdOverview />);
-  expect(screen.queryByRole('button', { name: 'Invite partner' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Invite member' })).toBeNull();
   expect(
-    screen.getByText('Only the owner can invite a partner')
+    screen.getByText('Only the owner can invite members')
   ).toBeInTheDocument();
 });

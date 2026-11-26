@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Copy, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { HOUSEHOLD_MEMBER_CAP } from '../constants';
 import { useCreateInvite } from '../hooks/use-household';
 
 /**
@@ -20,7 +21,14 @@ import { useCreateInvite } from '../hooks/use-household';
  * shown a single time and never stored in plaintext, so it is dropped when the
  * dialog closes; reopening must not display an already-shared code.
  */
-export function InvitePartnerDialog() {
+export function InviteMemberDialog({
+  memberCount,
+  cap = HOUSEHOLD_MEMBER_CAP,
+}: {
+  memberCount: number;
+  cap?: number;
+}) {
+  const isFull = memberCount >= cap;
   const createInvite = useCreateInvite();
   const [open, setOpen] = useState(false);
   const [secret, setSecret] = useState<string | null>(null);
@@ -53,17 +61,20 @@ export function InvitePartnerDialog() {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" disabled={isFull}>
           <UserPlus className="mr-1.5 size-4" />
-          Invite partner
+          Invite member
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Invite your partner</DialogTitle>
+          <DialogTitle>Invite a member</DialogTitle>
           <DialogDescription>
-            Generate a one-time code your partner enters to join this household.
+            Generate a one-time code a new member enters to join this household.
           </DialogDescription>
+          <p className="text-muted-foreground text-xs">
+            {isFull ? 'Household is full' : `${memberCount} of ${cap} members`}
+          </p>
         </DialogHeader>
 
         {secret ? (
@@ -86,7 +97,7 @@ export function InvitePartnerDialog() {
               </Button>
             </div>
             <p className="text-muted-foreground text-xs">
-              Share this code with your partner once — in person or over a
+              Share this code with the new member once — in person or over a
               trusted channel. It is shown only now, works a single time, and
               expires in 48 hours.
             </p>
@@ -95,7 +106,7 @@ export function InvitePartnerDialog() {
           <Button
             className="w-fit"
             onClick={mint}
-            disabled={createInvite.isPending}
+            disabled={createInvite.isPending || isFull}
           >
             Generate invite code
           </Button>
