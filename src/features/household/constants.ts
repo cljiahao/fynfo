@@ -116,5 +116,5 @@ export const ITEM_BAR_OTHER_FILL = {
 /** Unpaid part of every segment once saved plus still-to-pay exceeds the target. */
 export const ITEM_BAR_OVER_FILL = 'fill-destructive/40';
 
-/** Budget item rows shown before the list scrolls. */
-export const GOAL_ITEM_VISIBLE_ROWS = 5;
+/** Payment rows shown in an item's accordion before it scrolls. */
+export const GOAL_ITEM_PAYMENT_VISIBLE_ROWS = 5;

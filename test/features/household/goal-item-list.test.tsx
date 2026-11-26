@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { GoalItemList } from '@/features/household/components/goal-item-list';
-import { GOAL_ITEM_VISIBLE_ROWS } from '@/features/household/constants';
+import { GOAL_ITEM_PAYMENT_VISIBLE_ROWS } from '@/features/household/constants';
 import {
   UndoableDeleteProvider,
   useUndoableDelete,
@@ -403,26 +403,21 @@ describe('payments disclosure', () => {
   });
 });
 
-describe('row cap', () => {
-  it('limits the list to five rows tall and scrolls beyond', () => {
-    const items = Array.from({ length: 8 }, (_, index) => ({
-      ...goal.items[0],
-      id: `many-${index}`,
-      name: `Item ${index}`,
-    }));
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <UndoableDeleteProvider delayMs={DELAY}>
-          <GoalItemList items={items} />
-        </UndoableDeleteProvider>
-      </QueryClientProvider>
+describe('payment cap', () => {
+  it('scrolls the payments accordion, not the item list', () => {
+    mount();
+    fireEvent.click(screen.getByRole('button', { name: /^2 payments$/ }));
+    const payments = document.getElementById(
+      screen
+        .getByRole('button', { name: /^2 payments$/ })
+        .getAttribute('aria-controls') as string
     );
-    const list = screen.getByText('Item 0').closest('ul');
-    expect(list).toHaveClass('overflow-y-auto');
-    expect(list).toHaveClass(`max-h-[${GOAL_ITEM_VISIBLE_ROWS * 7.5}rem]`);
-    expect(
-      screen.getAllByRole('button', { name: 'Record payment' })
-    ).toHaveLength(8);
+    expect(payments).toHaveClass('overflow-y-auto');
+    expect(payments).toHaveClass('max-h-[8rem]');
+    expect(GOAL_ITEM_PAYMENT_VISIBLE_ROWS).toBe(5);
+    const list = screen.getAllByRole('list')[0];
+    expect(list).not.toHaveClass('overflow-y-auto');
+    expect(list.className).not.toMatch(/max-h/);
   });
 });
 

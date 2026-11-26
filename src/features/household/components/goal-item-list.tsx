@@ -21,8 +21,8 @@ import type { GoalItem, GoalItemPayment } from '../types';
 import { EditPaymentDialog } from './edit-payment-dialog';
 import { RecordPaymentDialog } from './record-payment-dialog';
 
-/** 5 collapsed rows of 7.5rem; keep in step with GOAL_ITEM_VISIBLE_ROWS (Tailwind needs the literal). */
-const ITEM_LIST_MAX_HEIGHT = 'max-h-[37.5rem]';
+/** About 5 payment rows; keep in step with GOAL_ITEM_PAYMENT_VISIBLE_ROWS (Tailwind needs the literal). */
+const PAYMENTS_MAX_HEIGHT = 'max-h-[8rem]';
 
 /** Invisible 44px touch target that leaves row height untouched. */
 const TOUCH_TARGET =
@@ -43,12 +43,7 @@ export function GoalItemList({
   }, [pendingIds]);
 
   return (
-    <ul
-      className={cn(
-        'divide-y overflow-y-auto overscroll-contain rounded-xl border',
-        ITEM_LIST_MAX_HEIGHT
-      )}
-    >
+    <ul className="divide-y rounded-xl border">
       {items.map((item) => (
         <ItemRow
           key={item.id}
@@ -194,7 +189,10 @@ function ItemRow({
           <ul
             id={paymentsId}
             hidden={!showPayments}
-            className="text-muted-foreground space-y-0.5 text-xs"
+            className={cn(
+              'text-muted-foreground space-y-0.5 overflow-y-auto overscroll-contain text-xs',
+              PAYMENTS_MAX_HEIGHT
+            )}
           >
             {payments.map((payment) => {
               const who = label(payment.userId);

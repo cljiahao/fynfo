@@ -111,14 +111,13 @@ column changes.
 - Payer copy stays as-is: existing `You` / `Partner` wording in `PaidByPicker`
   and the payment rows is not changed. Multi-member payer work is spec 200.
 
-### Visible-row cap
+### Payment cap
 
-- The item list shows at most `GOAL_ITEM_VISIBLE_ROWS = 5` rows before scrolling
-  (new constant in `constants.ts`). Implemented as a `max-h` on the `<ul>`
-  derived from the collapsed row height with `overflow-y-auto` and
-  `overscroll-contain`, so the scroll is discoverable. All rows remain in DOM
-  order and keyboard focusable; an expanded row scrolls inside the container.
-  Proposed value 5 (Q2).
+- Amended 2026-11-27 per owner: the item list does not scroll. Each item's
+  payments accordion (`<ul id={paymentsId}>`) shows at most
+  `GOAL_ITEM_PAYMENT_VISIBLE_ROWS = 5` payment rows (`max-h-[8rem]`) with
+  `overflow-y-auto` and `overscroll-contain`. Supersedes the earlier 5-item-row
+  cap on the list (Q2).
 
 ### Item description (data)
 
@@ -195,8 +194,8 @@ only mounts it in the new modal.
       and a trash button; trash keeps the undo/confirm behaviour
 - [ ] `Record payment` opens a modal; no inline payment form remains; adding a
       payment updates `paid` and the charts; validation errors show in the modal
-- [ ] More than 5 items scroll inside the list; 5 or fewer show no scrollbar;
-      all rows remain keyboard reachable
+- [ ] The item list never scrolls; an item with more than 5 payments scrolls
+      inside its payments accordion; all rows remain keyboard reachable
 - [ ] `Record saving` is a visible primary button in the Savings tab and opens
       the dialog; `addContribution` unchanged; planner output for an existing
       dated goal unchanged
@@ -210,7 +209,7 @@ Test plan (vitest, node default, `// @vitest-environment jsdom` per file for
 component tests, under `test/features/household/`):
 
 - Update `goal-item-list.test.tsx`: card layout, trash, modal opens, no inline
-  form, row-cap scroll container.
+  form, payment-cap scroll container.
 - New `record-payment-dialog.test.tsx` (jsdom): validation, submit payload,
   paid-by picker gating.
 - Update `goal-detail.test.tsx` and `goal-detail-parts.test.tsx`: tabs, default
@@ -234,7 +233,7 @@ component tests, under `test/features/household/`):
 ## Open questions
 
 - [x] Q1: DEFERRED to follow-up slice 198b. Migrations need separate owner approval (AGENTS 5). This slice ships the card layout (title left, `paid / budget` then trash right) with no description line, no migration, no schema/action change. The `Item description (data)` section and its acceptance items move to 198b. — Owner: Clarence, resolved 2026-11-25
-- [x] Q2: Cap of 5 (`GOAL_ITEM_VISIBLE_ROWS`), scroll beyond, rows keyboard reachable. — resolved 2026-11-25
+- [x] Q2: Cap of 5, now on payment rows in the accordion (`GOAL_ITEM_PAYMENT_VISIBLE_ROWS`) instead of item rows; rows keyboard reachable. — resolved 2026-11-25, amended 2026-11-27 per owner
 - [x] Q3: Default tab Budget items when any item exists, else Savings. — resolved 2026-11-25
 - [x] Q4: Savings tab lists past contributions (existing data/components) and has a visible primary `Record saving` button opening the existing add-contribution dialog; the old hidden `Add to goal` trigger is removed. — resolved 2026-11-25
 
