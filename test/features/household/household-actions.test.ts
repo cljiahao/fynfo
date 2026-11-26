@@ -97,6 +97,7 @@ describe('household-actions — getHousehold', () => {
       createdAt: '2026-06-26',
       memberCount: 1,
       memberIds: [USER_ID],
+      memberNames: {},
       userId: USER_ID,
       locked: true,
     });

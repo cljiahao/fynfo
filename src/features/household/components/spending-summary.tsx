@@ -34,7 +34,11 @@ export function SpendingSummary({
       ...entries.map((entry) => entry.userId),
     ]),
   ];
-  const { label, colorIndex } = buildMemberLabels(roster, selfId);
+  const { label, colorIndex } = buildMemberLabels(
+    roster,
+    selfId,
+    household?.memberNames
+  );
   const summary = summarizeSpending(entries, roster);
   const owes = (from: string) =>
     from === selfId ? 'You owe' : `${label(from)} owes`;

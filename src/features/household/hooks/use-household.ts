@@ -29,6 +29,7 @@ import {
   getHousehold,
   unlockHousehold,
 } from '../actions/household-actions';
+import { setMemberDisplayName } from '../actions/member-name-actions';
 import {
   addSpending,
   createSpace,
@@ -90,6 +91,14 @@ export function useUnlockHousehold() {
       void refreshQueriesAfterMutation(qc, SPACES_KEY);
       void refreshPlannerCommitment(qc);
     },
+  });
+}
+
+export function useSetMemberName() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => setMemberDisplayName({ name }),
+    onSuccess: () => refreshQueriesAfterMutation(qc, HOUSEHOLD_KEY),
   });
 }
 

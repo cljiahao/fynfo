@@ -46,7 +46,8 @@ to read when everyone is a number.
 - `actions/member-name-actions.ts`: `setMemberDisplayName(input)` validates with Zod (trimmed,
   1 to 40 chars), seals with `encryptPayload(name, kh)`, calls the RPC. Errors are opaque.
 - `getHousehold` selects `display_name` with the roster and, when K_h is in the session, returns
-  decrypted `memberNames` (a name that fails to decrypt is dropped, not thrown).
+  decrypted `memberNames` (a name that fails to decrypt is dropped, not thrown, so the caller is
+  re-seeded with the default name, e.g. after a future K_h rotation).
 - Default: when K_h is available and the caller's row has no name, `getHousehold` seals and saves
   the auth `user_metadata.full_name` (fallback: email local part, as in the user menu), truncated to
   40 chars. Best effort: any failure is swallowed so household load and unlock never break.

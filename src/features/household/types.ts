@@ -11,6 +11,8 @@ export interface HouseholdSummary {
   /** Roster user ids in a stable order, with the caller's own id in `userId`. */
   memberIds: string[];
   userId: string;
+  /** Decrypted display names by user id; empty while locked or when none are set. */
+  memberNames: Record<string, string>;
   /** True when the household key is not in the session (needs unlock). */
   locked: boolean;
 }

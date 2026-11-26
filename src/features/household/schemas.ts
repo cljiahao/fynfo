@@ -7,6 +7,12 @@ export const createHouseholdSchema = z.object({
   name: z.string().trim().min(1).max(80),
 });
 
+export const MEMBER_NAME_MAX = 40;
+
+export const memberDisplayNameSchema = z.object({
+  name: z.string().trim().min(1).max(MEMBER_NAME_MAX),
+});
+
 export const acceptInviteSchema = z.object({
   // base64url secret minted by generateInviteSecret (32 bytes -> 43 chars).
   secret: z

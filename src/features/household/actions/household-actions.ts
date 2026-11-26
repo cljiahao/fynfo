@@ -17,6 +17,11 @@ import {
 import { parseOrThrow } from '@/lib/validation/parse-or-throw';
 import { randomUUID } from 'crypto';
 import { INVITE_TTL_HOURS } from '../constants';
+import {
+  decryptMemberNames,
+  seedOwnDisplayName,
+  type RosterRow,
+} from '../lib/member-names';
 import { acceptInviteSchema, createHouseholdSchema } from '../schemas';
 import type {
   AcceptInviteResult,
@@ -96,23 +101,28 @@ export async function getHousehold(): Promise<HouseholdSummary | null> {
 
   const { data: roster, error: rosterError } = await supabase
     .from('household_members')
-    .select('user_id')
+    .select('user_id, display_name')
     .eq('household_id', row.households.id);
   throwIfSupabaseError(rosterError, 'household roster read');
+  const members = (roster ?? []) as RosterRow[];
 
   // Lock state from the session key (cookie check, no DEK needed) — so the page
   // distinguishes "locked" from a genuine read error instead of inferring it.
   const kh = await getHouseholdKhSession(userId);
+  const memberNames = kh ? decryptMemberNames(members, kh) : {};
+  if (kh && !memberNames[userId]) {
+    const seeded = await seedOwnDisplayName(supabase, kh);
+    if (seeded) memberNames[userId] = seeded;
+  }
 
   return {
     id: row.households.id,
     name: row.households.name,
     role: row.role,
     createdAt: row.households.created_at,
-    memberCount: (roster ?? []).length,
-    memberIds: ((roster ?? []) as { user_id: string }[])
-      .map((m) => m.user_id)
-      .sort(),
+    memberCount: members.length,
+    memberIds: members.map((m) => m.user_id).sort(),
+    memberNames,
     userId,
     locked: kh === null,
   };

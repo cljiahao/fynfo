@@ -381,7 +381,7 @@ function EntryList({ entries }: { entries: SharedSpendingEntry[] }) {
           </span>
           <span className="flex shrink-0 items-center gap-2">
             <span className="text-muted-foreground text-xs">
-              {entry.isSelf ? 'You' : label(entry.userId)}
+              {label(entry.userId)}
             </span>
             <span className="tabular-nums">
               {mask(formatSGD(entry.amount))}

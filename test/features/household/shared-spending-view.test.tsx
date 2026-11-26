@@ -343,6 +343,26 @@ describe('row labels', () => {
     expect(new Set(labels).size).toBe(2);
   });
 
+  it("shows the caller's own name on their rows", async () => {
+    householdActions.getHousehold.mockResolvedValue({
+      memberIds: ['me'],
+      memberNames: { me: 'Clarence' },
+      userId: 'me',
+    });
+    mount(twins);
+    expect((await screen.findAllByText('Clarence')).length).toBe(2);
+  });
+
+  it('falls back to You when the caller has no name', async () => {
+    householdActions.getHousehold.mockResolvedValue({
+      memberIds: ['me'],
+      memberNames: {},
+      userId: 'me',
+    });
+    mount(twins);
+    expect((await screen.findAllByText('You')).length).toBe(2);
+  });
+
   it('carries no amount when amounts are hidden', () => {
     visibility.hidden = true;
     mount(twins);

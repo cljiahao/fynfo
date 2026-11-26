@@ -21,6 +21,7 @@ import { HouseholdPlanSummary } from './household-plan-summary';
 import { HouseholdSetup } from './household-setup';
 import { HouseholdSkeleton } from './household-skeleton';
 import { InviteMemberDialog } from './invite-member-dialog';
+import { MemberNameField } from './member-name-field';
 import { PlannerSplitEditor } from './planner-split-editor';
 
 interface HouseholdOverviewProps {
@@ -110,6 +111,11 @@ export function HouseholdOverview({
 
         {!locked && (
           <>
+            <MemberNameField
+              current={
+                household.data.memberNames?.[household.data.userId] ?? ''
+              }
+            />
             {goals.isLoading && <HouseholdSkeleton />}
             {goals.isError && (
               <div className="rounded-xl border border-dashed py-14 text-center">

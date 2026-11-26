@@ -1,7 +1,7 @@
 /**
  * Display labels for household members. The roster carries user ids only, so a
- * member shows as "Member N" unless a name is supplied; the caller is always
- * "You". Numbers and colours follow each user's position in the sorted roster,
+ * member shows as "Member N" unless a name is supplied; the caller shows their
+ * own name, else "You". Numbers and colours follow each user's position in the sorted roster,
  * the same for every viewer, so one person is the same Member N to everyone
  * (the caller keeps their number, so another member's number can skip it) and a
  * label never shifts when someone joins a goal.
@@ -24,15 +24,15 @@ export function buildMemberLabels(
 ): MemberLabels {
   const roster = [...new Set(rosterIds)].sort();
   const label = (userId: string): string => {
-    if (userId === selfId) return 'You';
     const name = names[userId]?.trim();
     if (name) return name;
+    if (userId === selfId) return 'You';
     const index = roster.indexOf(userId);
     return index === -1 ? 'Member' : `Member ${index + 1}`;
   };
   const initials = (userId: string): string => {
-    if (userId === selfId) return 'Y';
     const text = label(userId);
+    if (text === 'You') return 'Y';
     if (text === 'Member') return 'M';
     if (/^Member \d+$/.test(text)) return `M${text.slice(7)}`;
     return text

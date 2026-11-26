@@ -34,6 +34,9 @@ vi.mock('@/features/household/hooks/use-household-plan', () => ({
 vi.mock('@/features/household/components/goal-list', () => ({
   GoalList: () => <div>Goal list</div>,
 }));
+vi.mock('@/features/household/components/member-name-field', () => ({
+  MemberNameField: () => null,
+}));
 vi.mock('@/features/household/components/invite-member-dialog', () => ({
   InviteMemberDialog: () => <div>Invite</div>,
 }));

@@ -48,6 +48,22 @@ describe('buildMemberLabels', () => {
     expect(labels.colorIndex('zzz')).toBe(4);
   });
 
+  it('shows the caller their own name, keeping You as the fallback', () => {
+    const labels = buildMemberLabels(roster, 'me', { me: 'Clarence Tan' });
+    expect(labels.label('me')).toBe('Clarence Tan');
+    expect(labels.initials('me')).toBe('CT');
+    expect(buildMemberLabels(roster, 'me', { me: '  ' }).label('me')).toBe(
+      'You'
+    );
+  });
+
+  it('uses other members names and keeps numbering for the unnamed', () => {
+    const labels = buildMemberLabels(roster, 'me', { a: 'Alex' });
+    expect(labels.label('a')).toBe('Alex');
+    expect(labels.initials('a')).toBe('A');
+    expect(labels.label('b')).toBe('Member 2');
+  });
+
   it('derives initials', () => {
     const labels = buildMemberLabels(roster, 'me');
     expect(labels.initials('me')).toBe('Y');
