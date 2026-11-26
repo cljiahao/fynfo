@@ -19,20 +19,25 @@ export function GoalMembers({ goal }: { goal: HouseholdGoal }) {
   const join = useJoinGoal();
   const leave = useLeaveGoal();
   const selfId = household?.userId;
-  const isMember = selfId !== undefined && goal.memberIds.includes(selfId);
+  // A goal without membership rows is open to the whole household, and the first
+  // row would lock everyone else out of it, so it offers neither Join nor Leave.
+  const open = goal.memberIds.length === 0;
+  const memberIds = open ? (household?.memberIds ?? []) : goal.memberIds;
+  const isMember = selfId !== undefined && memberIds.includes(selfId);
   const pending = join.isPending || leave.isPending;
   const showJoin =
+    !open &&
     selfId !== undefined &&
     !isMember &&
-    goal.memberIds.length < GOAL_MEMBER_CAP;
-  const showLeave = isMember && goal.memberIds.length > 1;
+    memberIds.length < GOAL_MEMBER_CAP;
+  const showLeave = !open && isMember && memberIds.length > 1;
 
-  if (goal.memberIds.length === 0 && !showJoin) return null;
+  if (memberIds.length === 0) return null;
 
   return (
     <div className="relative z-10 flex items-center justify-between gap-2">
       <ul className="flex items-center -space-x-1.5" aria-label="Goal members">
-        {goal.memberIds.map((userId) => (
+        {memberIds.map((userId) => (
           <li
             key={userId}
             title={label(userId)}

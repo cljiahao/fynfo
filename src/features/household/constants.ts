@@ -18,12 +18,13 @@ export const PERSON_COLORS = {
   partner: { fill: 'fill-chart-4', dot: 'bg-chart-4' },
 } as const;
 
-/** One colour per goal member (a goal keeps at most four), in roster order; literal classes so Tailwind sees them. */
+/** One colour per household member (at most four), in roster order, then a muted slot for ids no longer on the roster; literal classes so Tailwind sees them. */
 export const MEMBER_COLORS = [
   { fill: 'fill-brand', dot: 'bg-brand' },
   { fill: 'fill-chart-4', dot: 'bg-chart-4' },
   { fill: 'fill-chart-3', dot: 'bg-chart-3' },
   { fill: 'fill-chart-6', dot: 'bg-chart-6' },
+  { fill: 'fill-muted-foreground', dot: 'bg-muted-foreground' },
 ] as const;
 
 /** Lets the Spending tab header action focus the quick-add amount field. */
@@ -100,10 +101,10 @@ export const BUDGET_BAR_COLORS = {
 /** Literal classes so Tailwind sees them: `base` is the unpaid part, `paid` the shaded paid part. */
 export const ITEM_BAR_FILLS = [
   { base: 'fill-chart-1/35', paid: 'fill-chart-1', dot: 'bg-chart-1' },
-  { base: 'fill-chart-3/35', paid: 'fill-chart-3', dot: 'bg-chart-3' },
+  { base: 'fill-chart-2/35', paid: 'fill-chart-2', dot: 'bg-chart-2' },
   { base: 'fill-chart-3/35', paid: 'fill-chart-3', dot: 'bg-chart-3' },
   { base: 'fill-chart-4/35', paid: 'fill-chart-4', dot: 'bg-chart-4' },
-  { base: 'fill-chart-5/35', paid: 'fill-chart-6', dot: 'bg-chart-6' },
+  { base: 'fill-chart-5/35', paid: 'fill-chart-5', dot: 'bg-chart-5' },
   { base: 'fill-chart-6/35', paid: 'fill-chart-6', dot: 'bg-chart-6' },
 ] as const;
 

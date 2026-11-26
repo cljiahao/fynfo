@@ -67,11 +67,11 @@ describe('Paid by picker', () => {
   it('lists household members and submits the changed payer id', async () => {
     mocks.memberIds = [SELF, B, C];
     renderDialog(payment(B));
-    expect(screen.getByRole('button', { name: 'Member 1' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Member 2' })).toHaveAttribute(
       'aria-pressed',
       'true'
     );
-    expect(screen.getByRole('button', { name: 'Member 2' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Member 3' })).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: 'You' }));
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(mocks.mutate.mock.calls[0][0]).toMatchObject({ payerUserId: SELF });
@@ -80,8 +80,8 @@ describe('Paid by picker', () => {
   it('limits the choices to the goal members when the goal has any', () => {
     mocks.memberIds = [SELF, B, C];
     renderDialog(payment(SELF), [SELF, C]);
-    expect(screen.getByRole('button', { name: 'Member 2' })).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'Member 1' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Member 3' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Member 2' })).toBeNull();
   });
 
   it('is hidden and omits payerUserId for a one-member household', async () => {

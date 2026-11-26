@@ -59,6 +59,13 @@ describe('GoalMembers', () => {
     expect(screen.queryByRole('button', { name: 'Join this goal' })).toBeNull();
   });
 
+  it('shows the whole household and no controls for a goal without members', () => {
+    render(<GoalMembers goal={goalWith([])} />);
+    expect(screen.getByText('You')).toBeInTheDocument();
+    expect(screen.getByText('Member 2')).toBeInTheDocument();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
   it('toasts an opaque message when joining fails', async () => {
     mocks.join.mockImplementation(
       (_id: string, options: { onError: () => void }) => options.onError()
