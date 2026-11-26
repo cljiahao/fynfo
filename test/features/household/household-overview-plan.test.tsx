@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { HouseholdOverview } from '@/features/household/components/household-overview';
+import { HOUSEHOLD_MEMBER_CAP } from '@/features/household/constants';
 import {
   computeHouseholdPlan,
   type HouseholdPlanInput,
@@ -75,7 +76,7 @@ beforeEach(() => {
     locked: false,
     role: 'member',
     name: 'Home',
-    memberCount: 2,
+    memberCount: HOUSEHOLD_MEMBER_CAP,
   };
   state.plan = { data: input };
 });
@@ -185,7 +186,7 @@ describe('household overview plan summary', () => {
     expect(screen.getByText('Goal list')).toBeInTheDocument();
   });
 
-  it('keeps the split editor on the page for a two-member household', () => {
+  it('keeps the split editor on the page for a full household', () => {
     render(<HouseholdOverview />);
     expect(screen.getByText('Split editor')).toBeInTheDocument();
   });
