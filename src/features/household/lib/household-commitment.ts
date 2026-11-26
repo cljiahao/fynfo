@@ -1,3 +1,5 @@
+import { goalMemberIds, goalPctsFor } from '../split-utils';
+
 type PctMap = Record<string, number>;
 
 export interface CommitmentSplit {
@@ -18,16 +20,25 @@ export function defaultShare(split: CommitmentSplit, userId: string): number {
   return pctToFraction(split.members, userId) ?? DEFAULT_PCT / 100;
 }
 
-/** Caller's fraction of one goal: its override when present, else the default. */
+/**
+ * Caller's fraction of one goal. A goal's members carry it: a stored override
+ * wins, otherwise the share is even across them. A goal with no membership
+ * rows covers the whole household, and a member who is not on the goal
+ * carries nothing for it.
+ */
 export function goalShare(
   split: CommitmentSplit,
   goalId: string,
-  userId: string
+  userId: string,
+  goalMembers: readonly string[] = []
 ): number {
-  return (
-    pctToFraction(split.goalOverrides[goalId], userId) ??
-    defaultShare(split, userId)
-  );
+  const members = goalMemberIds(Object.keys(split.members), goalMembers);
+  if (!members.includes(userId)) return 0;
+  const override = split.goalOverrides[goalId];
+  const pct = override
+    ? (override[userId] ?? 0)
+    : (goalPctsFor(undefined, members)[userId] ?? 0);
+  return pct / 100;
 }
 
 /** Caller's fraction of one budget: its override when present, else the default. */

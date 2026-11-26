@@ -15,7 +15,6 @@ export const UNDO_DELAY_MS = 6000;
 /** Identity colours; identity also carries a text label, never colour alone. Literal classes so Tailwind sees them. */
 export const PERSON_COLORS = {
   you: { fill: 'fill-brand', dot: 'bg-brand' },
-  partner: { fill: 'fill-chart-4', dot: 'bg-chart-4' },
 } as const;
 
 /** One colour per household member (at most four), in roster order, then a muted slot for ids no longer on the roster; literal classes so Tailwind sees them. */

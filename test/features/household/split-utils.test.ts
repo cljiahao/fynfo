@@ -2,7 +2,10 @@ import {
   distributePct,
   goalMemberIds,
   goalPctsFor,
-  overrideFor,
+  parsePctMap,
+  pctMapToText,
+  pctRemainder,
+  seedPctsFor,
 } from '@/features/household/split-utils';
 import type { PlannerSplit } from '@/features/household/types';
 import { describe, expect, it } from 'vitest';
@@ -77,48 +80,54 @@ describe('goalPctsFor', () => {
   });
 });
 
-describe('overrideFor', () => {
-  const split = (members: string[]): PlannerSplit => ({
-    members: distributePct(members),
-    goalOverrides: {},
-    budgetOverrides: {},
-    isDefault: true,
-    userId: 'a',
+describe('parsePctMap', () => {
+  it.each([1, 2, 3, 4])('accepts an even split of %i members', (count) => {
+    const ids = IDS.slice(0, count);
+    const text = pctMapToText(distributePct(ids), ids);
+    const parsed = parsePctMap(text, ids);
+    expect(parsed).not.toBeNull();
+    expect(sum(parsed ?? {})).toBe(100);
   });
 
-  it('is null when the caller has nobody to split with', () => {
-    expect(overrideFor(split(['a']), 50)).toBeNull();
+  it('rejects totals other than 100 and invalid entries', () => {
+    expect(parsePctMap({ a: '60', b: '30' }, ['a', 'b'])).toBeNull();
+    expect(parsePctMap({ a: '60', b: '50' }, ['a', 'b'])).toBeNull();
+    expect(parsePctMap({ a: '50', b: '' }, ['a', 'b'])).toBeNull();
+    expect(parsePctMap({ a: '12.5', b: '87.5' }, ['a', 'b'])).toBeNull();
   });
+});
 
-  it('keeps the two-member shape', () => {
-    expect(overrideFor(split(['a', 'b']), 30)).toEqual({ a: 30, b: 70 });
+describe('pctRemainder', () => {
+  it('shows what is left, negative when over', () => {
+    expect(pctRemainder({ a: '30', b: '20', c: '' }, ['a', 'b', 'c'])).toBe(50);
+    expect(pctRemainder({ a: '80', b: '40' }, ['a', 'b'])).toBe(-20);
   });
+});
 
-  it.each([
-    [3, 40],
-    [4, 33],
-    [4, 0],
-    [3, 100],
-  ])('sums to 100 for %i members at %i percent', (count, pct) => {
-    const result = overrideFor(split(IDS.slice(0, count)), pct);
-    expect(result).not.toBeNull();
-    expect(result?.a).toBe(pct);
-    expect(sum(result ?? {})).toBe(100);
-  });
+describe('seedPctsFor', () => {
+  const split = (members: Record<string, number>, isDefault: boolean) =>
+    ({
+      members,
+      goalOverrides: {},
+      budgetOverrides: {},
+      isDefault,
+      userId: 'a',
+    }) as PlannerSplit;
 
-  it('spreads the remainder across the other members only', () => {
-    expect(overrideFor(split(IDS.slice(0, 4)), 40)).toEqual({
-      a: 40,
-      b: 20,
-      c: 20,
-      d: 20,
+  it('uses the saved household default when it covers the goal members', () => {
+    expect(seedPctsFor(split({ a: 70, b: 30 }, false), ['a', 'b'])).toEqual({
+      a: 70,
+      b: 30,
     });
   });
 
-  it('can cover just the goal members', () => {
-    expect(overrideFor(split(IDS.slice(0, 4)), 50, ['a', 'c'])).toEqual({
+  it('falls back to an even share otherwise', () => {
+    expect(seedPctsFor(split({ a: 70, b: 30 }, true), ['a', 'b'])).toEqual({
       a: 50,
-      c: 50,
+      b: 50,
+    });
+    expect(seedPctsFor(split({ a: 70, b: 30 }, false), ['a'])).toEqual({
+      a: 100,
     });
   });
 });

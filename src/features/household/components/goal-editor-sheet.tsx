@@ -40,7 +40,14 @@ import {
 } from '../hooks/use-planner-split';
 import { computeGoalDelta, type DraftItem } from '../lib/goal-delta';
 import { saveGoalSchema } from '../schemas';
-import { myPctFor, overrideFor, parsePct } from '../split-utils';
+import {
+  goalMemberIds,
+  goalPctsFor,
+  parsePctMap,
+  pctMapToText,
+  seedPctsFor,
+  type PctText,
+} from '../split-utils';
 import type { HouseholdGoal } from '../types';
 import { GoalSplitField } from './goal-split-override';
 
@@ -168,7 +175,7 @@ function GoalEditorForm({
   const save = useSaveGoal();
   const plannerSplit = usePlannerSplit();
   const saveSplit = useSetPlannerSplit();
-  const [splitEdit, setSplitEdit] = useState<string | null>(null);
+  const [splitEdit, setSplitEdit] = useState<PctText | null>(null);
   const form = useForm<FormValues>({ defaultValues: seed(goal) });
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -181,12 +188,21 @@ function GoalEditorForm({
   const [failed, setFailed] = useState(false);
   const [template, setTemplate] = useState('');
   const splitData = plannerSplit.data;
-  const splitText =
+  const splitMemberIds = splitData
+    ? goalMemberIds(Object.keys(splitData.members).sort(), goal?.memberIds)
+    : [];
+  const splitText: PctText =
     splitEdit ??
     (splitData
-      ? String(myPctFor(splitData, splitData.goalOverrides[goalId]))
-      : '');
-  const splitPct = parsePct(splitText);
+      ? pctMapToText(
+          splitData.goalOverrides[goalId] ??
+            (goal
+              ? goalPctsFor(undefined, splitMemberIds)
+              : seedPctsFor(splitData, splitMemberIds)),
+          splitMemberIds
+        )
+      : {});
+  const splitPcts = parsePctMap(splitText, splitMemberIds);
   const hasOverride = splitData?.goalOverrides[goalId] !== undefined;
   const [costOpen, setCostOpen] = useState(() => (goal?.items.length ?? 0) > 0);
   // null until the user toggles it, so an override that loads late still opens it.
@@ -214,7 +230,7 @@ function GoalEditorForm({
 
   const review = form.handleSubmit((values) => {
     if (!canReveal()) return;
-    if (splitData && splitPct === null) {
+    if (splitData && splitPcts === null) {
       setErrors({ split: 'Enter a whole number from 0 to 100' });
       setSplitChoice(true);
       return;
@@ -238,8 +254,7 @@ function GoalEditorForm({
 
   // A new goal is seeded with the default split; an edited one only when changed.
   const persistSplit = async () => {
-    const override =
-      splitData && splitPct !== null ? overrideFor(splitData, splitPct) : null;
+    const override = splitData ? splitPcts : null;
     if (!override || (goal && splitEdit === null)) return;
     try {
       await saveSplit.mutateAsync({ goalId, override });
@@ -570,7 +585,11 @@ function GoalEditorForm({
             onValueChange={(value) => setSplitChoice(value.includes('split'))}
           >
             <Disclosure value="split" title="Different split">
-              <GoalSplitField value={splitText} onChange={setSplitEdit} />
+              <GoalSplitField
+                memberIds={splitMemberIds}
+                value={splitText}
+                onChange={setSplitEdit}
+              />
               <FieldError id="goal-split-error">{errors.split}</FieldError>
             </Disclosure>
           </Accordion>

@@ -3,11 +3,13 @@
 import { useAmountVisibility } from '@/features/privacy';
 
 import { formatSGD } from '@/lib/utils/currency';
-import { PERSON_COLORS } from '../constants';
+import { MEMBER_COLORS } from '../constants';
+import { useHousehold } from '../hooks/use-household';
 import { summarizeSpending } from '../lib/shared-spending';
+import { buildMemberLabels } from '../member-labels';
 import type { SharedSpendingEntry } from '../types';
 
-/** Total, who paid, even-split settle-up and top categories for a set of entries. */
+/** Total, who paid, equal-share settle-up and top categories for a set of entries. */
 export function SpendingSummary({
   entries,
   emptyLabel,
@@ -19,44 +21,58 @@ export function SpendingSummary({
   showCategories?: boolean;
 }) {
   const { mask } = useAmountVisibility();
+  const { data: household } = useHousehold();
   if (entries.length === 0)
     return <p className="text-muted-foreground text-sm">{emptyLabel}</p>;
 
-  const summary = summarizeSpending(entries);
+  // The caller is read off the entries so labels hold before the roster loads.
+  const selfId =
+    household?.userId ?? entries.find((entry) => entry.isSelf)?.userId;
+  const roster = [
+    ...new Set([
+      ...(household?.memberIds ?? []),
+      ...entries.map((entry) => entry.userId),
+    ]),
+  ];
+  const { label, colorIndex } = buildMemberLabels(roster, selfId);
+  const summary = summarizeSpending(entries, roster);
+  const owes = (name: string) => (name === 'You' ? 'You owe' : `${name} owes`);
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="text-2xl font-semibold tabular-nums">
           {mask(formatSGD(summary.total))}
         </span>
-        <span className="text-muted-foreground flex gap-3 text-xs">
-          <span className="flex items-center gap-1.5">
-            <span
-              className={`${PERSON_COLORS.you.dot} size-2 rounded-full`}
-              aria-hidden="true"
-            />
-            You {mask(formatSGD(summary.youPaid))}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span
-              className={`${PERSON_COLORS.partner.dot} size-2 rounded-full`}
-              aria-hidden="true"
-            />
-            Partner {mask(formatSGD(summary.partnerPaid))}
-          </span>
+        <span className="text-muted-foreground flex flex-wrap gap-3 text-xs">
+          {summary.members.map((member) => (
+            <span key={member.userId} className="flex items-center gap-1.5">
+              <span
+                className={`${MEMBER_COLORS[colorIndex(member.userId)].dot} size-2 rounded-full`}
+                aria-hidden="true"
+              />
+              {label(member.userId)} {mask(formatSGD(member.paid))}
+            </span>
+          ))}
         </span>
       </div>
       <div className="space-y-0.5">
-        <p className="text-sm font-medium">
-          {summary.settle === null
-            ? 'Nothing to settle'
-            : summary.settle.owedBy === 'partner'
-              ? `Partner owes you ${mask(formatSGD(summary.settle.amount))}`
-              : `You owe partner ${mask(formatSGD(summary.settle.amount))}`}
-        </p>
+        {summary.settlements.length === 0 ? (
+          <p className="text-sm font-medium">Nothing to settle</p>
+        ) : (
+          summary.settlements.map((transfer) => (
+            <p
+              key={`${transfer.from}-${transfer.to}`}
+              className="text-sm font-medium"
+            >
+              {owes(label(transfer.from))}{' '}
+              {transfer.to === selfId ? 'you' : label(transfer.to)}{' '}
+              {mask(formatSGD(transfer.amount))}
+            </p>
+          ))
+        )}
         <p className="text-muted-foreground text-xs">
-          Everything shared is split 50/50. Whoever paid more is owed the
-          difference.
+          Everything shared is split equally between members. Whoever paid more
+          than their share is owed the difference.
         </p>
       </div>
       {showCategories && (

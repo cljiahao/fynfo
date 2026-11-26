@@ -23,7 +23,7 @@ import {
   suggestedBudget,
   type CategoryOption,
 } from '../lib/spending-stats';
-import { myPctFor, overrideFor, parsePct } from '../split-utils';
+import { parsePctMap, pctMapToText, type PctText } from '../split-utils';
 import type { SharedSpendingEntry, SpendingBudget } from '../types';
 import { CategoryPicker } from './category-picker';
 import { SplitPicker } from './split-picker';
@@ -60,19 +60,19 @@ export function BudgetField({
   const [error, setError] = useState('');
   const plannerSplit = usePlannerSplit();
   const saveSplit = useSetPlannerSplit();
-  const [splitEdit, setSplitEdit] = useState<string | null>(null);
+  const [splitEdit, setSplitEdit] = useState<PctText | null>(null);
   const splitData = plannerSplit.data;
-  const splitText =
+  const splitMemberIds = splitData ? Object.keys(splitData.members).sort() : [];
+  const splitText: PctText =
     splitEdit ??
     (splitData
-      ? String(
-          myPctFor(
-            splitData,
-            existing ? splitData.budgetOverrides[existing.id] : undefined
-          )
+      ? pctMapToText(
+          (existing ? splitData.budgetOverrides[existing.id] : undefined) ??
+            splitData.members,
+          splitMemberIds
         )
-      : '');
-  const splitPct = parsePct(splitText);
+      : {});
+  const splitPcts = parsePctMap(splitText, splitMemberIds);
   const category = fixedCategory ?? typedCategory;
   const suggestion = category.trim()
     ? suggestedBudget(entries, category, currentMonth)
@@ -85,7 +85,7 @@ export function BudgetField({
     const value = parseFloat(amount);
     if (!category.trim()) return setError('Enter a category');
     if (!value || value <= 0) return setError('Enter an amount above 0');
-    if (splitData && splitPct === null) return setError('Enter a valid split');
+    if (splitData && splitPcts === null) return setError('Enter a valid split');
     setError('');
     setBudget.mutate(
       {
@@ -96,10 +96,7 @@ export function BudgetField({
       {
         onSuccess: async (budgetId) => {
           // A new budget is seeded with the default split; an edited one only when changed.
-          const override =
-            splitData && splitPct !== null
-              ? overrideFor(splitData, splitPct)
-              : null;
+          const override = splitData ? splitPcts : null;
           if (override && (!existing || splitEdit !== null))
             try {
               await saveSplit.mutateAsync({ budgetId, override });
@@ -190,7 +187,8 @@ export function BudgetField({
       </div>
       {splitData && (
         <SplitPicker
-          label="Your share of this budget"
+          label="Who shares this budget"
+          memberIds={splitMemberIds}
           value={splitText}
           onChange={setSplitEdit}
         />

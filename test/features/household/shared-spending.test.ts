@@ -28,16 +28,18 @@ beforeEach(() => {
   setSupabase();
 });
 
+const paidBy = (summary: ReturnType<typeof summarizeSpending>) =>
+  Object.fromEntries(summary.members.map((m) => [m.userId, m.paid]));
+
 describe('summarizeSpending', () => {
   it('totals by payer and category, largest category first', () => {
     const summary = summarizeSpending([
-      { category: 'Groceries', amount: 80.1, isSelf: true },
-      { category: 'Utilities', amount: 120, isSelf: false },
-      { category: 'Groceries', amount: 60.2, isSelf: false },
+      { category: 'Groceries', amount: 80.1, userId: 'a' },
+      { category: 'Utilities', amount: 120, userId: 'b' },
+      { category: 'Groceries', amount: 60.2, userId: 'b' },
     ]);
     expect(summary.total).toBe(260.3);
-    expect(summary.youPaid).toBe(80.1);
-    expect(summary.partnerPaid).toBe(180.2);
+    expect(paidBy(summary)).toEqual({ a: 80.1, b: 180.2 });
     expect(summary.byCategory).toEqual([
       { category: 'Groceries', total: 140.3 },
       { category: 'Utilities', total: 120 },
@@ -46,9 +48,9 @@ describe('summarizeSpending', () => {
 
   it('merges case and whitespace variants under the first-seen casing', () => {
     const summary = summarizeSpending([
-      { category: 'Groceries', amount: 10, isSelf: true },
-      { category: ' groceries ', amount: 5, isSelf: true },
-      { category: 'GROCERIES', amount: 1, isSelf: false },
+      { category: 'Groceries', amount: 10, userId: 'a' },
+      { category: ' groceries ', amount: 5, userId: 'a' },
+      { category: 'GROCERIES', amount: 1, userId: 'b' },
     ]);
     expect(summary.byCategory).toEqual([{ category: 'Groceries', total: 16 }]);
   });
@@ -56,31 +58,71 @@ describe('summarizeSpending', () => {
   it('says who owes whom to split evenly, to the cent', () => {
     expect(
       summarizeSpending([
-        { category: 'Rent', amount: 100, isSelf: true },
-        { category: 'Food', amount: 40, isSelf: false },
-      ]).settle
-    ).toEqual({ owedBy: 'partner', amount: 30 });
+        { category: 'Rent', amount: 100, userId: 'a' },
+        { category: 'Food', amount: 40, userId: 'b' },
+      ]).settlements
+    ).toEqual([{ from: 'b', to: 'a', amount: 30 }]);
     expect(
       summarizeSpending([
-        { category: 'Food', amount: 0.1, isSelf: true },
-        { category: 'Food', amount: 0.2, isSelf: false },
-      ]).settle
-    ).toEqual({ owedBy: 'you', amount: 0.05 });
+        { category: 'Food', amount: 0.1, userId: 'a' },
+        { category: 'Food', amount: 0.2, userId: 'b' },
+      ]).settlements
+    ).toEqual([{ from: 'a', to: 'b', amount: 0.05 }]);
   });
+
+  it('settles across three members and balances to zero', () => {
+    const summary = summarizeSpending(
+      [
+        { category: 'Rent', amount: 90, userId: 'a' },
+        { category: 'Food', amount: 30, userId: 'b' },
+      ],
+      ['a', 'b', 'c']
+    );
+    expect(summary.members.map((m) => m.balance)).toEqual([50, -10, -40]);
+    expect(summary.settlements).toEqual([
+      { from: 'c', to: 'a', amount: 40 },
+      { from: 'b', to: 'a', amount: 10 },
+    ]);
+    const cents = (n: number) => Math.round(n * 100);
+    expect(summary.members.reduce((sum, m) => sum + cents(m.balance), 0)).toBe(
+      0
+    );
+    expect(
+      summary.settlements.reduce((sum, t) => sum + cents(t.amount), 0)
+    ).toBe(5000);
+  });
+
+  it.each([2, 3, 4])(
+    'leaves every member at an equal share after %i-way settle-up',
+    (count) => {
+      const ids = ['a', 'b', 'c', 'd'].slice(0, count);
+      const summary = summarizeSpending(
+        [{ category: 'Trip', amount: 100.01, userId: ids[0] }],
+        ids
+      );
+      const net = new Map(summary.members.map((m) => [m.userId, m.balance]));
+      for (const t of summary.settlements) {
+        net.set(t.from, (net.get(t.from) ?? 0) + t.amount);
+        net.set(t.to, (net.get(t.to) ?? 0) - t.amount);
+      }
+      for (const value of net.values()) {
+        expect(Math.abs(value)).toBeLessThan(0.0001);
+      }
+    }
+  );
 
   it('reports nothing to settle when already even or empty', () => {
     expect(
       summarizeSpending([
-        { category: 'Food', amount: 50, isSelf: true },
-        { category: 'Food', amount: 50, isSelf: false },
-      ]).settle
-    ).toBeNull();
+        { category: 'Food', amount: 50, userId: 'a' },
+        { category: 'Food', amount: 50, userId: 'b' },
+      ]).settlements
+    ).toEqual([]);
     expect(summarizeSpending([])).toEqual({
       total: 0,
       byCategory: [],
-      youPaid: 0,
-      partnerPaid: 0,
-      settle: null,
+      members: [],
+      settlements: [],
     });
   });
 
@@ -132,6 +174,7 @@ describe('spending actions', () => {
             category: 'Hotel',
             amount: 640.5,
             note: 'Kyoto',
+            userId: PARTNER_ID,
             isSelf: false,
           },
         ],

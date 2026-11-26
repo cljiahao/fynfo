@@ -2,12 +2,12 @@
 id: '200'
 slug: goal-membership
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-25
 approved: 2026-11-25
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # link to impl PR, set on shipped
+shipped: 2026-11-26 # YYYY-MM-DD, set on impl merge
+impl_pr: 'direct to main: 0004321, 3cade0b, 7e1c20d, 2486423, ccf128b, 7b53b48, de160b3, slice B2 commit' # link to impl PR, set on shipped
 supersedes: # none
 constitution_satisfies:
   - '§1.1'
@@ -171,11 +171,11 @@ none of the layout files.
 - [ ] Any member can add or remove only themself on a goal; a goal always has 1 to 4 members; a
       non-member of the household cannot join a goal.
 - [ ] Existing goals keep both current members after migration (backfill).
-- [ ] No "Partner" or two-person-only wording remains in the listed files (grep clean), and member
+- [x] No "Partner" or two-person-only wording remains in the listed files (grep clean), and member
       names render on goal cards.
-- [ ] N-way split sums to 100 for 1 to 4 members; payer can be any member; settle-up totals
+- [x] N-way split sums to 100 for 1 to 4 members; payer can be any member; settle-up totals
       balance to zero.
-- [ ] The planner deduction for a three-member goal equals the caller's percentage of the monthly
+- [x] The planner deduction for a three-member goal equals the caller's percentage of the monthly
       need.
 - [ ] No SQL on encrypted columns; every new action calls `requireUserId()` then
       `getHouseholdKhSession()`; errors are opaque.

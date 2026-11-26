@@ -21,6 +21,9 @@ const external = vi.hoisted(() => ({
 
 vi.mock('@/features/household/hooks/use-household', () => ({
   useSaveGoal: () => ({ mutate: external.mutate, isPending: false }),
+  useHousehold: () => ({
+    data: { memberIds: ['me', 'partner'], userId: 'me' },
+  }),
 }));
 vi.mock('@/features/household/hooks/use-planner-split', () => ({
   usePlannerSplit: () => ({ data: external.split.current }),
@@ -114,9 +117,9 @@ describe('goal editor disclosures', () => {
 
   it('reopens Different split and shows the error when the share is invalid', async () => {
     external.split.current = split({ g1: { [ME]: 70, [PARTNER]: 30 } });
-    mount(makeGoal());
+    mount(makeGoal({ memberIds: [ME, PARTNER] }));
     const toggle = screen.getByRole('button', { name: 'Different split' });
-    const share = screen.getByLabelText('Your share (%)');
+    const share = screen.getByLabelText('You share (%)');
     await userEvent.clear(share);
     await userEvent.type(share, '150');
     await userEvent.click(toggle);
@@ -196,7 +199,7 @@ describe('goal editor disclosures', () => {
     cleanup();
 
     external.split.current = split({ g1: { [ME]: 70, [PARTNER]: 30 } });
-    mount(makeGoal());
+    mount(makeGoal({ memberIds: [ME, PARTNER] }));
     expect(
       screen.getByRole('button', { name: 'Different split' })
     ).toHaveAttribute('aria-expanded', 'true');

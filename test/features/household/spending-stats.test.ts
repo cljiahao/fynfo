@@ -23,6 +23,7 @@ const entry = (
   category,
   amount,
   note: null,
+  userId: 'me',
   isSelf: true,
 });
 const budget = (category: string, monthlyAmount: number): SpendingBudget => ({

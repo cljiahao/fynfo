@@ -24,7 +24,7 @@ function emptyInput(state: 'none' | 'locked'): HouseholdPlanInput {
 /**
  * Household goals, items and budgets with only the caller's own shares, for the
  * browser to turn into a plan. Personal figures never come in or go out, so the
- * partner's view and the caller's savings stay separate. No household is `none`
+ * other members' views and the caller's savings stay separate. No household is `none`
  * and a locked one is `locked`, so callers render without either.
  */
 export async function getHouseholdPlanInput(): Promise<HouseholdPlanInput> {
@@ -51,7 +51,7 @@ export async function getHouseholdPlanInput(): Promise<HouseholdPlanInput> {
       targetAmount: goal.targetAmount,
       contributed: goal.contributed,
       remaining: goal.remaining,
-      share: goalShare(split, goal.id, caller),
+      share: goalShare(split, goal.id, caller, goal.memberIds),
       items: goal.items.map((item) => ({
         id: item.id,
         name: item.name,

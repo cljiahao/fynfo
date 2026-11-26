@@ -1,41 +1,52 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useId, useState } from 'react';
-import { parsePct } from '../split-utils';
-
-const PRESETS = [
-  { id: 'even', label: '50/50', pct: '50' },
-  { id: 'me', label: 'Just me', pct: '100' },
-  { id: 'partner', label: 'Just partner', pct: '0' },
-] as const;
-
-type PresetId = (typeof PRESETS)[number]['id'] | 'custom';
-
-function presetFor(value: string): PresetId {
-  return PRESETS.find((preset) => preset.pct === value.trim())?.id ?? 'custom';
-}
+import { useMemberLabels } from '../hooks/use-member-labels';
+import {
+  distributePct,
+  parsePctMap,
+  pctMapToText,
+  type PctText,
+} from '../split-utils';
+import { MemberPctFields } from './member-pct-fields';
 
 /**
- * Edits the caller's percentage of one household item. Presets are manual
- * percentages because the partner's salary is not visible, so no income-based
- * split can be offered.
+ * Edits how one household item is split across `memberIds`. The default is an
+ * even split over the members ticked as sharing it; Custom sets a percentage
+ * per member. Presets are manual because members' salaries are not visible,
+ * so no income-based split can be offered.
  */
 export function SplitPicker({
   label,
+  memberIds,
   value,
   onChange,
 }: {
   label: string;
-  /** The caller's percent as typed; blank or out of range is invalid. */
-  value: string;
-  onChange: (value: string) => void;
+  /** Members the item can be split across. */
+  memberIds: readonly string[];
+  /** Percent per member as typed; a member at 0 is not sharing the item. */
+  value: PctText;
+  onChange: (value: PctText) => void;
 }) {
   const labelId = useId();
+  const { label: nameOf } = useMemberLabels();
   const [customOpen, setCustomOpen] = useState(false);
-  const pct = parsePct(value);
-  const selected = customOpen ? 'custom' : presetFor(value);
+  const parsed = parsePctMap(value, memberIds);
+  const sharing = memberIds.filter((id) => Number(value[id] ?? 0) > 0);
+  const evenText = pctMapToText(distributePct(sharing), memberIds);
+  const isEven = memberIds.every((id) => value[id] === evenText[id]);
+  const custom = customOpen || !isEven;
+
+  const toggle = (id: string) => {
+    const next = sharing.includes(id)
+      ? sharing.filter((other) => other !== id)
+      : [...sharing, id];
+    if (next.length === 0) return;
+    setCustomOpen(false);
+    onChange(pctMapToText(distributePct(next), memberIds));
+  };
 
   return (
     <div className="space-y-2" role="group" aria-labelledby={labelId}>
@@ -43,59 +54,48 @@ export function SplitPicker({
         {label}
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        {PRESETS.map((preset) => (
+        {memberIds.map((id) => (
           <Button
-            key={preset.id}
+            key={id}
             type="button"
             size="sm"
-            variant={selected === preset.id ? 'default' : 'outline'}
-            aria-pressed={selected === preset.id}
-            onClick={() => {
-              setCustomOpen(false);
-              onChange(preset.pct);
-            }}
+            variant={sharing.includes(id) ? 'default' : 'outline'}
+            aria-pressed={sharing.includes(id)}
+            onClick={() => toggle(id)}
           >
-            {preset.label}
+            {nameOf(id)}
           </Button>
         ))}
         <Button
           type="button"
           size="sm"
-          variant={selected === 'custom' ? 'default' : 'outline'}
-          aria-pressed={selected === 'custom'}
-          onClick={() => setCustomOpen(true)}
+          variant={custom ? 'default' : 'outline'}
+          aria-pressed={custom}
+          onClick={() => {
+            if (custom) {
+              setCustomOpen(false);
+              onChange(pctMapToText(distributePct(memberIds), memberIds));
+            } else setCustomOpen(true);
+          }}
         >
           Custom
         </Button>
       </div>
-      {selected === 'custom' && (
-        <div className="flex items-center gap-2">
-          <Input
-            aria-label="Your share (%)"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={100}
-            step={1}
-            value={value}
-            aria-invalid={pct === null ? true : undefined}
-            onChange={(event) => onChange(event.target.value)}
-            className="w-24 text-right tabular-nums"
-          />
-          <span className="text-muted-foreground text-sm tabular-nums">
-            Partner: {pct === null ? '-' : 100 - pct}%
-          </span>
-        </div>
-      )}
-      {selected !== 'custom' && pct !== null && (
-        <p className="text-muted-foreground text-sm tabular-nums">
-          You {pct}%, partner {100 - pct}%
-        </p>
-      )}
-      {pct === null && (
-        <p role="alert" className="text-destructive text-sm">
-          Enter a whole number from 0 to 100
-        </p>
+      {custom ? (
+        <MemberPctFields
+          memberIds={memberIds}
+          value={value}
+          onChange={onChange}
+        />
+      ) : (
+        parsed && (
+          <p className="text-muted-foreground text-sm tabular-nums">
+            {memberIds
+              .filter((id) => parsed[id] > 0)
+              .map((id) => `${nameOf(id)} ${parsed[id]}%`)
+              .join(', ')}
+          </p>
+        )
       )}
     </div>
   );

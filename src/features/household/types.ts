@@ -96,6 +96,8 @@ export interface SharedSpendingEntry {
   category: string;
   amount: number;
   note: string | null;
+  /** The member who paid. */
+  userId: string;
   /** True if the current caller paid. */
   isSelf: boolean;
 }

@@ -75,6 +75,7 @@ export async function getSpaces(): Promise<HouseholdSpace[]> {
         category: decryptPayload(row.category, kh),
         amount: Number(decryptPayload(row.amount, kh)),
         note: row.note ? decryptPayload(row.note, kh) : null,
+        userId: row.payer_user_id,
         isSelf: row.payer_user_id === userId,
       });
       entriesBySpace.set(row.space_id, list);

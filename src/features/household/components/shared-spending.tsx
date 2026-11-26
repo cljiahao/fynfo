@@ -19,6 +19,7 @@ import {
   useDeleteSpace,
   useDeleteSpending,
 } from '../hooks/use-household';
+import { useMemberLabels } from '../hooks/use-member-labels';
 import { useSpendingBudgets } from '../hooks/use-spending-budgets';
 import { useUndoableDelete } from '../hooks/use-undoable-delete';
 import { inMonth } from '../lib/shared-spending';
@@ -354,6 +355,7 @@ function QuickAdd({
 }
 
 function EntryList({ entries }: { entries: SharedSpendingEntry[] }) {
+  const { label } = useMemberLabels();
   const { hidden, mask, canReveal } = useAmountVisibility();
   const removeEntry = useDeleteSpending();
   const { request } = useUndoableDelete();
@@ -379,7 +381,7 @@ function EntryList({ entries }: { entries: SharedSpendingEntry[] }) {
           </span>
           <span className="flex shrink-0 items-center gap-2">
             <span className="text-muted-foreground text-xs">
-              {entry.isSelf ? 'You' : 'Partner'}
+              {entry.isSelf ? 'You' : label(entry.userId)}
             </span>
             <span className="tabular-nums">
               {mask(formatSGD(entry.amount))}

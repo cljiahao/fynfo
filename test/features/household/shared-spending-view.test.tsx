@@ -74,6 +74,7 @@ const spaces: HouseholdSpace[] = [
         category: 'Groceries',
         amount: 100,
         note: null,
+        userId: 'me',
         isSelf: true,
       },
       {
@@ -82,6 +83,7 @@ const spaces: HouseholdSpace[] = [
         category: 'Utilities',
         amount: 40,
         note: 'SP',
+        userId: 'other',
         isSelf: false,
       },
       {
@@ -90,6 +92,7 @@ const spaces: HouseholdSpace[] = [
         category: 'Old',
         amount: 999,
         note: null,
+        userId: 'me',
         isSelf: true,
       },
     ],
@@ -158,11 +161,11 @@ it('offers one click to start when nothing is tracked yet', async () => {
   );
 });
 
-it("summarises only this month's household spending with an even-split settle-up", () => {
+it("summarises only this month's household spending with an equal-share settle-up", () => {
   mount(spaces);
   expect(screen.getAllByText(/\$140\.00/).length).toBeGreaterThan(0);
-  expect(screen.getByText(/Partner owes you .*30\.00/)).toBeInTheDocument();
-  expect(screen.getByText(/split 50\/50/)).toBeInTheDocument();
+  expect(screen.getByText(/Member 2 owes you .*30\.00/)).toBeInTheDocument();
+  expect(screen.getByText(/split equally between members/)).toBeInTheDocument();
   expect(screen.queryByText('Old')).toBeNull();
   expect(
     screen.getByRole('heading', { name: 'Japan', level: 3 })
@@ -309,6 +312,7 @@ describe('row labels', () => {
           category: 'Food',
           amount: 12,
           note: null,
+          userId: 'me',
           isSelf: true,
         },
         {
@@ -317,6 +321,7 @@ describe('row labels', () => {
           category: 'Food',
           amount: 34,
           note: null,
+          userId: 'me',
           isSelf: true,
         },
       ],
