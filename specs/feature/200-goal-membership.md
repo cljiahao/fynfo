@@ -7,7 +7,7 @@ author: Claude Code
 created: 2026-11-25
 approved: 2026-11-25
 shipped: 2026-11-26 # YYYY-MM-DD, set on impl merge
-impl_pr: 'direct to main: 0004321, 3cade0b, 7e1c20d, 2486423, ccf128b, 7b53b48, de160b3, 83b6659, 614bd43' # link to impl PR, set on shipped
+impl_pr: 'direct to main: 0004321, 3cade0b, 7e1c20d, 2486423, ccf128b, 7b53b48, de160b3, 83b6659, 614bd43, 6b4bade' # link to impl PR, set on shipped
 supersedes: # none
 constitution_satisfies:
   - '§1.1'
