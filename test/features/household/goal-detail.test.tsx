@@ -49,6 +49,7 @@ vi.mock('@/features/household/actions/goal-actions', () => ({
   saveGoal: vi.fn(),
   updateGoalPayment: vi.fn(),
   updateGoalContribution: vi.fn(),
+  updateGoalItem: vi.fn(),
 }));
 vi.mock('@/features/household/actions/household-actions', () => ({
   getHousehold: vi.fn().mockResolvedValue(null),
@@ -133,6 +134,13 @@ describe('with items', () => {
     expect(screen.getAllByText('Photographer').length).toBeGreaterThan(1);
     expect(screen.getByText(/Member 1 paid .* to Venue/)).toBeInTheDocument();
     expect(screen.getByText(/You added /)).toBeInTheDocument();
+  });
+
+  it('shows the items total against the target on the budget items tab', () => {
+    mount();
+    expect(
+      screen.getByText(/Items total .*11,000\.00 vs target .*10,000\.00/)
+    ).toBeInTheDocument();
   });
 
   it('warns when saved plus still-to-pay is above the target, matching the bar', () => {

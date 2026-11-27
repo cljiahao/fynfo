@@ -9,6 +9,7 @@ export {
   getGoals,
   saveGoal,
   updateGoalContribution,
+  updateGoalItem,
   updateGoalPayment,
 } from './actions/goal-actions';
 export { joinGoal, leaveGoal } from './actions/goal-member-actions';

@@ -16,16 +16,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
-import { useSaveGoal } from '../hooks/use-household';
+import { useSaveGoal, useUpdateGoalItem } from '../hooks/use-household';
 import { saveGoalItemSchema } from '../schemas';
-import type { HouseholdGoal } from '../types';
+import type { GoalItem, HouseholdGoal } from '../types';
 
-interface AddGoalItemDialogProps {
-  /** The unfiltered goal, so items in an undo window are saved back too. */
-  goal: HouseholdGoal;
+type AddGoalItemDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}
+} & (
+  | {
+      /** The unfiltered goal, so items in an undo window are saved back too. */
+      goal: HouseholdGoal;
+      item?: undefined;
+    }
+  | {
+      /** Edit mode: the dialog is prefilled and saves only this one row. */
+      item: GoalItem;
+      goal?: undefined;
+    }
+);
 
 type ItemErrors = {
   name?: string;
@@ -51,18 +60,26 @@ function existingItem(item: HouseholdGoal['items'][number]) {
   };
 }
 
+function amountText(value: number | null): string {
+  return value === null ? '' : value.toFixed(2);
+}
+
 export function AddGoalItemDialog({
   goal,
+  item,
   open,
   onOpenChange,
 }: AddGoalItemDialogProps) {
   const { hidden, canReveal } = useAmountVisibility();
   const save = useSaveGoal();
-  const [name, setName] = useState('');
-  const [budget, setBudget] = useState('');
-  const [quote, setQuote] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [description, setDescription] = useState('');
+  const update = useUpdateGoalItem();
+  const isEdit = item !== undefined;
+  const pending = save.isPending || update.isPending;
+  const [name, setName] = useState(item?.name ?? '');
+  const [budget, setBudget] = useState(item ? amountText(item.budget) : '');
+  const [quote, setQuote] = useState(item ? amountText(item.quote) : '');
+  const [dueDate, setDueDate] = useState(item?.dueDate?.slice(0, 10) ?? '');
+  const [description, setDescription] = useState(item?.description ?? '');
   const [errors, setErrors] = useState<ItemErrors>({});
 
   const clear = (key: keyof ItemErrors) =>
@@ -70,7 +87,7 @@ export function AddGoalItemDialog({
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!canReveal() || save.isPending) return;
+    if (!canReveal() || pending) return;
     const parsed = saveGoalItemSchema.safeParse({
       name,
       budget: toAmount(budget),
@@ -93,6 +110,20 @@ export function AddGoalItemDialog({
       return;
     }
     setErrors({});
+    if (item) {
+      update.mutate(
+        { ...parsed.data, id: item.id },
+        {
+          onSuccess: () => {
+            toast.success('Item updated');
+            onOpenChange(false);
+          },
+          onError: () => toast.error('Could not update the item'),
+        }
+      );
+      return;
+    }
+    if (!goal) return;
     save.mutate(
       {
         goalId: goal.id,
@@ -121,9 +152,13 @@ export function AddGoalItemDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add budget item</DialogTitle>
+          <DialogTitle>
+            {isEdit ? 'Edit budget item' : 'Add budget item'}
+          </DialogTitle>
           <DialogDescription>
-            Add a budget line to this goal. Nothing else about the goal changes.
+            {isEdit
+              ? 'Change this budget line. Nothing else about the goal changes.'
+              : 'Add a budget line to this goal. Nothing else about the goal changes.'}
           </DialogDescription>
         </DialogHeader>
         <AmountsHiddenNotice />
@@ -248,8 +283,8 @@ export function AddGoalItemDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={hidden || save.isPending}>
-              Add item
+            <Button type="submit" disabled={hidden || pending}>
+              {isEdit ? 'Save item' : 'Add item'}
             </Button>
           </DialogFooter>
         </form>

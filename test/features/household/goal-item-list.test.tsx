@@ -41,6 +41,7 @@ const actions = vi.hoisted(() => ({
   saveGoal: vi.fn(),
   updateGoalPayment: vi.fn(),
   updateGoalContribution: vi.fn(),
+  updateGoalItem: vi.fn(),
 }));
 vi.mock('@/features/household/actions/goal-actions', () => actions);
 vi.mock('@/features/household/actions/household-actions', () => ({
@@ -192,6 +193,20 @@ it('shows the description under the title only when one is set', () => {
   mount();
   expect(screen.getByText('Main hall, 80 guests')).toBeInTheDocument();
   expect(document.querySelectorAll('li .text-xs.truncate')).toHaveLength(1);
+});
+
+it('opens the item editor prefilled from the pencil button', async () => {
+  mount();
+  await userEvent.click(
+    screen.getByRole('button', { name: 'Edit item Venue' })
+  );
+  const dialog = await screen.findByRole('dialog', {
+    name: 'Edit budget item',
+  });
+  expect(within(dialog).getByLabelText('Item')).toHaveValue('Venue');
+  expect(within(dialog).getByLabelText(/Estimate/)).toHaveDisplayValue(
+    '8000.00'
+  );
 });
 
 it('records a payment against an item with the chosen date', async () => {

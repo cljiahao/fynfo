@@ -19,6 +19,7 @@ import {
   saveGoal,
   updateGoal,
   updateGoalContribution,
+  updateGoalItem,
   updateGoalPayment,
 } from '../actions/goal-actions';
 import { joinGoal, leaveGoal } from '../actions/goal-member-actions';
@@ -192,6 +193,10 @@ export function useSaveGoal() {
 
 export function useAddGoalItem() {
   return useGoalsMutation(addGoalItem);
+}
+
+export function useUpdateGoalItem() {
+  return useGoalsMutation(updateGoalItem);
 }
 
 export function useDeleteGoalItem() {

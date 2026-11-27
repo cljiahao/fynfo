@@ -19,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const external = vi.hoisted(() => ({
   getGoals: vi.fn(),
+  updateGoal: vi.fn(),
   saveGoal: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
@@ -26,7 +27,7 @@ const external = vi.hoisted(() => ({
 
 vi.mock('@/features/household/actions/goal-actions', () => ({
   getGoals: external.getGoals,
-  updateGoal: vi.fn(),
+  updateGoal: external.updateGoal,
   saveGoal: external.saveGoal,
   createGoal: vi.fn(),
   addContribution: vi.fn(),
@@ -37,6 +38,7 @@ vi.mock('@/features/household/actions/goal-actions', () => ({
   deleteItemPayment: vi.fn(),
   updateGoalPayment: vi.fn(),
   updateGoalContribution: vi.fn(),
+  updateGoalItem: vi.fn(),
 }));
 vi.mock('sonner', () => ({
   toast: { error: external.toastError, success: external.toastSuccess },
@@ -104,11 +106,7 @@ async function openEditor() {
 
 beforeEach(() => {
   external.getGoals.mockResolvedValue([makeGoal(1000, '2026-12-01T00:00:00Z')]);
-  external.saveGoal.mockResolvedValue({
-    ok: true,
-    goalId: GOAL_ID,
-    itemIds: [],
-  });
+  external.updateGoal.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -117,7 +115,7 @@ afterEach(() => {
 });
 
 describe('household goal editing', () => {
-  it('opens the sheet prefilled in edit mode', async () => {
+  it('opens the dialog prefilled in edit mode', async () => {
     mount();
     const dialog = await openEditor();
     expect(dialog).toHaveTextContent('Edit goal');
@@ -129,11 +127,13 @@ describe('household goal editing', () => {
       '2026-12-01'
     );
     expect(
-      screen.getByRole('button', { name: 'Review changes' })
+      screen.getByRole('button', { name: 'Save goal' })
     ).toBeInTheDocument();
+    expect(screen.queryByText('Break down the cost')).toBeNull();
+    expect(screen.queryByLabelText('Item 1 name')).toBeNull();
   });
 
-  it('shows the delta, saves with the goal id and refreshes the card', async () => {
+  it('saves with the goal id and refreshes the card', async () => {
     mount();
     await openEditor();
     fireEvent.change(screen.getByLabelText('Name'), {
@@ -146,23 +146,14 @@ describe('household goal editing', () => {
       target: { value: '' },
     });
     external.getGoals.mockResolvedValue([makeGoal(500, null)]);
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Review changes' })
-    );
-    expect(external.saveGoal).not.toHaveBeenCalled();
-    const panel = await screen.findByLabelText('Changes to save');
-    expect(panel).toHaveTextContent(/1,000\.00 -> .*500\.00/);
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Confirm and save' })
-    );
-
-    await waitFor(() => expect(external.saveGoal).toHaveBeenCalled());
-    expect(external.saveGoal.mock.calls[0][0]).toEqual({
+    await userEvent.click(screen.getByRole('button', { name: 'Save goal' }));
+    await waitFor(() => expect(external.updateGoal).toHaveBeenCalled());
+    expect(external.updateGoal.mock.calls[0][0]).toEqual({
       goalId: GOAL_ID,
       name: 'Synthetic bed',
-      target: 500,
-      items: [],
+      targetAmount: 500,
     });
+    expect(external.saveGoal).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(external.toastSuccess).toHaveBeenCalledWith('Goal updated')
     );
@@ -180,32 +171,17 @@ describe('household goal editing', () => {
       target: { value: '250' },
     });
     external.getGoals.mockResolvedValue([makeGoal(250, null)]);
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Review changes' })
-    );
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Confirm and save' })
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Save goal' }));
 
     expect(await screen.findByText('Funded')).toBeInTheDocument();
     expect(screen.getByText('Goal reached')).toBeInTheDocument();
   });
 
-  it('keeps the sheet open with the draft when saving fails', async () => {
-    external.saveGoal.mockResolvedValue({
-      ok: false,
-      code: 'SERVER',
-      goalId: GOAL_ID,
-      itemIds: [],
-    });
+  it('keeps the dialog open with the draft when saving fails', async () => {
+    external.updateGoal.mockRejectedValue(new Error('boom'));
     mount();
     await openEditor();
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Review changes' })
-    );
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Confirm and save' })
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Save goal' }));
 
     expect(
       await screen.findByText('Some changes were not saved, try again')

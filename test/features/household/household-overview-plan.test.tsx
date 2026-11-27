@@ -43,8 +43,8 @@ vi.mock('@/features/household/components/invite-member-dialog', () => ({
 vi.mock('@/features/household/components/planner-split-editor', () => ({
   PlannerSplitEditor: () => <div>Split editor</div>,
 }));
-vi.mock('@/features/household/components/goal-editor-sheet', () => ({
-  GoalEditorSheet: () => <div>Goal editor sheet</div>,
+vi.mock('@/features/household/components/goal-editor-dialog', () => ({
+  GoalEditorDialog: () => <div>Goal editor sheet</div>,
 }));
 vi.mock('@/features/household/components/shared-spending', () => ({
   SharedSpending: () => <div>Spending</div>,

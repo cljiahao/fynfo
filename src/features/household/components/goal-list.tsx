@@ -12,7 +12,7 @@ import type { HouseholdGoal } from '../types';
 import { AddContributionDialog } from './add-contribution-dialog';
 import { ConfirmDeleteDialog } from './confirm-delete-dialog';
 import { GoalCard } from './goal-card';
-import { GoalEditorSheet } from './goal-editor-sheet';
+import { GoalEditorDialog } from './goal-editor-dialog';
 
 interface GoalListProps {
   goals: HouseholdGoal[];
@@ -92,7 +92,7 @@ export function GoalList({ goals, className, onCreate }: GoalListProps) {
           </Button>
         </div>
         {!onCreate && (
-          <GoalEditorSheet open={createOpen} onOpenChange={setCreateOpen} />
+          <GoalEditorDialog open={createOpen} onOpenChange={setCreateOpen} />
         )}
       </>
     );
@@ -112,7 +112,7 @@ export function GoalList({ goals, className, onCreate }: GoalListProps) {
           />
         ))}
       </div>
-      <GoalEditorSheet
+      <GoalEditorDialog
         key={editing?.id}
         goal={editing}
         open={editing !== null}

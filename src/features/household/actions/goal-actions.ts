@@ -18,6 +18,7 @@ import {
   createGoalSchema,
   saveGoalSchema,
   updateGoalContributionSchema,
+  updateGoalItemSchema,
   updateGoalPaymentSchema,
   updateGoalSchema,
 } from '../schemas';
@@ -512,6 +513,34 @@ export async function addGoalItem(input: unknown): Promise<void> {
     description: sealDescription(data.description, kh),
   });
   throwIfSupabaseError(error, 'household goal item create');
+}
+
+/**
+ * Re-seals one budget line under K_h. The single-row UPDATE is scoped by id and
+ * RLS keeps it to the caller's household; a row outside it matches nothing.
+ */
+export async function updateGoalItem(input: unknown): Promise<void> {
+  const data = parseOrThrow(
+    updateGoalItemSchema,
+    input,
+    'household.item.update.input'
+  );
+  const { kh, supabase } = await requireHouseholdContext();
+  const { data: rows, error } = await supabase
+    .from('household_goal_items')
+    .update({
+      name: encryptPayload(data.name, kh),
+      budget: encryptPayload(data.budget.toString(), kh),
+      quote: data.quote ? encryptPayload(data.quote.toString(), kh) : null,
+      due_date: data.dueDate ?? null,
+      description: sealDescription(data.description, kh),
+    })
+    .eq('id', data.id)
+    .select('id');
+  throwIfSupabaseError(error, 'household goal item update');
+  if (!rows || rows.length === 0) {
+    throw new AppError('NOT_FOUND', 'Item not found');
+  }
 }
 
 /** Deletes a budget line (RLS scoped); its payments cascade. */

@@ -41,6 +41,7 @@ vi.mock('@/features/household/actions/goal-actions', () => ({
   saveGoal: vi.fn(),
   updateGoalPayment: vi.fn(),
   updateGoalContribution: vi.fn(),
+  updateGoalItem: vi.fn(),
 }));
 vi.mock('sonner', () => ({
   toast: { error: external.toastError, success: external.toastSuccess },
@@ -194,7 +195,7 @@ describe('goal dialogs inline errors', () => {
     mount([]);
     fireEvent.click(screen.getByRole('button', { name: 'New goal' }));
     await screen.findByRole('dialog');
-    fireEvent.click(screen.getByRole('button', { name: 'Review changes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create goal' }));
 
     const name = await screen.findByLabelText('Name');
     const amount = screen.getByLabelText('Target amount (SGD)');

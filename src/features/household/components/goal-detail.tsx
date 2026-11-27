@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatSGD } from '@/lib/utils/currency';
 import { format } from 'date-fns/format';
 import { parseISO } from 'date-fns/parseISO';
 import {
@@ -37,6 +38,7 @@ import {
   UndoableDeleteProvider,
   useUndoableDelete,
 } from '../hooks/use-undoable-delete';
+import { itemsTotal } from '../lib/goal-items-total';
 import {
   goalBasis,
   goalDeadline,
@@ -59,7 +61,7 @@ import { EditPaymentDialog } from './edit-payment-dialog';
 import { GoalActivity } from './goal-activity';
 import { GoalBurnUpChart } from './goal-burn-up-chart';
 import { GoalDetailSkeleton } from './goal-detail-skeleton';
-import { GoalEditorSheet } from './goal-editor-sheet';
+import { GoalEditorDialog } from './goal-editor-dialog';
 import { GoalItemList } from './goal-item-list';
 import { GoalSavingsList } from './goal-savings-list';
 import { GoalStatusChip } from './goal-status-chip';
@@ -358,6 +360,10 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
                 <>
                   <ItemBreakdownBar goal={goal} labels showOverNote={false} />
                   <GoalItemList items={goal.items} memberIds={goal.memberIds} />
+                  <p className="text-muted-foreground text-xs tabular-nums">
+                    Items total {mask(formatSGD(itemsTotal(goal.items)))} vs
+                    target {mask(formatSGD(goal.targetAmount))}
+                  </p>
                 </>
               ) : (
                 <div className="rounded-xl border border-dashed py-8 text-center">
@@ -406,7 +412,7 @@ function GoalDetailBody({ goal: source }: { goal: HouseholdGoal }) {
         </div>
       </div>
 
-      <GoalEditorSheet
+      <GoalEditorDialog
         key={editor.session}
         goal={goal}
         open={editor.open}

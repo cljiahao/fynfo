@@ -14,7 +14,7 @@ import {
 } from '../constants';
 import { useGoals, useHousehold } from '../hooks/use-household';
 import { UndoableDeleteProvider } from '../hooks/use-undoable-delete';
-import { GoalEditorSheet } from './goal-editor-sheet';
+import { GoalEditorDialog } from './goal-editor-dialog';
 import { GoalList } from './goal-list';
 import { HouseholdLocked } from './household-locked';
 import { HouseholdPlanSummary } from './household-plan-summary';
@@ -134,7 +134,7 @@ export function HouseholdOverview({
                     if (canReveal()) setCreateOpen(true);
                   }}
                 />
-                <GoalEditorSheet
+                <GoalEditorDialog
                   open={createOpen}
                   onOpenChange={setCreateOpen}
                 />

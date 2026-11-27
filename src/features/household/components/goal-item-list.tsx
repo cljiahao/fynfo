@@ -18,6 +18,7 @@ import { useMemberLabels } from '../hooks/use-member-labels';
 import { useUndoableDelete } from '../hooks/use-undoable-delete';
 import { effectiveAmount } from '../lib/goal-stats';
 import type { GoalItem, GoalItemPayment } from '../types';
+import { AddGoalItemDialog } from './add-goal-item-dialog';
 import { EditPaymentDialog } from './edit-payment-dialog';
 import { RecordPaymentDialog } from './record-payment-dialog';
 
@@ -79,6 +80,7 @@ function ItemRow({
     (payment) => !pendingIds.has(payment.id)
   );
   const [editing, setEditing] = useState<GoalItemPayment | null>(null);
+  const [itemEdit, setItemEdit] = useState({ open: false, session: 0 });
   const effective = effectiveAmount(item);
   const over = Math.max(0, item.paid - effective);
   const left = Math.max(0, effective - item.paid);
@@ -106,6 +108,23 @@ function ItemRow({
               / {mask(formatSGD(effective))}
             </span>
           </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground h-7 px-2 pointer-coarse:size-11"
+            disabled={hidden}
+            aria-label={`Edit item ${mask(item.name)}`}
+            onClick={() => {
+              if (canReveal())
+                setItemEdit((current) => ({
+                  open: true,
+                  session: current.session + 1,
+                }));
+            }}
+          >
+            <Pencil className="size-3.5" />
+          </Button>
           <Button
             type="button"
             size="sm"
@@ -261,6 +280,14 @@ function ItemRow({
           </ul>
         </div>
       )}
+      <AddGoalItemDialog
+        key={`edit-${itemEdit.session}`}
+        item={item}
+        open={itemEdit.open}
+        onOpenChange={(open) =>
+          setItemEdit((current) => ({ ...current, open }))
+        }
+      />
       <RecordPaymentDialog
         key={paying.session}
         open={paying.open}

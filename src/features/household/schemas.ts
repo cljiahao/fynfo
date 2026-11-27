@@ -67,6 +67,15 @@ export const addGoalItemSchema = z.object({
   description: itemDescription,
 });
 
+export const updateGoalItemSchema = z.object({
+  id: z.uuid(),
+  name: z.string().trim().min(1).max(80),
+  budget: z.number().positive().finite(),
+  quote: z.number().positive().finite().nullish(),
+  dueDate: itemDueDate.nullish(),
+  description: itemDescription,
+});
+
 export const addItemPaymentSchema = z.object({
   itemId: z.uuid(),
   payerUserId: payerUserIdSchema.optional(),
@@ -144,6 +153,7 @@ export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>;
 export type CreateGoalInput = z.infer<typeof createGoalSchema>;
 export type UpdateGoalInput = z.infer<typeof updateGoalSchema>;
 export type AddContributionInput = z.infer<typeof addContributionSchema>;
+export type UpdateGoalItemInput = z.infer<typeof updateGoalItemSchema>;
 export type AddGoalItemInput = z.infer<typeof addGoalItemSchema>;
 export type AddItemPaymentInput = z.infer<typeof addItemPaymentSchema>;
 export type CreateSpaceInput = z.infer<typeof createSpaceSchema>;

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { GoalEditorSheet } from '@/features/household/components/goal-editor-sheet';
+import { GoalEditorDialog } from '@/features/household/components/goal-editor-dialog';
 import { GoalList } from '@/features/household/components/goal-list';
 import { HouseholdOverview } from '@/features/household/components/household-overview';
 import { HouseholdSetup } from '@/features/household/components/household-setup';
@@ -28,6 +28,7 @@ const actions = vi.hoisted(() => ({
   saveGoal: vi.fn(),
   updateGoalPayment: vi.fn(),
   updateGoalContribution: vi.fn(),
+  updateGoalItem: vi.fn(),
   addContribution: vi.fn(),
   addGoalItem: vi.fn(),
   addItemPayment: vi.fn(),
@@ -301,29 +302,21 @@ describe('household workflows with real mutation hooks', () => {
     );
     expect(notices.success).not.toHaveBeenCalledWith('Invite code copied');
   });
-  it('validates the draft, reviews the delta, then saves a normalized goal', async () => {
+  it('validates the draft, then saves a normalized goal', async () => {
     actions.saveGoal.mockResolvedValue({ ok: true, goalId: 'g9', itemIds: [] });
     const close = vi.fn();
-    mount(<GoalEditorSheet open onOpenChange={close} />);
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Review changes' })
-    );
+    mount(<GoalEditorDialog open onOpenChange={close} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Create goal' }));
     expect(actions.saveGoal).not.toHaveBeenCalled();
     await userEvent.type(screen.getByLabelText('Name'), '  Sofa  ');
     await userEvent.type(screen.getByLabelText('Target amount (SGD)'), '1000');
     fireEvent.change(screen.getByLabelText('Target date (optional)'), {
       target: { value: '2027-01-01' },
     });
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Review changes' })
-    );
-    expect(actions.saveGoal).not.toHaveBeenCalled();
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Confirm and save' })
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Create goal' }));
     await waitFor(() => expect(actions.saveGoal).toHaveBeenCalledTimes(1));
     expect(actions.saveGoal.mock.calls[0]?.[0]).toMatchObject({
-      name: '  Sofa  ',
+      name: 'Sofa',
       target: 1000,
       targetDate: '2027-01-01',
       items: [],
@@ -338,26 +331,16 @@ describe('household workflows with real mutation hooks', () => {
       itemIds: [],
     });
     const close = vi.fn();
-    mount(<GoalEditorSheet open onOpenChange={close} />);
+    mount(<GoalEditorDialog open onOpenChange={close} />);
     await userEvent.type(screen.getByLabelText('Name'), 'Sofa');
     await userEvent.type(screen.getByLabelText('Target amount (SGD)'), '1000');
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Review changes' })
-    );
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Confirm and save' })
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Create goal' }));
     expect(
       await screen.findByText('Some changes were not saved, try again')
     ).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('Sofa');
     expect(close).not.toHaveBeenCalled();
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Review changes' })
-    );
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Confirm and save' })
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Create goal' }));
     await waitFor(() => expect(actions.saveGoal).toHaveBeenCalledTimes(2));
     expect(actions.saveGoal.mock.calls[1]?.[0].goalId).toBe(
       actions.saveGoal.mock.calls[0]?.[0].goalId

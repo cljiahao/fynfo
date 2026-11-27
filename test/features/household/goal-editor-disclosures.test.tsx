@@ -1,26 +1,28 @@
 // @vitest-environment jsdom
-import { GoalEditorSheet } from '@/features/household/components/goal-editor-sheet';
+import { GoalEditorDialog } from '@/features/household/components/goal-editor-dialog';
 import type { PlannerSplit } from '@/features/household/types';
 import { AmountVisibilityProvider } from '@/features/privacy';
 import '@testing-library/jest-dom/vitest';
 import {
   cleanup,
-  fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { goalWithItems, makeGoal } from './fixtures';
 
 const external = vi.hoisted(() => ({
   split: { current: undefined as PlannerSplit | undefined },
   mutate: vi.fn(),
+  update: vi.fn(),
 }));
 
 vi.mock('@/features/household/hooks/use-household', () => ({
   useSaveGoal: () => ({ mutate: external.mutate, isPending: false }),
+  useUpdateGoal: () => ({ mutate: external.update, isPending: false }),
   useHousehold: () => ({
     data: { memberIds: ['me', 'partner'], userId: 'me' },
   }),
@@ -44,13 +46,24 @@ function split(goalOverrides: PlannerSplit['goalOverrides']): PlannerSplit {
   } as PlannerSplit;
 }
 
-function mount(goal?: Parameters<typeof GoalEditorSheet>[0]['goal']) {
+function mount(goal?: Parameters<typeof GoalEditorDialog>[0]['goal']) {
   render(
     <AmountVisibilityProvider>
-      <GoalEditorSheet open onOpenChange={() => {}} goal={goal} />
+      <GoalEditorDialog open onOpenChange={() => {}} goal={goal} />
     </AmountVisibilityProvider>
   );
 }
+
+beforeAll(() => {
+  Object.defineProperty(HTMLElement.prototype, 'hasPointerCapture', {
+    configurable: true,
+    value: () => false,
+  });
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: vi.fn(),
+  });
+});
 
 afterEach(() => {
   cleanup();
@@ -92,27 +105,27 @@ describe('goal editor disclosures', () => {
     expect(screen.getByLabelText('Item 1 final quote')).toBeInTheDocument();
   });
 
-  it('auto-opens the breakdown for a goal with items, without dates or quotes', () => {
+  it('has no cost breakdown or item lines when editing a goal', () => {
     mount(goalWithItems);
     expect(
-      screen.getByRole('button', { name: 'Break down the cost' })
-    ).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByLabelText('Item 1 name')).toHaveValue('Venue');
-    expect(screen.queryByLabelText('Item 1 due date')).toBeNull();
-    expect(screen.queryByLabelText('Item 1 final quote')).toBeNull();
+      screen.queryByRole('button', { name: 'Break down the cost' })
+    ).toBeNull();
+    expect(screen.queryByLabelText('Item 1 name')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add item' })).toBeNull();
   });
 
-  it('shows the stored due date and quote of an existing item', () => {
-    const [first, ...rest] = goalWithItems.items;
-    mount({
-      ...goalWithItems,
-      id: '33333333-3333-4333-8333-333333333333',
-      items: [{ ...first!, dueDate: '2027-01-15', quote: 7500 }, ...rest],
-    });
-    expect(screen.getByLabelText('Item 1 due date')).toHaveValue('2027-01-15');
-    expect(screen.getByLabelText('Item 1 final quote')).toHaveDisplayValue(
-      '7500.00'
+  it('seeds item lines from a template on a new goal', async () => {
+    mount();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Break down the cost' })
     );
+    await userEvent.click(screen.getByLabelText('Start from a template'));
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'Wedding' })
+    );
+    expect(screen.getByLabelText('Item 1 name')).toHaveValue('Venue');
+    expect(screen.getByLabelText('Item 5 name')).toHaveValue('Rings');
+    expect(screen.getByLabelText('Item 1 estimate')).toHaveValue(null);
   });
 
   it('reopens Different split and shows the error when the share is invalid', async () => {
@@ -124,25 +137,23 @@ describe('goal editor disclosures', () => {
     await userEvent.type(share, '150');
     await userEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Review changes' })
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Save goal' }));
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(
       screen.getAllByText('Enter a whole number from 0 to 100').length
     ).toBeGreaterThan(0);
-    expect(screen.queryByLabelText('Changes to save')).toBeNull();
   });
 
   it('reopens the breakdown and shows item errors on client validation', async () => {
-    mount(goalWithItems);
-    await userEvent.clear(screen.getByLabelText('Item 1 name'));
+    mount();
     const toggle = screen.getByRole('button', { name: 'Break down the cost' });
     await userEvent.click(toggle);
+    await userEvent.click(screen.getByRole('button', { name: 'Add item' }));
+    await userEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Review changes' })
-    );
+    await userEvent.type(screen.getByLabelText('Name'), 'Sofa');
+    await userEvent.type(screen.getByLabelText('Target amount (SGD)'), '500');
+    await userEvent.click(screen.getByRole('button', { name: 'Create goal' }));
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(
       screen.getByText('Each item needs a name and an estimate above 0')
@@ -158,36 +169,15 @@ describe('goal editor disclosures', () => {
           error: { formErrors: [], fieldErrors: {} },
         })
     );
-    const uuids = [
-      '11111111-1111-4111-8111-111111111111',
-      '22222222-2222-4222-8222-222222222222',
-    ];
-    mount({
-      ...goalWithItems,
-      id: '33333333-3333-4333-8333-333333333333',
-      items: goalWithItems.items.map((item, index) => ({
-        ...item,
-        id: uuids[index]!,
-      })),
-    });
+    mount();
     const toggle = screen.getByRole('button', { name: 'Break down the cost' });
-    await userEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    fireEvent.change(screen.getByLabelText('Target amount (SGD)'), {
-      target: { value: '12000' },
-    });
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Review changes' })
-    );
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Confirm and save' })
-    );
+    await userEvent.type(screen.getByLabelText('Name'), 'Sofa');
+    await userEvent.type(screen.getByLabelText('Target amount (SGD)'), '500');
+    await userEvent.click(screen.getByRole('button', { name: 'Create goal' }));
     expect(
       await screen.findByText('Check the highlighted fields')
     ).toBeVisible();
-    expect(
-      screen.getByRole('button', { name: 'Break down the cost' })
-    ).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('keeps Different split closed without an override and open with one', () => {
@@ -218,16 +208,14 @@ describe('goal editor disclosures', () => {
     ).toBeInTheDocument();
   });
 
-  it('does not block review on a stale split the user never touched', async () => {
+  it('does not block saving on a stale split the user never touched', async () => {
     const id = '33333333-3333-4333-8333-333333333333';
     external.split.current = split({ [id]: { [ME]: 60, gone: 40 } });
     mount(makeGoal({ id, memberIds: [ME, PARTNER] }));
     await userEvent.clear(screen.getByLabelText('Target amount (SGD)'));
     await userEvent.type(screen.getByLabelText('Target amount (SGD)'), '500');
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Review changes' })
-    );
-    expect(await screen.findByLabelText('Changes to save')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Save goal' }));
+    await waitFor(() => expect(external.update).toHaveBeenCalled());
   });
 
   it('says the shares must total 100 when every value is a valid percent', async () => {
@@ -236,11 +224,8 @@ describe('goal editor disclosures', () => {
     const share = screen.getByLabelText('You share (%)');
     await userEvent.clear(share);
     await userEvent.type(share, '60');
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Review changes' })
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Save goal' }));
     expect(screen.getAllByText('Shares must total 100%').length).toBe(2);
     expect(screen.queryByText('Enter a whole number from 0 to 100')).toBeNull();
-    expect(screen.queryByLabelText('Changes to save')).toBeNull();
   });
 });

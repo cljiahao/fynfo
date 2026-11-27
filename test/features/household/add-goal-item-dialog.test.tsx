@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { AddGoalItemDialog } from '@/features/household/components/add-goal-item-dialog';
-import type { HouseholdGoal } from '@/features/household/types';
+import type { GoalItem, HouseholdGoal } from '@/features/household/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
@@ -10,6 +10,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const actions = vi.hoisted(() => ({
   getGoals: vi.fn(),
   saveGoal: vi.fn(),
+  updateGoalItem: vi.fn(),
 }));
 vi.mock('@/features/household/actions/goal-actions', () => actions);
 vi.mock('@/features/household/actions/household-actions', () => ({
@@ -105,4 +106,68 @@ it('limits the description to 120 characters', () => {
     'maxLength',
     '120'
   );
+});
+
+const existing: GoalItem = {
+  id: '11111111-1111-4111-8111-111111111111',
+  name: 'Sofa',
+  budget: 1200,
+  quote: 1100,
+  dueDate: '2026-12-01',
+  description: 'Corner unit',
+  payments: [],
+  paid: 0,
+  remaining: 1100,
+  over: 0,
+};
+
+function mountEdit() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <AddGoalItemDialog item={existing} open onOpenChange={vi.fn()} />
+    </QueryClientProvider>
+  );
+}
+
+it('prefills every field in edit mode', () => {
+  mountEdit();
+  expect(screen.getByLabelText('Item')).toHaveValue('Sofa');
+  expect(screen.getByLabelText(/Description/)).toHaveValue('Corner unit');
+  expect(screen.getByLabelText(/Estimate/)).toHaveDisplayValue('1200.00');
+  expect(screen.getByLabelText(/Final quote/)).toHaveDisplayValue('1100.00');
+  expect(screen.getByLabelText(/Due date/)).toHaveValue('2026-12-01');
+  expect(screen.getByText('Edit budget item')).toBeInTheDocument();
+});
+
+it('saves only the edited row through updateGoalItem', async () => {
+  actions.updateGoalItem.mockResolvedValue(undefined);
+  const user = userEvent.setup();
+  mountEdit();
+  await user.clear(screen.getByLabelText(/Final quote/));
+  await user.clear(screen.getByLabelText('Item'));
+  await user.type(screen.getByLabelText('Item'), 'Big sofa');
+  await user.click(screen.getByRole('button', { name: 'Save item' }));
+
+  await waitFor(() => expect(actions.updateGoalItem).toHaveBeenCalled());
+  expect(actions.updateGoalItem.mock.calls[0]?.[0]).toEqual({
+    id: existing.id,
+    name: 'Big sofa',
+    budget: 1200,
+    quote: null,
+    dueDate: '2026-12-01',
+    description: 'Corner unit',
+  });
+  expect(actions.saveGoal).not.toHaveBeenCalled();
+});
+
+it('rejects an empty name in edit mode without saving', async () => {
+  const user = userEvent.setup();
+  mountEdit();
+  await user.clear(screen.getByLabelText('Item'));
+  await user.click(screen.getByRole('button', { name: 'Save item' }));
+  expect(await screen.findByText('Enter a name')).toBeInTheDocument();
+  expect(actions.updateGoalItem).not.toHaveBeenCalled();
 });

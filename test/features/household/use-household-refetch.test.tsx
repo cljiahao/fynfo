@@ -28,6 +28,7 @@ vi.mock('@/features/household/actions/goal-actions', () => ({
   saveGoal: vi.fn(),
   updateGoalPayment: vi.fn(),
   updateGoalContribution: vi.fn(),
+  updateGoalItem: vi.fn(),
 }));
 vi.mock('@/features/household/actions/household-actions', () => ({
   acceptInvite: vi.fn(),
