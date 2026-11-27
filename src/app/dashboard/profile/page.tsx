@@ -1,6 +1,7 @@
 'use client';
 
 import { PageHeader } from '@/components/widgets';
+import { MemberNameCard } from '@/features/household';
 import { ExportDataCard, ProfileForm } from '@/features/profile';
 
 export default function ProfilePage() {
@@ -12,6 +13,7 @@ export default function ProfilePage() {
       />
 
       <ProfileForm />
+      <MemberNameCard />
       <ExportDataCard />
     </div>
   );

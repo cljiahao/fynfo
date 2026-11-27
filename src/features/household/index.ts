@@ -35,6 +35,7 @@ export {
   HouseholdOverview,
   HouseholdSkeleton,
   HouseholdSpendingView,
+  MemberNameCard,
 } from './components';
 export { HouseholdRecommendations } from './components/household-recommendations';
 export { HouseholdYearTable } from './components/household-year-table';

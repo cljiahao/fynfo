@@ -53,7 +53,8 @@ to read when everyone is a number.
   40 chars. Best effort: any failure is swallowed so household load and unlock never break.
 - `buildMemberLabels` shows the caller's own name when set and falls back to "You"; initials come
   from the name. All callers feed `memberNames` in.
-- UI: "Your name in this household" control on the household page.
+- UI: "Your name in this household" control lives on the Profile page as a "Household name" card shown only to household members.
+- 2026-11-27: moved from the household page to the Profile page (owner-approved). Storage is unchanged: still sealed under K_h on `household_members`.
 
 ## Out of scope
 
