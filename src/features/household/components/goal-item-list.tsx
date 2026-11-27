@@ -190,7 +190,7 @@ function ItemRow({
             id={paymentsId}
             hidden={!showPayments}
             className={cn(
-              'text-muted-foreground space-y-0.5 overflow-y-auto overscroll-contain text-xs',
+              'text-muted-foreground space-y-0.5 overflow-x-hidden overflow-y-auto overscroll-contain pr-2.5 text-xs',
               PAYMENTS_MAX_HEIGHT
             )}
           >

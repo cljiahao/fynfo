@@ -413,6 +413,7 @@ describe('payment cap', () => {
         .getAttribute('aria-controls') as string
     );
     expect(payments).toHaveClass('overflow-y-auto');
+    expect(payments).toHaveClass('overflow-x-hidden');
     expect(payments).toHaveClass('max-h-[8rem]');
     expect(GOAL_ITEM_PAYMENT_VISIBLE_ROWS).toBe(5);
     const list = screen.getAllByRole('list')[0];

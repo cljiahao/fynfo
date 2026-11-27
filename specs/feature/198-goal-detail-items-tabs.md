@@ -117,7 +117,9 @@ column changes.
   payments accordion (`<ul id={paymentsId}>`) shows at most
   `GOAL_ITEM_PAYMENT_VISIBLE_ROWS = 5` payment rows (`max-h-[8rem]`) with
   `overflow-y-auto` and `overscroll-contain`. Supersedes the earlier 5-item-row
-  cap on the list (Q2).
+  cap on the list (Q2). The accordion also sets `overflow-x-hidden` (with
+  `pr-2.5` so the edit/delete touch targets are not clipped), because
+  `overflow-y-auto` otherwise yields a horizontal scrollbar.
 
 ### Item description (data)
 
