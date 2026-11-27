@@ -45,7 +45,8 @@ two jobs: naming the goal and editing every budget line behind a review step.
 - `updateGoalItem(input)` in `goal-actions.ts`: `updateGoalItemSchema` (`safeParse` through
   `parseOrThrow`), seals name, budget, quote and description under K_h, then one UPDATE scoped by
   row id. RLS keeps it inside the caller's household; zero matched rows is `NOT_FOUND`, never raw
-  Postgres text. A blank quote or description is stored as NULL.
+  Postgres text. Household scope comes from RLS plus the zero-row `NOT_FOUND` check, the same as
+  `deleteGoalItem`. A blank quote or description is stored as NULL.
 - Goal create and edit become a centered Dialog (`goal-editor-dialog.tsx`, replacing the sheet).
   Fields: name, target amount, target date, plus the existing optional "Different split"
   disclosure. Create keeps "Break down the cost" with the "Start from a template" picker that
