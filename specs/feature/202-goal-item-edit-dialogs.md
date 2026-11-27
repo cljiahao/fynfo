@@ -2,12 +2,12 @@
 id: '202'
 slug: goal-item-edit-dialogs
 area: feature
-status: approved # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-27
 approved: 2026-11-27 # approved_by Clarence, conversationally ("option A"), for exactly this design
-shipped: # YYYY-MM-DD, set on impl merge
-impl_pr: # direct to main, set on shipped
+shipped: 2026-11-27 # YYYY-MM-DD, set on impl merge
+impl_pr: 3dba6f9 # direct to main, commit sha
 supersedes: # none
 constitution_satisfies:
   - '§1.1'
