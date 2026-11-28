@@ -68,6 +68,7 @@ export function CreateCallerDialog() {
   const [sealing, setSealing] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [keyId, setKeyId] = useState<string | null>(null);
+  const [partial, setPartial] = useState<string | null>(null);
 
   function reset(next: boolean) {
     setOpen(next);
@@ -77,6 +78,7 @@ export function CreateCallerDialog() {
       setSealing('');
       setError(null);
       setKeyId(null);
+      setPartial(null);
     }
   }
 
@@ -97,6 +99,7 @@ export function CreateCallerDialog() {
     try {
       const result = await create.mutateAsync(parsed.data);
       if (result.ok) setKeyId(result.keyId);
+      else if (result.partial) setPartial(result.message);
       else setError(result.message);
     } catch {
       setError(GENERIC_ERROR);
@@ -117,6 +120,10 @@ export function CreateCallerDialog() {
         </DialogHeader>
         {keyId ? (
           <IssuedKey keyId={keyId} />
+        ) : partial ? (
+          <p role="status" className="text-sm">
+            {partial}
+          </p>
         ) : (
           <form onSubmit={submit} className="space-y-3">
             <div className="space-y-1">

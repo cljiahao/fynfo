@@ -72,7 +72,8 @@ function KeyRow({
           ) : active ? (
             <span className={warn ? 'text-destructive font-medium' : undefined}>
               {' '}
-              · Expires {formatDate(keyRow.expiresAt)} ({remaining} days left)
+              · Expires {formatDate(keyRow.expiresAt)} ({remaining}{' '}
+              {remaining === 1 ? 'day' : 'days'} left)
               {warn ? ' · Expiring soon' : ''}
             </span>
           ) : (

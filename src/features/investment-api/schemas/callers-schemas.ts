@@ -66,7 +66,7 @@ export type CallerSummary = {
 
 export type CallerActionResult<T = Record<never, never>> =
   | ({ ok: true } & T)
-  | { ok: false; message: string };
+  | { ok: false; message: string; partial?: true; callerId?: string };
 
 export function isKeyActive(key: CallerKey, now: number): boolean {
   return key.revokedAt === null && new Date(key.expiresAt).getTime() > now;

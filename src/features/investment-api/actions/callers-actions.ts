@@ -29,6 +29,8 @@ import {
 
 const GENERIC_FAILURE = 'Something went wrong. Please try again.';
 const INVALID_INPUT = 'Check the highlighted fields and try again.';
+const PARTIAL_CREATE_MESSAGE =
+  'Caller created; add a signing key from the list.';
 const MAX_ACTIVE_KEYS = 2;
 
 // Constitution §2.3: identity first, then the vault session, before any DB access.
@@ -149,8 +151,9 @@ export async function createCallerAction(
       logger.error({ err: error }, 'investment api first key failed');
       return {
         ok: false,
-        message:
-          'The caller was created but its signing key was not registered. Add a key from the list.',
+        partial: true,
+        callerId,
+        message: PARTIAL_CREATE_MESSAGE,
       };
     }
   } catch (error) {

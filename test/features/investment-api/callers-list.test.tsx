@@ -71,6 +71,11 @@ describe('CallersList', () => {
     expect(screen.getByText(/Expiring soon/)).toBeInTheDocument();
   });
 
+  it('uses the singular for one day left', () => {
+    renderList([caller([key('key-aaa', 1)])]);
+    expect(screen.getByText(/1 day left/)).toBeInTheDocument();
+  });
+
   it('shows revoked state for keys and callers', () => {
     renderList([
       caller([key('key-aaa', 60, true)], { revokedAt: '2026-05-25T00:00:00Z' }),

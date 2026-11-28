@@ -150,6 +150,24 @@ describe('investment api caller actions', () => {
     expect(rpc.createCaller).not.toHaveBeenCalled();
   });
 
+  it('returns a partial result when addKey fails after the caller is created', async () => {
+    rpc.addKey.mockRejectedValueOnce(new Error('pg: trigger detail'));
+    const { createCallerAction } = await actions();
+    const result = await createCallerAction({
+      name: 'ballast',
+      preset: 'ballast',
+      signingPublicKey: KEY_A,
+      sealingPublicKey: KEY_B,
+    });
+    expect(result).toEqual({
+      ok: false,
+      partial: true,
+      callerId: CALLER_ID,
+      message: 'Caller created; add a signing key from the list.',
+    });
+    expect(rpc.createCaller).toHaveBeenCalledTimes(1);
+  });
+
   it('maps wrapper failures to a generic message', async () => {
     rpc.createCaller.mockRejectedValueOnce(new Error('pg: secret detail'));
     const { createCallerAction } = await actions();
