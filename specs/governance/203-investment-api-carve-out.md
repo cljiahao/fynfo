@@ -2,12 +2,12 @@
 id: '203'
 slug: investment-api-carve-out
 area: governance
-status: draft # draft | approved | shipped | superseded
+status: shipped # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-28
-approved: # YYYY-MM-DD, set on owner approval
-shipped: # set when the amendment merges
-impl_pr: # none expected (governance-only diff); implementation is spec security/204
+approved: 2026-11-28
+shipped: 2026-11-28
+impl_pr: # none expected (governance-only diff)
 supersedes:
 constitution_satisfies:
   - '§7.1'
@@ -49,6 +49,7 @@ is approved and merged.**
 - §7.1 step 4: `AGENTS.md`/`CLAUDE.md` pointers (their summary of §2.2 route exceptions) are
   protected files and are NOT edited here; the owner decides whether to refresh them in a
   follow-up.
+- Owner approval, 2026-11-28 (Clarence): "Keep Ed25519, approve".
 - Per §8.1/§8.2 the agent drafts; the owner reviews the diff and approves before `CONSTITUTION.md`
   and this spec are committed together. The amendment takes effect only on approval and merge of
   this PR.
@@ -111,5 +112,4 @@ Row `6.0.0 | 2026-11-28 | ... Approved by Clarence in specs/governance/203-inves
 
 ## Open questions
 
-- Should `AGENTS.md`/`CLAUDE.md` route-exception summaries be refreshed in a follow-up PR after
-  approval (§7.1 step 4)?
+- `AGENTS.md`/`CLAUDE.md` route-exception summaries (§7.1 step 4): refreshed in a separate follow-up PR.

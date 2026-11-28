@@ -2,10 +2,10 @@
 id: '204'
 slug: investment-api
 area: security
-status: draft # draft | approved | shipped | superseded
+status: approved # draft | approved | shipped | superseded
 author: Claude Code
 created: 2026-11-28
-approved: # YYYY-MM-DD, set on approval
+approved: 2026-11-28
 shipped: # YYYY-MM-DD, set on impl merge
 impl_pr: # link to impl PR, set on shipped
 supersedes:
@@ -40,6 +40,7 @@ the owner copies figures by hand between systems.
 - Satisfies: `§2.1`, `§2.2`, `§2.3`, `§2.6`, `§2.7`, `§3.1`, `§3.2`, `§5.1`, `§5.1a`, `§5.2`,
   `§5.3`, `§5.4`, `§6.3`.
 - Overrides: none.
+- Owner approval, 2026-11-28 (Clarence): "Keep Ed25519, approve".
 - HARD rules touched and how:
   - §2.1, §2.2, §2.3: authorized by the amendment in
     `specs/governance/203-investment-api-carve-out.md` (constitution 6.0.0). **This spec must not
