@@ -3,12 +3,12 @@ import {
   generateJournalKeyPair,
   open,
   seal,
-  sealWithFixedInputs,
+  sealWithFixedInputsForTest,
   unwrapJournalPrivateKey,
   wrapJournalPrivateKey,
 } from '@/lib/sealed-box';
 import crypto from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 // Published vector: callers in other languages must reproduce and open it.
 // Keys are made up and must never be used outside tests.
@@ -64,7 +64,7 @@ describe('sealed-box', () => {
   const recipientPublic = publicOf(VECTOR.recipientPrivate);
 
   it('reproduces the published vector and opens it', () => {
-    const envelope = sealWithFixedInputs(
+    const envelope = sealWithFixedInputsForTest(
       recipientPublic,
       VECTOR.plaintext,
       VECTOR.ephemeralPrivate,
@@ -172,7 +172,7 @@ describe('sealed-box', () => {
       SealedBoxError
     );
     expect(() =>
-      sealWithFixedInputs(
+      sealWithFixedInputsForTest(
         recipientPublic,
         'x',
         VECTOR.ephemeralPrivate,
@@ -202,9 +202,28 @@ describe('journal key wrapping', () => {
     const wrapped = wrapJournalPrivateKey(pair.privateKey, dek);
     expect(() =>
       unwrapJournalPrivateKey(wrapped, crypto.randomBytes(32))
-    ).toThrow();
+    ).toThrow(SealedBoxError);
+    expect(() => unwrapJournalPrivateKey('not-a-payload', dek)).toThrow(
+      SealedBoxError
+    );
     expect(() => wrapJournalPrivateKey(Buffer.alloc(31), dek)).toThrow(
       SealedBoxError
     );
+  });
+
+  it('refuses fixed-input sealing outside the test runner', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    try {
+      expect(() =>
+        sealWithFixedInputsForTest(
+          Buffer.alloc(32, 1),
+          'x',
+          Buffer.alloc(32, 2),
+          Buffer.alloc(12)
+        )
+      ).toThrow(SealedBoxError);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

@@ -15,9 +15,14 @@ type InvestApiRpc =
   | 'invest_api_journal_meta'
   | 'invest_api_audit_write'
   | 'invest_api_publish_summary'
-  | 'invest_api_prune';
+  | 'invest_api_prune'
+  | 'invest_api_create_caller'
+  | 'invest_api_add_key'
+  | 'invest_api_revoke_key'
+  | 'invest_api_revoke_caller'
+  | 'invest_api_set_caller_public_key';
 
-type RpcParameters = Record<string, string | number | null>;
+type RpcParameters = Record<string, string | number | string[] | null>;
 
 const SCOPE = z.enum([
   'summary:read',
@@ -171,15 +176,22 @@ export async function appendJournal(
   );
 }
 
+/**
+ * Keyset cursor: pass `createdAt` and `id` of the last row received, exactly as returned.
+ * `createdAt` stays a string because Postgres keeps microseconds that a Date would truncate.
+ */
+export type JournalCursor = { createdAt: string; id: string };
+
 export async function listJournalMeta(
   userId: string,
-  since: Date | null
+  cursor: JournalCursor | null
 ): Promise<z.infer<typeof META_ROWS>> {
   return parseResult(
     META_ROWS,
     await callRpc('invest_api_journal_meta', {
       p_user_id: userId,
-      p_since: since ? since.toISOString() : null,
+      p_since_created_at: cursor ? cursor.createdAt : null,
+      p_since_id: cursor ? cursor.id : null,
     })
   );
 }
@@ -190,6 +202,7 @@ export async function writeAudit(
   endpoint: string,
   status: number
 ): Promise<void> {
+  if (!Number.isInteger(status) || status < 100 || status > 599) unavailable();
   await callRpc('invest_api_audit_write', {
     p_caller_id: callerId,
     p_key_id: keyId,
@@ -212,4 +225,86 @@ export async function publishSummary(
 
 export async function pruneInvestApi(): Promise<void> {
   await callRpc('invest_api_prune', {});
+}
+
+const KEY_ROWS = z.array(
+  z.object({ key_id: z.uuid(), expires_at: z.string() })
+);
+
+export async function createCaller(
+  userId: string,
+  name: string,
+  scopes: InvestScope[],
+  callerPublicKey: string
+): Promise<string> {
+  return parseResult(
+    z.uuid(),
+    await callRpc('invest_api_create_caller', {
+      p_user_id: userId,
+      p_name: name,
+      p_scopes: scopes,
+      p_caller_public_key: callerPublicKey,
+    })
+  );
+}
+
+export async function addKey(
+  userId: string,
+  callerId: string,
+  signingPublicKey: string
+): Promise<{ keyId: string; expiresAt: string }> {
+  const row = parseResult(
+    KEY_ROWS,
+    await callRpc('invest_api_add_key', {
+      p_user_id: userId,
+      p_caller_id: callerId,
+      p_signing_public_key: signingPublicKey,
+    })
+  )[0];
+  if (!row) unavailable();
+  return { keyId: row.key_id, expiresAt: row.expires_at };
+}
+
+/** False when the key is unknown, already revoked or not owned by the user. */
+export async function revokeKey(
+  userId: string,
+  keyId: string
+): Promise<boolean> {
+  return parseResult(
+    z.boolean(),
+    await callRpc('invest_api_revoke_key', {
+      p_user_id: userId,
+      p_key_id: keyId,
+    })
+  );
+}
+
+/** Also revokes the caller's keys and deletes its summary. */
+export async function revokeCaller(
+  userId: string,
+  callerId: string
+): Promise<boolean> {
+  return parseResult(
+    z.boolean(),
+    await callRpc('invest_api_revoke_caller', {
+      p_user_id: userId,
+      p_caller_id: callerId,
+    })
+  );
+}
+
+/** Replaces the sealing key and deletes the caller's now-stale summary. */
+export async function setCallerPublicKey(
+  userId: string,
+  callerId: string,
+  publicKey: string
+): Promise<boolean> {
+  return parseResult(
+    z.boolean(),
+    await callRpc('invest_api_set_caller_public_key', {
+      p_user_id: userId,
+      p_caller_id: callerId,
+      p_key: publicKey,
+    })
+  );
 }

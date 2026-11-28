@@ -105,11 +105,9 @@ function encode(epk: Buffer, nonce: Buffer, ct: Buffer): string {
   ).toString('base64url');
 }
 
-/**
- * Fixed ephemeral key and nonce exist only so published test vectors are reproducible.
- * Production code must call `seal`, which draws both from the system CSPRNG.
- */
-export function sealWithFixedInputs(
+// Takes the ephemeral key and nonce as parameters so the published vector can be reproduced;
+// production reaches it only through `seal`, which draws both from the CSPRNG.
+function sealCore(
   recipientPublic: Uint8Array,
   plaintext: Uint8Array | string,
   ephemeralPrivate: Uint8Array,
@@ -148,12 +146,24 @@ export function seal(
   plaintext: Uint8Array | string
 ): string {
   const ephemeral = crypto.generateKeyPairSync('x25519');
-  return sealWithFixedInputs(
+  return sealCore(
     recipientPublic,
     plaintext,
     rawPrivate(ephemeral.privateKey),
     crypto.randomBytes(NONCE_LENGTH)
   );
+}
+
+// Reusing a nonce or ephemeral key breaks GCM, so a fixed-input seal must be impossible outside
+// the test runner.
+export function sealWithFixedInputsForTest(
+  recipientPublic: Uint8Array,
+  plaintext: Uint8Array | string,
+  ephemeralPrivate: Uint8Array,
+  nonce: Uint8Array
+): string {
+  if (process.env.NODE_ENV !== 'test') throw new SealedBoxError();
+  return sealCore(recipientPublic, plaintext, ephemeralPrivate, nonce);
 }
 
 export function open(recipientPrivate: Uint8Array, envelope: string): Buffer {
@@ -210,7 +220,12 @@ export function wrapJournalPrivateKey(
 }
 
 export function unwrapJournalPrivateKey(wrapped: string, dek: Buffer): Buffer {
-  const raw = Buffer.from(decryptPayload(wrapped, dek), 'base64');
+  let raw: Buffer;
+  try {
+    raw = Buffer.from(decryptPayload(wrapped, dek), 'base64');
+  } catch {
+    throw new SealedBoxError('invalid key');
+  }
   if (raw.length !== KEY_LENGTH) throw new SealedBoxError('invalid key');
   return raw;
 }

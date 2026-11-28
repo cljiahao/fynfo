@@ -12,7 +12,13 @@ CREATE TABLE public.invest_api_callers (
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name text NOT NULL CHECK (name ~ '^[a-z][a-z0-9_-]{1,31}$'),
   -- Raw 32-byte X25519 key, base64 (44 chars). Summaries are sealed to it.
-  x25519_public_key text NOT NULL CHECK (length(x25519_public_key) = 44),
+  x25519_public_key text NOT NULL CHECK (x25519_public_key ~ '^[A-Za-z0-9+/]{43}=$'),
+  -- Scopes are fixed per caller; every key issued to it inherits them.
+  scopes text[] NOT NULL CHECK (
+    cardinality(scopes) > 0
+    AND scopes <@ ARRAY['summary:read', 'journal:meta', 'journal:append:plan',
+                        'journal:append:sell_flag', 'journal:append:verdict']::text[]
+  ),
   created_at timestamptz NOT NULL DEFAULT now(),
   revoked_at timestamptz,
   UNIQUE (user_id, name)
@@ -46,7 +52,7 @@ CREATE TABLE public.invest_api_audit (
   caller_id uuid,
   key_id uuid,
   endpoint text NOT NULL CHECK (length(endpoint) <= 64),
-  status smallint NOT NULL,
+  status smallint NOT NULL CHECK (status BETWEEN 100 AND 599),
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_invest_api_audit_created ON public.invest_api_audit(created_at);
@@ -76,7 +82,7 @@ CREATE TABLE public.invest_journal (
   event_type text NOT NULL CHECK (event_type IN ('plan', 'sell_flag', 'verdict')),
   occurred_at timestamptz NOT NULL,
   sealed text NOT NULL CHECK (length(sealed) <= 16384),
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 CREATE INDEX idx_invest_journal_user_created ON public.invest_journal(user_id, created_at);
 
@@ -182,8 +188,6 @@ BEGIN
 END;
 $$;
 
--- Replacing a caller's X25519 key must delete its old summary row so a stale ciphertext is
--- never served (handled by the caller-management slice).
 CREATE FUNCTION public.invest_api_get_summary(p_caller_id uuid)
 RETURNS TABLE (sealed text, published_at timestamptz)
 LANGUAGE sql SECURITY DEFINER SET search_path = '' AS $$
@@ -218,13 +222,20 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION public.invest_api_journal_meta(p_user_id uuid, p_since timestamptz)
+-- Pages on the (created_at, id) tuple so rows sharing a timestamp are never skipped; the next
+-- page starts from the last row returned. created_at is clock_timestamp(), so it is unique in
+-- practice and strictly increases across commits in one session.
+CREATE FUNCTION public.invest_api_journal_meta(
+  p_user_id uuid, p_since_created_at timestamptz, p_since_id uuid)
 RETURNS TABLE (id uuid, caller text, event_type text, created_at timestamptz)
 LANGUAGE sql SECURITY DEFINER SET search_path = '' AS $$
   SELECT j.id, c.name, j.event_type, j.created_at
   FROM public.invest_journal j
   JOIN public.invest_api_callers c ON c.id = j.caller_id
-  WHERE j.user_id = p_user_id AND j.created_at > coalesce(p_since, '-infinity'::timestamptz)
+  WHERE j.user_id = p_user_id
+    AND (j.created_at, j.id) > (
+      coalesce(p_since_created_at, '-infinity'::timestamptz),
+      coalesce(p_since_id, '00000000-0000-0000-0000-000000000000'::uuid))
   ORDER BY j.created_at, j.id
   LIMIT 500;
 $$;
@@ -258,16 +269,122 @@ LANGUAGE sql SECURITY DEFINER SET search_path = '' AS $$
   DELETE FROM public.invest_api_audit WHERE created_at < now() - interval '90 days';
 $$;
 
+-- Caller management. Every RPC takes the acting user and acts only on callers that user owns;
+-- a foreign or revoked caller raises (or returns false) without changing anything.
+CREATE FUNCTION public.invest_api_create_caller(
+  p_user_id uuid, p_name text, p_scopes text[], p_caller_public_key text)
+RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_id uuid;
+BEGIN
+  IF p_user_id IS NULL OR p_name IS NULL OR p_scopes IS NULL OR p_caller_public_key IS NULL THEN
+    RAISE EXCEPTION 'invalid caller';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = p_user_id) THEN
+    RAISE EXCEPTION 'invalid caller';
+  END IF;
+  IF cardinality(p_scopes) = 0 OR NOT p_scopes <@ ARRAY['summary:read', 'journal:meta',
+       'journal:append:plan', 'journal:append:sell_flag', 'journal:append:verdict']::text[] THEN
+    RAISE EXCEPTION 'invalid scope';
+  END IF;
+  IF p_caller_public_key !~ '^[A-Za-z0-9+/]{43}=$' THEN
+    RAISE EXCEPTION 'invalid public key';
+  END IF;
+  INSERT INTO public.invest_api_callers(user_id, name, scopes, x25519_public_key)
+    VALUES (p_user_id, p_name, p_scopes, p_caller_public_key)
+    RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
+
+-- The 90-day expiry is set here, never by the client. The key-cap trigger enforces two active keys.
+CREATE FUNCTION public.invest_api_add_key(
+  p_user_id uuid, p_caller_id uuid, p_signing_public_key text)
+RETURNS TABLE (key_id uuid, expires_at timestamptz)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE
+  v_scopes text[];
+  v_key uuid;
+  v_expires timestamptz := now() + interval '90 days';
+BEGIN
+  IF p_signing_public_key IS NULL OR p_signing_public_key !~ '^[A-Za-z0-9+/]{43}=$' THEN
+    RAISE EXCEPTION 'invalid public key';
+  END IF;
+  SELECT c.scopes INTO v_scopes FROM public.invest_api_callers c
+    WHERE c.id = p_caller_id AND c.user_id = p_user_id AND c.revoked_at IS NULL;
+  IF v_scopes IS NULL THEN RAISE EXCEPTION 'invalid caller'; END IF;
+  INSERT INTO public.invest_api_keys(caller_id, public_key, scopes, expires_at)
+    VALUES (p_caller_id, p_signing_public_key, v_scopes, v_expires)
+    RETURNING id INTO v_key;
+  RETURN QUERY SELECT v_key, v_expires;
+END;
+$$;
+
+CREATE FUNCTION public.invest_api_revoke_key(p_user_id uuid, p_key_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_changed integer;
+BEGIN
+  UPDATE public.invest_api_keys k SET revoked_at = now()
+    WHERE k.id = p_key_id AND k.revoked_at IS NULL
+      AND EXISTS (SELECT 1 FROM public.invest_api_callers c
+                  WHERE c.id = k.caller_id AND c.user_id = p_user_id);
+  GET DIAGNOSTICS v_changed = ROW_COUNT;
+  RETURN v_changed = 1;
+END;
+$$;
+
+CREATE FUNCTION public.invest_api_revoke_caller(p_user_id uuid, p_caller_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_changed integer;
+BEGIN
+  UPDATE public.invest_api_callers SET revoked_at = now()
+    WHERE id = p_caller_id AND user_id = p_user_id AND revoked_at IS NULL;
+  GET DIAGNOSTICS v_changed = ROW_COUNT;
+  IF v_changed = 0 THEN RETURN false; END IF;
+  UPDATE public.invest_api_keys SET revoked_at = now()
+    WHERE caller_id = p_caller_id AND revoked_at IS NULL;
+  DELETE FROM public.invest_summaries WHERE caller_id = p_caller_id;
+  RETURN true;
+END;
+$$;
+
+-- Deleting the summary in the same transaction means a ciphertext sealed to the old key is
+-- never served after the key changes.
+CREATE FUNCTION public.invest_api_set_caller_public_key(
+  p_user_id uuid, p_caller_id uuid, p_key text)
+RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v_changed integer;
+BEGIN
+  IF p_key IS NULL OR p_key !~ '^[A-Za-z0-9+/]{43}=$' THEN
+    RAISE EXCEPTION 'invalid public key';
+  END IF;
+  UPDATE public.invest_api_callers SET x25519_public_key = p_key
+    WHERE id = p_caller_id AND user_id = p_user_id AND revoked_at IS NULL;
+  GET DIAGNOSTICS v_changed = ROW_COUNT;
+  IF v_changed = 0 THEN RETURN false; END IF;
+  DELETE FROM public.invest_summaries WHERE caller_id = p_caller_id;
+  RETURN true;
+END;
+$$;
+
 REVOKE ALL ON FUNCTION
   public.invest_api_authenticate(uuid),
   public.invest_api_consume_nonce(text, timestamptz),
   public.invest_api_get_summary(uuid),
   public.invest_api_get_journal_public_key(uuid),
   public.invest_api_append_journal(uuid, text, timestamptz, text),
-  public.invest_api_journal_meta(uuid, timestamptz),
+  public.invest_api_journal_meta(uuid, timestamptz, uuid),
   public.invest_api_audit_write(uuid, uuid, text, integer),
   public.invest_api_publish_summary(uuid, uuid, text),
-  public.invest_api_prune()
+  public.invest_api_prune(),
+  public.invest_api_create_caller(uuid, text, text[], text),
+  public.invest_api_add_key(uuid, uuid, text),
+  public.invest_api_revoke_key(uuid, uuid),
+  public.invest_api_revoke_caller(uuid, uuid),
+  public.invest_api_set_caller_public_key(uuid, uuid, text)
 FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION
   public.invest_api_authenticate(uuid),
@@ -275,10 +392,15 @@ GRANT EXECUTE ON FUNCTION
   public.invest_api_get_summary(uuid),
   public.invest_api_get_journal_public_key(uuid),
   public.invest_api_append_journal(uuid, text, timestamptz, text),
-  public.invest_api_journal_meta(uuid, timestamptz),
+  public.invest_api_journal_meta(uuid, timestamptz, uuid),
   public.invest_api_audit_write(uuid, uuid, text, integer),
   public.invest_api_publish_summary(uuid, uuid, text),
-  public.invest_api_prune()
+  public.invest_api_prune(),
+  public.invest_api_create_caller(uuid, text, text[], text),
+  public.invest_api_add_key(uuid, uuid, text),
+  public.invest_api_revoke_key(uuid, uuid),
+  public.invest_api_revoke_caller(uuid, uuid),
+  public.invest_api_set_caller_public_key(uuid, uuid, text)
 TO service_role;
 
 COMMIT;
