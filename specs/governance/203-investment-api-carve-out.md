@@ -20,7 +20,7 @@ constitution_overrides:
   - section: '§2.2'
     reason: 'Adds /api/v1/* as the only non-session route that may mutate, limited to append-only journal inserts and its own bookkeeping.'
   - section: '§2.3'
-    reason: 'Adds a fourth scoped exception for API-key + HMAC callers with no user session and no vault.'
+    reason: 'Adds a fourth scoped exception for Ed25519-signed callers with no user session and no vault.'
 ---
 
 # Spec 203: Investment API carve-out (§2.1 / §2.2 / §2.3 amendment)
@@ -43,7 +43,7 @@ is approved and merged.**
   to the new feature), §3.1 (no new dependency, Node `crypto` only), §3.2 (no `any`, no secrets or
   PII test data), §5.1 and §5.1a (the journal private key is wrapped under the DEK as `K_h` is, with
   no new PIN and no new raw-key persistence), §5.2 (every new table ships RLS-on in the same
-  migration), §5.3 (caller keys are issued at runtime, never committed), §5.4 (no SQL on encrypted
+  migration), §5.3 (callers generate their own keypairs; no secret is committed or held by the server), §5.4 (no SQL on encrypted
   columns; the journal is read and filtered by metadata only), §6.3 (migrations forward-only).
 - HARD changes: §2.1, §2.2, §2.3. SOFT changes: none. Version bump 5.0.0 to 6.0.0 (MAJOR).
 - §7.1 step 4: `AGENTS.md`/`CLAUDE.md` pointers (their summary of §2.2 route exceptions) are
@@ -74,7 +74,7 @@ boundary, one opaque error response.
 
 ### §2.3 fourth exception
 
-API-key + HMAC callers, no user session, no vault. Data access only through `SECURITY DEFINER`
+Ed25519-signed callers (public key registered by the owner; the server holds no reusable credential), no user session, no vault. Data access only through `SECURITY DEFINER`
 RPCs with `EXECUTE` granted to `service_role` alone; no direct table grants to callers; callers
 receive ciphertext plus non-financial metadata only. "Outside these three" becomes "Outside these
 four".

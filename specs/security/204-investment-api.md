@@ -45,11 +45,11 @@ the owner copies figures by hand between systems.
     `specs/governance/203-investment-api-carve-out.md` (constitution 6.0.0). **This spec must not
     be implemented until 203 is approved and merged.**
   - §2.6/§2.7: new feature `src/features/investment-api/` has a barrel `index.ts`, named exports only.
-  - §3.1: no new dependency; Node `crypto` only (X25519, HKDF-SHA256, AES-256-GCM, HMAC, `timingSafeEqual`). Zod for validation.
+  - §3.1: no new dependency; Node `crypto` only (X25519, Ed25519 verify, HKDF-SHA256, AES-256-GCM, SHA-256). Zod for validation.
   - §3.2: no `any`, no secrets or real financial data in tests or docs (made-up figures only).
   - §5.1/§5.1a: journal private key wrapped under the DEK, unwrapped only in an unlocked session; no new PIN, never persisted raw.
   - §5.2: every new table ships RLS-on with its policy in the same migration; no `GRANT ALL`.
-  - §5.3: caller secrets generated at runtime and shown once; nothing committed; no new secret env var required.
+  - §5.3: callers generate their own keypairs; fynfo stores public keys only; nothing committed; no new secret env var required.
   - §5.4: no SQL filters or sorts on ciphertext; the journal is filtered only by caller, event type and `created_at`.
   - §6.3: migrations are additive and forward-only.
 
@@ -102,18 +102,29 @@ returns `429 {"error":"rate_limited"}` with `Retry-After`.
 
 ### Request authentication
 
-- Headers: `Authorization: Bearer fyk_<prefix>_<secret>`, `X-Kairyx-Timestamp: <unix seconds>`,
-  `X-Kairyx-Signature: hex(HMAC-SHA256(secret, ts + "\n" + METHOD + "\n" + path + "\n" + sha256hex(body)))`.
-  `path` includes the query string; `METHOD` upper-case; an empty body hashes the empty string.
-- Key format: `secret` is 32 random bytes (b64url); `prefix` is 8 random chars for lookup. Stored:
-  prefix, `SHA-256(secret)`, caller id, scopes, `expires_at` (90 days), `revoked_at`. The HMAC key is
-  the secret itself: the server matches `SHA-256(presented secret)` to the stored hash with
-  `timingSafeEqual`, then verifies the signature using the presented secret. The secret is never stored.
+- Each caller key is an Ed25519 keypair generated on the caller. fynfo stores only the public key
+  (raw 32 bytes, base64) with key id (uuid), caller id, scopes, `expires_at` (90 days) and
+  `revoked_at`. No secret is sent or stored server-side: the server holds no reusable credential, so
+  a stolen request log or database yields nothing that can sign a new request.
+- Headers: `Authorization: Fynfo-Ed25519 keyId=<uuid>`, `X-Fynfo-Timestamp: <unix seconds>`,
+  `X-Fynfo-Signature: base64(Ed25519.sign(priv, canonical))`, where
+  `canonical = "fynfo-req-v1
+" + keyId + "
+" + ts + "
+" + METHOD + "
+" + path-with-query + "
+" + sha256hex(body)`.
+  `METHOD` is upper-case; an empty body hashes the empty string.
+- Verification: look up the public key by key id (unknown, expired or revoked key gives the
+  identical 401), then `crypto.verify(null, canonical, publicKeyObject, signature)` with an Ed25519
+  `KeyObject` built from the raw key. Python callers sign with `cryptography`. No new dependency.
+- The caller's Ed25519 signing key and its X25519 sealing key (summary recipient) are separate keys;
+  registering or rotating a key in fynfo registers both public keys.
 - Replay: reject timestamps outside +/-300 s; store `SHA-256(signature)` in a nonce table until
   `timestamp + 300 s` and reject duplicates.
 - Rate limit: per key on the existing `rate_limit_buckets`; Vercel Firewall rule on `/api/v1/*`
   (dashboard config, applied by the owner, documented in `docs/api/v1.md`).
-- Audit: caller, key id, endpoint, status, time. Never bodies, signatures or secrets.
+- Audit: caller, key id, endpoint, status, time. Never bodies or signatures.
 
 ### Callers and scopes
 
@@ -129,7 +140,7 @@ Atlas digests are not journaled (Atlas only relays).
 
 - At most two active keys per caller; creating a third is refused until one is revoked or expires.
 - A new key overlaps the old until the old expires (90 days from its issue) or is revoked. The
-  owner creates, shows-once, rotates and revokes from the caller management UI; revocation takes
+  owner registers, rotates and revokes caller public keys from the caller management UI; revocation takes
   effect on the next request.
 - A caller's X25519 public key is registered by the owner. Replacing it re-seals the summary on
   the next unlock; until then the previous summary stays sealed to the old key and is not served
@@ -142,17 +153,16 @@ Atlas digests are not journaled (Atlas only relays).
   `src/integrations/services/security-rpc.ts`. RPCs set `search_path = ''`.
 - Tables (migration `supabase/migrations/2026120*_invest_api*.sql`), all RLS-on:
   - `invest_api_callers` (id, user_id, name, x25519_public_key, created_at, revoked_at)
-  - `invest_api_keys` (id, caller_id, prefix unique, secret_hash, scopes text[], expires_at, revoked_at, created_at)
+  - `invest_api_keys` (id uuid = key id, caller_id, public_key (raw 32 B, base64), scopes text[], expires_at, revoked_at, created_at)
   - `invest_api_nonces` (signature_hash primary key, expires_at)
   - `invest_api_audit` (id, caller_id, key_id, endpoint, status, created_at; no payload columns)
   - `invest_summaries` (user_id, caller_id, sealed, published_at; one row per caller, upsert)
   - `invest_journal_keys` (user_id primary key, public_key, wrapped_private_key, created_at)
   - `invest_journal` (id, user_id, caller_id, event_type, occurred_at, sealed, created_at)
-- Owner-user `SELECT` policies exist only where the UI reads (callers, keys without
-  `secret_hash`, journal, journal keys). No `UPDATE`/`DELETE` grant on `invest_journal`; a trigger
+- Owner-user `SELECT` policies exist only where the UI reads (callers, keys, journal, journal keys). No `UPDATE`/`DELETE` grant on `invest_journal`; a trigger
   rejects both as defense in depth (append-only). Nonce and audit rows are pruned by a
   service-role RPC, not by callers.
-- RPCs: `invest_api_authenticate(prefix)`, `invest_api_consume_nonce(hash, expires_at)`,
+- RPCs: `invest_api_authenticate(key_id)`, `invest_api_consume_nonce(hash, expires_at)`,
   `invest_api_get_summary(caller_id)`, `invest_api_append_journal(...)`,
   `invest_api_journal_meta(user_id, since)`, `invest_api_audit_write(...)`.
 
@@ -165,19 +175,22 @@ Atlas digests are not journaled (Atlas only relays).
 
 ### Implementation plan (slices)
 
-| #   | Slice                                                                                                             | Branch                            | Paths                                                                                          |
-| --- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------- |
-| S1  | Migration, sealed-box and HMAC libs, RPCs (service_role only)                                                     | `impl/204-investment-api-core`    | `supabase/migrations/2026120*_invest_api*.sql`, `src/lib/sealed-box.ts`, `src/lib/api-v1/**`   |
-| S2  | `/api/v1/*` routes: auth, HMAC, replay, scopes, rate limit, audit, opaque errors, `docs/api/v1.md` + JSON Schemas | `impl/204-investment-api-routes`  | `src/app/api/v1/**`, `docs/api/v1.md`                                                          |
-| S3  | Caller management UI: create, key shown once, register public key, rotate with overlap, revoke                    | `impl/204-investment-api-callers` | `src/features/investment-api/**`                                                               |
-| S4  | Weekly budget setting, publish-on-unlock, journal keypair, investment timeline page                               | `impl/204-investment-api-journal` | `src/features/assets` (budget setting + publish hook only), `src/app/dashboard/investments/**` |
+| #   | Slice                                                                                                                          | Branch                            | Paths                                                                                          |
+| --- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- | ---------------------------------------------------------------------------------------------- |
+| S1  | Migration, sealed-box and Ed25519 request-verify libs, RPCs (service_role only)                                                | `impl/204-investment-api-core`    | `supabase/migrations/2026120*_invest_api*.sql`, `src/lib/sealed-box.ts`, `src/lib/api-v1/**`   |
+| S2  | `/api/v1/*` routes: auth, Ed25519 signature, replay, scopes, rate limit, audit, opaque errors, `docs/api/v1.md` + JSON Schemas | `impl/204-investment-api-routes`  | `src/app/api/v1/**`, `docs/api/v1.md`                                                          |
+| S3  | Caller management UI: register caller signing and sealing public keys, rotate with overlap, revoke                             | `impl/204-investment-api-callers` | `src/features/investment-api/**`                                                               |
+| S4  | Weekly budget setting, publish-on-unlock, journal keypair, investment timeline page                                            | `impl/204-investment-api-journal` | `src/features/assets` (budget setting + publish hook only), `src/app/dashboard/investments/**` |
 
 S1 first; S2-S4 then run in parallel on disjoint files.
 
 ## Threat notes
 
-- **Stolen caller key**: scoped, hashed, revocable instantly, 90-day expiry. A leaked request log
-  cannot be replayed past 5 minutes, and the nonce table blocks reuse inside the window.
+- **Stolen request log or database**: yields no credential. Requests are signed with a private key
+  that never leaves the caller, so captured requests cannot be used to sign new ones; replaying a
+  captured request is blocked by the 5 minute window plus the nonce table.
+- **Stolen caller private key** (e.g. from the Pi): full caller compromise within its scopes until
+  the owner revokes the key (instant) or it expires (90 days).
 - **Replay**: timestamp window plus signature-hash nonce; a duplicate returns the identical 401.
 - **Journal flooding**: per-key limiter, Vercel Firewall rule on `/api/v1/*`, 16 KB body cap,
   append-only by missing grants plus trigger.
@@ -188,8 +201,7 @@ S1 first; S2-S4 then run in parallel on disjoint files.
 - **Stale summary**: refreshes only on unlock; `as_of` is sealed so the server cannot forge it.
 - **Malicious caller**: a stolen ballast key can append journal noise and read one summary
   sealed to its own key; it cannot read the journal, other callers' summaries or other users' data.
-- **Residual**: availability (DoS) is bounded by Vercel, not eliminated; the HMAC secret equals the
-  key, so key theft is full caller compromise within its scopes until revoked.
+- **Residual**: availability (DoS) is bounded by Vercel, not eliminated; a stolen caller private key stays valid until revoked or expired.
 
 ## Out of scope
 
@@ -204,7 +216,7 @@ S1 first; S2-S4 then run in parallel on disjoint files.
 ## Acceptance
 
 - [ ] `pnpm check` green
-- [ ] `pnpm test:ci` green; tests cover sealed-box vectors (seal/open, tamper, wrong key, unknown `v`), HMAC canonical string, timestamp window, nonce replay, scope enforcement, key expiry/revocation/rotation overlap (max two active), identical 401 on every auth failure, rate limit, body cap, append-only (UPDATE/DELETE rejected), RPC grants (callable by `service_role` only)
+- [ ] `pnpm test:ci` green; tests cover sealed-box vectors (seal/open, tamper, wrong key, unknown `v`), Ed25519 canonical string and signature verify, timestamp window, nonce replay, scope enforcement, key expiry/revocation/rotation overlap (max two active), identical 401 on every auth failure, rate limit, body cap, append-only (UPDATE/DELETE rejected), RPC grants (callable by `service_role` only)
 - [ ] `pnpm build` green
 - [ ] `pnpm format:check` green
 - [ ] Manual: issue a caller, call `/api/v1/summary` and `/api/v1/journal`, open the summary with the caller private key, see the journal event in the timeline after unlock; revoke and confirm 401
