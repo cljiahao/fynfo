@@ -150,6 +150,7 @@ const histories = [
   '20261008000001_household_authorization.sql',
   '20261009000000_atomic_financial_replacements.sql',
   '20261009000001_snapshot_edit_revisions.sql',
+  '20261128000204_invest_api.sql',
 ];
 let started = false;
 try {
@@ -200,6 +201,7 @@ try {
   await fixture.file('test/security/vault-telemetry-authorization.sql');
   await fixture.file('test/security/atomic-financial-replacements.sql');
   await fixture.file('test/security/snapshot-edit-revisions.sql');
+  await fixture.file('test/security/invest-api.sql');
   await runHouseholdConcurrency(fixture);
   await runVaultConcurrency(fixture);
   await runAtomicFinancialConcurrency(fixture);
