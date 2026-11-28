@@ -1,7 +1,7 @@
 # Fynfo Constitution
 
-**Version:** 5.0.0
-**Effective:** 2026-11-25
+**Version:** 6.0.0
+**Effective:** 2026-11-28
 **Owner:** Clarence (cljiahao27@gmail.com)
 **Status:** Living document. Amendments tracked in git history.
 
@@ -38,15 +38,19 @@ It MAY have a public marketing storefront, anonymous non-PII operational telemet
 
 All monetary amounts, tickers, salary figures, account identifiers MUST be AES-256-GCM encrypted via `encryptPayload` before reaching Supabase. Decryption only in-process after `getVaultDekSession()` returns the DEK from the HttpOnly cookie.
 
+**Sealed-box carve-out:** ciphertext produced by an authenticated sealed-box construction (ephemeral X25519, HKDF-SHA256, AES-256-GCM) counts as zero-knowledge when it is sealed to exactly one of: (a) a caller's X25519 **public** key, registered by the owner for that caller; or (b) the per-user **journal public key**, whose private key is stored only wrapped under the user's DEK (same pattern as `K_h`, §5.1a). The server MUST NEVER hold an opening key: no caller private key, and no unwrapped journal private key outside an unlocked session's process memory. Sealing is performed only inside an unlocked session, never by the `/api/v1/*` surface. Authorized by `specs/governance/203-investment-api-carve-out.md`.
+
 **Why:** Supabase operators must not be able to read financial data. PIN-derived DEK never persisted to disk.
 
 ### §2.2 `HARD` Server actions are the only mutation surface
 
-Mutations live in `src/features/<name>/actions/`. No `/api/` route handlers for mutations. API routes reserved for: NextAuth callbacks (none currently), `/api/vault` (DEK lifecycle), `/api/health`, `/api/track` (anonymous operational telemetry — see telemetry carve-out below).
+Mutations live in `src/features/<name>/actions/`. No `/api/` route handlers for mutations. API routes reserved for: NextAuth callbacks (none currently), `/api/vault` (DEK lifecycle), `/api/health`, `/api/track` (anonymous operational telemetry — see telemetry carve-out below), and `/api/v1/*` (investment API — see investment API carve-out below).
 
 **Why:** Single mutation pattern = single auth+vault gate to audit.
 
 **Telemetry carve-out:** `/api/track` may write ONLY to non-financial, non-PII operational telemetry tables (no `user_id`, no plaintext or ciphertext financial payload, no identifiers). It validates input at the boundary (Zod) and is the single auditable ingestion gate. This is the only sanctioned anonymous write path.
+
+**Investment API carve-out:** `/api/v1/*` is the only non-session route family that may mutate, and only for (a) append-only inserts into the investment journal (no UPDATE or DELETE grant, enforced by trigger) and (b) its own nonce, audit-log and rate-limit bookkeeping. It never writes any other table, never reads or writes plaintext financial data, and authenticates every request with an API key plus HMAC signature (§2.3 exception 4). Inputs are validated with Zod at the boundary and every failure returns one opaque response. Authorized by `specs/governance/203-investment-api-carve-out.md`.
 
 ### §2.3 `HARD` Every server action calls `requireUserId()` then `getVaultDekSession()` before DB access
 
@@ -61,7 +65,11 @@ One scoped sibling-key exception (still identity-first, still zero-knowledge):
 
 3. Household-data actions call `requireUserId()` then `getHouseholdKhSession()` — which returns the shared household key `K_h` from the `fynfo_household_kh` cookie (§5.1) instead of the personal DEK — before touching household ciphertext. Membership-gated via RLS (§5.2), not public.
 
-Outside these three, public actions still don't exist.
+One scoped machine-caller exception (no user session, still zero-knowledge, no vault):
+
+4. `/api/v1/*` callers (the §2.2 investment API) authenticate with a scoped, hashed API key plus an HMAC-SHA256 request signature, with no user session and no vault. Data access is only through `SECURITY DEFINER` RPCs whose `EXECUTE` is granted to `service_role` alone (revoked from `public`, `anon`, `authenticated`); tables carry no direct caller grants. Each caller sees only the scopes granted to its key, and receives only ciphertext sealed under §2.1 plus non-financial metadata (caller, event type, timestamps). Authorized by `specs/governance/203-investment-api-carve-out.md`.
+
+Outside these four, public actions still don't exist.
 
 **Why:** Defense-in-depth. RLS is the floor, not the ceiling. Missing either call = data leak class bug.
 
@@ -298,3 +306,4 @@ edit; uncertainty alone does not prohibit read-only investigation.
 | 4.1.0   | 2026-10-11 | §7.4 verification timing: targeted regressions and active hooks before commit; all full local gates before executable PR, allowing an unchanged pre-push run to supply them. Hooks, HARD quality/security rules and green CI before merge remain unchanged. Explicitly approved by Clarence in `specs/governance/126-verification-timing.md`.                                                                                                                                                                      |
 | 4.1.1   | 2026-10-24 | §1.1, §1.2, §6.1, §6.2 clarification: deployment wording matches reality (Vercel deploys `main`; no Raspberry Pi, Docker image or Watchtower). No rule loosened. Approved by Clarence in `specs/governance/153-deployment-wording-vercel.md`.                                                                                                                                                                                                                                                                      |
 | 5.0.0   | 2026-11-25 | §1.1, §1.2, §5.1a: households may hold up to four adult accounts (dependents are labels only, never accounts); membership change requires `K_h` rotation under its own spec. HARD rules changed, so MAJOR. Approved by Clarence in `specs/governance/197-household-up-to-four.md`.                                                                                                                                                                                                                                 |
+| 6.0.0   | 2026-11-28 | §2.1 sealed-box carve-out (ciphertext sealed to a caller public key or the per-user journal public key; server never holds an opening key); §2.2 `/api/v1/*` as the only non-session mutating route, limited to append-only journal inserts and its own nonce/audit/rate-limit bookkeeping; §2.3 fourth exception (API-key + HMAC callers, data only via `service_role` SECURITY DEFINER RPCs). HARD rules changed, so MAJOR. Approved by Clarence in `specs/governance/203-investment-api-carve-out.md`.          |
