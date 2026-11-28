@@ -33,4 +33,23 @@ REVOKE ALL ON FUNCTION public.invest_api_set_journal_key(uuid, text, text)
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.invest_api_set_journal_key(uuid, text, text) TO service_role;
 
+-- Encrypted per-user investment settings (weekly budget). The app writes payload as
+-- encryptPayload JSON under the user's DEK; the server cannot read it without an unlocked vault.
+CREATE TABLE public.invest_settings (
+  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  payload text NOT NULL CHECK (length(payload) BETWEEN 1 AND 4096),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.invest_settings ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.invest_settings FROM PUBLIC, anon, authenticated, service_role;
+-- No DELETE grant: removal happens only through the auth.users cascade.
+GRANT SELECT, INSERT, UPDATE ON public.invest_settings TO authenticated;
+CREATE POLICY "Owner reads invest settings" ON public.invest_settings
+  FOR SELECT TO authenticated USING (user_id = (SELECT auth.uid()));
+CREATE POLICY "Owner inserts invest settings" ON public.invest_settings
+  FOR INSERT TO authenticated WITH CHECK (user_id = (SELECT auth.uid()));
+CREATE POLICY "Owner updates invest settings" ON public.invest_settings
+  FOR UPDATE TO authenticated USING (user_id = (SELECT auth.uid()))
+  WITH CHECK (user_id = (SELECT auth.uid()));
+
 COMMIT;

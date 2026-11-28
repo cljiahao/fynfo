@@ -84,3 +84,65 @@ END;
 $$;
 RESET ROLE;
 ROLLBACK;
+
+-- invest_settings: owner-only read/write, no DELETE, payload is a text ciphertext column.
+BEGIN;
+INSERT INTO auth.users(id) VALUES
+ ('a5000000-0000-0000-0000-000000000011'),
+ ('a5000000-0000-0000-0000-000000000012');
+DO $$
+BEGIN
+  IF (SELECT data_type FROM information_schema.columns
+      WHERE table_schema='public' AND table_name='invest_settings' AND column_name='payload') <> 'text' THEN
+    RAISE EXCEPTION 'REGRESSION: invest_settings.payload is not text';
+  END IF;
+  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.invest_settings'::regclass) THEN
+    RAISE EXCEPTION 'REGRESSION: invest_settings has no RLS';
+  END IF;
+  IF has_table_privilege('authenticated','public.invest_settings','DELETE')
+     OR has_table_privilege('anon','public.invest_settings','SELECT')
+     OR has_table_privilege('service_role','public.invest_settings','SELECT') THEN
+    RAISE EXCEPTION 'REGRESSION: invest_settings grants too broad';
+  END IF;
+END;
+$$;
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','a5000000-0000-0000-0000-000000000011',true);
+INSERT INTO public.invest_settings(user_id,payload) VALUES ('a5000000-0000-0000-0000-000000000011','ciphertext-one');
+DO $$
+BEGIN
+  BEGIN
+    INSERT INTO public.invest_settings(user_id,payload) VALUES ('a5000000-0000-0000-0000-000000000012','forged');
+    RAISE EXCEPTION 'REGRESSION: wrote another user''s settings';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    DELETE FROM public.invest_settings;
+    RAISE EXCEPTION 'REGRESSION: delete allowed';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END;
+$$;
+SELECT set_config('request.jwt.claim.sub','a5000000-0000-0000-0000-000000000012',true);
+DO $$
+DECLARE v_changed integer;
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.invest_settings) THEN
+    RAISE EXCEPTION 'REGRESSION: cross-user read';
+  END IF;
+  UPDATE public.invest_settings SET payload = 'hijack';
+  GET DIAGNOSTICS v_changed = ROW_COUNT;
+  IF v_changed <> 0 THEN RAISE EXCEPTION 'REGRESSION: cross-user update'; END IF;
+END;
+$$;
+RESET ROLE;
+DO $$
+BEGIN
+  IF (SELECT payload FROM public.invest_settings
+      WHERE user_id='a5000000-0000-0000-0000-000000000011') <> 'ciphertext-one' THEN
+    RAISE EXCEPTION 'REGRESSION: settings payload changed';
+  END IF;
+END;
+$$;
+ROLLBACK;

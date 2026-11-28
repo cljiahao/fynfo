@@ -28,6 +28,7 @@ const NAV_ITEMS = [
   { label: 'Equity', href: PAGE_ROUTES.EQUITY, exact: false },
   { label: 'Expenses', href: PAGE_ROUTES.EXPENSES, exact: false },
   { label: 'Household', href: PAGE_ROUTES.HOUSEHOLD, exact: false },
+  { label: 'Investments', href: '/dashboard/investments', exact: false },
 ] as const;
 
 export function DashboardNavbar({ userMenu }: { userMenu?: React.ReactNode }) {

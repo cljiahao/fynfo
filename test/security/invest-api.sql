@@ -140,7 +140,7 @@ BEGIN
   ) THEN RAISE EXCEPTION 'REGRESSION: invest_api function without search_path'; END IF;
   IF (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE n.nspname = 'public' AND c.relname LIKE 'invest_%' AND c.relkind = 'r'
-        AND c.relrowsecurity) <> 7 THEN
+        AND c.relrowsecurity) <> 8 THEN
     RAISE EXCEPTION 'REGRESSION: RLS not enabled on every invest table';
   END IF;
 END;
