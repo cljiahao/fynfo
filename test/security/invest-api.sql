@@ -12,23 +12,23 @@ DO $$
 DECLARE v_key uuid;
 BEGIN
   INSERT INTO public.invest_api_keys(caller_id,public_key,scopes,expires_at)
-    VALUES ('a4100000-0000-0000-0000-000000000001',repeat('A',44),'{summary:read}',now()+interval '90 days');
+    VALUES ('a4100000-0000-0000-0000-000000000001',repeat('A',43)||'=','{summary:read}',now()+interval '90 days');
   INSERT INTO public.invest_api_keys(caller_id,public_key,scopes,expires_at)
-    VALUES ('a4100000-0000-0000-0000-000000000001',repeat('B',44),'{summary:read}',now()+interval '90 days')
+    VALUES ('a4100000-0000-0000-0000-000000000001',repeat('B',43)||'=','{summary:read}',now()+interval '90 days')
     RETURNING id INTO v_key;
   BEGIN
     INSERT INTO public.invest_api_keys(caller_id,public_key,scopes,expires_at)
-      VALUES ('a4100000-0000-0000-0000-000000000001',repeat('C',44),'{summary:read}',now()+interval '90 days');
+      VALUES ('a4100000-0000-0000-0000-000000000001',repeat('C',43)||'=','{summary:read}',now()+interval '90 days');
     RAISE EXCEPTION 'REGRESSION: third active key accepted';
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM <> 'caller already has two active keys' THEN RAISE; END IF;
   END;
   UPDATE public.invest_api_keys SET revoked_at = now() WHERE id = v_key;
   INSERT INTO public.invest_api_keys(caller_id,public_key,scopes,expires_at)
-    VALUES ('a4100000-0000-0000-0000-000000000001',repeat('C',44),'{summary:read}',now()+interval '90 days');
+    VALUES ('a4100000-0000-0000-0000-000000000001',repeat('C',43)||'=','{summary:read}',now()+interval '90 days');
   -- An already-expired key never counts as active.
   INSERT INTO public.invest_api_keys(caller_id,public_key,scopes,expires_at)
-    VALUES ('a4100000-0000-0000-0000-000000000001',repeat('D',44),'{summary:read}',now()-interval '1 day');
+    VALUES ('a4100000-0000-0000-0000-000000000001',repeat('D',43)||'=','{summary:read}',now()-interval '1 day');
   -- Un-revoking past the cap is rejected too.
   BEGIN
     UPDATE public.invest_api_keys SET revoked_at = NULL WHERE id = v_key;
@@ -38,7 +38,7 @@ BEGIN
   END;
   BEGIN
     INSERT INTO public.invest_api_keys(caller_id,public_key,scopes,expires_at)
-      VALUES ('a4100000-0000-0000-0000-000000000002',repeat('E',44),'{not:a:scope}',now()+interval '1 day');
+      VALUES ('a4100000-0000-0000-0000-000000000002',repeat('E',43)||'=','{not:a:scope}',now()+interval '1 day');
     RAISE EXCEPTION 'REGRESSION: unknown scope accepted';
   EXCEPTION WHEN check_violation THEN NULL;
   END;
@@ -154,7 +154,7 @@ INSERT INTO public.invest_api_callers(id,user_id,name,scopes,x25519_public_key) 
  ('a4100000-0000-0000-0000-000000000006','a4000000-0000-0000-0000-000000000006','owned','{summary:read,journal:append:plan}',repeat('A',43)||'='),
  ('a4100000-0000-0000-0000-000000000007','a4000000-0000-0000-0000-000000000007','other','{summary:read}',repeat('B',43)||'=');
 INSERT INTO public.invest_api_keys(id,caller_id,public_key,scopes,expires_at) VALUES
- ('a4200000-0000-0000-0000-000000000001','a4100000-0000-0000-0000-000000000006',repeat('E',44),'{summary:read}',now()-interval '1 day');
+ ('a4200000-0000-0000-0000-000000000001','a4100000-0000-0000-0000-000000000006',repeat('E',43)||'=','{summary:read}',now()-interval '1 day');
 SET LOCAL ROLE service_role;
 DO $$
 DECLARE
