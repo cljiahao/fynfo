@@ -1,0 +1,354 @@
+-- Disposable fixture only; run with psql ON_ERROR_STOP=1 after the invest_api migration.
+BEGIN;
+INSERT INTO auth.users(id) VALUES
+ ('a4000000-0000-0000-0000-000000000001'),
+ ('a4000000-0000-0000-0000-000000000002');
+INSERT INTO public.invest_api_callers(id,user_id,name,scopes,x25519_public_key) VALUES
+ ('a4100000-0000-0000-0000-000000000001','a4000000-0000-0000-0000-000000000001','ballast','{summary:read}',repeat('A',43)||'='),
+ ('a4100000-0000-0000-0000-000000000002','a4000000-0000-0000-0000-000000000002','ballast','{summary:read}',repeat('B',43)||'=');
+
+-- At most two active keys per caller; revoking or expiring frees a slot.
+DO $$
+DECLARE v_key uuid;
+BEGIN
+  INSERT INTO public.invest_api_keys(caller_id,public_key,scopes,expires_at)
+    VALUES ('a4100000-0000-0000-0000-000000000001',repeat('A',44),'{summary:read}',now()+interval '90 days');
+  INSERT INTO public.invest_api_keys(caller_id,public_key,scopes,expires_at)
+    VALUES ('a4100000-0000-0000-0000-000000000001',repeat('B',44),'{summary:read}',now()+interval '90 days')
+    RETURNING id INTO v_key;
+  BEGIN
+    INSERT INTO public.invest_api_keys(caller_id,public_key,scopes,expires_at)
+      VALUES ('a4100000-0000-0000-0000-000000000001',repeat('C',44),'{summary:read}',now()+interval '90 days');
+    RAISE EXCEPTION 'REGRESSION: third active key accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'caller already has two active keys' THEN RAISE; END IF;
+  END;
+  UPDATE public.invest_api_keys SET revoked_at = now() WHERE id = v_key;
+  INSERT INTO public.invest_api_keys(caller_id,public_key,scopes,expires_at)
+    VALUES ('a4100000-0000-0000-0000-000000000001',repeat('C',44),'{summary:read}',now()+interval '90 days');
+  -- An already-expired key never counts as active.
+  INSERT INTO public.invest_api_keys(caller_id,public_key,scopes,expires_at)
+    VALUES ('a4100000-0000-0000-0000-000000000001',repeat('D',44),'{summary:read}',now()-interval '1 day');
+  -- Un-revoking past the cap is rejected too.
+  BEGIN
+    UPDATE public.invest_api_keys SET revoked_at = NULL WHERE id = v_key;
+    RAISE EXCEPTION 'REGRESSION: un-revoke exceeded the cap';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'caller already has two active keys' THEN RAISE; END IF;
+  END;
+  BEGIN
+    INSERT INTO public.invest_api_keys(caller_id,public_key,scopes,expires_at)
+      VALUES ('a4100000-0000-0000-0000-000000000002',repeat('E',44),'{not:a:scope}',now()+interval '1 day');
+    RAISE EXCEPTION 'REGRESSION: unknown scope accepted';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+END;
+$$;
+
+-- RPCs under the service_role: authenticate, nonce replay, journal append.
+SET LOCAL ROLE service_role;
+DO $$
+BEGIN
+  BEGIN
+    PERFORM count(*) FROM public.invest_api_keys;
+    RAISE EXCEPTION 'REGRESSION: service_role read a table directly';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END;
+$$;
+DO $$
+DECLARE
+  v_journal uuid;
+  v_key uuid;
+BEGIN
+  v_key := (SELECT k.caller_id FROM public.invest_api_authenticate(gen_random_uuid()) k);
+  IF v_key IS NOT NULL THEN RAISE EXCEPTION 'REGRESSION: unknown key authenticated'; END IF;
+  IF NOT public.invest_api_consume_nonce(repeat('a',64), now()+interval '5 minutes') THEN
+    RAISE EXCEPTION 'REGRESSION: first nonce rejected';
+  END IF;
+  IF public.invest_api_consume_nonce(repeat('a',64), now()+interval '5 minutes') THEN
+    RAISE EXCEPTION 'REGRESSION: replayed nonce accepted';
+  END IF;
+  v_journal := public.invest_api_append_journal('a4100000-0000-0000-0000-000000000001','plan',now(),'sealed-fixture');
+  IF v_journal IS NULL THEN RAISE EXCEPTION 'REGRESSION: append returned null'; END IF;
+  BEGIN
+    PERFORM public.invest_api_append_journal('a4100000-0000-0000-0000-000000000001','bogus',now(),'x');
+    RAISE EXCEPTION 'REGRESSION: unknown event type accepted';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  IF (SELECT count(*) FROM public.invest_api_journal_meta('a4000000-0000-0000-0000-000000000001', NULL, NULL)) <> 1 THEN
+    RAISE EXCEPTION 'REGRESSION: journal meta count';
+  END IF;
+  IF (SELECT count(*) FROM public.invest_api_journal_meta('a4000000-0000-0000-0000-000000000002', NULL, NULL)) <> 0 THEN
+    RAISE EXCEPTION 'REGRESSION: journal meta leaked across users';
+  END IF;
+END;
+$$;
+RESET ROLE;
+
+-- Append-only: neither the trigger nor the grants allow UPDATE/DELETE, even for the table owner.
+DO $$
+BEGIN
+  BEGIN
+    UPDATE public.invest_journal SET sealed = 'tampered';
+    RAISE EXCEPTION 'REGRESSION: journal UPDATE succeeded';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'invest_journal is append-only' THEN RAISE; END IF;
+  END;
+  BEGIN
+    DELETE FROM public.invest_journal;
+    RAISE EXCEPTION 'REGRESSION: journal DELETE succeeded';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'invest_journal is append-only' THEN RAISE; END IF;
+  END;
+  IF has_table_privilege('authenticated','public.invest_journal','UPDATE')
+     OR has_table_privilege('authenticated','public.invest_journal','DELETE')
+     OR has_table_privilege('service_role','public.invest_journal','UPDATE')
+     OR has_table_privilege('service_role','public.invest_journal','DELETE')
+     OR has_table_privilege('anon','public.invest_journal','SELECT') THEN
+    RAISE EXCEPTION 'REGRESSION: journal grants too broad';
+  END IF;
+END;
+$$;
+
+-- EXECUTE is service_role only; anon, authenticated and PUBLIC are denied.
+DO $$
+DECLARE v_fn record;
+BEGIN
+  FOR v_fn IN
+    SELECT p.oid::regprocedure AS sig FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname LIKE 'invest_api_%'
+  LOOP
+    IF NOT has_function_privilege('service_role', v_fn.sig, 'EXECUTE') THEN
+      RAISE EXCEPTION 'REGRESSION: service_role lacks EXECUTE on %', v_fn.sig;
+    END IF;
+    IF has_function_privilege('anon', v_fn.sig, 'EXECUTE')
+       OR has_function_privilege('authenticated', v_fn.sig, 'EXECUTE') THEN
+      RAISE EXCEPTION 'REGRESSION: client role can EXECUTE %', v_fn.sig;
+    END IF;
+  END LOOP;
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname LIKE 'invest_api_%'
+      AND NOT p.prosecdef
+  ) THEN RAISE EXCEPTION 'REGRESSION: non-definer invest_api function'; END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname LIKE 'invest_api_%'
+      AND NOT coalesce(p.proconfig, '{}') @> ARRAY['search_path=""']
+  ) THEN RAISE EXCEPTION 'REGRESSION: invest_api function without search_path'; END IF;
+  IF (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relname LIKE 'invest_%' AND c.relkind = 'r'
+        AND c.relrowsecurity) <> 7 THEN
+    RAISE EXCEPTION 'REGRESSION: RLS not enabled on every invest table';
+  END IF;
+END;
+$$;
+
+-- Caller management, ownership and revocation, using users that no other check counts.
+INSERT INTO auth.users(id) VALUES
+ ('a4000000-0000-0000-0000-000000000006'),
+ ('a4000000-0000-0000-0000-000000000007');
+INSERT INTO public.invest_api_callers(id,user_id,name,scopes,x25519_public_key) VALUES
+ ('a4100000-0000-0000-0000-000000000006','a4000000-0000-0000-0000-000000000006','owned','{summary:read,journal:append:plan}',repeat('A',43)||'='),
+ ('a4100000-0000-0000-0000-000000000007','a4000000-0000-0000-0000-000000000007','other','{summary:read}',repeat('B',43)||'=');
+INSERT INTO public.invest_api_keys(id,caller_id,public_key,scopes,expires_at) VALUES
+ ('a4200000-0000-0000-0000-000000000001','a4100000-0000-0000-0000-000000000006',repeat('E',44),'{summary:read}',now()-interval '1 day');
+SET LOCAL ROLE service_role;
+DO $$
+DECLARE
+  v_caller uuid;
+  v_key uuid;
+  v_key2 uuid;
+  c6 constant uuid := 'a4100000-0000-0000-0000-000000000006';
+  c7 constant uuid := 'a4100000-0000-0000-0000-000000000007';
+  u6 constant uuid := 'a4000000-0000-0000-0000-000000000006';
+  u7 constant uuid := 'a4000000-0000-0000-0000-000000000007';
+  k_valid constant text := repeat('F',43) || '=';
+BEGIN
+  -- An expired key does not authenticate.
+  IF EXISTS (SELECT 1 FROM public.invest_api_authenticate('a4200000-0000-0000-0000-000000000001')) THEN
+    RAISE EXCEPTION 'REGRESSION: expired key authenticated';
+  END IF;
+
+  -- create_caller: bad scope, bad key, unknown user are rejected; the scopes are stored.
+  BEGIN
+    PERFORM public.invest_api_create_caller(u6, 'bad', ARRAY['not:a:scope'], k_valid);
+    RAISE EXCEPTION 'REGRESSION: bad scope accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'invalid scope' THEN RAISE; END IF;
+  END;
+  BEGIN
+    PERFORM public.invest_api_create_caller(u6, 'bad', ARRAY['summary:read'], 'short');
+    RAISE EXCEPTION 'REGRESSION: bad caller key accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'invalid public key' THEN RAISE; END IF;
+  END;
+  BEGIN
+    PERFORM public.invest_api_create_caller(gen_random_uuid(), 'ghost', ARRAY['summary:read'], k_valid);
+    RAISE EXCEPTION 'REGRESSION: unknown user accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'invalid caller' THEN RAISE; END IF;
+  END;
+  v_caller := public.invest_api_create_caller(u6, 'made', ARRAY['summary:read','journal:meta'], k_valid);
+
+  -- add_key: the new key authenticates; another user cannot add to this caller.
+  SELECT a.key_id INTO v_key FROM public.invest_api_add_key(u6, c6, k_valid) a;
+  IF NOT EXISTS (SELECT 1 FROM public.invest_api_authenticate(v_key)) THEN
+    RAISE EXCEPTION 'REGRESSION: new key does not authenticate';
+  END IF;
+  BEGIN
+    PERFORM public.invest_api_add_key(u7, c6, repeat('G',43) || '=');
+    RAISE EXCEPTION 'REGRESSION: add_key crossed users';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'invalid caller' THEN RAISE; END IF;
+  END;
+  BEGIN
+    PERFORM public.invest_api_add_key(u6, c6, 'short');
+    RAISE EXCEPTION 'REGRESSION: bad signing key accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'invalid public key' THEN RAISE; END IF;
+  END;
+
+  -- Two active keys (the expired fixture key does not count), so a third is blocked.
+  SELECT a.key_id INTO v_key2 FROM public.invest_api_add_key(u6, c6, repeat('H',43) || '=') a;
+  BEGIN
+    PERFORM public.invest_api_add_key(u6, c6, repeat('I',43) || '=');
+    RAISE EXCEPTION 'REGRESSION: third key via add_key accepted';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'caller already has two active keys' THEN RAISE; END IF;
+  END;
+
+  -- revoke_key: foreign user cannot revoke; the owner can, and authenticate then fails.
+  IF public.invest_api_revoke_key(u7, v_key2) THEN
+    RAISE EXCEPTION 'REGRESSION: revoke_key crossed users';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.invest_api_authenticate(v_key2)) THEN
+    RAISE EXCEPTION 'REGRESSION: foreign revoke_key changed the key';
+  END IF;
+  IF NOT public.invest_api_revoke_key(u6, v_key2) THEN
+    RAISE EXCEPTION 'REGRESSION: owner revoke_key returned false';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.invest_api_authenticate(v_key2)) THEN
+    RAISE EXCEPTION 'REGRESSION: revoked key authenticated';
+  END IF;
+  IF public.invest_api_revoke_key(u6, v_key2) THEN
+    RAISE EXCEPTION 'REGRESSION: double revoke returned true';
+  END IF;
+
+  -- publish_summary: only the owning user may publish for a caller.
+  PERFORM public.invest_api_publish_summary(u6, c6, 'sealed-one');
+  BEGIN
+    PERFORM public.invest_api_publish_summary(u7, c6, 'sealed-foreign');
+    RAISE EXCEPTION 'REGRESSION: publish_summary crossed users';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'invalid caller' THEN RAISE; END IF;
+  END;
+  IF (SELECT sealed FROM public.invest_api_get_summary(c6)) <> 'sealed-one' THEN
+    RAISE EXCEPTION 'REGRESSION: foreign publish changed the summary';
+  END IF;
+
+  -- set_caller_public_key: foreign user denied; owner change deletes the summary.
+  IF public.invest_api_set_caller_public_key(u7, c6, k_valid) THEN
+    RAISE EXCEPTION 'REGRESSION: set_caller_public_key crossed users';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.invest_api_get_summary(c6)) THEN
+    RAISE EXCEPTION 'REGRESSION: foreign key change deleted the summary';
+  END IF;
+  BEGIN
+    PERFORM public.invest_api_set_caller_public_key(u6, c6, 'short');
+    RAISE EXCEPTION 'REGRESSION: bad caller key accepted by set_caller_public_key';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'invalid public key' THEN RAISE; END IF;
+  END;
+  IF NOT public.invest_api_set_caller_public_key(u6, c6, k_valid) THEN
+    RAISE EXCEPTION 'REGRESSION: owner set_caller_public_key returned false';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.invest_api_get_summary(c6)) THEN
+    RAISE EXCEPTION 'REGRESSION: summary survived a public key change';
+  END IF;
+
+  -- revoke_caller: foreign user denied; owner revoke kills keys, summary, appends and publishes.
+  PERFORM public.invest_api_publish_summary(u6, c6, 'sealed-two');
+  IF public.invest_api_revoke_caller(u7, c6) THEN
+    RAISE EXCEPTION 'REGRESSION: revoke_caller crossed users';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.invest_api_authenticate(v_key)) THEN
+    RAISE EXCEPTION 'REGRESSION: foreign revoke_caller changed the key';
+  END IF;
+  IF NOT public.invest_api_revoke_caller(u6, c6) THEN
+    RAISE EXCEPTION 'REGRESSION: owner revoke_caller returned false';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.invest_api_authenticate(v_key)) THEN
+    RAISE EXCEPTION 'REGRESSION: key of a revoked caller authenticated';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.invest_api_get_summary(c6)) THEN
+    RAISE EXCEPTION 'REGRESSION: revoked caller summary still served';
+  END IF;
+  BEGIN
+    PERFORM public.invest_api_append_journal(c6, 'plan', now(), 'x');
+    RAISE EXCEPTION 'REGRESSION: revoked caller appended to the journal';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'invalid caller' THEN RAISE; END IF;
+  END;
+  BEGIN
+    PERFORM public.invest_api_publish_summary(u6, c6, 'sealed-three');
+    RAISE EXCEPTION 'REGRESSION: revoked caller summary published';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'invalid caller' THEN RAISE; END IF;
+  END;
+  IF public.invest_api_revoke_caller(u6, c6) THEN
+    RAISE EXCEPTION 'REGRESSION: double revoke_caller returned true';
+  END IF;
+END;
+$$;
+RESET ROLE;
+
+-- Authenticated users see only their own rows and can never write.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub','a4000000-0000-0000-0000-000000000002',true);
+DO $$
+BEGIN
+  IF (SELECT count(*) FROM public.invest_api_callers) <> 1
+     OR (SELECT count(*) FROM public.invest_api_keys) <> 0
+     OR (SELECT count(*) FROM public.invest_journal) <> 0 THEN
+    RAISE EXCEPTION 'REGRESSION: owner policy leaked another user rows';
+  END IF;
+  BEGIN
+    INSERT INTO public.invest_api_callers(user_id,name,scopes,x25519_public_key)
+      VALUES ('a4000000-0000-0000-0000-000000000002','x1','{summary:read}',repeat('A',43)||'=');
+    RAISE EXCEPTION 'REGRESSION: authenticated INSERT succeeded';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    PERFORM count(*) FROM public.invest_api_nonces;
+    RAISE EXCEPTION 'REGRESSION: authenticated read nonces';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.invest_api_prune();
+    RAISE EXCEPTION 'REGRESSION: authenticated called a service RPC';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END;
+$$;
+RESET ROLE;
+ROLLBACK;
+
+-- Deleting a user must still cascade through the append-only journal.
+BEGIN;
+INSERT INTO auth.users(id) VALUES ('a4000000-0000-0000-0000-000000000003');
+INSERT INTO public.invest_api_callers(id,user_id,name,scopes,x25519_public_key) VALUES
+ ('a4100000-0000-0000-0000-000000000003','a4000000-0000-0000-0000-000000000003','atlas','{summary:read}',repeat('A',43)||'=');
+INSERT INTO public.invest_journal(user_id,caller_id,event_type,occurred_at,sealed) VALUES
+ ('a4000000-0000-0000-0000-000000000003','a4100000-0000-0000-0000-000000000003','verdict',now(),'sealed-fixture');
+DELETE FROM auth.users WHERE id = 'a4000000-0000-0000-0000-000000000003';
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.invest_journal WHERE user_id = 'a4000000-0000-0000-0000-000000000003') THEN
+    RAISE EXCEPTION 'REGRESSION: user delete did not cascade';
+  END IF;
+END;
+$$;
+ROLLBACK;
