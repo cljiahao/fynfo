@@ -20,7 +20,8 @@ type InvestApiRpc =
   | 'invest_api_add_key'
   | 'invest_api_revoke_key'
   | 'invest_api_revoke_caller'
-  | 'invest_api_set_caller_public_key';
+  | 'invest_api_set_caller_public_key'
+  | 'invest_api_set_journal_key';
 
 type RpcParameters = Record<string, string | number | string[] | null>;
 
@@ -305,6 +306,22 @@ export async function setCallerPublicKey(
       p_user_id: userId,
       p_caller_id: callerId,
       p_key: publicKey,
+    })
+  );
+}
+
+/** True when the keypair was created; false when the user already has one, which is never replaced. */
+export async function setJournalKey(
+  userId: string,
+  publicKey: string,
+  wrappedPrivateKey: string
+): Promise<boolean> {
+  return parseResult(
+    z.boolean(),
+    await callRpc('invest_api_set_journal_key', {
+      p_user_id: userId,
+      p_public_key: publicKey,
+      p_wrapped_private_key: wrappedPrivateKey,
     })
   );
 }

@@ -5,6 +5,7 @@ import {
   IdleLockWatcher,
   VaultLockProvider,
 } from '@/features/auth';
+import { TimelineSummaryPublisher } from '@/features/investment-api';
 import { AmountVisibilityProvider } from '@/features/privacy';
 import { requireUserId } from '@/lib/auth-guard';
 import { getVaultDekSession } from '@/lib/keystore';
@@ -28,6 +29,7 @@ export default async function DashboardLayout({
       <IdleLockWatcher />
       <VaultGate>
         <AmountVisibilityProvider>
+          <TimelineSummaryPublisher userId={userId} />
           <div className="flex min-h-screen flex-col">
             <DashboardNavbar userMenu={<UserMenu />} />
             <main className="flex flex-1 flex-col">{children}</main>
