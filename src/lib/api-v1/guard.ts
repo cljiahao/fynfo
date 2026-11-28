@@ -16,7 +16,7 @@ import {
 } from '@/lib/api-v1/request-signature';
 import { API_V1_BODY_MAX_BYTES } from '@/lib/api-v1/schemas';
 import { logger } from '@/lib/logger';
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const RATE_LIMIT_MAX = 60;
@@ -126,7 +126,7 @@ async function authenticate(
   if (!headers.ok) return { ok: false, key: null, keyId: null };
   const { keyId, timestamp, signature } = headers.value;
   const key = await authenticateKey(keyId);
-  if (!key) return { ok: false, key: null, keyId: null };
+  if (!key) return { ok: false, key: null, keyId };
   const url = new URL(req.url);
   const verified = verifyRequestSignature(
     {
@@ -197,8 +197,10 @@ export function guarded(
         response = jsonResponse({ error: 'unavailable' }, 503);
       }
     }
-    await audit(key, keyId, endpoint, response.status);
-    await maybePrune();
+    // Requests without a parseable key id are unauthenticated noise; auditing them would let
+    // anyone drive database writes.
+    if (keyId) await audit(key, keyId, endpoint, response.status);
+    after(maybePrune);
     return response;
   };
 }

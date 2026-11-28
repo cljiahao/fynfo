@@ -30,6 +30,12 @@ vi.mock('@/integrations/services/invest-api-rpc', () => ({
 vi.mock('@/integrations/services/security-rpc', () => ({
   consumeRateLimit: rpc.consumeRateLimit,
 }));
+vi.mock('next/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/server')>()),
+  after: (task: () => unknown) => {
+    void task();
+  },
+}));
 vi.mock('@/lib/logger', () => ({
   logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
@@ -247,10 +253,20 @@ describe('authentication failures', () => {
     await getSummary(signed('GET', '/api/v1/summary', ''));
     expect(rpc.writeAudit).toHaveBeenCalledWith(
       null,
-      null,
+      expect.any(String),
       'GET /api/v1/summary',
       401
     );
+  });
+
+  it('writes no audit row when the headers are malformed', async () => {
+    const response = await getSummary(
+      signed('GET', '/api/v1/summary', '', {
+        headers: { Authorization: 'Bearer nope' },
+      })
+    );
+    expect(response.status).toBe(401);
+    expect(rpc.writeAudit).not.toHaveBeenCalled();
   });
 });
 

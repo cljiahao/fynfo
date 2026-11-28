@@ -24,7 +24,7 @@ export const publicKeyResponseSchema = z.object({
 export const journalAppendRequestSchema = z.object({
   event_type: eventTypeSchema,
   occurred_at: z.iso.datetime({ offset: true }),
-  sealed: z.string().min(1).max(16384).regex(BASE64URL),
+  sealed: z.string().min(1).max(16000).regex(BASE64URL),
 });
 
 export const journalAppendResponseSchema = z.object({ id: z.uuid() });
