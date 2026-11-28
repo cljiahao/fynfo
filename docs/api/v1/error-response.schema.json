@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "error": {
+      "type": "string",
+      "enum": [
+        "unauthorized",
+        "forbidden",
+        "invalid_request",
+        "payload_too_large",
+        "rate_limited",
+        "not_found",
+        "unavailable"
+      ]
+    }
+  },
+  "required": ["error"],
+  "additionalProperties": false
+}

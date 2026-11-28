@@ -98,6 +98,7 @@ response. Examples use made-up figures.
 `event_type` is one of `plan`, `sell_flag`, `verdict`; the key must hold the matching
 `journal:append:<type>` scope. Every auth, scope, replay or expiry failure returns the identical
 `401 {"error":"unauthorized"}` (scope failure is also 401, never 403, to avoid enumeration).
+Deliberate drift: authenticated but unscoped → 403 (signature and nonce already verified; 401 would hide misconfiguration).
 Malformed body after successful auth returns `400 {"error":"invalid_request"}`; rate limit
 returns `429 {"error":"rate_limited"}` with `Retry-After`.
 

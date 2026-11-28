@@ -20,6 +20,12 @@ function isApiRoute(pathname: string): boolean {
   return pathname.startsWith('/api/');
 }
 
+// Machine callers authenticate with a signed request, never a session; the route guard owns auth,
+// so the proxy must neither redirect them nor touch session cookies.
+function isInvestApiRoute(pathname: string): boolean {
+  return pathname.startsWith('/api/v1/');
+}
+
 function isPublicRoute(pathname: string): boolean {
   return PUBLIC_PATHS.has(pathname) || PUBLIC_API_PATHS.has(pathname);
 }
@@ -59,7 +65,7 @@ async function handle(req: NextRequest) {
       )
     );
   }
-  if (PUBLIC_API_PATHS.has(pathname)) {
+  if (PUBLIC_API_PATHS.has(pathname) || isInvestApiRoute(pathname)) {
     return NextResponse.next({ request: req });
   }
   // Skip the redundant auth/refresh pass on self-guarded server actions.
