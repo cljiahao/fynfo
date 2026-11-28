@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useSignOut } from '@/features/auth';
 import { PAGE_ROUTES } from '@/lib/constants/routes';
-import { CircleHelp, LogOut, UserRound } from 'lucide-react';
+import { CircleHelp, KeyRound, LogOut, UserRound } from 'lucide-react';
 import Link from 'next/link';
 
 interface UserMenuDropdownProps {
@@ -63,6 +63,13 @@ export function UserMenuDropdown({
           <Link href={PAGE_ROUTES.PROFILE}>
             <UserRound className="mr-2 size-4" />
             Profile
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem asChild>
+          <Link href="/dashboard/settings/api-callers">
+            <KeyRound className="mr-2 size-4" />
+            API callers
           </Link>
         </DropdownMenuItem>
 
