@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "v": {
+      "type": "number",
+      "const": 1
+    },
+    "public_key": {
+      "type": "string"
+    }
+  },
+  "required": ["v", "public_key"],
+  "additionalProperties": false
+}
