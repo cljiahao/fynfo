@@ -4,7 +4,7 @@ import { requireActionContext } from '@/lib/action-guard';
 import { open } from '@/lib/sealed-box';
 import { z } from 'zod';
 import type { TimelineEvent } from './journal-group';
-import { ensureJournalPrivateKey } from './journal-keys';
+import { readJournalPrivateKey } from './journal-keys';
 
 const MAX_EVENTS = 500;
 
@@ -34,7 +34,9 @@ function openOrNull(privateKey: Buffer, sealed: string): string | null {
 /** Opens every event in this session; an event that fails to open is returned with a null payload. */
 export async function getJournalTimeline(): Promise<TimelineEvent[]> {
   const { userId, dek, supabase } = await requireActionContext();
-  const privateKey = await ensureJournalPrivateKey(supabase, userId, dek);
+  // Reading never creates the keypair: without one no caller could have appended anything.
+  const privateKey = await readJournalPrivateKey(supabase, userId, dek);
+  if (!privateKey) return [];
 
   const [journal, callers] = await Promise.all([
     supabase

@@ -40,8 +40,11 @@ export async function publishInvestmentSummary(
     data,
     buildSummaryPlaintext(parsed.data.surplus, weeklyBudget, new Date())
   );
-  for (const target of targets) {
-    await publishSummary(userId, target.callerId, target.sealed);
-  }
-  return { published: targets.length };
+  const results = await Promise.allSettled(
+    targets.map((t) => publishSummary(userId, t.callerId, t.sealed))
+  );
+  const published = results.filter((r) => r.status === 'fulfilled').length;
+  // One caller's failure must not block the others; only a total failure is an error.
+  if (targets.length > 0 && published === 0) return unavailable();
+  return { published };
 }

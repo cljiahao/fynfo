@@ -69,4 +69,12 @@ describe('getJournalTimeline', () => {
   it('returns an empty list when there are no events', async () => {
     expect(await getJournalTimeline()).toEqual([]);
   });
+
+  it('returns an empty list without creating a key when none exists', async () => {
+    stub = makeTableStub({ invest_api_callers: [] });
+    const { setJournalKey } =
+      await import('@/integrations/services/invest-api-rpc');
+    expect(await getJournalTimeline()).toEqual([]);
+    expect(setJournalKey).not.toHaveBeenCalled();
+  });
 });

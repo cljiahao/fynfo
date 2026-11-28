@@ -5,10 +5,12 @@
 BEGIN;
 
 -- Raw 32-byte Ed25519 key in standard base64: 43 chars plus one padding char.
+-- Added NOT VALID then validated separately; invest_api_add_key already enforced the same regex.
 ALTER TABLE public.invest_api_keys
   DROP CONSTRAINT invest_api_keys_public_key_check,
   ADD CONSTRAINT invest_api_keys_public_key_check
-    CHECK (public_key ~ '^[A-Za-z0-9+/]{43}=$');
+    CHECK (public_key ~ '^[A-Za-z0-9+/]{43}=$') NOT VALID;
+ALTER TABLE public.invest_api_keys VALIDATE CONSTRAINT invest_api_keys_public_key_check;
 
 -- Insert only: an existing keypair is never overwritten, because replacing it would make every
 -- sealed journal event already stored for the user unreadable. Returns true when created.

@@ -3,16 +3,11 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  usePublishSummaryOnUnlock,
-  useSetWeeklyBudget,
-  useWeeklyBudget,
-} from '@/features/investment-api';
+import { useSetWeeklyBudget, useWeeklyBudget } from '@/features/investment-api';
 import { useState } from 'react';
 
-/** Also mounts the once-per-session publish, so opening this page refreshes callers' summary. */
+/** Saving refetches the budget query, which makes the dashboard publisher republish. */
 export function WeeklyBudgetForm() {
-  usePublishSummaryOnUnlock();
   const budget = useWeeklyBudget();
   const save = useSetWeeklyBudget();
   const [draft, setDraft] = useState<string | null>(null);

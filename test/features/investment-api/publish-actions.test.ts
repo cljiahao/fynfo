@@ -149,6 +149,27 @@ describe('publishInvestmentSummary', () => {
     expect(publishSummary).not.toHaveBeenCalled();
   });
 
+  it('still reports the callers that succeeded when one publish fails', async () => {
+    const a = caller();
+    const b = caller();
+    stub.tables.invest_api_callers = [a.row, b.row];
+    await seedBudget(250);
+    publishSummary.mockRejectedValueOnce(new Error('db detail'));
+    expect(await publishInvestmentSummary({ surplus: 1 })).toEqual({
+      published: 1,
+    });
+  });
+
+  it('throws an opaque error when every publish fails', async () => {
+    stub.tables.invest_api_callers = [caller().row, caller().row];
+    await seedBudget(250);
+    publishSummary.mockRejectedValue(new Error('db detail'));
+    const error = await publishInvestmentSummary({ surplus: 1 }).catch(
+      (e: Error) => e
+    );
+    expect((error as Error).message).not.toContain('db detail');
+  });
+
   it('creates the journal keypair on first publish', async () => {
     await publishInvestmentSummary({ surplus: 1 });
     expect(setJournalKey).toHaveBeenCalledTimes(1);
@@ -185,6 +206,6 @@ describe('journal keypair', () => {
         USER_ID,
         crypto.randomBytes(32)
       )
-    ).rejects.toThrow();
+    ).rejects.toThrow('Journal key unavailable');
   });
 });

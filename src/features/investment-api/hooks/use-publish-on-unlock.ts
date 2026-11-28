@@ -11,38 +11,40 @@ import { useExpenses } from '@/features/expenses';
 import { useEffect, useRef, useState } from 'react';
 import { usePublishSummary, useWeeklyBudget } from './use-publish-budget';
 
-const PUBLISHED_FLAG = 'fynfo.invest.published';
+const DAY_CHECK_MS = 10 * 60 * 1000;
 
-function alreadyPublished(): boolean {
-  try {
-    return window.sessionStorage.getItem(PUBLISHED_FLAG) === '1';
-  } catch {
-    return false;
-  }
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
-function markPublished(): void {
-  try {
-    window.sessionStorage.setItem(PUBLISHED_FLAG, '1');
-  } catch {
-    // Storage blocked: the in-memory ref still prevents repeats within this page.
-  }
+/** Rolls over at midnight UTC so a tab left open republishes before callers' 8-day limit. */
+function useToday(): string {
+  const [day, setDay] = useState(today);
+  useEffect(() => {
+    const id = setInterval(() => setDay(today()), DAY_CHECK_MS);
+    return () => clearInterval(id);
+  }, []);
+  return day;
 }
 
 /**
- * Publishes the sealed summary once per browser session, only when every input has loaded.
- * Surplus is null until snapshots, settings and expenses are all present, so partial data is
- * never sent. A failed publish is retried on the next mount, not in a loop.
+ * Publishes the sealed summary when the dashboard mounts unlocked, and again when the day, the
+ * user or the saved weekly budget changes. The dashboard only mounts this while the vault is
+ * unlocked, so locking and unlocking again remounts it and publishes afresh; no flag survives
+ * a lock. Surplus is null until snapshots, settings and expenses have all loaded, so partial
+ * data is never sent. A publish that sealed for nobody is not remembered, so it is retried.
  */
-export function usePublishSummaryOnUnlock(): void {
+export function usePublishSummaryOnUnlock(userId: string): void {
   const snapshots = useSnapshots();
   const settings = usePlannerSettings();
   const expenses = useExpenses();
   const budget = useWeeklyBudget();
   const { override } = useExpensesOverride();
   const [now] = useState(() => new Date());
+  const day = useToday();
   const { mutate } = usePublishSummary();
-  const attempted = useRef(false);
+  const published = useRef<string | null>(null);
+  const inFlight = useRef<string | null>(null);
 
   const surplus =
     snapshots.data && settings.isSuccess && expenses.data
@@ -53,12 +55,20 @@ export function usePublishSummaryOnUnlock(): void {
           override,
         })
       : null;
-  const ready = surplus !== null && budget.isSuccess && budget.data !== null;
+  const weeklyBudget = budget.isSuccess ? budget.data : null;
 
   useEffect(() => {
-    if (!ready || surplus === null || attempted.current) return;
-    attempted.current = true;
-    if (alreadyPublished()) return;
-    mutate(surplus, { onSuccess: markPublished });
-  }, [ready, surplus, mutate]);
+    if (surplus === null || weeklyBudget === null) return;
+    const key = `${userId}:${day}:${weeklyBudget}`;
+    if (published.current === key || inFlight.current === key) return;
+    inFlight.current = key;
+    mutate(surplus, {
+      onSuccess: (result) => {
+        if (result.published > 0) published.current = key;
+      },
+      onSettled: () => {
+        inFlight.current = null;
+      },
+    });
+  }, [userId, day, surplus, weeklyBudget, mutate]);
 }
